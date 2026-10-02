@@ -60,8 +60,9 @@ are built (Phases 11–15) *before* the NPC/Dialogue/Quest/Story systems that de
 
 - No gameplay implementation during the foundation step.
 - No multiplayer / networking code in Stage 1.
-- No 3D. (Note: project config currently enables a 3D physics engine — see
-  `docs/DECISIONS.md` D-002; this is flagged, not used.)
+- No 3D. (The 3D physics engine that the project template had enabled was removed in the
+  foundation fix — `docs/DECISIONS.md` D-002 Accepted; `project.godot` has no `[physics]`
+  section now.)
 - No premature engine-wide abstractions before a concrete second use case exists.
 
 ## Definition of a "good" change

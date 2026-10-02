@@ -3,8 +3,13 @@
 > Narrative design for the module architecture. The short, enforceable rulebook is
 > `.kiro/steering/03-architecture.md`; this document explains the *why* and the shape.
 >
-> Status: **design only.** Current repo has no scripts/autoloads/scenes beyond an empty
-> `main.tscn`. The structure below is the target to grow into, not an existing tree.
+> Status: **design doc.** Most of the structure below is the **TARGET** to grow into
+> (clearly labelled), not an existing tree. **CURRENT STATE (2026-10-03):** the repo has
+> a bootable, non-gameplay bootstrap — `main.tscn` (root `Main`, script
+> `src/bootstrap/main.gd`, children `Systems`/`World`/`UI`), a custom test runner
+> (`tests/run_tests.gd` + `tests/framework/`), a smoke test, a project-wide parse checker
+> (`tools/parse_check.gd`), and CI (`.github/workflows/ci.yml`). No gameplay, no
+> autoloads, no domain/data/presentation systems exist yet — those are TARGET.
 
 ## 1. Goals
 
@@ -107,12 +112,16 @@ Added only when first needed, each justified in `docs/DECISIONS.md`:
 `EventBus`, `GameState`, `SceneRouter`, `Localization`, `SaveService`, `Config`, `RNG`.
 Everything else is a node in the tree or a Resource.
 
-## 8. Target folder layout (grown incrementally, not created now)
+## 8. Folder layout — TARGET (grown incrementally)
+
+> Entries marked `[exists]` are present now; everything else is TARGET, added phase by
+> phase. The split itself (src/data/assets/locale) is the intended shape.
 
 ```
 res://
-  main.tscn                      # entry (currently an empty Node2D)
+  main.tscn                      # [exists] bootstrap scene (Main/Systems/World/UI)
   src/
+    bootstrap/        main.gd                              # [exists]
     infrastructure/   event_bus.gd  localization.gd  scene_router.gd
                       config.gd  rng.gd  logger.gd
     persistence/      save_service.gd  save_migrations/
@@ -123,7 +132,8 @@ res://
                       pets/ realms/ quests/ dialogue/ maps/ chapters/
   assets/             sprites/ tiles/ ui/ audio/ fonts/
   locale/             vi.* en.*            # translation tables
-  tests/              unit/ integration/ gameplay/ smoke/ performance/
+  tools/              parse_check.gd                       # [exists] CI tooling
+  tests/              [exists] framework/ unit/ integration/ gameplay/ smoke/ performance/
 ```
 
 The split between `src/` (code by layer), `data/` (content Resources), `assets/`

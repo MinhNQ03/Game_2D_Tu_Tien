@@ -213,7 +213,7 @@ template_id: StringName               # -> CharacterTemplateData.id
 realm_id, cultivation_progress, technique_ids
 stats_current                         # current vs. StatBlock max
 traits, goals                         # may diverge from template over play
-sect_id, faction_id, sect_rank
+sect_id, faction_id, sect_rank        # DERIVED read cache; authority = SectState roster (D-015)
 reputation: Dictionary                # { scope -> value }
 secrets: Array[{ secret_id, known_by: Array[instance_id] }]
 story_flags: Dictionary

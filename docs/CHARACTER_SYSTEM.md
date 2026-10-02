@@ -77,7 +77,9 @@ Grouped by concern. Display strings are localization **keys** (`07-localization.
 - **Relationships:** owned by the Relationship system (`docs/RELATIONSHIP_SYSTEM.md`);
   Character holds a reference/handle, not a duplicate store.
 - **Sect membership & rank:** `sect_id`, `faction_id` (optional), `sect_rank`
-  (StringName from the sect's rank ladder) — see `docs/SECT_SYSTEM.md`.
+  (StringName from the sect's rank ladder). **These are a derived read cache, NOT the
+  authority** — the canonical membership is the `SectState` roster. See `docs/SECT_SYSTEM.md`
+  and the authority contract in `docs/DECISIONS.md` **D-015**.
 - **Reputation:** `reputation` (Dictionary `{ scope -> value }`, scope = sect / region /
   world) — how the world regards them.
 - **Secrets:** `secrets` (Array of `{ secret_id, known_by: Array[instance_id] }`) —

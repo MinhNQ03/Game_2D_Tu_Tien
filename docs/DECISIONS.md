@@ -154,10 +154,23 @@ on push to GitHub. Manual check instructions are in the workflow comments and
 3. **Boot/START flow** named autoloads (EventBus, GameState, …) as if they existed; none
    are implemented yet. → Clarified as *planned* (added only when first needed per
    `03-architecture.md` autoload budget). Not a contradiction, but tightened wording.
-4. **No contradiction found** across save/localization/performance/testing/multiplayer
-   terminology — glossary in `02-game-design.md` is consistent with usage.
-**Consequence:** docs updated in this pass; no open conflicts remain. Future conflicts go
-here, not silently resolved.
+4. Glossary/terminology across save/localization/performance/testing/multiplayer is
+   consistent with usage — no term-level contradiction.
+
+**2026-10-03 (foundation hardening) — additional stale statements found & fixed:**
+5. `docs/ARCHITECTURE.md` still said "Current repo has no scripts... empty `main.tscn`"
+   (header Status) and "`main.tscn` ... currently an empty Node2D" (§8). → Fixed: Status
+   now separates CURRENT STATE (bootstrap scene, runner, parse checker, CI exist) from
+   TARGET; §8 marks existing entries `[exists]`.
+6. `.kiro/steering/01-product.md` non-goals still said "project config currently enables
+   a 3D physics engine ... flagged, not used" — contradicted D-002 (section removed). →
+   Fixed to state the `[physics]` section was removed.
+7. `docs/ROADMAP.md` Phase 0 said "met pending the first green CI run" in a way that
+   implied self-verification. → Reworded: CI greenness must be read from GitHub Actions
+   (agent cannot run it locally — D-009); gating moved to `PHASE_0_EXIT_CHECKLIST.md`.
+**Consequence:** the earlier "no open conflicts remain" claim was premature; these were
+caught in the hardening pass and fixed. The lesson is encoded in the AI review protocol's
+documentation-review gate. No known stale statements remain as of 2026-10-03 hardening.
 
 ## D-014 — Kiro Hooks for test + review automation  — **Accepted** (2026-10-03)
 **Context:** Phase 0 asked whether Kiro Hooks are usable and, if verified, to add hooks
@@ -174,6 +187,54 @@ this machine Godot is not reachable (D-009), so the hook will not actually run t
 it works on machines/CI where Godot is on PATH. This is documented rather than faked —
 the hooks are real and valid, but their *effect* depends on the environment. CI (D-012)
 remains the authoritative automated run.
+
+## D-015 — Sect membership authoritative source of truth  — **Accepted** (2026-10-03)
+**Context:** Membership is representable in two places (ambiguity risk):
+`SectState.disciple_refs/elder_refs/leader_ref` (the roster) **and** `CharacterState`'s
+`sect_id` / `faction_id` / `sect_rank`. Without a rule, these can drift and it's unclear
+who a server would trust later.
+**Decision — canonical membership lives on the SECT side:**
+- **Canonical source of truth:** the `SectState` roster (`leader_ref`, `elder_refs`,
+  `disciple_refs`) and, for factions, `FactionState.member_refs`. A character is a member
+  of a sect iff that sect's roster references the character's `instance_id`.
+- **Derived / denormalized fields:** `CharacterState.sect_id`, `faction_id`, `sect_rank`
+  are a read cache for fast "which sect am I in?" lookups and view rendering. They are
+  **never** the authority; on conflict, the roster wins.
+- **Mutation owner:** a single domain Sect service (TARGET, not built now) is the only
+  code that mutates membership. It updates the roster first, then updates the character
+  cache, then emits `character_joined_sect` / `character_rank_changed` /
+  `character_left_sect` on the EventBus. No other system writes membership.
+- **Synchronization path:** roster change → service updates character cache → event. UI
+  and other systems react to the event; they do not write membership directly.
+- **Rebuild behavior:** on load, the roster is authoritative; each `CharacterState`'s
+  cache is validated/rebuilt from the rosters. A cache that disagrees with the roster is
+  corrected to match the roster (and a warning logged), never the reverse.
+- **Serialization authority:** both are serialized (`sects` and `characters` sections,
+  `docs/SAVE_FORMAT.md`), but the roster is the source; the character cache is
+  reconstructable from it. If space/consistency ever matters, the cache may be dropped
+  from the save and fully rebuilt on load — a later optimization, not required now.
+- **Future multiplayer authority:** the server owns `SectState` (incl. rosters); clients
+  receive membership as replicated/derived state and never author it. This matches the
+  persistent/runtime/presentation partition in `MULTIPLAYER_PLAN.md`.
+**Model:** canonical membership (sect roster) → derived character/sect views. This is the
+preferred model and the review found no reason to deviate.
+**Consequence:** `CHARACTER_SYSTEM.md`, `SECT_SYSTEM.md`, `RELATIONSHIP_SYSTEM.md`,
+`SAVE_FORMAT.md`, and `DATA_SCHEMA.md` are annotated to point at this ADR as the single
+authority rule. No runtime system is built in this step.
+
+## D-016 — Hook strategy: lightweight on save, full suite on task completion  — **Accepted** (2026-10-03)
+**Context:** `run-tests-on-save.json` ran the FULL headless Godot test suite on every
+`.gd`/`.tscn`/`project.godot` save. Full-suite-per-save is costly and needless feedback
+noise for small edits; it also can't do anything on this machine (no Godot — D-009).
+**Decision:** split the cost by event:
+- **PostFileSave** → lightweight parse check only (`tools/parse_check.gd`), fast, catches
+  parse errors immediately after a save.
+- **PostTaskExec** → full headless test suite (`tests/run_tests.gd`) after a spec task
+  completes, where paying for the full run is justified.
+Both still need Godot on PATH to actually run (D-009); where absent they no-op and CI
+(D-012) remains authoritative.
+**Consequence:** `run-tests-on-save.json` now runs the parse checker; a new
+`run-full-tests-on-task.json` (PostTaskExec) runs the suite. No complex automation added.
 
 ---
 

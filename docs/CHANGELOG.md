@@ -8,6 +8,29 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### Changed / Added — 2026-10-03 — Foundation hardening (Phase 0, no gameplay)
+- **Smoke test now really boots:** `tests/smoke/test_boot.gd` adds Main to the live
+  SceneTree (runs `_ready`), asserts `is_inside_tree` + Systems/World/UI + bootstrap
+  self-validation, cleans up with no orphan nodes; added a negative structure test.
+- **Test runner hardened:** `tests/run_tests.gd` rewritten — recursive (nested) discovery,
+  deterministic order, SceneTree injection, `await` per method, non-zero exit on
+  fail/empty/missing-required. `tests/framework/test_case.gd` gained SceneTree helpers.
+- **Nested-discovery + fail-detection proof:** `tests/unit/framework/test_nested_discovery.gd`.
+- **Project-wide parse check:** `tools/parse_check.gd` (loads every `.gd` under
+  src/tests/tools; CI gate).
+- **CI hardened:** `.github/workflows/ci.yml` — removed `|| true`; gates checkout → Godot
+  4.7 → import → parse check → runtime boot (`--quit-after 2`) → test suite; no swallowed
+  failures.
+- **Hooks split (D-016):** PostFileSave runs the lightweight parse check;
+  `run-full-tests-on-task.json` (PostTaskExec) runs the full suite.
+- **Authority contract (D-015):** sect membership canonical source = `SectState` roster;
+  `CharacterState` sect fields are a derived cache. Annotated across CHARACTER/SECT/
+  DATA_SCHEMA/SAVE_FORMAT.
+- **Doc consistency:** fixed stale "empty `main.tscn`"/"no scripts" (ARCHITECTURE),
+  "3D physics enabled" (01-product), and "pending first green CI" (ROADMAP); logged in
+  DECISIONS D-013 (items 5–7).
+- **New:** `docs/PHASE_0_EXIT_CHECKLIST.md` (gates Phase 0 → READY FOR PHASE 1 on a green CI).
+
 ### Changed / Added — 2026-10-03 — Foundation review + fix (Phase 0 completion, no gameplay)
 - **Project identity:** `config/name` `New_Game_Project` → `Aetheria` (D-006 Accepted).
 - **2D config cleanup:** removed the `[physics]` section (3D `Jolt Physics` leftover) —

@@ -67,6 +67,8 @@ SaveFile:
   characters:                                 # core system — docs/CHARACTER_SYSTEM.md
     by_instance_id: Dictionary                # instance_id -> CharacterState (persistent tier only)
     player_instance_id: StringName            # the player is a Character
+    # NOTE: each CharacterState's sect_id/faction_id/sect_rank are a DERIVED cache;
+    # the authority is the sect roster below and is rebuilt from it on load (D-015).
   relationships:                              # core system — docs/RELATIONSHIP_SYSTEM.md
     edges: Array[RelationshipEdge]            # one graph: Char↔Char, Player↔Char, Char↔Sect
   sects:                                      # core system — docs/SECT_SYSTEM.md

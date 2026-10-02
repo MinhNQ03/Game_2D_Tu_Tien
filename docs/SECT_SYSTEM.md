@@ -64,10 +64,13 @@ locations). No engine change — the extensibility invariant (`docs/GAME_FLOW.md
 
 ## 5. Membership & rank (how a character belongs)
 
-Membership is expressed on both sides, with the Sect roster as the authority and the
-character's `sect_id`/`sect_rank` as a denormalized convenience that must stay in sync via
-events (`character_joined_sect`, `character_rank_changed`, `character_left_sect`). Rank
-determines authority, technique access, and faction eligibility.
+**Authoritative source of truth = the Sect roster** (`leader_ref`, `elder_refs`,
+`disciple_refs`; factions: `FactionState.member_refs`). The character's
+`sect_id`/`faction_id`/`sect_rank` are a **derived read cache**, kept in sync via events
+(`character_joined_sect`, `character_rank_changed`, `character_left_sect`) emitted by the
+single Sect-service mutation owner. On load the cache is rebuilt/validated from the
+roster; on any disagreement the roster wins. Full contract: `docs/DECISIONS.md` **D-015**.
+Rank determines authority, technique access, and faction eligibility.
 
 ## 6. Events (EventBus)
 

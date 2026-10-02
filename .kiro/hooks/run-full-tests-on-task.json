@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Run full headless test suite after task completion",
+      "trigger": "PostTaskExec",
+      "description": "After a spec task completes, run the full headless Godot test suite (D-016). Requires a 'godot' executable on PATH (D-009); where absent it no-ops and CI remains authoritative.",
+      "action": {
+        "type": "command",
+        "command": "godot --headless --path . -s res://tests/run_tests.gd",
+        "timeout": 300
+      }
+    }
+  ]
+}

@@ -1,15 +1,17 @@
 name: CI
 
-# Minimal CI for Aetheria (decision D-012).
-# Checkout -> install Godot 4.7 (matches project.godot feature tag "4.7") ->
-# import the project -> run the headless test suite. Fails the job on any error;
-# nothing is swallowed.
+# CI for Aetheria (decisions D-012, foundation hardening).
+# Gates, in order — each FAILS the job on a non-zero exit (no failures are swallowed):
+#   1. checkout
+#   2. download Godot 4.7 (matches project.godot feature tag "4.7")
+#   3. import project (generate .godot resource cache)
+#   4. project-wide GDScript parse check (src/ + tests/ + tools/)
+#   5. runtime boot smoke (boot application/run/main_scene headless, run _ready, exit)
+#   6. headless test suite (custom runner)
 #
-# NOTE: this workflow was authored while the AI agent could not run Godot or GitHub
-# Actions locally (D-009). It follows the standard godotengine release download layout
-# (Godot_v4.7-stable_linux.x86_64.zip). First real validation happens on push to GitHub.
-# To validate manually without CI, run locally with Godot 4.7:
-#   godot --headless --path . -s res://tests/run_tests.gd
+# NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
+# scripts were statically validated via the GDScript language server. The first real
+# execution is this workflow on GitHub. Manual local equivalents are in docs/TEST_PLAN.md.
 
 on:
   push:
@@ -18,8 +20,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Headless tests (Godot 4.7)
+  foundation:
+    name: Foundation gates (Godot 4.7)
     runs-on: ubuntu-latest
     env:
       GODOT_VERSION: "4.7-stable"
@@ -38,17 +40,28 @@ jobs:
           chmod +x "${GODOT_BIN}"
           ./${GODOT_BIN} --version
 
-      - name: Import project (generate .godot resources)
+      - name: Import project
         run: |
           set -euo pipefail
-          # First headless open imports assets and generates the resource cache.
-          # --quit makes the editor import pass exit; some import errors still return 0,
-          # so the real correctness gate is the test run below.
-          ./${GODOT_BIN} --headless --path . --import || true
+          # Generates the .godot resource cache. Not swallowed: if import fails, the job
+          # fails here.
+          ./${GODOT_BIN} --headless --path . --import
 
-      - name: Run headless tests
+      - name: GDScript parse check (whole project)
         run: |
           set -euo pipefail
-          # The runner exits non-zero on any failing assertion / missing smoke test,
-          # which (with set -e) fails this step and the job. Nothing is swallowed.
+          # Loads every .gd under src/ tests/ tools/; exits non-zero on any parse error.
+          ./${GODOT_BIN} --headless --path . -s res://tools/parse_check.gd
+
+      - name: Runtime boot smoke
+        run: |
+          set -euo pipefail
+          # Boots the real project from application/run/main_scene, runs Main._ready(),
+          # then quits after 2 frames. Fails the job if boot crashes.
+          ./${GODOT_BIN} --headless --path . --quit-after 2
+
+      - name: Headless test suite
+        run: |
+          set -euo pipefail
+          # Custom runner: exits non-zero on any failing assertion / missing smoke test.
           ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd

@@ -51,32 +51,49 @@ Assertions available: `assert_true`, `assert_false`, `assert_eq`, `assert_ne`,
 
 ## 5. Running headless (pinned command)
 
+The CI pipeline (`.github/workflows/ci.yml`) runs these gates in order, each failing the
+job on a non-zero exit (none are swallowed):
+
 ```
+# 1. project-wide GDScript parse check (src/ + tests/ + tools/)
+godot --headless --path . -s res://tools/parse_check.gd
+
+# 2. runtime boot smoke — actually boots application/run/main_scene, runs Main._ready(),
+#    then quits after 2 frames (verified flag per Godot 4.7 CLI docs)
+godot --headless --path . --quit-after 2
+
+# 3. headless test suite (custom runner)
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-Expected on success: per-test `[PASS]` lines, a summary, `RESULT: PASS`, exit code **0**.
-On any failure: `[FAIL]` lines, `RESULT: FAIL`, exit code **1**.
+Expected (suite) on success: per-test `[PASS]` lines, a summary, `RESULT: PASS`, exit
+code **0**. On any failure: `[FAIL]` lines, `RESULT: FAIL`, exit code **1**. The parse
+check prints `[parse_check] RESULT: PASS/FAIL` and exits 0/1. The runtime boot prints
+`[boot] Aetheria main scene ready...` and exits 0 if boot didn't crash.
 
-> **Note (D-009):** the AI agent could not run this locally — no Godot binary was
+> **Note (D-009):** the AI agent could not run any of these locally — no Godot binary was
 > reachable from its shell. All scripts were statically validated via the GDScript
-> language server (zero errors). The authoritative headless run happens in CI (D-012) and
-> can be run manually by any developer with Godot 4.7 installed.
+> language server (zero errors). The authoritative run happens in CI (D-012) and can be
+> run manually by any developer with Godot 4.7 installed.
 
 ## 6. Directory layout
 
 ```
 tests/
   framework/
-    test_case.gd   # TestCase base + assert_* API (D-004)
-  unit/            # pure logic
+    test_case.gd   # TestCase base + assert_* API + SceneTree helpers (D-004)
+  unit/
+    framework/
+      test_nested_discovery.gd  # proves recursive discovery + harness fail-detection
   integration/     # components together
   gameplay/        # scripted scenarios
   smoke/
-    test_boot.gd   # REAL smoke test: boot + main-scene load/structure
+    test_boot.gd   # REAL smoke test: boots Main INTO the SceneTree, runs _ready, cleans up
   performance/     # budget assertions
   README.md        # how to run, how to add a test
-  run_tests.gd     # real custom runner (not a placeholder)
+  run_tests.gd     # real custom runner — RECURSIVE discovery, non-zero exit on failure
+tools/
+  parse_check.gd   # project-wide parse check (CI gate)
 ```
 
 ## 7. Conventions

@@ -20,8 +20,12 @@ smoke test + runner; core social/world system design docs (D-011); CI added (D-0
 **Exit:** all `.kiro/steering` + `docs` in place; blocking decisions resolved (D-002,
 D-004, D-006) or explicitly deferred with triggers (D-003/005/007/008); `tests/` has a
 real runner + a passing smoke test; project boots to a real main scene; CI runs the
-suite headless. **Status:** met pending the first green CI run (local headless run not
-possible for the agent — D-009; verified via GDScript diagnostics + authored CI).
+suite headless (checkout → Godot 4.7 → import → parse check → runtime boot → tests).
+**Status:** foundation hardening complete and all gates authored. The authoritative
+green-CI confirmation must be read from GitHub Actions (the agent cannot run Godot or
+Actions locally — D-009; everything was validated statically via GDScript diagnostics).
+The gating checklist lives in `docs/PHASE_0_EXIT_CHECKLIST.md` — Phase 0 is READY FOR
+PHASE 1 once that checklist's CI item is confirmed green on GitHub.
 
 ## Phase 1 — Core
 Infrastructure autoloads as needed: `EventBus`, `GameState`, `Config`, `RNG`,

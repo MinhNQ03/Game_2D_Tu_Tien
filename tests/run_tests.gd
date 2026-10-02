@@ -4,42 +4,48 @@ extends SceneTree
 ## Run with:
 ##   godot --headless --path . -s res://tests/run_tests.gd
 ##
-## Discovers every `test_*.gd` under the test directories, instantiates each (expected
-## to extend TestCase), runs every `test_*` method, and reports results. Exit code:
-##   0  -> all discovered tests passed (and at least the required smoke test ran)
-##   1  -> one or more assertions/tests failed, a test file was malformed,
-##         or the required smoke test was missing
+## Recursively discovers every `test_*.gd` under the test directories (including nested
+## folders like tests/unit/combat/test_damage.gd), instantiates each (must extend
+## TestCase), injects the live SceneTree, and runs every `test_*` method. A single
+## process frame is awaited after each method so any Node added to the tree has had its
+## `_ready` lifecycle run.
 ##
-## This runner has REAL assertions and REAL non-zero exit on failure. It is not a
-## placeholder.
+## Exit code:
+##   0  -> all discovered tests passed AND the required smoke test ran
+##   1  -> any assertion/test failed, a file failed to load, a file didn't implement
+##         TestCase, zero tests ran, or the required smoke test was missing
+##
+## Limitation: GDScript has no try/catch, so a hard runtime error inside a test aborts
+## the process with a non-zero code (still a CI failure). Recorded assertion failures are
+## the normal catchable path. See docs/TEST_PLAN.md and DECISIONS.md D-004.
 
-const TEST_DIRS := [
-	"res://tests/unit",
-	"res://tests/integration",
-	"res://tests/gameplay",
-	"res://tests/smoke",
-	"res://tests/performance",
-]
+## Root directory scanned recursively for tests.
+const TESTS_ROOT := "res://tests"
 
-## The suite must always contain at least this smoke test. If it's gone, that's a
-## failure (prevents the suite silently shrinking to nothing and reporting green).
+## Folders under tests/ that are framework/support code, not test cases.
+const EXCLUDED_DIRS := ["framework"]
+
+## The suite must always contain this smoke test; its absence fails the suite so the
+## suite can't silently shrink to nothing and report green.
 const REQUIRED_TEST := "res://tests/smoke/test_boot.gd"
 
 
-func _init() -> void:
+func _initialize() -> void:
+	# Run after the SceneTree is ready so `root` and `process_frame` are usable.
+	_run.call_deferred()
+
+
+func _run() -> void:
 	var total := 0
 	var passed := 0
 	var failed := 0
 	var failures: Array[String] = []
-	var found_files: Array[String] = []
 
-	for dir_path in TEST_DIRS:
-		for file_path in _list_test_scripts(dir_path):
-			found_files.append(file_path)
+	var found_files := _discover_tests(TESTS_ROOT)
 
 	if not found_files.has(REQUIRED_TEST):
 		push_error("[tests] Required smoke test missing: %s" % REQUIRED_TEST)
-		print("[tests] FAIL — required smoke test not found.")
+		print("[tests] RESULT: FAIL — required smoke test not found.")
 		quit(1)
 		return
 
@@ -51,19 +57,22 @@ func _init() -> void:
 			continue
 
 		var test_case: Object = script.new()
-		# Duck-typed check: a valid test exposes the TestCase runner API. Avoids a hard
-		# static dependency on the class_name being registered in the global cache.
 		if not _is_test_case(test_case):
 			failed += 1
 			failures.append("%s — does not implement the TestCase API" % file_path)
 			continue
 
+		test_case.call("set_scene_tree", self)
+
 		for method_name in _test_methods(test_case):
 			total += 1
 			test_case.call("reset_failures")
 			test_case.call("before_each")
-			test_case.call(method_name)
+			# `await` tolerates both plain and coroutine (`await`-using) test methods.
+			await test_case.call(method_name)
 			test_case.call("after_each")
+			# Let any node added during the test finish its `_ready` lifecycle.
+			await process_frame
 			var method_failures: Array = test_case.call("get_failures")
 			if method_failures.is_empty():
 				passed += 1
@@ -79,6 +88,7 @@ func _init() -> void:
 
 	if total == 0:
 		push_error("[tests] No test methods were executed.")
+		print("[tests] RESULT: FAIL")
 		quit(1)
 		return
 
@@ -91,38 +101,53 @@ func _init() -> void:
 	quit(0)
 
 
-## True if the object exposes the TestCase runner API (duck typing).
+## True if the object exposes the TestCase runner API (duck typing — avoids a hard
+## dependency on the class_name being registered in the global cache).
 func _is_test_case(obj: Object) -> bool:
 	return obj != null \
 		and obj.has_method("reset_failures") \
 		and obj.has_method("get_failures") \
 		and obj.has_method("before_each") \
-		and obj.has_method("after_each")
+		and obj.has_method("after_each") \
+		and obj.has_method("set_scene_tree")
 
 
-## Returns the `test_*` method names declared on a test instance.
+## Returns the `test_*` method names declared on a test instance, sorted for
+## deterministic ordering.
 func _test_methods(test_case: Object) -> Array[String]:
 	var names: Array[String] = []
 	for m in test_case.get_method_list():
 		var n: String = m.get("name", "")
-		if n.begins_with("test_"):
+		if n.begins_with("test_") and not names.has(n):
 			names.append(n)
 	names.sort()
 	return names
 
 
-## Returns absolute res:// paths of `test_*.gd` scripts directly inside a directory.
-func _list_test_scripts(dir_path: String) -> Array[String]:
+## Recursively collects `test_*.gd` files under `root`, skipping EXCLUDED_DIRS and
+## hidden folders. Returns a sorted (deterministic) list. Safe if `root` is missing.
+## Uses an explicit stack (no recursion) so it cannot loop infinitely.
+func _discover_tests(start_dir: String) -> Array[String]:
 	var out: Array[String] = []
-	var dir := DirAccess.open(dir_path)
-	if dir == null:
-		return out
-	dir.list_dir_begin()
-	var name := dir.get_next()
-	while name != "":
-		if not dir.current_is_dir() and name.begins_with("test_") and name.ends_with(".gd"):
-			out.append("%s/%s" % [dir_path, name])
-		name = dir.get_next()
-	dir.list_dir_end()
+	var pending: Array[String] = [start_dir]
+	while not pending.is_empty():
+		var dir_path: String = pending.pop_back()
+		var dir := DirAccess.open(dir_path)
+		if dir == null:
+			continue
+		dir.list_dir_begin()
+		var entry := dir.get_next()
+		while entry != "":
+			if entry == "." or entry == "..":
+				entry = dir.get_next()
+				continue
+			var full := "%s/%s" % [dir_path, entry]
+			if dir.current_is_dir():
+				if not EXCLUDED_DIRS.has(entry) and not entry.begins_with("."):
+					pending.append(full)
+			elif entry.begins_with("test_") and entry.ends_with(".gd"):
+				out.append(full)
+			entry = dir.get_next()
+		dir.list_dir_end()
 	out.sort()
 	return out
