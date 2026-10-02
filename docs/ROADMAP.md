@@ -7,14 +7,21 @@
 > Every phase respects the extensibility invariant (`docs/GAME_FLOW.md`) and the AI
 > review protocol (`.kiro/steering/08-ai-review-protocol.md`). "Build passes" is never
 > an exit criterion by itself.
+>
+> **28 phases (0–27).** Phase 0 is nearly complete (foundation fix 2026-10-03); the core
+> social/world systems (Character/Relationship/Sect/Faction/World-Sim) are sequenced as
+> Phases 11–15, before the NPC/Dialogue/Quest/Story phases that depend on them.
 
 ## Phase 0 — Foundation *(current)*
-Documentation, standards, process. Project rename `New_Game_Project` → `Aetheria`.
-Resolve or defer the flagged config issues (3D physics engine on a 2D game, D-002).
-Decide the test framework (D-004).
-**Exit:** all `.kiro/steering` + `docs` in place; open decisions logged; `tests/`
-scaffold present with one green smoke test; config issues resolved or explicitly
-deferred.
+Documentation, standards, process. **Done in the 2026-10-03 foundation fix:** project
+renamed → `Aetheria` (D-006); 2D config cleaned, 3D physics removed (D-002); test
+framework decided = custom runner (D-004); bootable bootstrap `main.tscn` (D-010); real
+smoke test + runner; core social/world system design docs (D-011); CI added (D-012).
+**Exit:** all `.kiro/steering` + `docs` in place; blocking decisions resolved (D-002,
+D-004, D-006) or explicitly deferred with triggers (D-003/005/007/008); `tests/` has a
+real runner + a passing smoke test; project boots to a real main scene; CI runs the
+suite headless. **Status:** met pending the first green CI run (local headless run not
+possible for the agent — D-009; verified via GDScript diagnostics + authored CI).
 
 ## Phase 1 — Core
 Infrastructure autoloads as needed: `EventBus`, `GameState`, `Config`, `RNG`,
@@ -63,56 +70,97 @@ gating of usable skills.
 PetData, pet as an Entity with ally AIComponent; follows/assists in combat.
 **Exit:** add a pet via data; pet state serializes; combat assist tested.
 
-## Phase 11 — NPC
-NPC entities, interaction, shop state.
-**Exit:** interact + trade; shop state serializes.
+> **Core social/world systems come next (Phases 11–15), BEFORE NPC/Dialogue/Quest/Story**,
+> because those depend on them (D-011, `docs/GAME_FLOW.md` §1b). Characters, relationships,
+> sects, factions, and world simulation are the substrate quests and story read from.
 
-## Phase 12 — Dialogue
-DialogueData (localization keys), dialogue runner, choices feeding story flags.
-**Exit:** branching dialogue in `vi` + `en`; choices set flags; tested.
+## Phase 11 — Character System
+Data-driven Characters as core domain state (`docs/CHARACTER_SYSTEM.md`):
+`CharacterTemplateData` + `CharacterState`, 3-tier state (persistent/runtime/presentation),
+`CharacterEntity` as a *view*, player modeled as a Character.
+**Exit:** add a character purely via data; `CharacterState` round-trips through save;
+life-state transitions persist; no presentation leaks into persistent tier; tests pass.
 
-## Phase 13 — Quest
-Quest FSM (domain), QuestData, objectives driven by EventBus, rewards.
+## Phase 12 — Relationship System
+Serializable relationship graph (`docs/RELATIONSHIP_SYSTEM.md`): `RelationshipEdge` with
+affinity/trust/respect/fear/rivalry/debt + type; Char↔Char, Player↔Char, Char↔Sect.
+**Exit:** edges create/update/query + round-trip save; event→delta is deterministic;
+tests pass.
+
+## Phase 13 — Sect System
+Core sects (`docs/SECT_SYSTEM.md`): `SectTemplateData` + `SectState`, membership/ranks,
+resources/territory/reputation, alliances mirrored as relationship edges.
+**Exit:** add a sect via data only; `SectState` round-trips; membership stays in sync with
+`CharacterState`; tests pass.
+
+## Phase 14 — Faction / Politics
+Internal factions + emergent politics (`docs/SECT_SYSTEM.md` §7): `FactionState`,
+influence, attitudes toward player/other factions, resolved as rules over data.
+**Exit:** multi-faction sect authored via data; a faction influence/attitude change
+produces documented, deterministic outcomes; round-trips; tests pass.
+
+## Phase 15 — World Simulation
+LOD simulation (`docs/WORLD_SIMULATION.md`): Near real-time / Far abstract; schedule/tick/
+event/state-transition drivers; promotion/demotion; seeded determinism; save-resumable.
+**Exit:** seeded K-tick run reproduces identical state; promotion/demotion loses no
+persistent state; save mid-sim + load resumes; catch-up within budget; perf test passes.
+
+## Phase 16 — NPC
+NPC interaction & services (shops) built **on** the Character/Sect/Relationship systems.
+**Exit:** interact + trade; shop state serializes; standing uses the relationship graph.
+
+## Phase 17 — Dialogue
+DialogueData (localization keys), dialogue runner, choices feeding story + relationship +
+sect state.
+**Exit:** branching dialogue in `vi` + `en`; choices set flags/relationship deltas; tested.
+
+## Phase 18 — Quest
+Quest FSM (domain), QuestData, objectives driven by EventBus; quests arise from and affect
+characters/sects/politics.
 **Exit:** add a quest via data; full lifecycle incl. serialize mid-quest; tested.
 
-## Phase 14 — Story
-Story/flag engine, chapter + branch evaluation, chapter progression loop.
-**Exit:** a branch diverges on a prior choice; chapter transition works; tested.
+## Phase 19 — Story
+Story/flag engine; branches read character/sect/faction state + flags; chapter loop +
+world-state-change feedback (`docs/GAME_FLOW.md` §1b).
+**Exit:** a branch diverges on a prior choice/relationship/faction state; chapter
+transition works; tested.
 
-## Phase 15 — Dungeon
+## Phase 20 — Dungeon
 DungeonData, instance modifiers on top of map+combat+loot.
 **Exit:** add a dungeon via data; clear/exit cleanly; tested.
 
-## Phase 16 — Boss
+## Phase 21 — Boss
 BossData with phases, boss AI; chapter-gating defeat.
 **Exit:** add a boss via data; phases trigger; `boss_defeated` gates chapter; tested.
 
-## Phase 17 — Save
-Full versioned save/load across all systems; migration framework. See `SAVE_FORMAT.md`.
+## Phase 22 — Save
+Full versioned save/load across all systems (incl. character/relationship/sect/world-sim);
+migration framework. See `SAVE_FORMAT.md`.
 **Exit:** save/load round-trips every system's state; a v1→v2 migration demonstrated;
 save/load tests pass.
 
-## Phase 18 — Localization
+## Phase 23 — Localization
 Full `vi`/`en` pass; verify no hard-coded strings; font glyph coverage.
 **Exit:** key-coverage test green for both languages; no literal UI strings in code.
 
-## Phase 19 — Polish
+## Phase 24 — Polish
 UX, feedback, audio, transitions, menus.
 **Exit:** smoke run feels complete end-to-end; no obvious UX gaps.
 
-## Phase 20 — Optimization
+## Phase 25 — Optimization
 Profiler-driven only. Pooling where churn is proven. Each optimization logged in
 `PERFORMANCE.md` (problem/cause/solution/impact/measurement).
 **Exit:** frame-time/allocation budgets met on target hardware; optimizations logged.
 
-## Phase 21 — Release
+## Phase 26 — Release
 Build pipeline, export presets, credits (asset attributions from `ASSET_LICENSES.md`),
 final regression + smoke pass.
 **Exit:** reproducible export; all attributions satisfied; regression suite green.
 
-## Phase 22 — Multiplayer preparation
+## Phase 27 — Multiplayer preparation
 *Research + readiness only, still no shipped networking.* Validate the Stage-2 seams
-hold (serializable player/world/inventory/progression state, command intents,
+hold (serializable player/world/inventory/progression **and** character/relationship/
+sect/faction/world-sim state, in persistent/runtime/presentation tiers; command intents;
 authoritative-state boundary). Prototype behind a flag if desired. See
 `MULTIPLAYER_PLAN.md`.
 **Exit:** documented gap analysis: what each seam needs for authority/replication; a

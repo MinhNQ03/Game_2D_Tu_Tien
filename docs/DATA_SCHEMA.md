@@ -180,7 +180,114 @@ starting_realm: StringName
 starting_items: Array[{ item_id, count }]
 starting_skills: Array[StringName]
 start_chapter: StringName
+start_character_template: StringName   # the player's CharacterTemplateData (see §3b)
 ```
+
+## 3b. Core social / world systems (Character · Relationship · Sect · Faction · World Sim)
+
+> These are **core** systems (D-011). Full design: `docs/CHARACTER_SYSTEM.md`,
+> `docs/RELATIONSHIP_SYSTEM.md`, `docs/SECT_SYSTEM.md`, `docs/WORLD_SIMULATION.md`.
+> The schemas below are the data contract; the player is itself a Character.
+
+### CharacterTemplateData — definition (`char_*`)
+```
+id, name_key, title_key, portrait_ref, sprite_set_ref
+gender, origin_key, bloodline_key
+age, age_category                     # CHILD/YOUTH/ADULT/ELDER/ANCIENT (optional)
+profession                            # CULTIVATOR/ALCHEMIST/BLACKSMITH/MERCHANT/...
+starting_realm: StringName            # cảnh giới (reuses progression/cultivation rules)
+starting_technique_ids: Array[StringName]
+base_stats: StatBlock
+default_traits: Array[StringName]     # PROUD/LOYAL/GREEDY/CAUTIOUS/... personality
+motivation_key: StringName
+default_goals: Array                  # { kind, target_id, priority }
+default_sect_id: StringName           # optional
+default_faction_id: StringName        # optional
+schedule_ref: StringName              # data-defined routine (world sim)
+```
+
+### CharacterState — runtime instance (serialized; persistent tier only)
+```
+instance_id: StringName               # unique per save
+template_id: StringName               # -> CharacterTemplateData.id
+realm_id, cultivation_progress, technique_ids
+stats_current                         # current vs. StatBlock max
+traits, goals                         # may diverge from template over play
+sect_id, faction_id, sect_rank
+reputation: Dictionary                # { scope -> value }
+secrets: Array[{ secret_id, known_by: Array[instance_id] }]
+story_flags: Dictionary
+life_state                            # ALIVE/DEAD/MISSING/ASCENDED
+sim_state                             # where/what when off-screen (world sim)
+```
+Runtime/presentation tiers (pathing, animation, portrait frame) are NOT serialized.
+
+### RelationshipEdge (`rel_*`) — one graph, serialized
+```
+id: StringName
+from_ref, to_ref                      # Character instance_id OR Sect id
+relationship_type: StringName         # MASTER_DISCIPLE/RIVAL/ALLY/ENEMY/FAMILY/...
+dimensions: { affinity, trust, respect, fear, rivalry, debt }   # scalars (tuning data)
+symmetric: bool
+known: bool
+history: Array                        # optional capped change log
+```
+Covers Character↔Character, Player↔Character (player is a Character), Character↔Sect.
+
+### SectTemplateData — definition (`sect_*`)
+```
+id, name_key, emblem_ref, type, tier
+doctrine_key
+rank_ladder: Array[{ rank_id, name_key, authority }]
+default_factions: Array[FactionState-seed]
+starting_resources: Dictionary
+starting_territory: Array[StringName]
+technique_ids: Array[StringName]
+rules: Array[{ rule_id, text_key, penalty }]
+default_ally_sect_ids, default_enemy_sect_ids: Array[StringName]
+reputation_seed, influence_seed
+secrets: Array[{ secret_id, known_by }]
+event_hooks: Array[StringName]
+```
+
+### SectState — runtime instance (serialized)
+```
+id: StringName                        # -> SectTemplateData.id
+leader_ref: instance_id
+elder_refs, disciple_refs: Array[instance_id]
+factions: Array[FactionState]
+resources: Dictionary
+territory: Array[StringName]
+reputation: Dictionary
+influence: int
+ally_sect_ids, enemy_sect_ids: Array[StringName]
+discovered_secrets: Array[StringName]
+story_flags: Dictionary
+```
+
+### FactionState (serialized, inside SectState)
+```
+id, name_key
+leader_ref: instance_id
+member_refs: Array[instance_id]
+goals: Array
+influence: int
+resources: Dictionary
+stance: StringName                    # LOYALIST/REFORMIST/RADICAL/NEUTRAL/...
+attitude_toward_player: int           # scalar (data, not hard-coded)
+attitudes_toward_factions: Dictionary # { other_faction_id -> scalar }
+```
+
+### WorldSimState (serialized) — see `docs/WORLD_SIMULATION.md`
+```
+world_clock: int                      # coarse tick count / in-game time
+pending_transitions: Array            # scheduled state changes to apply on catch-up
+rng_seed: int                         # deterministic background simulation
+```
+
+> Save sections for the above (`characters`, `relationships`, `sects`, `world_sim`) are
+> listed in `docs/SAVE_FORMAT.md`. All references are ids/instance_ids so saves survive
+> as long as the referenced content ids exist.
 
 ## 4. Validation
 

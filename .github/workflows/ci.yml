@@ -1,0 +1,54 @@
+name: CI
+
+# Minimal CI for Aetheria (decision D-012).
+# Checkout -> install Godot 4.7 (matches project.godot feature tag "4.7") ->
+# import the project -> run the headless test suite. Fails the job on any error;
+# nothing is swallowed.
+#
+# NOTE: this workflow was authored while the AI agent could not run Godot or GitHub
+# Actions locally (D-009). It follows the standard godotengine release download layout
+# (Godot_v4.7-stable_linux.x86_64.zip). First real validation happens on push to GitHub.
+# To validate manually without CI, run locally with Godot 4.7:
+#   godot --headless --path . -s res://tests/run_tests.gd
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Headless tests (Godot 4.7)
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: "4.7-stable"
+      GODOT_BIN: Godot_v4.7-stable_linux.x86_64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Godot ${{ env.GODOT_VERSION }}
+        run: |
+          set -euo pipefail
+          URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${GODOT_BIN}.zip"
+          echo "Downloading $URL"
+          curl -fL --retry 3 -o godot.zip "$URL"
+          unzip -q godot.zip
+          chmod +x "${GODOT_BIN}"
+          ./${GODOT_BIN} --version
+
+      - name: Import project (generate .godot resources)
+        run: |
+          set -euo pipefail
+          # First headless open imports assets and generates the resource cache.
+          # --quit makes the editor import pass exit; some import errors still return 0,
+          # so the real correctness gate is the test run below.
+          ./${GODOT_BIN} --headless --path . --import || true
+
+      - name: Run headless tests
+        run: |
+          set -euo pipefail
+          # The runner exits non-zero on any failing assertion / missing smoke test,
+          # which (with set -e) fails this step and the job. Nothing is swallowed.
+          ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd

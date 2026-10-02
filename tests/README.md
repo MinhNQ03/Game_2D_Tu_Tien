@@ -7,32 +7,43 @@ Rules: `.kiro/steering/05-performance-testing.md`.
 
 ```
 tests/
+  framework/
+    test_case.gd   TestCase base + assert_* API
   unit/            pure logic (damage, XP, cultivation, inventory, quest FSM, save, localization)
   integration/     multiple components together
   gameplay/        scripted scenario runs
-  smoke/           whole-flow boot checks
+  smoke/
+    test_boot.gd   REAL smoke test: project boots, main scene loads + structure
   performance/     hot-path budget assertions
-  run_tests.gd     placeholder runner (until framework decision D-004)
+  run_tests.gd     real custom headless runner (framework decision D-004)
 ```
 
-## Running (placeholder, pre-D-004)
+## Running
 
 ```
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-Once the framework is decided (see `docs/DECISIONS.md` D-004), this README and the exact
-command are updated. If GUT is chosen:
+Success → per-test `[PASS]` lines, a summary, `RESULT: PASS`, exit code 0.
+Failure → `[FAIL]` lines, `RESULT: FAIL`, exit code 1.
 
+CI (`.github/workflows/ci.yml`) runs exactly this on every push with Godot 4.7.
+
+## Writing a test
+
+```gdscript
+extends TestCase
+
+func test_something() -> void:
+    assert_eq(2 + 2, 4, "math works")
 ```
-godot --headless --path . -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
-```
 
-## Adding a test
-
-- Name: `test_<subject>.gd`.
-- One behavior per test; arrange–act–assert.
-- Seed all randomness for determinism.
+- File name: `test_<subject>.gd`, placed in the right layer folder.
+- `extends TestCase`; define `test_*` methods.
+- Assertions: `assert_true/false`, `assert_eq/ne`, `assert_not_null/null`
+  (they record failures rather than throw).
+- Optional `before_each()` / `after_each()` hooks.
+- One behavior per test; arrange–act–assert; seed all randomness for determinism.
 - High-risk areas (damage, combat, inventory, progression, XP, level, cultivation,
   skill, quest, save/load, localization, map transitions) must be covered before the
   owning feature is "done".
@@ -40,5 +51,6 @@ godot --headless --path . -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
 
 ## Status
 
-No gameplay exists yet, so there are no real tests. `run_tests.gd` is a placeholder that
-reports "no tests yet" and exits cleanly so CI can be wired early.
+Runner + framework are real (not placeholders). One real smoke test exists; gameplay
+tests arrive with each phase. The suite always requires `smoke/test_boot.gd` — if it goes
+missing, the runner fails on purpose so the suite can't silently shrink to green.

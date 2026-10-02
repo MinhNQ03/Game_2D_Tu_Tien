@@ -8,6 +8,34 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### Changed / Added — 2026-10-03 — Foundation review + fix (Phase 0 completion, no gameplay)
+- **Project identity:** `config/name` `New_Game_Project` → `Aetheria` (D-006 Accepted).
+- **2D config cleanup:** removed the `[physics]` section (3D `Jolt Physics` leftover) —
+  game is 2D-only (D-002 Accepted). Added `textures/canvas_textures/default_texture_filter=0`
+  (nearest, for pixel art). Set `run/main_scene="res://main.tscn"`.
+- **Bootstrap:** `main.tscn` is now a real bootable scene — `Main` (`Node2D`, script
+  `src/bootstrap/main.gd`) with `Systems` / `World` / `UI` children (D-010).
+- **Test framework (D-004 Accepted → custom headless runner):**
+  `tests/framework/test_case.gd` (`TestCase` + `assert_*`), a real `tests/run_tests.gd`
+  (discovers `test_*.gd`, non-zero exit on failure), and a real smoke test
+  `tests/smoke/test_boot.gd`. Removed the placeholder behavior and `smoke/.gdkeep`.
+- **Core-system design (design only, no gameplay):** new docs `CHARACTER_SYSTEM.md`,
+  `RELATIONSHIP_SYSTEM.md`, `SECT_SYSTEM.md`, `WORLD_SIMULATION.md`; updates to
+  `GAME_FLOW`, `DATA_SCHEMA`, `MULTIPLAYER_PLAN`, `ROADMAP`, and steering 01/02/03 to make
+  Character / Relationship / Sect / Faction / World-Simulation core systems (D-011).
+- **CI:** added `.github/workflows/ci.yml` (checkout → Godot 4.7 → import → headless
+  tests) (D-012).
+- **AI review protocol:** added the `READ → PLAN → IMPLEMENT → TEST → REVIEW → DOCS` loop
+  and pre-completion review gates.
+- **Decisions resolved:** D-002, D-004, D-006 → Accepted; added D-009 (local Godot
+  unavailable to agent), D-010, D-011, D-012, D-013 (doc-review findings).
+
+### Known limitation — 2026-10-03
+- The AI agent could not run Godot headless locally (no binary on PATH / common dirs /
+  registry — D-009). All scripts validated via the GDScript language server (zero errors);
+  authoritative headless run is CI. Manual command:
+  `godot --headless --path . -s res://tests/run_tests.gd`.
+
 ### Added — 2026-10-02 — Project foundation (docs & process, no gameplay)
 - Steering rules in `.kiro/steering/`:
   `01-product`, `02-game-design`, `03-architecture`, `04-coding-standards`,
@@ -31,8 +59,10 @@ Dates are ISO (YYYY-MM-DD).
 - Open decisions pending: test framework (D-004), map strategy (D-003), save format
   (D-005), combat timing model (D-007), localization format (D-008).
 
-### Not done (by design, this step)
-- No gameplay implemented. `main.tscn` remains a single empty `Node2D`.
+### Not done (by design, as of 2026-10-02)
+- No gameplay implemented. `main.tscn` was a single empty `Node2D`.
+  *(Superseded 2026-10-03: `main.tscn` is now a non-gameplay bootstrap scene — see the
+  2026-10-03 entry above.)*
 - No networking / multiplayer code.
 
 ---

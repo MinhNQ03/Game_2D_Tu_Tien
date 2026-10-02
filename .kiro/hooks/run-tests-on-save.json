@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Run headless tests on GDScript/scene save",
+      "trigger": "PostFileSave",
+      "description": "After saving a GDScript, scene, or project.godot, run the headless test suite so regressions surface immediately. Requires a 'godot' executable on PATH (see docs/DECISIONS.md D-009); on machines without it the hook simply fails silently and CI remains the authoritative run.",
+      "matcher": "\\.(gd|tscn)$|project\\.godot$",
+      "action": {
+        "type": "command",
+        "command": "godot --headless --path . -s res://tests/run_tests.gd",
+        "timeout": 180
+      }
+    }
+  ]
+}

@@ -3,6 +3,47 @@
 > Steering: always included. The mandatory checklist Kiro (and any AI contributor)
 > runs for **every** code change in this project. This governs how AI works here.
 
+## The loop (every non-trivial feature)
+
+```
+READ  →  PLAN  →  IMPLEMENT  →  TEST  →  REVIEW  →  DOCS
+```
+
+- **READ** — architecture (`03-architecture.md`, `docs/ARCHITECTURE.md`), flow
+  (`docs/GAME_FLOW.md`), and the relevant system design doc(s) (e.g.
+  `CHARACTER_SYSTEM`, `SECT_SYSTEM`, `RELATIONSHIP_SYSTEM`, `WORLD_SIMULATION`,
+  `DATA_SCHEMA`, `SAVE_FORMAT`). Do not touch code you have not read.
+- **PLAN** — state the layer the change belongs in, the data/signals involved, the seams
+  it must respect, and the tests you will add. For a large feature, write the plan down
+  before editing.
+- **IMPLEMENT** — smallest correct change; data-driven; no premature abstraction; respect
+  layer direction and the persistent/runtime/presentation partition for core systems.
+- **TEST** — write/extend tests for high-risk logic and run the suite headless
+  (`godot --headless --path . -s res://tests/run_tests.gd`). Build/parse passing is not a
+  pass.
+- **REVIEW** — run the pre-completion gates below.
+- **DOCS** — update every affected doc (see step 10 / the DOCS gate).
+
+## Pre-completion review gates (ALL must pass before "done")
+
+Before declaring a feature complete, explicitly review and report each:
+- **Architecture review** — correct layer; no boundary violations; composition/events
+  used appropriately.
+- **Dependency review** — dependencies point the right way; no new upward/forbidden deps;
+  no accidental new autoload (budget in `03-architecture.md`).
+- **Side-effect review** — every emitted signal / mutated global/autoload state is
+  intended and documented.
+- **Performance review** — no new per-frame cost / hot-path allocation / duplicate nodes
+  / redundant signals; measured + logged in `PERFORMANCE.md` if non-trivial.
+- **Regression review** — ran smoke + related tests; any regression found became a
+  permanent test.
+- **Test review** — high-risk logic covered; suite green headless; a failing assertion
+  actually fails the suite (non-zero exit).
+- **Documentation review** — all affected docs updated; no doc now contradicts another
+  (if it does, log in `DECISIONS.md`, don't silently pick one).
+
+A feature that cannot pass every gate is not done; report which gate failed and why.
+
 ## Before writing code (every change)
 
 1. **Read the architecture** — `.kiro/steering/03-architecture.md` and

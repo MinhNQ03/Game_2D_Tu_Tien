@@ -31,41 +31,52 @@ The `domain` layer (damage, XP, cultivation, quest FSM, story) avoids node/scene
 dependencies specifically so it can be unit-tested headless with no engine boot cost and
 with a **seeded RNG** for determinism. This is the single biggest testability decision.
 
-## 4. Framework (decision pending — D-004)
+## 4. Framework (DECIDED — D-004: custom headless runner)
 
-Two viable options, to be chosen in `docs/DECISIONS.md` before Phase 1:
-- **GUT** (Godot Unit Test) — mature, assertions, test discovery, CI-friendly.
-- **Minimal custom runner** — a `SceneTree` script that runs `tests/` and reports
-  pass/fail; zero dependency, less featureful.
+**Chosen: a minimal custom `SceneTree` runner** (`tests/run_tests.gd`) with a small
+`TestCase` base (`tests/framework/test_case.gd`). Rationale (dependency cost, CI,
+maintainability, unit/integration ability, stability) is in `docs/DECISIONS.md` D-004.
+GUT was considered and deferred (revisit trigger noted in D-004).
 
-Default lean: **GUT**, unless we want zero third-party dependency. Either way, tests
-live under `tests/` and run headless.
+How it works:
+- A test file lives under `tests/<layer>/` named `test_<subject>.gd` and `extends TestCase`.
+- It defines `test_*` methods and uses `assert_*` helpers (which *record* failures rather
+  than throw, so every failure in a method is reported).
+- The runner discovers all `test_*.gd`, runs every `test_*` method, prints
+  `[PASS]`/`[FAIL]` per method, and **exits non-zero** if any assertion fails, if zero
+  tests run, or if the required smoke test is missing.
 
-## 5. Running headless (general form)
+Assertions available: `assert_true`, `assert_false`, `assert_eq`, `assert_ne`,
+`assert_not_null`, `assert_null`. Hooks: `before_each` / `after_each`.
+
+## 5. Running headless (pinned command)
 
 ```
-# with a custom SceneTree runner:
 godot --headless --path . -s res://tests/run_tests.gd
-
-# with GUT (once installed):
-godot --headless --path . -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit
 ```
 
-The exact command is pinned in `docs/DECISIONS.md` once D-004 is decided, and wired into
-CI so every push runs unit + integration + smoke. Performance tests may run on a slower
-cadence (nightly / pre-release).
+Expected on success: per-test `[PASS]` lines, a summary, `RESULT: PASS`, exit code **0**.
+On any failure: `[FAIL]` lines, `RESULT: FAIL`, exit code **1**.
+
+> **Note (D-009):** the AI agent could not run this locally — no Godot binary was
+> reachable from its shell. All scripts were statically validated via the GDScript
+> language server (zero errors). The authoritative headless run happens in CI (D-012) and
+> can be run manually by any developer with Godot 4.7 installed.
 
 ## 6. Directory layout
 
 ```
 tests/
+  framework/
+    test_case.gd   # TestCase base + assert_* API (D-004)
   unit/            # pure logic
   integration/     # components together
   gameplay/        # scripted scenarios
-  smoke/           # whole-flow boot checks
+  smoke/
+    test_boot.gd   # REAL smoke test: boot + main-scene load/structure
   performance/     # budget assertions
   README.md        # how to run, how to add a test
-  run_tests.gd     # placeholder runner entry (until D-004 decided)
+  run_tests.gd     # real custom runner (not a placeholder)
 ```
 
 ## 7. Conventions
@@ -82,7 +93,11 @@ tests/
 - Trivial getters/setters with no logic.
 - Third-party engine behavior (trust Godot).
 
-## 9. Current scaffold status
+## 9. Current status
 
-`tests/` exists with the folder layout, a `README.md`, and a placeholder `run_tests.gd`
-that reports "no tests yet" and exits 0. Real tests arrive with each gameplay phase.
+`tests/` has the layer folders, `framework/test_case.gd`, a real `run_tests.gd` runner,
+and one real smoke test `smoke/test_boot.gd` (asserts: main scene exists, is declared in
+`project.godot`, project name is `Aetheria`, scene loads as a `PackedScene`, instantiates
+with the `Main/Systems/World/UI` structure, and the harness records failures correctly).
+Unit/integration/gameplay/performance tests arrive with each gameplay phase. CI (D-012)
+runs the suite headless on every push.

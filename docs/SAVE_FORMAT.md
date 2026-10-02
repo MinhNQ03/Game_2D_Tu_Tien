@@ -64,11 +64,27 @@ SaveFile:
     completed_chapters: Array[StringName]
     flags: Dictionary { flag -> value }
     choices: Dictionary
+  characters:                                 # core system — docs/CHARACTER_SYSTEM.md
+    by_instance_id: Dictionary                # instance_id -> CharacterState (persistent tier only)
+    player_instance_id: StringName            # the player is a Character
+  relationships:                              # core system — docs/RELATIONSHIP_SYSTEM.md
+    edges: Array[RelationshipEdge]            # one graph: Char↔Char, Player↔Char, Char↔Sect
+  sects:                                      # core system — docs/SECT_SYSTEM.md
+    by_id: Dictionary                         # sect_id -> SectState (incl. FactionState[])
+  world_sim:                                  # core system — docs/WORLD_SIMULATION.md
+    world_clock: int
+    pending_transitions: Array
+    rng_seed: int
   world:
     map_states: Dictionary                    # per-map persistent bits (opened chests, cleared, ...)
   rng:
     seed: int                                 # for reproducibility/determinism
 ```
+
+> Note: `player` above is a convenience view; the player's authoritative state is a
+> `CharacterState` in `characters` (keyed by `player_instance_id`). Only the **persistent
+> tier** of each character/sect is serialized (runtime/presentation tiers are rebuilt on
+> load) — see `docs/CHARACTER_SYSTEM.md` §3.
 
 All content references are **ids** (see `docs/DATA_SCHEMA.md`), so a save stays valid as
 long as the referenced ids still exist. Removing a shipped id is a breaking content

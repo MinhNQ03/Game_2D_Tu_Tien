@@ -67,9 +67,25 @@ Do not introduce an abstraction, interface, or system until there is a concrete 
 use case or a real seam (save, localization, multiplayer boundary). Flag speculative
 generality in review (`.kiro/steering/08-ai-review-protocol.md`).
 
+## Core social / world systems (domain-authoritative)
+
+Character, Relationship, Sect, Faction, and World-Simulation are **core domain systems**
+(D-011), not quest add-ons. Rules for them:
+- Authoritative state lives in the **domain** layer, serializable, presentation-free.
+  Presentation renders a *view*; it never owns character/sect/relationship truth.
+- State is partitioned into **persistent / runtime / presentation** tiers; only the
+  persistent tier is saved and (later) server-owned.
+- They are **data-driven**: add a character/sect/faction via Resources + content, not core
+  edits.
+- They communicate via the EventBus; emitters never import listeners.
+Design docs: `docs/CHARACTER_SYSTEM.md`, `docs/RELATIONSHIP_SYSTEM.md`,
+`docs/SECT_SYSTEM.md`, `docs/WORLD_SIMULATION.md`.
+
 ## Multiplayer-ready seams (keep clean now, wire later)
 
 Keep these independently serializable and free of presentation coupling so Stage 2 can
 add authority/replication without a rewrite: player state, combat commands, world
-state, inventory, progression, authoritative state, persistence. See
-`docs/MULTIPLAYER_PLAN.md`. **No networking code or dependency in Stage 1.**
+state, inventory, progression, authoritative state, persistence, **character state,
+relationship state, sect state, faction state, world-event/sim state** (in
+persistent/runtime/presentation tiers). See `docs/MULTIPLAYER_PLAN.md`. **No networking
+code or dependency in Stage 1.**

@@ -16,6 +16,11 @@
 | Vật phẩm | Item | Consumables, materials, quest items. |
 | Linh thú | Pet | A companion entity with its own stats/skills. |
 | Nhiệm vụ | Quest | A tracked objective with states and rewards. |
+| Nhân vật | Character | Any person in the world (incl. the player & NPCs); authoritative, data-driven, serializable state. |
+| Quan hệ | Relationship | Serializable edge between characters/sects: affinity, trust, respect, fear, rivalry, debt. |
+| Tông môn | Sect | A core organization: doctrine, ranks, factions, resources, territory, reputation. |
+| Phe phái | Faction | An internal group within a sect with its own leader, goals, influence, attitudes. |
+| Mô phỏng thế giới | World simulation | Off-screen evolution of characters/sects via LOD (near real-time / far abstract). |
 
 > When a new domain term appears, add it here first, then use it everywhere.
 

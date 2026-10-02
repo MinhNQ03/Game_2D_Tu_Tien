@@ -47,6 +47,15 @@ cốt truyện fantasy / tu tiên · level · tu luyện · cảnh giới · cô
 equipment · item · pet · NPC · dialogue · quest · dungeon · boss · nhiều map ·
 progression · branching story.
 
+## Core social / world systems (first-class, not quest decoration)
+
+Characters, relationships, sects (tông môn), internal factions/politics, and a living
+world simulation are **core systems**, designed up front (D-011). NPCs are data-driven
+Characters with their own goals, relationships, sect membership, reputation, and secrets;
+the world evolves even off-screen. See `docs/CHARACTER_SYSTEM.md`,
+`docs/RELATIONSHIP_SYSTEM.md`, `docs/SECT_SYSTEM.md`, `docs/WORLD_SIMULATION.md`. These
+are built (Phases 11–15) *before* the NPC/Dialogue/Quest/Story systems that depend on them.
+
 ## Explicit non-goals (for now)
 
 - No gameplay implementation during the foundation step.

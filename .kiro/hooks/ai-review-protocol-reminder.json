@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Enforce AI review protocol before completing a feature",
+      "trigger": "PreToolUse",
+      "description": "On a code-modifying tool use, remind the agent to follow the AI review protocol loop and pre-completion gates before declaring work done.",
+      "matcher": "fs_write|str_replace|fs_append",
+      "action": {
+        "type": "agent",
+        "prompt": "Before finishing: follow .kiro/steering/08-ai-review-protocol.md — READ → PLAN → IMPLEMENT → TEST → REVIEW → DOCS, and pass all pre-completion gates (architecture, dependency, side-effect, performance, regression, test, documentation). \"Build passes\" is not \"done\". For Godot changes, the authoritative test is: godot --headless --path . -s res://tests/run_tests.gd. Keep changes data-driven and respect the layer boundaries and the persistent/runtime/presentation partition for core systems."
+      }
+    }
+  ]
+}

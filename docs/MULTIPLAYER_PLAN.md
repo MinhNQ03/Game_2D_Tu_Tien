@@ -27,9 +27,31 @@
 | **Progression** | pure domain rules, serializable (level/XP/cảnh giới) | server authoritative over power/unlocks |
 | **Authoritative state** | a conceptual boundary: who decides outcomes | offline = local authority; MP = server authority |
 | **Persistence** | SaveService owns format; state has `to_dict/from_dict` | same snapshots feed server-side storage |
+| **Character state** | authoritative in domain, serializable, presentation-free | server owns NPC/player characters; clients render views |
+| **Relationship state** | one serializable graph in a domain store (not on nodes) | server owns & replicates the social graph |
+| **Sect state** | serializable domain entity | server authoritative over sect membership/resources |
+| **Faction / politics state** | serializable `FactionState` (influence/attitudes) | server resolves politics; clients observe |
+| **World-event / sim state** | world clock + state, seeded + deterministic | server advances the world; clients receive results |
 
-These are the *same* seams already named in `docs/GAME_FLOW.md` §5 and
-`docs/ARCHITECTURE.md` §10.
+These are the *same* seams named in `docs/GAME_FLOW.md` §5 and `docs/ARCHITECTURE.md`
+§10, now extended with the core social/world systems (`docs/CHARACTER_SYSTEM.md`,
+`RELATIONSHIP_SYSTEM.md`, `SECT_SYSTEM.md`, `WORLD_SIMULATION.md`).
+
+### 2b. State partition every core system must keep (persistent / runtime / presentation)
+
+For multiplayer later, each core system separates its state into three tiers (defined for
+Character in `docs/CHARACTER_SYSTEM.md` §3 and applied the same way to Sect/Faction/World
+sim):
+
+| Tier | Who owns it later | Saved? | Replicated? |
+|---|---|---|---|
+| **Persistent** | authoritative server | yes | yes (authoritative) |
+| **Runtime** | server computes; client may predict | no | derived / event-driven |
+| **Presentation** | each client, local only | no | no (never) |
+
+Keeping these tiers separate **now** (offline) is what lets a server own the persistent
+tier and clients own only presentation **later**, with no rewrite. The save snapshot
+(`docs/SAVE_FORMAT.md`) already serializes only the persistent tier.
 
 ## 3. Why the current design already helps
 
@@ -84,5 +106,10 @@ Research + readiness only (`docs/ROADMAP.md` Phase 22):
   authoritative/replicated model.
 - World state scattered across scene nodes instead of centralized/serializable — would
   force a rewrite to replicate.
+- Character/sect/relationship authoritative state leaking into presentation nodes
+  (portraits, sprites owning truth) — breaks the persistent/runtime/presentation
+  partition (§2b) and the future server-owns-persistent model.
+- World simulation using wall-clock time or unseeded RNG — breaks determinism and makes a
+  server-advanced world impossible to keep in sync.
 
 If any of these appear, flag in `docs/DECISIONS.md` immediately.

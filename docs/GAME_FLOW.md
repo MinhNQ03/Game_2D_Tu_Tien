@@ -4,9 +4,10 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> Status: **foundation / design only.** No gameplay is implemented yet
-> (`main.tscn` is a single empty `Node2D`). Everything below is the intended flow and
-> the system contracts that implementation must satisfy.
+> Status: **foundation / design only.** No gameplay is implemented yet. `main.tscn` is a
+> non-gameplay **bootstrap** scene (`Main → Systems / World / UI`, script
+> `src/bootstrap/main.gd`; D-010), not an empty node and not gameplay. Everything below is
+> the intended flow and the system contracts that implementation must satisfy.
 
 ## 1. High-level flow
 
@@ -47,12 +48,44 @@ the key architectural truth: after a chapter, the game returns to the explore �
 combat → progress loop with *new content*, not new systems. SAVE is drawn once for
 clarity but is a cross-cutting capability available throughout.
 
+## 1b. World & social flow (Character / Sect are CORE, not quest decoration)
+
+The play path above sits on top of a living world. Characters, relationships, sects, and
+their politics are **core systems** (D-011), simulated and persistent — not NPCs spawned
+by a quest. The world/social dependency flow:
+
+```
+PLAYER                      (a Character; the authoritative actor)
+  ↓
+WORLD                       (maps + world simulation; LOD by distance)
+  ↓
+CHARACTERS                  (NPCs = data-driven Characters, authoritative domain state)
+  ↓
+RELATIONSHIPS               (affinity/trust/respect/fear/rivalry/debt graph)
+  ↓
+SECT                        (membership, rank, resources, territory, reputation)
+  ↓
+FACTION / POLITICS          (internal factions, influence, attitudes, intrigue)
+  ↓
+QUEST                       (objectives arise from characters/sects/politics)
+  ↓
+STORY                       (branches read character/sect/faction + flags)
+  ↓
+WORLD STATE CHANGE          (outcomes mutate characters/sects/world → feeds back up)
+```
+
+The bottom arrow feeds back to the top: story/quest outcomes change world, character, and
+sect state, which the world simulation carries forward (even off-screen), which produces
+new situations. Quests and story **consume** these systems; they do not **own** the
+characters/sects. Full contracts: §3b below and the dedicated docs
+(`CHARACTER_SYSTEM.md`, `RELATIONSHIP_SYSTEM.md`, `SECT_SYSTEM.md`, `WORLD_SIMULATION.md`).
+
 ## 2. Extensibility invariant (read this before anything else)
 
 > Adding a **chapter / map / quest / enemy / boss / pet / skill / item / cultivation
-> tier / dungeon / event** must be done by authoring **data (Resources) + content
-> scenes**, routed through the existing systems below. It must **not** require
-> rewriting any system in this document.
+> tier / dungeon / event / character / sect / faction / relationship** must be done by
+> authoring **data (Resources) + content scenes**, routed through the existing systems
+> below. It must **not** require rewriting any system in this document.
 
 Each box in the flow is a *system* with a stable contract. Content flows *through* the
 systems; the systems don't grow per content item. If a planned content addition can't
@@ -66,9 +99,11 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 ---
 
 ### 3.1 Boot / START
-- **Input:** app launch.
-- **State:** none persistent; initializes infrastructure autoloads (Config, RNG,
-  Localization, EventBus, SaveService, SceneRouter).
+- **Input:** app launch (currently: the `src/bootstrap/main.gd` bootstrap scene).
+- **State:** none persistent; will initialize infrastructure autoloads as they are added
+  (Config, RNG, Localization, EventBus, SaveService, SceneRouter — *planned*, created only
+  when first needed per the autoload budget in `.kiro/steering/03-architecture.md`; none
+  exist yet).
 - **Processing:** load config, detect/apply language (`vi`/`en`), warm minimal
   services, then route to Main Menu.
 - **Output:** Main Menu scene active.
@@ -215,6 +250,73 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Output:** credits (with asset attributions), return to Main Menu.
 - **Events:** `game_completed(ending_id)`.
 
+## 3b. Core social / world systems — contracts
+
+> These underpin §1b. They are domain-authoritative, data-driven, serializable, and
+> simulated. Full design in the dedicated docs; contracts summarized here so they're part
+> of the central flow, not an afterthought.
+
+### 3b.1 CHARACTER (`docs/CHARACTER_SYSTEM.md`)
+- **Input:** spawn/promotion requests (player enters region), events affecting a character,
+  simulation ticks.
+- **State:** authoritative `CharacterState` (persistent tier: identity, origin, age,
+  profession, cultivation, stats, personality, motivation, goals, sect/rank, reputation,
+  secrets, story flags, life-state, schedule/sim state). Runtime + presentation tiers are
+  derived and not saved.
+- **Processing:** near the player a `CharacterEntity` renders a *view* of the state; far
+  away only abstract state advances (world sim). Domain owns the truth.
+- **Output:** character behavior, state changes, events.
+- **Dependencies:** domain (authoritative), data (`CharacterTemplateData`), infrastructure
+  (EventBus, RNG), presentation (view only).
+- **Events:** `character_spawned/despawned/died/realm_changed/reputation_changed/secret_revealed`.
+
+### 3b.2 RELATIONSHIP (`docs/RELATIONSHIP_SYSTEM.md`)
+- **Input:** domain events (combat, gifts, dialogue choices, betrayals, sect actions,
+  sim ticks).
+- **State:** one serializable graph of `RelationshipEdge`s with scalar dimensions
+  (affinity/trust/respect/fear/rivalry/debt) + `relationship_type`. Covers Char↔Char,
+  Player↔Char, Char↔Sect.
+- **Processing:** event → documented dimension deltas via the Relationship service (single
+  source of truth).
+- **Output:** updated edges; relationships gate dialogue, prices, aid, hostility.
+- **Dependencies:** domain store; reacts to EventBus.
+- **Events:** `relationship_changed(edge_id, dimension, old, new)`.
+
+### 3b.3 SECT (`docs/SECT_SYSTEM.md`)
+- **Input:** membership/rank changes, resource/territory changes, alliance/war, sim ticks.
+- **State:** serializable `SectState` (leader, elders, disciples, ranks, resources,
+  territory, reputation, influence, alliances/enemies, techniques, rules, secrets, story
+  flags) incl. internal `FactionState`s.
+- **Processing:** domain rules over data; membership kept in sync with `CharacterState`
+  via events; alliances mirrored as Sect↔Sect relationship edges.
+- **Output:** sect-level behavior, services, gating, events.
+- **Dependencies:** domain; data (`SectTemplateData`); Relationship store; EventBus.
+- **Events:** `sect_leader_changed/rank_changed/resource_changed/alliance_changed/war_declared/event_triggered`.
+
+### 3b.4 FACTION / POLITICS (`docs/SECT_SYSTEM.md` §7)
+- **Input:** faction goals, influence/attitude shifts, member relationships, sim ticks,
+  story events.
+- **State:** `FactionState` per internal faction (leader, members, goals, influence,
+  resources, stance, attitude toward player, attitudes toward other factions).
+- **Processing:** emergent politics (succession, schism, purge, coup) resolved as rules
+  over data on sim ticks — never scattered booleans.
+- **Output:** political outcomes that change sect/character/world state.
+- **Dependencies:** Sect + Relationship + World Simulation.
+- **Events:** `faction_shift`, plus the sect events it triggers.
+
+### 3b.5 WORLD SIMULATION (`docs/WORLD_SIMULATION.md`)
+- **Input:** world clock ticks, schedules, events; player region changes (promotion/demotion).
+- **State:** world clock, each actor's `sim_state`, pending transitions, seeded RNG — all
+  persistent.
+- **Processing:** LOD — Near = real-time entities; Far = abstract state advanced on ticks
+  (no nodes, no per-frame cost). Deterministic (seeded). Save-resumable with bounded
+  catch-up.
+- **Output:** an evolving world that feeds new situations back into quest/story (§1b loop).
+- **Dependencies:** Character/Sect/Relationship state; infrastructure (clock, RNG, EventBus).
+- **Events:** `world_tick`, `world_event_triggered`, `character_promoted/demoted`.
+- **Performance:** governed by `.kiro/steering/05-performance-testing.md` — never full AI
+  for hundreds of NPCs per frame.
+
 ## 4. Cross-cutting services (always available in the flow)
 
 - **EventBus** — the backbone of the loose coupling above. Emitters never import
@@ -229,8 +331,10 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 
 The seams already named above — **combat command** (intent), **player state**,
 **world state**, **inventory**, **progression**, **persistence**, **authoritative
-state** — are kept serializable and presentation-free so Stage 2 can add authority and
-replication without rewriting these systems. Detail in `docs/MULTIPLAYER_PLAN.md`.
+state**, plus the core social/world state (**character**, **relationship**, **sect**,
+**faction**, **world-event/sim**) — are kept serializable and presentation-free, split
+into persistent/runtime/presentation tiers, so Stage 2 can add authority and replication
+without rewriting these systems. Detail in `docs/MULTIPLAYER_PLAN.md`.
 
 ## 6. Open design questions
 
