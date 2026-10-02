@@ -1,0 +1,3 @@
+bc46e87 test: harden foundation (real boot smoke, recursive runner, CI gates, authority contract)
+82ba76a fix: complete phase 0 foundation review
+aa3aa58 Step 00: project foundation (docs, steering, tests scaffold)
