@@ -1,3 +1,10 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# Agent/CI scratch files (never commit)
+*_tmp.txt
+alive_probe.txt
+commit_result.txt
+push_result.txt
+gitlog_tmp.txt
