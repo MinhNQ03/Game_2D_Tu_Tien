@@ -79,22 +79,98 @@ func test_end_session_clears_state() -> void:
 	free_node(gs)
 
 
-func test_to_from_dict_round_trip() -> void:
+func _running_session(world: StringName, map: StringName, scene_key: String) -> Node:
 	var gs := _make()
 	gs.begin_initialization()
 	gs.mark_ready()
 	gs.enter_menu()
 	gs.start_new_game()
 	gs.confirm_session_running()
-	gs.set_current_location(&"world_02", &"forest", "forest_scene")
+	gs.set_current_location(world, map, scene_key)
+	return gs
+
+
+# --- Persistence invariant (serialize run identity + location; NEVER lifecycle) ---
+
+## A snapshot carries run identity + location, and NEVER the lifecycle phase or a raw
+## `session_active` flag (which the old format persisted and could resurrect inconsistently).
+func test_to_dict_omits_lifecycle_and_active_flag() -> void:
+	var gs := _running_session(&"world_02", &"forest", "forest_scene")
 	var snapshot: Dictionary = gs.to_dict()
+	assert_false(snapshot.has("session_active"),
+		"snapshot must not persist the derived session_active flag")
+	assert_false(snapshot.has("phase"), "snapshot must not persist the runtime phase")
+	assert_true(snapshot.has("run_id"), "snapshot carries run identity")
+	assert_eq(String(snapshot.get("current_map_id", "")), "forest", "location persisted")
+	free_node(gs)
+
+
+## to_dict() on a non-session (no run underway) has nothing to save: returns an empty dict.
+func test_to_dict_empty_when_no_session() -> void:
+	var gs := _make()
+	gs.begin_initialization()
+	gs.mark_ready()
+	gs.enter_menu()  # at MENU, no session started
+	var snapshot: Dictionary = gs.to_dict()
+	assert_true(snapshot.is_empty(), "no active session => empty snapshot (nothing to save)")
+	free_node(gs)
+
+
+## Hydrating a saved run restores identity + location and DERIVES session_active, without
+## touching the lifecycle phase. The caller drives the phase to RUNNING afterward.
+func test_hydrate_restores_run_without_fabricating_phase() -> void:
+	var src := _running_session(&"world_02", &"forest", "forest_scene")
+	var snapshot: Dictionary = src.to_dict()
 
 	var gs2 := _make()
-	gs2.from_dict(snapshot)
-	assert_eq(gs2.is_session_active(), gs.is_session_active())
-	assert_eq(gs2.get_run_id(), gs.get_run_id())
-	assert_eq(String(gs2.get_current_world_id()), "world_02")
-	assert_eq(String(gs2.get_current_map_id()), "forest")
-	assert_eq(gs2.get_current_scene_key(), "forest_scene")
+	gs2.begin_initialization()
+	gs2.mark_ready()
+	gs2.enter_menu()  # load-safe phase
+	assert_true(gs2.hydrate_session(snapshot), "hydrate from a valid snapshot succeeds")
+	assert_true(gs2.is_session_active(), "session_active derived from presence of run_id")
+	assert_eq(gs2.get_run_id(), src.get_run_id(), "run_id restored")
+	assert_eq(String(gs2.get_current_map_id()), "forest", "location restored")
+	# Phase was NOT fabricated by hydrate: it remains the load-safe MENU until the caller
+	# transitions it. The old bug produced BOOT + session_active=true; prove that's gone.
+	assert_eq(gs2.get_phase(), gs2.Phase.MENU, "hydrate does not fabricate a RUNNING phase")
+	assert_ne(gs2.get_phase(), gs2.Phase.BOOT, "and never leaves an invalid BOOT+active state")
+	free_node(src)
+	free_node(gs2)
+
+
+## hydrate_session refuses an empty / run_id-less snapshot (fail loud, no silent partial load).
+func test_hydrate_rejects_invalid_snapshot() -> void:
+	var gs := _make()
+	gs.begin_initialization()
+	gs.mark_ready()
+	gs.enter_menu()
+	assert_false(gs.hydrate_session({}), "empty snapshot rejected")
+	assert_false(gs.hydrate_session({"current_map_id": "forest"}), "no run_id => rejected")
+	assert_false(gs.is_session_active(), "no session created from an invalid snapshot")
 	free_node(gs)
+
+
+## hydrate_session refuses to graft a run onto a live (mid-session) lifecycle, so a load
+## can't corrupt an in-progress game.
+func test_hydrate_rejects_unsafe_phase() -> void:
+	var gs := _running_session(&"world_02", &"forest", "forest_scene")  # phase RUNNING
+	var ok: bool = gs.hydrate_session({"run_id": "run_x", "current_map_id": "cave"})
+	assert_false(ok, "hydrate rejected while RUNNING")
+	assert_eq(String(gs.get_current_map_id()), "forest", "live run left untouched")
+	free_node(gs)
+
+
+## from_dict is a thin alias of hydrate_session (symmetry with to_dict) and must behave
+## identically — it must NOT fabricate lifecycle state the way the old version did.
+func test_from_dict_is_hydrate_alias() -> void:
+	var src := _running_session(&"world_03", &"peak", "peak_scene")
+	var snapshot: Dictionary = src.to_dict()
+	var gs2 := _make()
+	gs2.begin_initialization()
+	gs2.mark_ready()
+	gs2.enter_menu()
+	assert_true(gs2.from_dict(snapshot), "from_dict delegates to hydrate_session")
+	assert_eq(gs2.get_run_id(), src.get_run_id(), "run restored via from_dict")
+	assert_eq(gs2.get_phase(), gs2.Phase.MENU, "from_dict did not fabricate a phase")
+	free_node(src)
 	free_node(gs2)

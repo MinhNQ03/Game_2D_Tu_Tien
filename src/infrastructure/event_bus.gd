@@ -15,11 +15,6 @@ extends Node
 # --- Lifecycle / boot ---
 signal game_booted()
 
-# --- Session ---
-signal new_game_requested()
-signal session_started(run_id: String)
-signal session_ended(run_id: String)
-
 # --- Scene transition (owned/emitted by SceneRouter; others only listen) ---
 signal scene_transition_started(from_key: String, to_key: String)
 signal scene_transition_completed(to_key: String)
@@ -49,21 +44,6 @@ func _log(event_name: String, detail: String = "") -> void:
 func emit_game_booted() -> void:
 	_log("game_booted")
 	game_booted.emit()
-
-
-func emit_new_game_requested() -> void:
-	_log("new_game_requested")
-	new_game_requested.emit()
-
-
-func emit_session_started(run_id: String) -> void:
-	_log("session_started", run_id)
-	session_started.emit(run_id)
-
-
-func emit_session_ended(run_id: String) -> void:
-	_log("session_ended", run_id)
-	session_ended.emit(run_id)
 
 
 func emit_scene_transition_started(from_key: String, to_key: String) -> void:

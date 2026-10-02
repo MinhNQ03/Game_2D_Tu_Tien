@@ -31,7 +31,7 @@ func _ready() -> void:
 	# This scene represents active gameplay context for input gating.
 	var input := get_node_or_null("/root/InputService")
 	if input != null:
-		input.call("reset_to", 0)  # Context.GAMEPLAY == 0
+		input.call("set_gameplay_context")
 
 	# React to language changes while shown.
 	var bus := get_node_or_null("/root/EventBus")
@@ -47,10 +47,16 @@ func _exit_tree() -> void:
 
 
 ## Event-driven input (no per-frame polling): pressing the `open_menu` system action asks
-## to return to the menu. The scene does not perform the transition itself — it signals,
-## and the coordinator (Main) decides, keeping "why we move" out of the scene.
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("open_menu"):
+## to return to the menu. Input intent is resolved through InputService (the owner of
+## input gating / semantic actions, §12), NOT by matching physical events here — the scene
+## never reads raw input vocabulary directly. The scene does not perform the transition
+## itself; it signals, and the coordinator (Main) decides, keeping "why we move" out of
+## the scene.
+func _unhandled_input(_event: InputEvent) -> void:
+	var input := get_node_or_null("/root/InputService")
+	if input == null:
+		return
+	if input.call("is_system_action_just_pressed", &"open_menu"):
 		return_to_menu_requested.emit()
 		get_viewport().set_input_as_handled()
 

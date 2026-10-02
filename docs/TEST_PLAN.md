@@ -117,16 +117,29 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
 
 **Phase 01 added Core tests:**
 - `tests/unit/core/test_game_state.gd` — lifecycle valid/invalid transitions, new-game
-  flow, session survives a transition, end-session clears, `to_dict/from_dict` round-trip.
+  flow, session survives a transition, end-session clears, and the **persistence invariant
+  (D-018)**: `to_dict()` carries no phase/`session_active`, empty when no session,
+  `hydrate_session()` restores a run without fabricating a phase, rejects an invalid
+  snapshot and an unsafe phase, `from_dict()` alias behaves identically.
 - `tests/unit/core/test_scene_router.gd` — valid/invalid/no-host transitions, replace +
-  cleanup (no leak), clear, idle state.
-- `tests/unit/core/test_event_bus.gd` — delivery, payload, no-delivery-without-emit.
+  cleanup (no leak), clear, idle state, plus **failure/cleanup cases A–F**: `transition_failed`
+  payload, registered-but-missing-resource, a failed transition preserves the current
+  scene (transactional), router left idle after a failure, clear-when-empty is safe.
+- `tests/unit/core/test_event_bus.gd` — delivery + payloads for all kept signals, and
+  **the bus holds no business state** (exactly one script var: the `debug_log` flag).
 - `tests/unit/core/test_localization.gd` — vi/en lookup, switching, unsupported rejected,
   missing-key behavior, `{placeholder}` substitution.
 - `tests/unit/core/test_input_service.gd` — all semantic InputMap actions exist, gating
-  priority (modal > menu > gameplay), baseline-context protection.
-- `tests/integration/test_boot_flow.gd` — BOOT→MENU→NEW GAME→SESSION→FIRST SCENE, then
-  clean return to menu.
+  priority (modal > menu > gameplay), baseline-context protection, and the **semantic
+  context setters** (`set_gameplay_context`/`set_menu_context`/`push_modal_context` reset
+  the stack so no stale modal survives — D-018).
+- `tests/integration/test_boot_flow.gd` — BOOT→MENU→NEW GAME→SESSION→FIRST SCENE driving
+  GameState + SceneRouter directly, then clean return to menu.
+- `tests/integration/test_app_flow.gd` — **real end-to-end**: stands up the actual five
+  core autoloads under `/root`, instantiates the real `main.tscn`, lets `Main._ready()`
+  boot it, then emits the real `MainMenu.new_game_pressed` signal and asserts the whole
+  chain wired itself (session RUNNING + SceneRouter current key `prologue` + one content
+  scene under `World`), with a no-orphan teardown.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the suite headless on
 every push. **Note:** these tests were authored and statically validated (GDScript

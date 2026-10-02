@@ -19,12 +19,47 @@ const MENU_SCENE := "res://src/presentation/menus/main_menu.tscn"
 const PROLOGUE_SCENE_KEY := "prologue"
 const PROLOGUE_SCENE_PATH := "res://src/presentation/scenes/prologue_shell.tscn"
 
+## Core autoloads the running application REQUIRES. If any is missing when the app is
+## actually running, boot is a hard failure — a null autoload must never be silently
+## tolerated at runtime (`.kiro/steering/04-coding-standards.md`: fail loud; no swallowed
+## nulls). See `_verify_core_autoloads()` for the test-harness exception.
+const REQUIRED_AUTOLOADS := ["GameState", "SceneRouter", "EventBus"]
+
 var _menu: Control = null
 
 
 func _ready() -> void:
 	assert(_has_required_containers(), "Main scene is missing a required container node.")
+	if not _verify_core_autoloads():
+		# Real-app misconfiguration: a required core service is absent. Do not limp on in a
+		# broken state — report loudly and stop booting. (In the headless unit-test harness
+		# NO autoloads exist, which `_verify_core_autoloads` treats as test mode, not a fail.)
+		return
 	_boot()
+
+
+## Returns false (and reports loudly) only when the app is clearly running for real yet a
+## required core autoload is missing. When ZERO project autoloads are present we are in the
+## headless test harness (run_tests.gd is a bare SceneTree with no autoloads), so Main is
+## allowed to run its null-safe paths for structural tests — that is NOT a misconfiguration.
+func _verify_core_autoloads() -> bool:
+	var present := 0
+	var missing: Array[String] = []
+	for autoload_name in REQUIRED_AUTOLOADS:
+		if get_node_or_null("/root/%s" % autoload_name) != null:
+			present += 1
+		else:
+			missing.append(autoload_name)
+	if missing.is_empty():
+		return true
+	if present == 0:
+		# Test-harness context (no autoloads at all). Proceed null-safe; do not fail-fast.
+		return true
+	# Partially wired real app: some core services exist but required ones are missing.
+	push_error("[boot] FATAL: required core autoload(s) missing: %s. Check project.godot "
+		% str(missing) + "[autoload]. Aborting boot to avoid a half-wired game state.")
+	assert(false, "Required core autoload(s) missing: %s" % str(missing))
+	return false
 
 
 ## The boot sequence. Each step is an explicit, legal lifecycle transition owned by
@@ -33,16 +68,20 @@ func _boot() -> void:
 	var gs := _game_state()
 	var router := _scene_router()
 
-	if gs != null:
-		gs.call("begin_initialization")
+	# Lifecycle transitions return false on an illegal move; surface that loudly rather
+	# than booting on through a rejected transition into an inconsistent phase.
+	if gs != null and not bool(gs.call("begin_initialization")):
+		push_error("[boot] begin_initialization rejected; aborting boot")
+		return
 
 	# Give the router its content host and register the Phase-1 content scenes (by key).
 	if router != null:
 		router.call("set_scene_host", get_node(CONTAINER_WORLD))
 		router.call("register_scene", PROLOGUE_SCENE_KEY, PROLOGUE_SCENE_PATH)
 
-	if gs != null:
-		gs.call("mark_ready")
+	if gs != null and not bool(gs.call("mark_ready")):
+		push_error("[boot] mark_ready rejected; aborting boot")
+		return
 
 	var bus := _event_bus()
 	if bus != null:

@@ -25,7 +25,7 @@ func _ready() -> void:
 	# Menu owns the MENU input context while shown (input gating ownership, §12).
 	var input := get_node_or_null("/root/InputService")
 	if input != null:
-		input.call("reset_to", 1)  # Context.MENU == 1
+		input.call("set_menu_context")
 
 	var bus := get_node_or_null("/root/EventBus")
 	if bus != null and not bus.is_connected("language_changed", _on_language_changed):

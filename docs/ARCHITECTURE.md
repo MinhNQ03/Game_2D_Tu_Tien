@@ -6,7 +6,7 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (Phase 01, 2026-10-03):** the repo has a bootable, non-gameplay Core
+> **CURRENT STATE (Phase 01, 2026-10-02):** the repo has a bootable, non-gameplay Core
 > runtime skeleton:
 > - Bootstrap scene `main.tscn` (root `Main`, script `src/bootstrap/main.gd`, children
 >   `Systems`/`World`/`UI`); `Main` only coordinates boot and wiring.

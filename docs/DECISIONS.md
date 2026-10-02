@@ -15,7 +15,7 @@ localization, multiplayer plan) plus a `tests/` scaffold.
 **Consequence:** Slower start, but every later change has rules + a review protocol to
 follow. Build-pass is explicitly not "done" (`.kiro/steering/08-ai-review-protocol.md`).
 
-## D-002 — 3D physics engine enabled on a 2D project  — **Accepted** (2026-10-02; resolved 2026-10-03)
+## D-002 — 3D physics engine enabled on a 2D project  — **Accepted** (2026-10-02; resolved 2026-10-02)
 **Context:** `project.godot` set `[physics] 3d/physics_engine="Jolt Physics"`, but
 Aetheria is a 2D top-down game. Leftover default from project creation.
 **Decision:** Option (b) — removed the entire `[physics]` section (it contained only the
@@ -38,7 +38,7 @@ the setting. Low risk, reversible.
 abstraction keeps this changeable later.
 **Blocking:** Phase 03 (World / Map).
 
-## D-004 — Test framework: GUT vs. custom headless runner  — **Accepted** (resolved 2026-10-03)
+## D-004 — Test framework: GUT vs. custom headless runner  — **Accepted** (resolved 2026-10-02)
 **Context:** Need headless CI tests from early on.
 **Options:** (a) GUT (featureful, third-party addon); (b) minimal custom `SceneTree`
 runner (zero dependency).
@@ -67,7 +67,7 @@ binary.
 **Decision:** *Undecided.* Lean toward (a) JSON for migration-friendliness/testability.
 **Blocking:** Phase 23 (Save / Load).
 
-## D-006 — Project renamed to "Aetheria"  — **Accepted** (resolved 2026-10-03)
+## D-006 — Project renamed to "Aetheria"  — **Accepted** (resolved 2026-10-02)
 **Context:** `project.godot` had `config/name="New_Game_Project"`.
 **Decision:** Renamed to `Aetheria` (temporary working title) so project identity matches
 the docs.
@@ -83,7 +83,7 @@ the docs.
 model-agnostic).
 **Blocking:** Phase 09 (Combat).
 
-## D-008 — Localization backing format: CSV vs. PO  — **Accepted** (resolved 2026-10-03, Phase 01)
+## D-008 — Localization backing format: CSV vs. PO  — **Accepted** (resolved 2026-10-02, Phase 01)
 **Context:** `vi`/`en` from the foundation, wrapped by a thin `Localization` service.
 Phase 01 introduces the first real user-facing strings (main menu), so this had to be
 resolved.
@@ -106,7 +106,7 @@ not change call sites. Missing-key behavior: return the key itself and `push_war
 dev (documented in `docs/TEST_PLAN.md` / `DEBUGGING.md`), never crash.
 **Blocking (resolved):** Phase 01 (foundation strings) and Phase 24 (full content sweep).
 
-## D-009 — Local headless Godot execution is unavailable to the AI agent  — **Accepted / documented limitation** (2026-10-03)
+## D-009 — Local headless Godot execution is unavailable to the AI agent  — **Accepted / documented limitation** (2026-10-02)
 **Context:** During the Phase 0 foundation fix, the AI agent could not find or invoke a
 Godot executable from the shell. Checked: PATH, common install dirs
 (`%LOCALAPPDATA%\Programs`, Program Files, scoop, Downloads, itch), and the Windows
@@ -131,7 +131,7 @@ for real — in CI. See D-012: the GitHub Actions job ran Godot 4.7 headless on 
 **Action for maintainer:** add Godot 4.7 to PATH (or set a `GODOT` env var) if you want
 the agent to run tests locally in future; otherwise CI remains the verification path.
 
-## D-010 — Bootstrap main-scene structure (Main / Systems / World / UI)  — **Accepted** (2026-10-03)
+## D-010 — Bootstrap main-scene structure (Main / Systems / World / UI)  — **Accepted** (2026-10-02)
 **Context:** Phase 0 needs a real, bootable `main.tscn`. The example structure suggested
 `Main → Systems / World / UI`.
 **Decision:** Adopt exactly that: root `Main` (`Node2D`, script `src/bootstrap/main.gd`)
@@ -142,7 +142,7 @@ exposes `has_required_structure()` for the smoke test.
 **Consequence:** Phase 1 hangs infrastructure/system nodes under `Systems`, maps/entities
 under `World`, HUD/menus under `UI`. No gameplay added.
 
-## D-011 — Character, Relationship, Sect, Faction, World-Simulation are CORE systems  — **Accepted** (2026-10-03)
+## D-011 — Character, Relationship, Sect, Faction, World-Simulation are CORE systems  — **Accepted** (2026-10-02)
 **Context:** The game is a tu tiên world where characters, sects, factions and their
 politics are central, not quest-decoration NPCs.
 **Decision:** Treat Character / Relationship / Sect / Faction / World-Simulation as core,
@@ -153,7 +153,7 @@ New entities = data + content, no core rewrite.
 `SECT_SYSTEM`, `WORLD_SIMULATION`), schema additions, flow + roadmap + multiplayer updates.
 No gameplay code.
 
-## D-012 — Minimal GitHub Actions CI  — **Accepted & verified** (2026-10-03)
+## D-012 — Minimal GitHub Actions CI  — **Accepted & verified** (2026-10-02)
 **Context:** Repo had no CI. Phase 0 wants automated headless checks.
 **Decision:** `.github/workflows/ci.yml` checks out, installs Godot **4.7** (matching
 `project.godot` feature tag), imports the project, runs a project-wide GDScript parse
@@ -170,7 +170,7 @@ GitHub check-runs API). All gates executed on real Godot 4.7:
 project. (The AI agent still cannot run Godot in its own shell — D-009 — but that is a
 local-agent limitation, not a gap in CI verification.)
 
-## D-013 — Document-review contradictions found during Phase 0 fix  — **Accepted / tracked** (2026-10-03)
+## D-013 — Document-review contradictions found during Phase 0 fix  — **Accepted / tracked** (2026-10-02)
 **Context:** Mandatory cross-document review (`.kiro/steering` + `docs`).
 **Findings & resolutions:**
 1. **Stale "`main.tscn` is a single empty Node2D"** claims in `GAME_FLOW.md` and
@@ -184,7 +184,7 @@ local-agent limitation, not a gap in CI verification.)
 4. Glossary/terminology across save/localization/performance/testing/multiplayer is
    consistent with usage — no term-level contradiction.
 
-**2026-10-03 (foundation hardening) — additional stale statements found & fixed:**
+**2026-10-02 (foundation hardening) — additional stale statements found & fixed:**
 5. `docs/ARCHITECTURE.md` still said "Current repo has no scripts... empty `main.tscn`"
    (header Status) and "`main.tscn` ... currently an empty Node2D" (§8). → Fixed: Status
    now separates CURRENT STATE (bootstrap scene, runner, parse checker, CI exist) from
@@ -197,9 +197,9 @@ local-agent limitation, not a gap in CI verification.)
    (agent cannot run it locally — D-009); gating moved to `PHASE_0_EXIT_CHECKLIST.md`.
 **Consequence:** the earlier "no open conflicts remain" claim was premature; these were
 caught in the hardening pass and fixed. The lesson is encoded in the AI review protocol's
-documentation-review gate. No known stale statements remain as of 2026-10-03 hardening.
+documentation-review gate. No known stale statements remain as of 2026-10-02 hardening.
 
-## D-014 — Kiro Hooks for test + review automation  — **Accepted** (2026-10-03)
+## D-014 — Kiro Hooks for test + review automation  — **Accepted** (2026-10-02)
 **Context:** Phase 0 asked whether Kiro Hooks are usable and, if verified, to add hooks
 for running tests after important changes and feeding results into agent context.
 **Decision:** Created two hooks via the verified Kiro hook mechanism (not hand-written):
@@ -215,7 +215,7 @@ it works on machines/CI where Godot is on PATH. This is documented rather than f
 the hooks are real and valid, but their *effect* depends on the environment. CI (D-012)
 remains the authoritative automated run.
 
-## D-015 — Sect membership authoritative source of truth  — **Accepted** (2026-10-03)
+## D-015 — Sect membership authoritative source of truth  — **Accepted** (2026-10-02)
 **Context:** Membership is representable in two places (ambiguity risk):
 `SectState.disciple_refs/elder_refs/leader_ref` (the roster) **and** `CharacterState`'s
 `sect_id` / `faction_id` / `sect_rank`. Without a rule, these can drift and it's unclear
@@ -249,7 +249,7 @@ preferred model and the review found no reason to deviate.
 `SAVE_FORMAT.md`, and `DATA_SCHEMA.md` are annotated to point at this ADR as the single
 authority rule. No runtime system is built in this step.
 
-## D-016 — Hook strategy: lightweight on save, full suite on task completion  — **Accepted** (2026-10-03)
+## D-016 — Hook strategy: lightweight on save, full suite on task completion  — **Accepted** (2026-10-02)
 **Context:** `run-tests-on-save.json` ran the FULL headless Godot test suite on every
 `.gd`/`.tscn`/`project.godot` save. Full-suite-per-save is costly and needless feedback
 noise for small edits; it also can't do anything on this machine (no Godot — D-009).
@@ -263,7 +263,7 @@ Both still need Godot on PATH to actually run (D-009); where absent they no-op a
 **Consequence:** `run-tests-on-save.json` now runs the parse checker; a new
 `run-full-tests-on-task.json` (PostTaskExec) runs the suite. No complex automation added.
 
-## D-017 — Phase 01 Core autoloads (the singleton budget)  — **Accepted** (2026-10-03, Phase 01)
+## D-017 — Phase 01 Core autoloads (the singleton budget)  — **Accepted** (2026-10-02, Phase 01)
 **Context:** Phase 01 needs cross-cutting runtime services. The autoload budget
 (`.kiro/steering/03-architecture.md`) requires each one to be justified. Only services the
 Phase-1 boot path actually needs are added now.
@@ -272,10 +272,12 @@ Phase-1 boot path actually needs are added now.
   (signals only). Exists so emitters (SceneRouter, menu, localization) don't reference
   listeners. Not state, not logic. Needed now by the transition + language-change flow.
 - **GameState** (`src/infrastructure/game_state.gd`) — the application lifecycle state
-  machine + runtime session state (phase, session_active, run_id, current world/map/scene
-  ids). Single source of truth for "where in the app are we". Separate from EventBus
-  (notification) and SceneRouter (scene mechanics) because it owns authoritative session
-  state, nothing else. No disk I/O (exposes to_dict/from_dict for a future SaveService).
+  machine + runtime session state (phase, derived session-active, run_id, current
+  world/map/scene ids). Single source of truth for "where in the app are we". Separate
+  from EventBus (notification) and SceneRouter (scene mechanics) because it owns
+  authoritative session state, nothing else. No disk I/O: exposes `to_dict()` (run
+  identity + location only — never the lifecycle phase) and `hydrate_session()`/`from_dict()`
+  for a future SaveService (D-018).
 - **Localization** (`src/infrastructure/localization.gd`) — key→string lookup (vi/en) +
   language switching. Separate service so call sites stay stable behind `t()`/`t_args()`
   regardless of backing format (D-008). Needed now by the main menu.
@@ -293,6 +295,60 @@ added by the phase that first needs them, each with its own justification — av
 speculative singletons (`§19`, `§25`, `§38`).
 **No God object:** there is no GameManager/MasterManager; `Main` (bootstrap) only
 sequences these services.
+
+## D-018 — Phase 01 hardening: lifecycle is never persisted; semantic input context API — **Accepted** (2026-10-02, Phase 01)
+**Context:** Final hardening of the Phase 01 core framework surfaced three contract-level
+issues:
+1. `GameState.to_dict()` persisted `session_active`, and `from_dict()` wrote both
+   `session_active` and the session fields while leaving the runtime `phase` at its
+   default `BOOT`. A loaded snapshot could therefore reconstruct the contradictory,
+   never-legal state `phase == BOOT && session_active == true`.
+2. Presentation set the input context by pushing a **raw enum int** (`reset_to(0)` /
+   `reset_to(1)`), a magic number at the call site (violates
+   `.kiro/steering/04-coding-standards.md`).
+3. The prologue content scene read the raw input action directly
+   (`event.is_action_pressed("open_menu")`), bypassing `InputService` — the owner of
+   input gating / semantic vocabulary.
+**Decision:**
+- **Persistence (session identity only, never lifecycle).** `GameState.to_dict()`
+  serializes **only run identity + location** (`run_id`, `current_world_id`,
+  `current_map_id`, `current_scene_key`) and refuses to serialize when no session is
+  active (returns `{}` + warns). `session_active` is **derived** (a snapshot with a
+  `run_id` means a run exists), never stored. Loading is done by **`hydrate_session(data)`**
+  (data-only; does **not** drive the lifecycle), which refuses an invalid snapshot (no
+  `run_id`) and refuses to run from an unsafe phase (only `MENU`/`READY`), returning
+  `bool`. `from_dict()` is kept as a thin alias of `hydrate_session()` and now returns
+  `bool` (was `void`). The caller (future `SaveService`/load flow, Phase 23) drives the
+  lifecycle to `RUNNING` via the normal transitions after hydrating. This closes the
+  invalid-state hole and keeps the persistence seam presentation-free and multiplayer-safe.
+- **Semantic input context API.** `InputService` exposes intent-revealing
+  `set_gameplay_context()`, `set_menu_context()`, `push_modal_context()` (plus existing
+  `pop_context()`); the raw stack-reset is now the private `_reset_to(ctx)`. Call sites
+  pass no enum ints. Menu uses `set_menu_context()`, the first scene uses
+  `set_gameplay_context()`.
+- **Input ownership.** `prologue_shell` resolves the `open_menu` intent through
+  `InputService.is_system_action_just_pressed(&"open_menu")` instead of reading the raw
+  event — the scene never reads input vocabulary directly.
+- **Boot fail-fast.** `Main` verifies required core autoloads (`GameState`, `SceneRouter`,
+  `EventBus`) at `_ready()`: if the app is clearly running for real (some autoloads
+  present) yet a required one is missing, it reports loudly and aborts boot rather than
+  limping on with silent nulls. When **zero** autoloads exist (the headless unit-test
+  harness) it proceeds on the null-safe path — that is not a misconfiguration. `_boot()`
+  also checks the lifecycle transition return values.
+- **EventBus scope.** Removed the speculative `new_game_requested` / `session_started` /
+  `session_ended` signals (no real producer+consumer in Phase 01); kept `game_booted`,
+  the three `scene_transition_*` signals, and `language_changed`.
+**Consequence:** `to_dict`/`from_dict`/`hydrate_session` are the Phase-23 save seam; the
+`save_version`-wrapped `SaveFile` in `docs/SAVE_FORMAT.md` will store this session block
+without `session_active` and without any lifecycle phase. Public-contract change logged
+here (D-005 save-format decision is still Open; this only fixes what the *producer* emits).
+**Tests:** `test_game_state.gd` (persistence invariant: no phase/active flag in snapshot,
+empty snapshot when no session, hydrate restores without fabricating phase, rejects
+invalid snapshot + unsafe phase, `from_dict` alias), `test_input_service.gd` (semantic
+setters reset the stack), `test_scene_router.gd` (failure/cleanup cases A–F),
+`test_event_bus.gd` (holds no business state), and a real end-to-end
+`tests/integration/test_app_flow.gd` (real autoloads + `main.tscn` + `MainMenu` signal →
+RUNNING session + prologue loaded).
 
 ---
 

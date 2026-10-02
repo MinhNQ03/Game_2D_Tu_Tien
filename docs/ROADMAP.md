@@ -8,9 +8,10 @@
 > an exit criterion by itself.
 >
 > **35 phases (00–34).** Phase 00 (Foundation) is **CLOSED** (CI-verified on `651c16f`,
-> 2026-10-03). Phase 01 (Core Framework) is **IN PROGRESS**.
+> 2026-10-02). Phase 01 (Core Framework) is **CLOSED** (CI-verified 2026-10-02). Phase 02
+> (Player) is **NOT STARTED** and is the next phase.
 >
-> **Reorder note (2026-10-03, Phase 1 kickoff):** the core social/world systems
+> **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
 > to phases 04–08, immediately after World/Map and **before Combat** — because they are
 > the substrate that later systems (NPC, Dialogue, Quest, Story, and even enemy/boss
@@ -19,24 +20,27 @@
 > referenced the previous numbering (Character=11 … Save=22 … MP=27) were updated to this
 > numbering.
 
-## Phase 00 — Foundation *(CLOSED — CI-verified 2026-10-03)*
+## Phase 00 — Foundation *(CLOSED — CI-verified 2026-10-02)*
 Documentation, standards, process. Project renamed → `Aetheria` (D-006); 2D config cleaned,
 3D physics removed (D-002); test framework = custom runner (D-004); bootable bootstrap
 `main.tscn` (D-010); real smoke test + runner; core social/world design docs (D-011); CI
 (D-012). **Status: MET** — GitHub Actions ran the full pipeline on `651c16f` with
 `conclusion=success`. Evidence: `docs/PHASE_0_EXIT_CHECKLIST.md`.
 
-## Phase 01 — Core Framework *(IN PROGRESS)*
-The minimal correct runtime skeleton: application lifecycle, `GameState` (runtime session
-state) + lifecycle state machine, semantic InputMap + input-gating ownership, `EventBus`,
-`SceneRouter` (single safe transition entry), `Localization` (vi/en), minimal `Config`,
-a localized main-menu shell (New Game / Quit), and a first-scene/prologue shell. Autoloads
-are minimal and justified. No gameplay, no networking.
-**Exit:** boot → menu → new game → session init → first scene runs; GameState +
-SceneRouter + EventBus + Localization + Input covered by headless tests; each autoload
-justified in `DECISIONS.md`; CI green.
+## Phase 01 — Core Framework *(CLOSED — CI-verified 2026-10-02)*
+The minimal correct runtime skeleton: application lifecycle + runtime session state
+(`GameState`), semantic InputMap + input-gating ownership (`InputService`), `EventBus`,
+`SceneRouter` (single safe transition entry), `Localization` (vi/en), a localized
+main-menu shell (New Game / Quit), a first-scene/prologue shell, and bootstrap wiring.
+Autoloads are the 5 justified in D-017 (`EventBus`, `GameState`, `Localization`,
+`InputService`, `SceneRouter`). `Config` / `RNG` / `SaveService` are **deliberately
+deferred** (D-017) — not part of Phase 01. No gameplay, no networking.
+**Exit (MET):** boot → menu → new game → session init → first scene runs; GameState +
+SceneRouter + EventBus + Localization + Input covered by headless tests + a real
+application end-to-end flow test; each autoload justified in `DECISIONS.md`; CI green.
+Hardened and CI-verified on the Phase 01 commits (see `docs/CHANGELOG.md`).
 
-## Phase 02 — Player
+## Phase 02 — Player *(NOT STARTED — next)*
 Player entity via composition: top-down movement, StatsComponent, HealthComponent. The
 player is modeled as a Character conceptually (contract from Phase 04 design).
 **Exit:** player moves and takes/returns damage against a dummy; components unit-tested.

@@ -8,13 +8,42 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
-### 2026-10-03 — Phase 01 Core Framework (runtime skeleton, no gameplay)
+### 2026-10-02 — Phase 01 Final Hardening (close contract/test/invariant gaps, no gameplay)
+- **Fixed — GameState persistence invariant (D-018):** `to_dict()` now serializes only run
+  identity + location (never `session_active`, never the lifecycle phase) and returns `{}`
+  when no session is active. Loading moved to `hydrate_session(data)` (data-only; does not
+  drive the lifecycle) which rejects an invalid snapshot (no `run_id`) and an unsafe phase
+  (only `MENU`/`READY`); `from_dict()` is now a `bool`-returning alias. This removes the
+  previously-possible invalid `phase==BOOT && session_active==true` reload state.
+- **Fixed — magic input ints (D-018):** added semantic `InputService.set_gameplay_context()`
+  / `set_menu_context()` / `push_modal_context()`; the raw stack reset is now private
+  `_reset_to()`. Menu + first scene no longer pass enum ints.
+- **Fixed — input ownership (D-018):** `prologue_shell` resolves `open_menu` via
+  `InputService.is_system_action_just_pressed(&"open_menu")` instead of reading the raw
+  input event.
+- **Fixed — boot fail-fast (D-018):** `Main` aborts boot loudly if a required core autoload
+  (`GameState`/`SceneRouter`/`EventBus`) is missing in a real run (headless test harness,
+  with zero autoloads, still runs the null-safe path); `_boot()` checks transition results.
+- **Removed — speculative EventBus signals (D-018):** `new_game_requested`,
+  `session_started`, `session_ended` (no real producer+consumer in Phase 01). Kept
+  `game_booted`, the three `scene_transition_*`, and `language_changed`.
+- **Tests added/updated:** GameState persistence-invariant suite; InputService semantic
+  setters; SceneRouter failure/cleanup cases A–F; EventBus "holds no business state"; and a
+  real end-to-end `tests/integration/test_app_flow.gd` that stands up the actual autoloads,
+  instantiates `main.tscn`, drives the real `MainMenu.new_game_pressed`, and asserts a
+  RUNNING session with the prologue content scene loaded (then tears down with no orphans).
+- **Docs:** ROADMAP Phase 01 → CLOSED, Phase 02 NOT STARTED; corrected the one-off
+  `2026-10-03` → `2026-10-02` date across docs; D-018 added. No gameplay, no networking,
+  no Phase 02 work (Config/RNG/SaveService still deferred per D-017).
+
+### 2026-10-02 — Phase 01 Core Framework (runtime skeleton, no gameplay)
 - **Lifecycle + session:** `GameState` autoload — explicit lifecycle state machine
   (`BOOT→INITIALIZING→READY→MENU→STARTING_SESSION→RUNNING→TRANSITIONING/PAUSED`), runtime
   session state (run_id, current world/map/scene ids), intent-revealing methods, illegal
   transitions rejected loudly, `to_dict/from_dict` seam, no disk I/O, no presentation refs.
-- **EventBus** autoload — minimal cross-system signals for Phase 1 only (boot, session,
-  scene transition, language). Emitters never reference listeners.
+- **EventBus** autoload — minimal cross-system signals for Phase 1 only (boot, scene
+  transition, language). Emitters never reference listeners. *(Speculative session signals
+  removed in the hardening pass — see D-018.)*
 - **Localization** autoload — vi/en via a CSV table (`locale/aetheria.csv`), `t()`/`t_args()`
   with `{placeholder}` substitution, `set_language/get_language`, missing-key returns the
   key + warns. Backing format decided (D-008: CSV).
@@ -38,7 +67,7 @@ Dates are ISO (YYYY-MM-DD).
   InputService) + `tests/integration/test_boot_flow.gd` (boot→menu→new game→first scene).
 - No gameplay, no networking.
 
-### 2026-10-03 — Phase 0 CLOSED (documentation close-out, no gameplay)
+### 2026-10-02 — Phase 0 CLOSED (documentation close-out, no gameplay)
 - **Foundation hardening verified by CI.** GitHub Actions job "Foundation gates
   (Godot 4.7)" ran on commit `651c16f` with `conclusion=success` (confirmed via the
   GitHub check-runs API).
@@ -53,7 +82,7 @@ Dates are ISO (YYYY-MM-DD).
   run" wording across ROADMAP/checklist.
 - No gameplay, no Phase 1 work.
 
-### Changed / Added — 2026-10-03 — Foundation hardening (Phase 0, no gameplay)
+### Changed / Added — 2026-10-02 — Foundation hardening (Phase 0, no gameplay)
 - **Smoke test now really boots:** `tests/smoke/test_boot.gd` adds Main to the live
   SceneTree (runs `_ready`), asserts `is_inside_tree` + Systems/World/UI + bootstrap
   self-validation, cleans up with no orphan nodes; added a negative structure test.
@@ -76,7 +105,7 @@ Dates are ISO (YYYY-MM-DD).
   DECISIONS D-013 (items 5–7).
 - **New:** `docs/PHASE_0_EXIT_CHECKLIST.md` (gates Phase 0 → READY FOR PHASE 1 on a green CI).
 
-### Changed / Added — 2026-10-03 — Foundation review + fix (Phase 0 completion, no gameplay)
+### Changed / Added — 2026-10-02 — Foundation review + fix (Phase 0 completion, no gameplay)
 - **Project identity:** `config/name` `New_Game_Project` → `Aetheria` (D-006 Accepted).
 - **2D config cleanup:** removed the `[physics]` section (3D `Jolt Physics` leftover) —
   game is 2D-only (D-002 Accepted). Added `textures/canvas_textures/default_texture_filter=0`
@@ -98,7 +127,7 @@ Dates are ISO (YYYY-MM-DD).
 - **Decisions resolved:** D-002, D-004, D-006 → Accepted; added D-009 (local Godot
   unavailable to agent), D-010, D-011, D-012, D-013 (doc-review findings).
 
-### Known limitation — 2026-10-03
+### Known limitation — 2026-10-02
 - The AI agent could not run Godot headless locally (no binary on PATH / common dirs /
   registry — D-009). All scripts validated via the GDScript language server (zero errors);
   authoritative headless run is CI. Manual command:
@@ -129,8 +158,8 @@ Dates are ISO (YYYY-MM-DD).
 
 ### Not done (by design, as of 2026-10-02)
 - No gameplay implemented. `main.tscn` was a single empty `Node2D`.
-  *(Superseded 2026-10-03: `main.tscn` is now a non-gameplay bootstrap scene — see the
-  2026-10-03 entry above.)*
+  *(Superseded 2026-10-02: `main.tscn` is now a non-gameplay bootstrap scene — see the
+  2026-10-02 entry above.)*
 - No networking / multiplayer code.
 
 ---

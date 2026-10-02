@@ -51,9 +51,31 @@ func pop_context() -> int:
 	return current_context()
 
 
-## Replace the whole stack with a single baseline context (used on hard scene/lifecycle
-## changes so stale modal contexts can't survive a transition — §15).
-func reset_to(ctx: int) -> void:
+# --- Semantic context API (preferred call sites) -----------------------------
+# Presentation/gameplay use these intent-revealing methods instead of pushing raw enum
+# ints, so no magic numbers leak into call sites (`.kiro/steering/04-coding-standards.md`).
+# Each hard scene/lifecycle change resets the stack to a single baseline so a stale modal
+# context can never survive a transition (§15).
+
+## A content/gameplay scene becomes the active input owner (resets stack to GAMEPLAY).
+func set_gameplay_context() -> void:
+	_reset_to(Context.GAMEPLAY)
+
+
+## A menu becomes the active input owner (resets stack to MENU).
+func set_menu_context() -> void:
+	_reset_to(Context.MENU)
+
+
+## Open a UI modal above the current context (suppresses gameplay intent beneath it).
+## Returns the new top context.
+func push_modal_context() -> int:
+	return push_context(Context.UI_MODAL)
+
+
+## Replace the whole stack with a single baseline context. Internal: callers use the
+## intent-revealing wrappers above rather than passing a raw enum int.
+func _reset_to(ctx: int) -> void:
 	_context_stack = [ctx]
 
 

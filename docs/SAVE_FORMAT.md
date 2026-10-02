@@ -92,6 +92,15 @@ All content references are **ids** (see `docs/DATA_SCHEMA.md`), so a save stays 
 long as the referenced ids still exist. Removing a shipped id is a breaking content
 change requiring a migration.
 
+> **Session block (GameState) — D-018.** The run's lifecycle state is produced by
+> `GameState.to_dict()` and holds **only run identity + location**:
+> `run_id`, `current_world_id`, `current_map_id`, `current_scene_key`. It deliberately
+> does **not** store the runtime lifecycle phase or a `session_active` flag — "a run
+> exists" is derived from the presence of `run_id`. On load, `SaveService` calls
+> `GameState.hydrate_session(block)` (data only; it does not drive the lifecycle) and then
+> transitions the lifecycle to `RUNNING` through the normal path. This guarantees a save
+> can never reconstruct an impossible phase/active combination.
+
 ## 4. Serialization mechanism (decision pending — D-005)
 
 Options to decide in `DECISIONS.md` before Phase 17:

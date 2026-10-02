@@ -178,11 +178,25 @@ func resume_gameplay() -> bool:
 
 
 # --- Persistence seam (SaveService will call these; GameState never touches disk) ---
+#
+# INVARIANT: the lifecycle phase is RUNTIME-ONLY and is never serialized. A save
+# describes an *in-progress run's identity + location*, not "which menu/transition screen
+# was on". Likewise `session_active` is NOT persisted: it is DERIVED from whether a run
+# identity exists, so a snapshot can never resurrect the contradictory
+# `phase == BOOT && session_active == true` state the old format allowed.
+#
+# A snapshot is only meaningful for a run that was actually underway, so `to_dict()`
+# refuses to serialize when there is no active session (fail loud in dev), and
+# `hydrate_session()` refuses to graft a run onto a live lifecycle.
 
-## Serializable snapshot of session state (NOT lifecycle phase, which is runtime-only).
+## Serializable snapshot of the current RUN (identity + location). Never the phase.
+## Only valid while a session is active; returns an empty dict otherwise (a non-run has
+## nothing to save) and warns, so callers don't silently persist a phantom run.
 func to_dict() -> Dictionary:
+	if not _session_active:
+		push_warning("[gamestate] to_dict() called with no active session; nothing to save")
+		return {}
 	return {
-		"session_active": _session_active,
 		"run_id": _run_id,
 		"current_world_id": String(_current_world_id),
 		"current_map_id": String(_current_map_id),
@@ -190,12 +204,35 @@ func to_dict() -> Dictionary:
 	}
 
 
-func from_dict(data: Dictionary) -> void:
-	_session_active = bool(data.get("session_active", false))
-	_run_id = String(data.get("run_id", ""))
+## Rehydrate run identity + location from a saved snapshot. This loads DATA only; it does
+## NOT drive the lifecycle. The caller (future SaveService / load flow) is responsible for
+## putting the lifecycle into RUNNING via the normal transitions afterwards. `session_active`
+## is derived here (a snapshot with a run_id means a run exists), never read from the blob.
+##
+## Guard: refuses to run unless the lifecycle is at a load-safe phase (MENU/READY), so a
+## load cannot be grafted onto a mid-session/mid-transition state and corrupt it. Returns
+## false (loudly) on an empty/invalid snapshot or an unsafe phase.
+func hydrate_session(data: Dictionary) -> bool:
+	if _phase != Phase.MENU and _phase != Phase.READY:
+		push_error("[gamestate] hydrate_session rejected: unsafe phase %s" % phase_name())
+		return false
+	var run_id := String(data.get("run_id", ""))
+	if run_id == "":
+		push_error("[gamestate] hydrate_session rejected: snapshot has no run_id")
+		return false
+	_run_id = run_id
 	_current_world_id = StringName(data.get("current_world_id", ""))
 	_current_map_id = StringName(data.get("current_map_id", ""))
 	_current_scene_key = String(data.get("current_scene_key", ""))
+	_session_active = true  # derived: a run identity exists
+	return true
+
+
+## Back-compat alias for the persistence seam name used elsewhere. Delegates to
+## hydrate_session; kept so a single public verb ("from_dict") still exists for symmetry
+## with to_dict(). Does NOT fabricate lifecycle state.
+func from_dict(data: Dictionary) -> bool:
+	return hydrate_session(data)
 
 
 func _mint_run_id() -> String:

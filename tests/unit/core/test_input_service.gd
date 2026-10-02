@@ -36,10 +36,10 @@ func test_gating_blocks_gameplay_when_not_active() -> void:
 
 func test_context_stack_priority() -> void:
 	var svc: Node = InputScript.new()
-	svc.reset_to(svc.Context.GAMEPLAY)
-	assert_true(svc.is_gameplay_active(), "gameplay active after reset_to(GAMEPLAY)")
+	svc.set_gameplay_context()
+	assert_true(svc.is_gameplay_active(), "gameplay active after set_gameplay_context()")
 	# A UI modal on top must suppress gameplay (modal > gameplay).
-	svc.push_context(svc.Context.UI_MODAL)
+	svc.push_modal_context()
 	assert_false(svc.is_gameplay_active(), "modal on top suppresses gameplay")
 	svc.pop_context()
 	assert_true(svc.is_gameplay_active(), "popping modal restores gameplay")
@@ -48,7 +48,24 @@ func test_context_stack_priority() -> void:
 
 func test_baseline_context_cannot_be_popped_away() -> void:
 	var svc: Node = InputScript.new()
-	svc.reset_to(svc.Context.MENU)
+	svc.set_menu_context()
 	svc.pop_context()  # should be a no-op (keeps baseline)
 	assert_eq(svc.current_context(), svc.Context.MENU, "baseline context preserved")
+	svc.free()
+
+
+## The semantic context setters must map to the right underlying context and reset the
+## stack (no stale modal survives) — guards the magic-int removal (§15).
+func test_semantic_context_setters() -> void:
+	var svc: Node = InputScript.new()
+	svc.set_gameplay_context()
+	assert_eq(svc.current_context(), svc.Context.GAMEPLAY, "set_gameplay_context -> GAMEPLAY")
+	# Stack a modal, then switching to menu must reset (modal does not survive).
+	svc.push_modal_context()
+	assert_eq(svc.current_context(), svc.Context.UI_MODAL, "modal pushed on top")
+	svc.set_menu_context()
+	assert_eq(svc.current_context(), svc.Context.MENU, "set_menu_context -> MENU")
+	svc.pop_context()  # baseline-only now; must stay MENU (stack was reset)
+	assert_eq(svc.current_context(), svc.Context.MENU,
+		"set_menu_context reset the stack; no stale modal remained")
 	svc.free()
