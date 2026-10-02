@@ -7,3 +7,6 @@ UI_MENU_LANGUAGE,Language,Ngôn ngữ
 UI_PROLOGUE_PLACEHOLDER,Prologue (shell),Khởi đầu (bản khung)
 UI_PROLOGUE_HINT,Press [open_menu] to return to the menu.,Nhấn [open_menu] để quay lại menu.
 UI_TEST_GREETING,Hello {name},Xin chào {name}
+UI_SANDBOX_HINT,Move with WASD. Attack to hit the dummy. Press [open_menu] to return.,Di chuyển bằng WASD. Tấn công để đánh mục tiêu. Nhấn [open_menu] để quay lại.
+UI_SANDBOX_PLAYER_HP,Player HP,Máu người chơi
+UI_SANDBOX_DUMMY_HP,Training Dummy HP,Máu mộc nhân

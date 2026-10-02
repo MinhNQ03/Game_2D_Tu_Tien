@@ -81,7 +81,8 @@ func test_real_application_flow() -> void:
 	# --- 5. the whole chain wired itself --------------------------------------
 	assert_true(gs.is_session_active(), "session active after New Game")
 	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "lifecycle reached RUNNING")
-	assert_eq(router.get_current_key(), "prologue", "router loaded the prologue")
+	assert_eq(router.get_current_key(), "player_sandbox",
+		"router loaded the first gameplay scene (Phase 02: player_sandbox)")
 	var content: Node = router.get_current_scene()
 	assert_not_null(content, "a live content scene instance exists")
 

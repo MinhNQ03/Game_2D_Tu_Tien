@@ -8,6 +8,43 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Phase 02 Player Core (first playable; no combat system)
+- **Player entity (composition, D-020):** `CharacterBody2D` under `src/gameplay/entities/`
+  composed of `StatsComponent` + `HealthComponent` + `MovementComponent`
+  (`src/gameplay/components/`). No inheritance chain, no God object; `player.gd` only
+  coordinates (reads semantic intent, forwards movement, exposes an attack intent). Reads no
+  physical keys — input flows only through `InputService`.
+- **Top-down movement:** 8-direction, diagonals normalized (not faster than cardinal),
+  collision-aware via `move_and_slide`, speed from stats. `MovementComponent.apply_intent`
+  is the intent boundary a future network command reuses (MP seam).
+- **Stats as data:** `StatBlock` Resource (`src/data/stats/stat_block.gd`, DATA_SCHEMA §1
+  field names) with authored numbers in `data/stats/player_stats.tres` /
+  `training_dummy_stats.tres`. Invariants validated at the boundary.
+- **Health:** enforced invariants (`0<=hp<=max`), `apply_damage`/`heal` return applied
+  amount, non-positive rejected, `died` emitted exactly once, DEAD terminal (no revive).
+  Direct signals to owner; no new EventBus signals.
+- **Minimal damage rule (NOT a combat system):** one pure domain function
+  `src/domain/combat/damage_rules.gd` — a deterministic slice of the DATA_SCHEMA §2 formula
+  (no RNG/crit/resist/skill/equipment). D-007 (combat timing) stays Open.
+- **Training Dummy:** `StaticBody2D` reusing the same Stats/Health components, no AI, no
+  movement, `reset_dummy()`; deterministic retaliation driven by the sandbox coordinator.
+- **Player Sandbox (temporary first scene):** `src/gameplay/sandbox/player_sandbox.tscn` —
+  Player + Dummy + walls + camera + localized HUD. New Game now routes here
+  (`FIRST_SCENE_KEY` in `main.gd`) instead of the prologue shell; documented as a Phase-02
+  gameplay-validation scene that Phase 03 replaces. Coordinator owns the range check + the
+  bidirectional damage exchange via the domain rule.
+- **Collision layers** named constants (`src/gameplay/collision_layers.gd`).
+- **Localization:** added `UI_SANDBOX_HINT` / `UI_SANDBOX_PLAYER_HP` / `UI_SANDBOX_DUMMY_HP`
+  (vi + en).
+- **Tests:** unit (damage rule, health invariants + death-once, movement math, stat
+  validation), integration (player wiring + real-physics movement + bidirectional damage
+  exchange, fresh instances), gameplay smoke (sandbox structural, no Main boot), and a
+  dedicated isolated **player E2E** process (`tests/e2e/run_player_flow.gd` +
+  `player_flow_case.gd`) — New Game → sandbox → move → attack → death → cleanup. CI gained an
+  8th gate for it; `test_app_flow` updated to expect `player_sandbox` as the first scene.
+- No combat system, no AI, no inventory/equipment/skill/cultivation, no save/load, no
+  networking, no new autoloads. D-003 / D-005 / D-007 remain Open.
+
 ### 2026-10-02 — Phase 01 Test Isolation + Boot Contract Hardening (no gameplay)
 - **Fixed — cross-test singleton contamination (D-019):** the previous
   `tests/integration/test_app_flow.gd` spawned duplicate `/root` autoloads and booted Main

@@ -143,9 +143,10 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
 - `tests/e2e/run_app_flow.gd` + `tests/e2e/app_flow_case.gd` — **real end-to-end** run in a
   SEPARATE Godot process (its own CI gate). It uses the ACTUAL project autoloads under
   `/root`, boots the real `main.tscn`, drives the real `MainMenu.new_game_pressed` intent,
-  and asserts the chain reaches RUNNING (prologue loaded, one scene under `World`, input
-  context GAMEPLAY, no duplicate autoload) then tears down with no orphan. It is isolated
-  on purpose: booting Main drives the shared `GameState` singleton, which must not happen
+  and asserts the chain reaches RUNNING (the first gameplay scene `player_sandbox` loaded,
+  one scene under `World`, input context GAMEPLAY, no duplicate autoload) then tears down
+  with no orphan. It is isolated on purpose: booting Main drives the shared `GameState`
+  singleton, which must not happen
   inside the common runner.
 - `tests/run_tests.gd` **isolation guard** — the project autoloads are live under `/root`
   even in the runner process; the runner snapshots the shared `GameState` phase and FAILS
@@ -160,6 +161,33 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
 > **fresh `Script.new()` instances**, never the live singletons, and nothing in the runner
 > boots `Main`. The real-application boot is the dedicated E2E process. This is the boundary
 > between unit/integration isolation and application E2E.
+
+**Phase 02 added Player tests (high-risk: damage/health/movement):**
+- `tests/unit/gameplay/test_damage_rules.gd` — the pure domain damage slice: zero-defense =
+  full attack, defense reduces, floor at 1, negative inputs clamp, deterministic, more
+  defense never increases damage.
+- `tests/unit/gameplay/test_health_component.gd` — starts full, damage reduces + returns
+  applied, clamps to 0 + kills, `died` exactly once, heal restores + clamps to max,
+  negative/zero damage & heal rejected, DEAD terminal (no revive, no further damage),
+  `0<=hp<=max` invariant across ops, partial-current init.
+- `tests/unit/gameplay/test_movement_component.gd` — `resolve_velocity` pure math: zero
+  intent, cardinal full speed, diagonal normalized (not faster), all 8 dirs same speed,
+  speed scales, zero/negative speed → zero.
+- `tests/unit/gameplay/test_stats_component.gd` — StatBlock invariants + StatsComponent
+  reads + validation, and the authored `.tres` content is well-formed.
+- `tests/integration/test_player_components.gd` — the Player scene has its components,
+  health initializes from stats, damage/death flow through the player, and a REAL physics
+  step moves a body under movement intent (and zero intent keeps it still). Fresh instances.
+- `tests/integration/test_damage_exchange.gd` — bidirectional damage contract: player →
+  dummy and dummy → player via the domain rule, dummy reset + deterministic death. Fresh
+  instances; no autoload mutation.
+- `tests/gameplay/test_player_sandbox.gd` — the sandbox scene is structurally sound
+  (Player + Dummy + walls + camera + HUD + the return-to-menu contract) WITHOUT booting it
+  into the tree (so it never mutates the shared InputService).
+- `tests/e2e/run_player_flow.gd` + `tests/e2e/player_flow_case.gd` — **dedicated isolated
+  process**: boots the real app, New Game → Player Sandbox, drives real movement, resolves
+  the real coordinator attack (bidirectional damage), kills the dummy deterministically
+  (died once; dead = terminal), and tears down with no orphan. Its own CI gate.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push. **Note:** these tests were authored and statically validated (GDScript

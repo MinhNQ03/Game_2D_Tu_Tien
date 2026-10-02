@@ -15,6 +15,18 @@
 > in `_ready`. `Localization` loads the CSV once (cached). This keeps the frame budget free
 > for later gameplay; it is a design choice, not a measured optimization.
 >
+> **Phase 02 note (no optimization, just discipline):** the Player runs `_physics_process`
+> ONLY for movement + attack-intent polling (one `InputService` read per frame, no
+> allocation, no SceneTree-wide queries, no `get_nodes_in_group` per frame). The
+> `InputService` node is resolved ONCE in `_ready`, not re-looked-up each tick. The Training
+> Dummy and the sandbox walls are static — no `_process`/`_physics_process` at all; the
+> dummy uses `collision_mask = 0` and the walls are `StaticBody2D` (nothing to simulate).
+> Collision uses named layer/mask constants. Movement velocity is computed by a pure static
+> function (no per-frame temp objects). Signals (health → owner → coordinator) are connected
+> once in `_ready` and torn down with the scene. No numbers here were profiled — this is
+> design discipline (`§1 Measure first`), not a measured optimization, so the log (§4) stays
+> empty.
+>
 > **Pause semantics (§29 of the Phase 1 brief, documented, not over-built):** the intended
 > distinction is: *application* concerns (UI, menu input, transition cleanup, infrastructure
 > autoloads) keep running; *gameplay* pause only suspends gameplay systems. `GameState` has

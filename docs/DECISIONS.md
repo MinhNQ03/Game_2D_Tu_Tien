@@ -413,6 +413,60 @@ negative-path diagnostics (invalid transition / missing scene / missing key test
 and are expected. Does not change D-018 (persistence/input contract); supersedes nothing,
 adds the test-architecture decision.
 
+## D-020 — Phase 02 Player: composition entity, data-driven stats, domain damage slice, sandbox first-scene — **Accepted** (2026-10-02, Phase 02)
+**Context:** Phase 02 builds a playable Player (movement + take/return damage vs a dummy)
+without starting Phase 03+ (no Character/Combat/AI/networking) and without forcing a
+Phase-04 rewrite. Several shape decisions were needed up front.
+**Decision:**
+- **Player = `CharacterBody2D` + components, never inheritance.** `StatsComponent`,
+  `HealthComponent`, `MovementComponent` under `src/gameplay/components/`; the entity under
+  `src/gameplay/entities/`. The Training Dummy reuses the SAME StatsComponent +
+  HealthComponent (composition proof). `player.gd` is a thin coordinator (reads intent,
+  forwards to movement, initializes health from stats, exposes an attack *intent*) — it
+  owns no damage math, no max-HP calc, no inventory/quest/save, and reads no raw input
+  (`docs/ARCHITECTURE.md` §3, `docs/CHARACTER_SYSTEM.md` §6).
+- **Stats are DATA.** A `StatBlock` Resource (`src/data/stats/stat_block.gd`) holds the
+  Phase-02 subset (`max_hp`, `attack`, `defense`, `move_speed`) with the field names from
+  `docs/DATA_SCHEMA.md` §1 (so Phase 04/combat/equipment reuse the same shape). Authored
+  numbers live in `data/stats/*.tres`, never in scripts (`04-coding-standards.md`). Only
+  the fields with a real Phase-02 use are included (no speculative mana/resist/crit).
+- **Damage math is ONE pure domain function.** `src/domain/combat/damage_rules.gd`
+  (`DamageRules.compute_hit`) implements a MINIMAL, deterministic slice of the single
+  `DATA_SCHEMA.md` §2 formula (`final = max(1, round(attack * scale/(scale+defense)))`),
+  with no RNG/crit/resist/skill/equipment and no node deps (headless-testable). This is
+  **not** a combat system and is model-agnostic, so it does not resolve the combat-timing
+  model — **D-007 stays Open**. The `RNG` autoload remains deferred (D-017).
+- **Health invariants + intent-revealing API.** `apply_damage`/`heal` return the amount
+  actually applied, clamp to `[0,max]`, reject non-positive input, emit `died` exactly once,
+  and treat DEAD as terminal (no revive-by-heal). Local signals go direct to the owner, not
+  the EventBus; **no speculative EventBus combat signals were added** (L-005) — combat
+  broadcast events are a Phase-09 concern with real consumers.
+- **Movement intent boundary (MP seam).** `MovementComponent.apply_intent(intent, speed)`
+  takes a direction vector so a future network command can feed the same boundary
+  (`docs/MULTIPLAYER_PLAN.md` §2/§3); diagonals are normalized (not faster than cardinal);
+  motion uses `move_and_slide` (collision-aware, never `position +=`). Player polls
+  `InputService` semantic intent in `_physics_process` — the only input path.
+- **First gameplay scene = Player Sandbox (temporary).** New Game now routes
+  (`FIRST_SCENE_KEY` in `main.gd`) to `player_sandbox` instead of the prologue shell. This
+  is explicitly a Phase-02 gameplay-VALIDATION scene (move + attack a dummy), NOT a story
+  system; Phase 03 (World/Map) replaces it as the real first scene — a one-line change
+  because it is a single registered `scene_key` through SceneRouter (D-003 stays Open). The
+  prologue shell is retained but no longer the first scene. The sandbox COORDINATOR owns the
+  demo interaction (range check + who-hits-whom) and resolves damage via the domain rule;
+  presentation decides no outcomes (`docs/MULTIPLAYER_PLAN.md` §4).
+- **Collision layers are named constants** (`src/gameplay/collision_layers.gd`), not magic
+  numbers scattered in scenes.
+**Testing / isolation (D-019):** unit tests (damage rule, health invariants, movement math,
+stat validation) and integration tests (player wiring + real-physics move + bidirectional
+damage exchange) use **fresh instances**, never the live autoloads, and never boot Main.
+The sandbox gameplay smoke test is **structural-only** (instantiated but not entered) so it
+doesn't mutate the shared InputService. The REAL player flow (New Game → sandbox → move →
+attack → death → cleanup) runs in its own isolated process (`tests/e2e/run_player_flow.gd`),
+added as a dedicated CI gate.
+**Consequence:** the player composition + `StatBlock` + domain damage slice are the seams
+Phase 04 (Character) and Phase 09 (Combat) build on without a rewrite. No new autoloads;
+D-003/D-005/D-007 remain Open.
+
 ---
 
 ## How to add a decision

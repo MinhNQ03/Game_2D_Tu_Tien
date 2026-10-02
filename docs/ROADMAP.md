@@ -9,7 +9,8 @@
 >
 > **35 phases (00–34).** Phase 00 (Foundation) is **CLOSED** (CI-verified on `651c16f`,
 > 2026-10-02). Phase 01 (Core Framework) is **CLOSED** (CI-verified 2026-10-02). Phase 02
-> (Player) is **NOT STARTED** and is the next phase.
+> (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) is **NOT STARTED**
+> and is the next phase.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -40,10 +41,23 @@ SceneRouter + EventBus + Localization + Input covered by headless tests + a real
 application end-to-end flow test; each autoload justified in `DECISIONS.md`; CI green.
 Hardened and CI-verified on the Phase 01 commits (see `docs/CHANGELOG.md`).
 
-## Phase 02 — Player *(NOT STARTED — next)*
-Player entity via composition: top-down movement, StatsComponent, HealthComponent. The
-player is modeled as a Character conceptually (contract from Phase 04 design).
-**Exit:** player moves and takes/returns damage against a dummy; components unit-tested.
+## Phase 02 — Player *(CLOSED — CI-verified 2026-10-02)*
+Player entity via composition (`CharacterBody2D` + StatsComponent/HealthComponent/
+MovementComponent) — no inheritance chain, no God object. Semantic input only (via
+`InputService`); top-down 8-direction movement with normalized diagonals and collision;
+stats from a `StatBlock` Resource (data, not magic numbers); health with enforced
+invariants (`0<=hp<=max`, `died` once, DEAD terminal). A minimal, model-agnostic damage
+rule lives once in `src/domain/combat/damage_rules.gd` (NOT a combat system — D-007 stays
+Open). A Training Dummy (same components, no AI) and a playable **Player Sandbox** scene
+prove a bidirectional damage exchange. The player is modeled as a Character conceptually
+(Phase 04): authoritative numbers are data, the node is a runtime view, so Phase 04 binds
+the same composition to a `CharacterState` without a rewrite (D-020).
+**Exit (MET):** player moves and takes/returns damage against a dummy; Stats/Health/Movement
+and the damage rule unit-tested; player+dummy integration + a real-application player E2E
+(New Game → sandbox → move → attack → death → cleanup) green in CI. The sandbox is a
+*temporary Phase-02 gameplay-validation* first scene; Phase 03 replaces it with a real map.
+No combat system, no AI, no inventory/equipment/skill/cultivation, no networking, no
+save/load, no new autoloads (D-003 / D-005 / D-007 remain Open).
 
 ## Phase 03 — World / Map
 MapData-driven maps, SceneRouter transitions, a hub map + one field map. Clean

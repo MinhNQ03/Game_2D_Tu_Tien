@@ -16,8 +16,15 @@ const CONTAINER_UI := "UI"
 const REQUIRED_CONTAINERS := [CONTAINER_SYSTEMS, CONTAINER_WORLD, CONTAINER_UI]
 
 const MENU_SCENE := "res://src/presentation/menus/main_menu.tscn"
-const PROLOGUE_SCENE_KEY := "prologue"
-const PROLOGUE_SCENE_PATH := "res://src/presentation/scenes/prologue_shell.tscn"
+
+## The first gameplay scene loaded after New Game. For PHASE 02 this is the Player Sandbox
+## — a temporary gameplay-VALIDATION scene (move + attack a training dummy), NOT a story
+## system. Phase 03 (World/Map) replaces this with a real first map; because the choice is a
+## single registered scene_key routed through SceneRouter, swapping it later is a one-line
+## change here, no caller edits (`docs/ARCHITECTURE.md` §9). The prologue shell from Phase 01
+## is retained in the project but is no longer the first scene.
+const FIRST_SCENE_KEY := "player_sandbox"
+const FIRST_SCENE_PATH := "res://src/gameplay/sandbox/player_sandbox.tscn"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -72,9 +79,9 @@ func _boot() -> void:
 		push_error("[boot] begin_initialization rejected; aborting boot")
 		return
 
-	# Give the router its content host and register the Phase-1 content scenes (by key).
+	# Give the router its content host and register the first gameplay scene (by key).
 	router.call("set_scene_host", get_node(CONTAINER_WORLD))
-	router.call("register_scene", PROLOGUE_SCENE_KEY, PROLOGUE_SCENE_PATH)
+	router.call("register_scene", FIRST_SCENE_KEY, FIRST_SCENE_PATH)
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -131,7 +138,7 @@ func _on_new_game_pressed() -> void:
 		return
 
 	_hide_menu()
-	var ok: bool = router.call("request_transition", PROLOGUE_SCENE_KEY)
+	var ok: bool = router.call("request_transition", FIRST_SCENE_KEY)
 	if not ok:
 		# Transition failed — recover to a usable state rather than a half-started session.
 		push_error("[main] first-scene transition failed; returning to menu")
@@ -149,11 +156,13 @@ func _on_new_game_pressed() -> void:
 		_show_menu()
 		return
 
-	_connect_prologue_return()
+	_connect_scene_return()
 
 
-## The prologue shell asks to return to the menu via its signal (event-driven).
-func _connect_prologue_return() -> void:
+## The first gameplay scene asks to return to the menu via its `return_to_menu_requested`
+## signal (event-driven). Scene-agnostic: any content scene that exposes the signal is
+## wired, so swapping the first scene (prologue → sandbox → future map) needs no change here.
+func _connect_scene_return() -> void:
 	var router := _scene_router()
 	if router == null:
 		return

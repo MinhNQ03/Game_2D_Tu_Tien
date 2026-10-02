@@ -1,0 +1,72 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/sandbox/player_sandbox.gd" id="1_sandbox"]
+[ext_resource type="PackedScene" path="res://src/gameplay/entities/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://src/gameplay/entities/training_dummy.tscn" id="3_dummy"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
+size = Vector2(440, 16)
+
+[node name="PlayerSandbox" type="Node2D"]
+script = ExtResource("1_sandbox")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(200, 150)
+
+[node name="Walls" type="Node2D" parent="."]
+
+[node name="WallTop" type="StaticBody2D" parent="Walls"]
+position = Vector2(200, 8)
+collision_layer = 1
+collision_mask = 0
+
+[node name="ShapeTop" type="CollisionShape2D" parent="Walls/WallTop"]
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="VisualTop" type="Polygon2D" parent="Walls/WallTop"]
+color = Color(0.4, 0.4, 0.45, 1)
+polygon = PackedVector2Array(-220, -8, 220, -8, 220, 8, -220, 8)
+
+[node name="WallBottom" type="StaticBody2D" parent="Walls"]
+position = Vector2(200, 292)
+collision_layer = 1
+collision_mask = 0
+
+[node name="ShapeBottom" type="CollisionShape2D" parent="Walls/WallBottom"]
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="VisualBottom" type="Polygon2D" parent="Walls/WallBottom"]
+color = Color(0.4, 0.4, 0.45, 1)
+polygon = PackedVector2Array(-220, -8, 220, -8, 220, 8, -220, 8)
+
+[node name="WallLeft" type="StaticBody2D" parent="Walls"]
+position = Vector2(8, 150)
+rotation = 1.5707963
+collision_layer = 1
+collision_mask = 0
+
+[node name="ShapeLeft" type="CollisionShape2D" parent="Walls/WallLeft"]
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="WallRight" type="StaticBody2D" parent="Walls"]
+position = Vector2(392, 150)
+rotation = 1.5707963
+collision_layer = 1
+collision_mask = 0
+
+[node name="ShapeRight" type="CollisionShape2D" parent="Walls/WallRight"]
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(120, 150)
+
+[node name="TrainingDummy" parent="." instance=ExtResource("3_dummy")]
+position = Vector2(160, 150)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="InfoLabel" type="Label" parent="HUD"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 400.0
+offset_bottom = 80.0

@@ -7,8 +7,9 @@ name: CI
 #   3. import project (generate .godot resource cache)
 #   4. project-wide GDScript parse check (src/ + tests/ + tools/)
 #   5. runtime boot smoke (boot application/run/main_scene headless, run _ready, exit)
-#   6. headless test suite (custom runner — unit + integration; excludes tests/e2e/)
+#   6. headless test suite (custom runner — unit + integration + gameplay; excludes tests/e2e/)
 #   7. real-application E2E flow (dedicated isolated process — D-019)
+#   8. player sandbox E2E flow (dedicated isolated process — Phase 02)
 #
 # NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
 # scripts were statically validated via the GDScript language server. The first real
@@ -74,7 +75,16 @@ jobs:
         run: |
           set -euo pipefail
           # Dedicated, ISOLATED process (D-019): boots the real main.tscn against the actual
-          # project autoloads, drives MainMenu "New Game" → prologue → RUNNING, then cleans
+          # project autoloads, drives MainMenu "New Game" → first scene → RUNNING, then cleans
           # up. Separate process so the real boot can't contaminate the unit/integration
           # suite. Exits non-zero on any failed assertion; not swallowed.
           ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_app_flow.gd
+
+      - name: Player sandbox E2E flow (Phase 02)
+        run: |
+          set -euo pipefail
+          # Dedicated, ISOLATED process (D-019): boots the real app, New Game → Player
+          # Sandbox, then exercises real movement + the bidirectional damage exchange with
+          # the Training Dummy + deterministic death + clean teardown. Separate process so
+          # it can't contaminate the shared suite. Non-zero exit on any failure; not swallowed.
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_player_flow.gd

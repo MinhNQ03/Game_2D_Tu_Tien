@@ -138,13 +138,19 @@ res://
   main.tscn                      # [exists] bootstrap scene (Main/Systems/World/UI)
   src/
 	bootstrap/        main.gd                              # [exists]
-	infrastructure/   event_bus.gd  localization.gd  scene_router.gd
-					  config.gd  rng.gd  logger.gd
+	infrastructure/   event_bus.gd  localization.gd  scene_router.gd   # [exists]
+					  config.gd  rng.gd  logger.gd                     # [TARGET]
 	persistence/      save_service.gd  save_migrations/
-	domain/           combat/  progression/  cultivation/  quest/  story/
-	gameplay/         entities/  components/  maps/  spawning/
-	presentation/     ui/  hud/  menus/  fx/
-  data/               items/ skills/ enemies/ bosses/ techniques/
+	domain/           combat/damage_rules.gd  # [exists, Phase 02 slice]
+					  progression/  cultivation/  quest/  story/        # [TARGET]
+	gameplay/         collision_layers.gd                 # [exists, Phase 02]
+					  entities/player.* training_dummy.*  # [exists, Phase 02]
+					  components/stats_* health_* movement_component.gd  # [exists, Phase 02]
+					  sandbox/player_sandbox.*            # [exists, Phase 02 — temporary]
+					  maps/  spawning/                     # [TARGET]
+	presentation/     menus/  scenes/              # [exists]  ui/ hud/ fx/  [TARGET]
+  data/               stats/player_stats.tres training_dummy_stats.tres  # [exists, Phase 02]
+					  items/ skills/ enemies/ bosses/ techniques/        # [TARGET]
 					  pets/ realms/ quests/ dialogue/ maps/ chapters/
   assets/             sprites/ tiles/ ui/ audio/ fonts/
   locale/             vi.* en.*            # translation tables

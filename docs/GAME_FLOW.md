@@ -132,6 +132,12 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Dependencies:** gameplay, domain (initial progression), data (starting config),
   infrastructure.
 - **Events:** `run_started`, `chapter_entered(chapter_id)`, `story_beat(id)`.
+- **Implementation status (as of Phase 02):** this box is the *design* target. Today New
+  Game routes to a temporary **Player Sandbox** (move + attack a Training Dummy) as the
+  first gameplay scene — it validates the Player (movement, stats, health, a minimal
+  damage exchange), not story. Phase 03 (World/Map) introduces real maps and Phase 04+ the
+  Character/Dialogue/Story that fill in this Prologue box. The sandbox is a single
+  registered `scene_key`, so replacing it is a routing change, not a rewrite (D-020).
 
 ### 3.4 VILLAGE (hub map)
 - **Input:** player movement/interaction; arrival from SceneRouter.
