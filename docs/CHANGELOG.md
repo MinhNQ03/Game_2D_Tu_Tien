@@ -8,6 +8,31 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Phase 01 Test Isolation + Boot Contract Hardening (no gameplay)
+- **Fixed — cross-test singleton contamination (D-019):** the previous
+  `tests/integration/test_app_flow.gd` spawned duplicate `/root` autoloads and booted Main
+  on the REAL `GameState` autoload, leaving it at `RUNNING`. A later in-runner boot then hit
+  `illegal transition RUNNING -> INITIALIZING`. Removed that test; the real-application E2E
+  now runs in its **own isolated Godot process** (`tests/e2e/run_app_flow.gd` +
+  `tests/e2e/app_flow_case.gd`), using the ACTUAL project autoloads and driving the real
+  `MainMenu.new_game_pressed` intent — no duplicate autoloads, nothing to contaminate.
+- **Added — isolation guard in `tests/run_tests.gd`:** snapshots the shared
+  `/root/GameState` phase and FAILS the suite if any test leaves it changed (detection, not
+  reset). `tests/e2e/` is excluded from in-runner discovery.
+- **Changed — smoke test is structural-only:** `tests/smoke/test_boot.gd` no longer boots
+  Main into the shared tree; it validates the static Systems/World/UI shell without running
+  the lifecycle. The real boot contract is asserted by the E2E process.
+- **Changed — Main requires all 5 autoloads (D-019):** `REQUIRED_AUTOLOADS` =
+  EventBus, GameState, Localization, InputService, SceneRouter. Missing any → fail loud,
+  abort boot, no silent fallback. Removed the "zero autoloads = tolerate" escape.
+- **Changed — Main checks every required lifecycle bool:** `begin_initialization`,
+  `mark_ready`, `enter_menu`, `confirm_session_running`. A rejected `confirm_session_running`
+  now unwinds to menu instead of faking RUNNING.
+- **CI:** added a 7th gate running the dedicated E2E process; no swallowed exit codes.
+- **Docs:** D-019 added; TEST_PLAN updated (runner has project autoloads; isolation
+  boundary; E2E own process); lesson L-010 recorded. No gameplay, no networking, no Phase 02
+  (Config/RNG/SaveService still deferred per D-017).
+
 ### 2026-10-02 — Phase 01 Final Hardening (close contract/test/invariant gaps, no gameplay)
 - **Fixed — GameState persistence invariant (D-018):** `to_dict()` now serializes only run
   identity + location (never `session_active`, never the lifecycle phase) and returns `{}`

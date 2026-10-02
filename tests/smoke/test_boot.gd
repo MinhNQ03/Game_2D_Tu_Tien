@@ -1,9 +1,15 @@
 extends TestCase
-## Smoke test: the project really boots and the main scene is structurally sound.
+## Smoke test (STRUCTURAL ONLY — runs inside the shared test runner).
 ##
-## This is a REAL test. Beyond loading/instantiating, it adds Main to the live
-## SceneTree so Godot runs the actual node lifecycle (`_enter_tree` → `_ready`), then
-## verifies the bootstrap structure and cleans up with no orphan nodes.
+## IMPORTANT ISOLATION RULE (D-019): this test runs in the same process as every other
+## test, where the project autoloads (GameState, SceneRouter, ...) are LIVE singletons
+## under /root. Therefore this test must NEVER boot Main into the SceneTree here, because
+## Main._ready() drives the shared /root/GameState lifecycle and would contaminate other
+## tests (and be contaminated by them). The REAL application boot — booting main.tscn,
+## running Main._ready(), reaching MENU, New Game → prologue → RUNNING — is verified in a
+## DEDICATED, isolated Godot process: `tests/e2e/run_app_flow.gd` (its own CI step), plus
+## the CI "runtime boot smoke" (`--quit-after 2`). Here we only assert static structure
+## that mutates no shared singleton.
 
 const MAIN_SCENE_PATH := "res://main.tscn"
 
@@ -34,49 +40,43 @@ func test_main_scene_loads() -> void:
 	assert_true(packed is PackedScene, "loaded resource should be a PackedScene")
 
 
-## (4 + 5 + 6 + 7 + 8) The main scene instantiates, actually ENTERS the SceneTree so its
-## `_ready` runs, exposes Systems/World/UI, and its bootstrap self-validation passes.
-## Cleans up afterwards (9: no orphan nodes).
-func test_main_scene_enters_tree_and_is_valid() -> void:
+## (4) The main scene instantiates and exposes the Systems/World/UI shell, and its
+## bootstrap self-validation passes — WITHOUT entering the SceneTree. We deliberately do
+## NOT add it to the tree: that would run Main._ready() and mutate the shared /root
+## autoloads (see the isolation note above). The real boot lifecycle is covered by the
+## dedicated E2E process. Here we only confirm the static shell is correct, then free the
+## detached instance (no orphan, no shared-state mutation).
+func test_main_scene_structure_is_valid_without_booting() -> void:
 	var packed: PackedScene = load(MAIN_SCENE_PATH)
 	assert_not_null(packed, "main scene should load")
 	if packed == null:
 		return
 
-	var root := packed.instantiate()  # (4) instantiate
+	var root := packed.instantiate()  # instantiate only — NOT added to the tree
 	assert_not_null(root, "main scene should instantiate")
 	if root == null:
 		return
 
-	# (5) Actually enter the SceneTree so Godot runs _enter_tree/_ready.
-	var added := add_to_tree(root)
-	assert_true(added, "Main should be added to the SceneTree")
-	if not added:
-		root.free()
-		return
-
-	# (6) Give the engine a frame so _ready() has run (awaited by the runner too).
-	await scene_tree.process_frame
-	assert_true(root.is_inside_tree(), "Main should be inside the SceneTree after add")
-
-	# (7) Required container structure present as live children.
+	# Children declared in main.tscn exist on the instance even before entering the tree.
 	assert_not_null(root.get_node_or_null("Systems"), "Main should have a Systems node")
 	assert_not_null(root.get_node_or_null("World"), "Main should have a World node")
 	assert_not_null(root.get_node_or_null("UI"), "Main should have a UI node")
 
-	# (8) Bootstrap self-validation reports a valid structure.
+	# Bootstrap self-validation reports a valid structure (pure check, no lifecycle).
 	if root.has_method("has_required_structure"):
 		assert_true(root.call("has_required_structure"),
 			"bootstrap should report its structure is valid")
 	else:
 		assert_true(false, "bootstrap script missing has_required_structure()")
 
-	# (9) Cleanup — no orphan nodes left behind.
-	free_node(root)
+	# It never entered the tree, so _ready()/_boot() never ran: the shared /root/GameState
+	# is untouched by this test (the runner's contamination guard asserts this globally).
+	root.free()
 
 
 ## (negative) A Main-like node MISSING a required container must be detected as invalid
-## — proving the structure check actually fails when the structure is wrong.
+## — proving the structure check actually fails when the structure is wrong. The node is
+## never added to the tree, so no lifecycle/boot runs.
 func test_missing_structure_is_detected() -> void:
 	var script: Script = load("res://src/bootstrap/main.gd")
 	assert_not_null(script, "bootstrap script should load")
@@ -96,7 +96,7 @@ func test_missing_structure_is_detected() -> void:
 			"structure check must FAIL when a required container is missing")
 	else:
 		assert_true(false, "bootstrap script missing has_required_structure()")
-	free_node(node)
+	node.free()
 
 
 ## Proves the harness records a failed assertion (so a real regression cannot pass

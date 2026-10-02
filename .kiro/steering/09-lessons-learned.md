@@ -94,3 +94,34 @@
   `.gitignore` patterns (`*_tmp.txt`, etc.); never `git add -A` (it sweeps them in). Delete
   helper scripts/logs when done; don't write working files under `.git/`.
 - **Fixed:** cleaned in Phase 0 close-out and Phase 01 hardening.
+
+## L-010 — Tests that mutate a shared autoload/singleton (cross-test contamination)
+- **Symptom:** an in-process test booted the real app (`main.tscn`) and drove the shared
+  `/root/GameState` autoload to `RUNNING`; a later test's boot then hit
+  `illegal transition RUNNING -> INITIALIZING`. The suite only "passed" because the later
+  test didn't assert the boot result. Also: spawning nodes named like the autoloads
+  (`add_child` with `name="GameState"`) creates **duplicate autoloads** — Main still reads
+  the REAL one, so the spawns are both useless and misleading.
+- **Rule:** **The project `[autoload]` singletons are LIVE under `/root` in every Godot
+  run — including the `-s` test runner.** So:
+  - Unit/integration tests use **fresh `Script.new()` instances**, never the live
+    singletons; never `add_child` a node named like an autoload (no duplicates).
+  - Anything that must boot the **real** app (drives the shared singletons) runs in its
+    **own Godot process** with a dedicated entrypoint, as a separate CI gate — not inside
+    the shared runner.
+  - The shared runner keeps an **isolation guard**: snapshot the shared GameState phase and
+    FAIL the suite if any test leaves it changed (detect contamination, don't reset it).
+  - Prefer process isolation over adding a production `reset_for_tests()` API or relying on
+    test order.
+- **Fixed:** D-019 (Phase 01 hardening). See `tests/e2e/run_app_flow.gd`,
+  `tests/run_tests.gd` isolation guard, structural `tests/smoke/test_boot.gd`.
+
+## L-011 — A test "passes" while the real boot path actually failed
+- **Symptom:** CI was green even though the boot emitted
+  `[boot] begin_initialization rejected` — because no test asserted the lifecycle result.
+- **Rule:** **A test that exercises boot MUST assert the boot CONTRACT** (reached the
+  expected phase, services wired), not just "didn't crash". A successful normal run must be
+  free of unexpected `ERROR:`/`illegal transition` lines; such lines are acceptable ONLY in
+  explicit negative-path tests (invalid transition / missing scene / missing key).
+- **Fixed:** D-019. Real boot asserted in the dedicated E2E process; smoke no longer hides a
+  boot failure.

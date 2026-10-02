@@ -350,6 +350,69 @@ setters reset the stack), `test_scene_router.gd` (failure/cleanup cases A–F),
 `tests/integration/test_app_flow.gd` (real autoloads + `main.tscn` + `MainMenu` signal →
 RUNNING session + prologue loaded).
 
+## D-019 — Test isolation: real-application E2E runs in its own process; Main requires all 5 autoloads — **Accepted** (2026-10-02, Phase 01)
+**Context:** The D-018 end-to-end test `tests/integration/test_app_flow.gd` ran inside the
+shared `tests/run_tests.gd` runner. Two facts combined into a real bug:
+1. The project declares five `[autoload]` services in `project.godot`. Godot loads these
+   under `/root` for **any** run, including `-s res://tests/run_tests.gd`. So the real
+   `GameState` (etc.) singletons are live during the whole in-process test suite.
+2. `test_app_flow.gd` additionally did `scene_tree.root.add_child(node)` with
+   `name = "GameState"` (and the other four), creating **duplicate autoload nodes** (Godot
+   auto-renames the second), then booted `main.tscn`. Main reads `/root/GameState` — the
+   REAL autoload — and drove it to `RUNNING`, leaving it there (the test's teardown freed
+   only the duplicate copies).
+
+Consequently a later in-runner test that boots Main (the old smoke test) ran
+`begin_initialization()` on a GameState already at `RUNNING`, producing
+`ERROR: [gamestate] illegal transition RUNNING -> INITIALIZING` →
+`ERROR: [boot] begin_initialization rejected`. CI stayed green only because the smoke test
+did not assert the boot lifecycle result. This is a **test-isolation defect**, not a reason
+to weaken assertions.
+
+**Options:** (A) run the real-application E2E boot in its **own Godot process** with a
+dedicated entrypoint; (B) keep it in the shared runner but reset the singletons / enforce
+run-order. (B) requires a production `reset_for_tests()`-style API or order hacks that
+exist only to serve tests — rejected (`.kiro/steering/03-architecture.md` anti-
+over-engineering; `08-ai-review-protocol`). 
+
+**Decision — (A), plus hardening:**
+- **Dedicated E2E process.** `tests/e2e/run_app_flow.gd` (its own `SceneTree`, run as a
+  separate CI gate) boots the real `main.tscn` against the ACTUAL `/root` autoloads, drives
+  the real `MainMenu.new_game_pressed` intent (never GameState/SceneRouter directly), and
+  asserts the full chain reaches `RUNNING` with the prologue loaded, then tears down with
+  no orphan. Because nothing else runs in that process, driving the shared GameState
+  contaminates nothing. It **does not spawn duplicate autoloads**.
+- **No second framework.** The E2E assertions live in `tests/e2e/app_flow_case.gd`
+  (`extends TestCase`, reusing the shared `assert_*` + failure recording); `run_app_flow.gd`
+  is a thin adapter (inject SceneTree → run the case → exit 0/1).
+- **In-runner smoke is structural only.** `tests/smoke/test_boot.gd` no longer boots Main
+  into the tree (that would mutate the shared GameState). It instantiates `main.tscn`
+  WITHOUT entering the tree and checks the static shell + `has_required_structure()`. The
+  real boot lifecycle is the E2E process's job.
+- **Cross-test contamination guard.** `tests/run_tests.gd` snapshots the shared
+  `/root/GameState` phase before the suite and, after every test method, FAILS the suite if
+  a test left it changed. This is detection, not reset — resetting would hide the bug. It
+  makes the exact regression (a test mutating a shared singleton) impossible to pass
+  silently again. `tests/e2e/` is excluded from in-runner discovery.
+- **Main requires all five autoloads.** `REQUIRED_AUTOLOADS` is now
+  `EventBus, GameState, Localization, InputService, SceneRouter` (was three). If ANY is
+  missing when Main boots for real, boot fails loudly and stops (no fake menu, no half-boot,
+  no silent fallback, no self-created autoload). The old "zero autoloads = tolerate" escape
+  is removed — no in-runner test boots Main anymore, so there is no such case.
+- **Main checks every required lifecycle bool.** `begin_initialization`, `mark_ready`,
+  `enter_menu`, and `confirm_session_running` return values are all checked; a rejected
+  `confirm_session_running` now unwinds (clear scene + end session + back to menu) instead
+  of pretending to be RUNNING.
+
+**CI:** adds a 7th gate — `godot --headless --path . -s res://tests/e2e/run_app_flow.gd` —
+after the headless suite; no `|| true`, not swallowed, visible in the log.
+
+**Consequence:** unit/integration isolation and real-application E2E are now distinct
+boundaries. A successful normal run shows no `illegal transition` error. Intentional
+negative-path diagnostics (invalid transition / missing scene / missing key tests) remain
+and are expected. Does not change D-018 (persistence/input contract); supersedes nothing,
+adds the test-architecture decision.
+
 ---
 
 ## How to add a decision

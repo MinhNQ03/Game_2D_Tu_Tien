@@ -22,8 +22,12 @@ extends SceneTree
 ## Root directory scanned recursively for tests.
 const TESTS_ROOT := "res://tests"
 
-## Folders under tests/ that are framework/support code, not test cases.
-const EXCLUDED_DIRS := ["framework"]
+## Folders under tests/ that are framework/support code or run in their own process, not
+## in-runner test cases. `e2e/` holds the dedicated real-application flow driven by its own
+## entrypoint (`tests/e2e/run_app_flow.gd`) in a separate Godot process (D-019); it must
+## NOT run inside this shared runner, where booting Main would contaminate the shared
+## /root autoloads.
+const EXCLUDED_DIRS := ["framework", "e2e"]
 
 ## The suite must always contain this smoke test; its absence fails the suite so the
 ## suite can't silently shrink to nothing and report green.
@@ -33,6 +37,22 @@ const REQUIRED_TEST := "res://tests/smoke/test_boot.gd"
 func _initialize() -> void:
 	# Run after the SceneTree is ready so `root` and `process_frame` are usable.
 	_run.call_deferred()
+
+
+## Cross-test isolation guard (D-019).
+##
+## The project autoloads (GameState, SceneRouter, ...) are LIVE singletons under /root even
+## in this runner process. A well-behaved test must NOT mutate them — unit/integration
+## tests use fresh `Script.new()` instances, and the real application boot lives in a
+## separate process (`tests/e2e/run_app_flow.gd`). This guard records the shared GameState
+## phase before each test and FAILS loudly if a test leaves it changed, so cross-test
+## singleton contamination (the bug fixed in D-019) can never silently pass again. It does
+## not reset anything — resetting would hide the contamination; detecting it is the point.
+func _shared_gamestate_phase() -> Variant:
+	var gs := root.get_node_or_null("/root/GameState")
+	if gs == null:
+		return null  # no shared singleton to guard (not expected with project autoloads)
+	return gs.call("get_phase")
 
 
 func _run() -> void:
@@ -48,6 +68,9 @@ func _run() -> void:
 		print("[tests] RESULT: FAIL — required smoke test not found.")
 		quit(1)
 		return
+
+	# Baseline phase of the shared GameState autoload before any test runs.
+	var baseline_phase: Variant = _shared_gamestate_phase()
 
 	for file_path in found_files:
 		var script: Script = load(file_path)
@@ -73,7 +96,19 @@ func _run() -> void:
 			test_case.call("after_each")
 			# Let any node added during the test finish its `_ready` lifecycle.
 			await process_frame
-			var method_failures: Array = test_case.call("get_failures")
+			var method_failures: Array = test_case.call("get_failures").duplicate()
+
+			# Isolation guard (D-019): a test must not mutate the shared GameState autoload.
+			# Treat a leftover change as a failure of this test method (single reporting path
+			# below), so contamination fails the suite loudly instead of passing silently.
+			var after_phase: Variant = _shared_gamestate_phase()
+			if baseline_phase != null and after_phase != baseline_phase:
+				method_failures.append(
+					"ISOLATION VIOLATION: shared /root/GameState phase changed %s -> %s "
+					% [str(baseline_phase), str(after_phase)]
+					+ "(a test mutated a project autoload; use a fresh instance or the "
+					+ "dedicated E2E process in tests/e2e/)")
+
 			if method_failures.is_empty():
 				passed += 1
 				print("[PASS] %s::%s" % [file_path, method_name])

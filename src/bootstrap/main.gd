@@ -19,11 +19,18 @@ const MENU_SCENE := "res://src/presentation/menus/main_menu.tscn"
 const PROLOGUE_SCENE_KEY := "prologue"
 const PROLOGUE_SCENE_PATH := "res://src/presentation/scenes/prologue_shell.tscn"
 
-## Core autoloads the running application REQUIRES. If any is missing when the app is
-## actually running, boot is a hard failure — a null autoload must never be silently
-## tolerated at runtime (`.kiro/steering/04-coding-standards.md`: fail loud; no swallowed
-## nulls). See `_verify_core_autoloads()` for the test-harness exception.
-const REQUIRED_AUTOLOADS := ["GameState", "SceneRouter", "EventBus"]
+## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
+## Main boots the real application; all five are declared in `project.godot [autoload]` and
+## are therefore always present when Main actually runs (real app, the runtime boot smoke,
+## and the dedicated E2E process — D-019). If ANY is missing, that is a real
+## misconfiguration: boot fails loudly and stops. A null autoload is never silently
+## tolerated (`.kiro/steering/04-coding-standards.md`: fail loud; no swallowed nulls; no
+## silent fallback; no self-created autoload). In-runner unit/integration tests never
+## instantiate Main (they test the services directly), so there is no "test-harness without
+## autoloads" case to special-case here.
+const REQUIRED_AUTOLOADS := [
+	"EventBus", "GameState", "Localization", "InputService", "SceneRouter",
+]
 
 var _menu: Control = null
 
@@ -31,31 +38,21 @@ var _menu: Control = null
 func _ready() -> void:
 	assert(_has_required_containers(), "Main scene is missing a required container node.")
 	if not _verify_core_autoloads():
-		# Real-app misconfiguration: a required core service is absent. Do not limp on in a
-		# broken state — report loudly and stop booting. (In the headless unit-test harness
-		# NO autoloads exist, which `_verify_core_autoloads` treats as test mode, not a fail.)
+		# A required core service is absent → the app is mis-wired. Do not limp on in a
+		# broken state (no fake menu, no half-boot): report loudly and stop booting.
 		return
 	_boot()
 
 
-## Returns false (and reports loudly) only when the app is clearly running for real yet a
-## required core autoload is missing. When ZERO project autoloads are present we are in the
-## headless test harness (run_tests.gd is a bare SceneTree with no autoloads), so Main is
-## allowed to run its null-safe paths for structural tests — that is NOT a misconfiguration.
+## True only when all five required autoloads are present under /root. Otherwise reports
+## the missing ones loudly and returns false (boot aborts). No partial-wiring tolerance.
 func _verify_core_autoloads() -> bool:
-	var present := 0
 	var missing: Array[String] = []
 	for autoload_name in REQUIRED_AUTOLOADS:
-		if get_node_or_null("/root/%s" % autoload_name) != null:
-			present += 1
-		else:
+		if get_node_or_null("/root/%s" % autoload_name) == null:
 			missing.append(autoload_name)
 	if missing.is_empty():
 		return true
-	if present == 0:
-		# Test-harness context (no autoloads at all). Proceed null-safe; do not fail-fast.
-		return true
-	# Partially wired real app: some core services exist but required ones are missing.
 	push_error("[boot] FATAL: required core autoload(s) missing: %s. Check project.godot "
 		% str(missing) + "[autoload]. Aborting boot to avoid a half-wired game state.")
 	assert(false, "Required core autoload(s) missing: %s" % str(missing))
@@ -63,43 +60,46 @@ func _verify_core_autoloads() -> bool:
 
 
 ## The boot sequence. Each step is an explicit, legal lifecycle transition owned by
-## GameState; the bootstrap only sequences them.
+## GameState; the bootstrap only sequences them. All five autoloads are verified present
+## before this runs, so the service lookups below are non-null; every REQUIRED lifecycle
+## transition return value is checked and a rejection aborts boot loudly (no booting on
+## through a bad phase).
 func _boot() -> void:
 	var gs := _game_state()
 	var router := _scene_router()
 
-	# Lifecycle transitions return false on an illegal move; surface that loudly rather
-	# than booting on through a rejected transition into an inconsistent phase.
-	if gs != null and not bool(gs.call("begin_initialization")):
+	if not bool(gs.call("begin_initialization")):
 		push_error("[boot] begin_initialization rejected; aborting boot")
 		return
 
 	# Give the router its content host and register the Phase-1 content scenes (by key).
-	if router != null:
-		router.call("set_scene_host", get_node(CONTAINER_WORLD))
-		router.call("register_scene", PROLOGUE_SCENE_KEY, PROLOGUE_SCENE_PATH)
+	router.call("set_scene_host", get_node(CONTAINER_WORLD))
+	router.call("register_scene", PROLOGUE_SCENE_KEY, PROLOGUE_SCENE_PATH)
 
-	if gs != null and not bool(gs.call("mark_ready")):
+	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
 		return
 
-	var bus := _event_bus()
-	if bus != null:
-		bus.call("emit_game_booted")
+	_event_bus().call("emit_game_booted")
 
 	_show_menu()
 
 
-## Instantiates the main-menu shell under the UI layer and wires its intents.
+## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
+## nothing but reports loudly on any required failure (lifecycle rejection, scene load),
+## leaving the app in a reported-broken state rather than a silently half-shown menu.
 func _show_menu() -> void:
 	var gs := _game_state()
-	if gs != null:
-		gs.call("enter_menu")
+
+	# enter_menu is a REQUIRED transition (from READY on first boot, or from a running
+	# session on return). A rejection means the lifecycle is in an unexpected phase.
+	if not bool(gs.call("enter_menu")):
+		push_error("[main] enter_menu rejected from phase %s; aborting show_menu"
+			% String(gs.call("phase_name")))
+		return
 
 	# Any content scene from a previous session is cleared on return to menu.
-	var router := _scene_router()
-	if router != null:
-		router.call("clear_current_scene")
+	_scene_router().call("clear_current_scene")
 
 	if _menu != null and is_instance_valid(_menu):
 		return  # menu already shown
@@ -125,11 +125,8 @@ func _hide_menu() -> void:
 func _on_new_game_pressed() -> void:
 	var gs := _game_state()
 	var router := _scene_router()
-	if gs == null or router == null:
-		push_error("[main] cannot start new game: core services missing")
-		return
 
-	if not gs.call("start_new_game"):
+	if not bool(gs.call("start_new_game")):
 		push_error("[main] start_new_game rejected from current phase")
 		return
 
@@ -142,7 +139,16 @@ func _on_new_game_pressed() -> void:
 		_show_menu()
 		return
 
-	gs.call("confirm_session_running")
+	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If it is
+	# rejected the first scene is up but the lifecycle is wrong, so do not pretend we are
+	# RUNNING: unwind to a usable menu state and report loudly.
+	if not bool(gs.call("confirm_session_running")):
+		push_error("[main] confirm_session_running rejected; unwinding to menu")
+		router.call("clear_current_scene")
+		gs.call("end_session")
+		_show_menu()
+		return
+
 	_connect_prologue_return()
 
 
@@ -182,7 +188,7 @@ func _has_required_containers() -> bool:
 	return true
 
 
-# --- Autoload accessors (null-safe so headless tests can run Main without autoloads) ---
+# --- Autoload accessors. Non-null once _verify_core_autoloads() has passed in _ready(). ---
 
 func _game_state() -> Node:
 	return get_node_or_null("/root/GameState")

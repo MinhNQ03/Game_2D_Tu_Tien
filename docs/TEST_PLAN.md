@@ -85,13 +85,16 @@ tests/
   unit/
     framework/
       test_nested_discovery.gd  # proves recursive discovery + harness fail-detection
-  integration/     # components together
+  integration/     # components together (fresh instances; never the live autoloads)
+  e2e/             # real-application flow — OWN process (D-019), excluded from run_tests.gd
+    run_app_flow.gd    # dedicated SceneTree entrypoint (adapter)
+    app_flow_case.gd   # the E2E TestCase (reuses the shared assert_* API)
   gameplay/        # scripted scenarios
   smoke/
-    test_boot.gd   # REAL smoke test: boots Main INTO the SceneTree, runs _ready, cleans up
+    test_boot.gd   # STRUCTURAL smoke: validates main.tscn shell WITHOUT booting Main (D-019)
   performance/     # budget assertions
   README.md        # how to run, how to add a test
-  run_tests.gd     # real custom runner — RECURSIVE discovery, non-zero exit on failure
+  run_tests.gd     # custom runner — RECURSIVE discovery, isolation guard, non-zero on fail
 tools/
   parse_check.gd   # project-wide parse check (CI gate)
 ```
@@ -134,14 +137,31 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
   context setters** (`set_gameplay_context`/`set_menu_context`/`push_modal_context` reset
   the stack so no stale modal survives — D-018).
 - `tests/integration/test_boot_flow.gd` — BOOT→MENU→NEW GAME→SESSION→FIRST SCENE driving
-  GameState + SceneRouter directly, then clean return to menu.
-- `tests/integration/test_app_flow.gd` — **real end-to-end**: stands up the actual five
-  core autoloads under `/root`, instantiates the real `main.tscn`, lets `Main._ready()`
-  boot it, then emits the real `MainMenu.new_game_pressed` signal and asserts the whole
-  chain wired itself (session RUNNING + SceneRouter current key `prologue` + one content
-  scene under `World`), with a no-orphan teardown.
+  GameState + SceneRouter directly (fresh instances), then clean return to menu.
 
-Gameplay/performance tests arrive with their phases. CI (D-012) runs the suite headless on
+**Phase 01 hardening (D-019) — test isolation + a dedicated E2E process:**
+- `tests/e2e/run_app_flow.gd` + `tests/e2e/app_flow_case.gd` — **real end-to-end** run in a
+  SEPARATE Godot process (its own CI gate). It uses the ACTUAL project autoloads under
+  `/root`, boots the real `main.tscn`, drives the real `MainMenu.new_game_pressed` intent,
+  and asserts the chain reaches RUNNING (prologue loaded, one scene under `World`, input
+  context GAMEPLAY, no duplicate autoload) then tears down with no orphan. It is isolated
+  on purpose: booting Main drives the shared `GameState` singleton, which must not happen
+  inside the common runner.
+- `tests/run_tests.gd` **isolation guard** — the project autoloads are live under `/root`
+  even in the runner process; the runner snapshots the shared `GameState` phase and FAILS
+  the suite if any test leaves it changed (so cross-test singleton contamination can't pass
+  silently). It excludes `tests/framework/` and `tests/e2e/` from discovery.
+- `tests/smoke/test_boot.gd` is **structural only** — it validates `main.tscn`'s
+  Systems/World/UI shell WITHOUT entering the tree (so it never mutates the shared
+  GameState). The real boot lifecycle is the E2E process's job.
+
+> **Runner has project autoloads (D-019).** `godot --headless --path . -s res://tests/run_tests.gd`
+> loads the five `[autoload]` services under `/root`. Unit/integration tests therefore use
+> **fresh `Script.new()` instances**, never the live singletons, and nothing in the runner
+> boots `Main`. The real-application boot is the dedicated E2E process. This is the boundary
+> between unit/integration isolation and application E2E.
+
+Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push. **Note:** these tests were authored and statically validated (GDScript
 diagnostics clean); the agent cannot run Godot locally (D-009), so the authoritative run
 is CI.
