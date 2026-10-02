@@ -69,7 +69,8 @@ func resolve_player_attack() -> void:
 	# Dummy retaliates (deterministic; it does not act on its own — the coordinator drives
 	# it to prove the player is damageable too). Skip if the dummy just died.
 	if not _dummy.is_dead():
-		var to_player: int = DamageRules.compute_hit(_dummy.get_attack_power(), _player.get_defense())
+		var to_player: int = DamageRules.compute_hit(
+			_dummy.get_attack_power(), _player.get_defense())
 		_player.take_damage(to_player)
 	_refresh_hud()
 
@@ -87,8 +88,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _input == null:
 		return
 	if _input.call("is_system_action_just_pressed", &"open_menu"):
+		# Capture the viewport and mark the event handled BEFORE emitting: emitting
+		# `return_to_menu_requested` lets the coordinator (Main) swap this scene out
+		# synchronously, after which this node is out of the tree and `get_viewport()`
+		# returns null. Guard against that so a mid-transition press can't crash.
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 		return_to_menu_requested.emit()
-		get_viewport().set_input_as_handled()
 
 
 func _refresh_hud() -> void:

@@ -125,3 +125,16 @@
   explicit negative-path tests (invalid transition / missing scene / missing key).
 - **Fixed:** D-019. Real boot asserted in the dedicated E2E process; smoke no longer hides a
   boot failure.
+
+## L-013 — Touching the viewport/tree AFTER emitting a signal that unloads the scene
+- **Symptom:** `PlayerSandbox._unhandled_input` did `return_to_menu_requested.emit()` then
+  `get_viewport().set_input_as_handled()`. Emitting ran the coordinator (Main) which swapped
+  the scene out synchronously, so by the next line the node was out of the tree and
+  `get_viewport()` was null → `Cannot call method 'set_input_as_handled' on a null value`.
+- **Rule:** **A signal emit can synchronously tear down the emitter.** Do everything that
+  needs the node to be in the tree (viewport, `get_node`, `get_tree`) BEFORE emitting, and
+  null-check tree/viewport accessors in `_input`/`_unhandled_input`/callbacks that can fire
+  during a transition. Order: read/handle locally first, emit the "please change scene"
+  signal last.
+- **Fixed:** Phase 02 follow-up. `player_sandbox.gd` + `prologue_shell.gd` capture + null-check
+  the viewport and mark input handled before emitting the return-to-menu signal.

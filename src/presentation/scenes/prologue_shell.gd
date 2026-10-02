@@ -57,8 +57,12 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if input == null:
 		return
 	if input.call("is_system_action_just_pressed", &"open_menu"):
+		# Mark handled before emitting: the coordinator may swap this scene out
+		# synchronously on the signal, after which get_viewport() would be null.
+		var viewport := get_viewport()
+		if viewport != null:
+			viewport.set_input_as_handled()
 		return_to_menu_requested.emit()
-		get_viewport().set_input_as_handled()
 
 
 func _refresh_text() -> void:
