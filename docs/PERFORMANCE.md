@@ -3,7 +3,25 @@
 > Performance principles + the mandatory log of every non-trivial optimization.
 > Rules summary: `.kiro/steering/05-performance-testing.md`.
 >
-> Status: no gameplay yet, so no measurements exist. The log below is empty on purpose.
+> Status: no gameplay yet, so no profiler measurements exist. The optimization log (§4) is
+> empty on purpose.
+>
+> **Phase 01 note (no optimization, just discipline):** the Core services were written to
+> avoid needless continuous work. None of the 5 autoloads (`EventBus`, `GameState`,
+> `Localization`, `InputService`, `SceneRouter`) implement `_process` or
+> `_physics_process` — they are event/call driven. `InputService` exposes intent via
+> pull methods (callers poll only when they need it) rather than running a per-frame loop.
+> The menu/first-scene shells use `_unhandled_input` (event-driven) and build their UI once
+> in `_ready`. `Localization` loads the CSV once (cached). This keeps the frame budget free
+> for later gameplay; it is a design choice, not a measured optimization.
+>
+> **Pause semantics (§29 of the Phase 1 brief, documented, not over-built):** the intended
+> distinction is: *application* concerns (UI, menu input, transition cleanup, infrastructure
+> autoloads) keep running; *gameplay* pause only suspends gameplay systems. `GameState` has
+> a `PAUSED` lifecycle phase to represent gameplay pause; input gating
+> (`InputService` context stack) decides who receives input while paused. We did NOT build
+> a pause framework (no autoload `process_mode` juggling) — later gameplay follows this
+> ownership rule when it needs pause.
 
 ## 1. Principles
 

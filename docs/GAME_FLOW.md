@@ -98,14 +98,16 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 
 ---
 
-### 3.1 Boot / START
-- **Input:** app launch (currently: the `src/bootstrap/main.gd` bootstrap scene).
-- **State:** none persistent; will initialize infrastructure autoloads as they are added
-  (Config, RNG, Localization, EventBus, SaveService, SceneRouter — *planned*, created only
-  when first needed per the autoload budget in `.kiro/steering/03-architecture.md`; none
-  exist yet).
-- **Processing:** load config, detect/apply language (`vi`/`en`), warm minimal
-  services, then route to Main Menu.
+### 3.1 Boot / START  *(implemented in Phase 01)*
+- **Input:** app launch → `src/bootstrap/main.gd` (the `Main` coordinator).
+- **State:** `GameState` owns the lifecycle: `BOOT → INITIALIZING → READY → MENU`
+  (then `STARTING_SESSION → RUNNING → TRANSITIONING/PAUSED`). Infrastructure autoloads that
+  exist now (D-017): `EventBus`, `GameState`, `Localization`, `InputService`, `SceneRouter`.
+  `Config`/`RNG`/`SaveService` are still *planned* (added when first needed).
+- **Processing:** `Main._ready()` validates the shell, drives the lifecycle via `GameState`,
+  gives `SceneRouter` its content host (`Main/World`) + registers Phase-1 scenes, emits
+  `game_booted`, then shows the Main Menu shell. Language defaults to `en` via
+  `Localization` (vi/en available).
 - **Output:** Main Menu scene active.
 - **Dependencies:** infrastructure layer only.
 - **Events:** `game_booted`.

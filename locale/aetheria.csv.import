@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://bq2ab7q2wdmlt"
+
+[deps]
+
+files=["res://locale/aetheria.en.translation", "res://locale/aetheria.vi.translation"]
+
+source_file="res://locale/aetheria.csv"
+dest_files=["res://locale/aetheria.en.translation", "res://locale/aetheria.vi.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

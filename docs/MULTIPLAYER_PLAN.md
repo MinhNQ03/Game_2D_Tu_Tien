@@ -59,7 +59,11 @@ serializes only the persistent tier.
 
 - **Command intents in combat** — combat takes a "command" (attack/cast/use) rather than
   letting UI mutate state directly. Offline this is just clean input handling; in MP the
-  same intent is what a client sends to an authoritative server.
+  same intent is what a client sends to an authoritative server. *(Phase 01 groundwork:*
+  *`InputService` already exposes **semantic intent** over named actions — move/interact/*
+  *attack/skill — decoupled from physical devices. Gameplay/domain consume intent, not*
+  *keys, so a future network transport can feed the same intent without touching domain*
+  *rules. The combat command object itself is still TARGET, built in Phase 09.)*
 - **EventBus decoupling** — emitters don't know listeners, so a replication layer can
   subscribe to the same events without touching gameplay code.
 - **Seeded RNG** — deterministic domain logic. Determinism is a prerequisite for any

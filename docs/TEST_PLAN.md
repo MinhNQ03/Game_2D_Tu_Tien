@@ -112,9 +112,23 @@ tools/
 
 ## 9. Current status
 
-`tests/` has the layer folders, `framework/test_case.gd`, a real `run_tests.gd` runner,
-and one real smoke test `smoke/test_boot.gd` (asserts: main scene exists, is declared in
-`project.godot`, project name is `Aetheria`, scene loads as a `PackedScene`, instantiates
-with the `Main/Systems/World/UI` structure, and the harness records failures correctly).
-Unit/integration/gameplay/performance tests arrive with each gameplay phase. CI (D-012)
-runs the suite headless on every push.
+`tests/` has the layer folders, `framework/test_case.gd`, a real `run_tests.gd` runner, a
+smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
+
+**Phase 01 added Core tests:**
+- `tests/unit/core/test_game_state.gd` — lifecycle valid/invalid transitions, new-game
+  flow, session survives a transition, end-session clears, `to_dict/from_dict` round-trip.
+- `tests/unit/core/test_scene_router.gd` — valid/invalid/no-host transitions, replace +
+  cleanup (no leak), clear, idle state.
+- `tests/unit/core/test_event_bus.gd` — delivery, payload, no-delivery-without-emit.
+- `tests/unit/core/test_localization.gd` — vi/en lookup, switching, unsupported rejected,
+  missing-key behavior, `{placeholder}` substitution.
+- `tests/unit/core/test_input_service.gd` — all semantic InputMap actions exist, gating
+  priority (modal > menu > gameplay), baseline-context protection.
+- `tests/integration/test_boot_flow.gd` — BOOT→MENU→NEW GAME→SESSION→FIRST SCENE, then
+  clean return to menu.
+
+Gameplay/performance tests arrive with their phases. CI (D-012) runs the suite headless on
+every push. **Note:** these tests were authored and statically validated (GDScript
+diagnostics clean); the agent cannot run Godot locally (D-009), so the authoritative run
+is CI.

@@ -1,0 +1,9 @@
+keys,en,vi
+UI_MENU_TITLE,Aetheria,Aetheria
+UI_MENU_NEW_GAME,New Game,Trò chơi mới
+UI_MENU_LOAD_GAME,Load Game,Tải game
+UI_MENU_QUIT,Quit,Thoát
+UI_MENU_LANGUAGE,Language,Ngôn ngữ
+UI_PROLOGUE_PLACEHOLDER,Prologue (shell),Khởi đầu (bản khung)
+UI_PROLOGUE_HINT,Press [open_menu] to return to the menu.,Nhấn [open_menu] để quay lại menu.
+UI_TEST_GREETING,Hello {name},Xin chào {name}

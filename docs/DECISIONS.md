@@ -36,7 +36,7 @@ the setting. Low risk, reversible.
 / chunked world.
 **Decision:** *Undecided.* Lean toward (a) for a chapter-based top-down RPG; SceneRouter
 abstraction keeps this changeable later.
-**Blocking:** Phase 3 (World).
+**Blocking:** Phase 03 (World / Map).
 
 ## D-004 — Test framework: GUT vs. custom headless runner  — **Accepted** (resolved 2026-10-03)
 **Context:** Need headless CI tests from early on.
@@ -65,7 +65,7 @@ what the minimal harness gives, re-evaluate GUT (new ADR, don't silently swap).
 **Options:** (a) JSON of plain dicts via `to_dict/from_dict`; (b) Godot `Resource`
 binary.
 **Decision:** *Undecided.* Lean toward (a) JSON for migration-friendliness/testability.
-**Blocking:** Phase 17 (Save).
+**Blocking:** Phase 23 (Save / Load).
 
 ## D-006 — Project renamed to "Aetheria"  — **Accepted** (resolved 2026-10-03)
 **Context:** `project.godot` had `config/name="New_Game_Project"`.
@@ -81,14 +81,30 @@ the docs.
 **Decision:** *Undecided — significant design question.* Must be resolved before Phase 4
 (Combat) because it shapes the combat orchestration layer (not the damage math, which is
 model-agnostic).
-**Blocking:** Phase 4 (Combat).
+**Blocking:** Phase 09 (Combat).
 
-## D-008 — Localization backing format: CSV vs. PO  — **Open**
-**Context:** `vi`/`en` from the foundation, wrapped by a `Localization` service.
-**Options:** (a) Godot CSV translations; (b) gettext PO.
-**Decision:** *Undecided.* Either works behind the service wrapper; lean CSV for
-simplicity.
-**Blocking:** Phase 1/18 (whenever the first real strings land).
+## D-008 — Localization backing format: CSV vs. PO  — **Accepted** (resolved 2026-10-03, Phase 01)
+**Context:** `vi`/`en` from the foundation, wrapped by a thin `Localization` service.
+Phase 01 introduces the first real user-facing strings (main menu), so this had to be
+resolved.
+**Options:** (a) Godot CSV translations (one row per key, one column per locale, imported
+to `.translation`); (b) gettext PO (one file per locale).
+**Decision:** **(a) Godot CSV translations.** Rationale:
+- **Diff-friendly:** one `locale/aetheria.csv` with columns `keys,en,vi` reviews cleanly
+  in git; PO's per-locale files duplicate structure and are noisier to review.
+- **Authoring:** a single table is easy for a bilingual author to fill; keys and both
+  languages sit side by side.
+- **Native support:** Godot imports CSV → `.translation` and serves it via
+  `TranslationServer`; no third-party tooling.
+- **Sufficiency:** our near-term needs are key→string lookup with simple
+  `{placeholder}` substitution. PO's advanced plural/context machinery is not needed yet.
+- **Revisit trigger:** if we later need rich plural rules or translator-tool workflows,
+  reconsider PO (new ADR, don't silently swap).
+**Implementation:** the `Localization` autoload wraps the backing store so call sites use
+stable `tr(key)` / `tr_args(key, {...})` regardless of format; swapping CSV→PO later would
+not change call sites. Missing-key behavior: return the key itself and `push_warning` in
+dev (documented in `docs/TEST_PLAN.md` / `DEBUGGING.md`), never crash.
+**Blocking (resolved):** Phase 01 (foundation strings) and Phase 24 (full content sweep).
 
 ## D-009 — Local headless Godot execution is unavailable to the AI agent  — **Accepted / documented limitation** (2026-10-03)
 **Context:** During the Phase 0 foundation fix, the AI agent could not find or invoke a
@@ -246,6 +262,37 @@ Both still need Godot on PATH to actually run (D-009); where absent they no-op a
 (D-012) remains authoritative.
 **Consequence:** `run-tests-on-save.json` now runs the parse checker; a new
 `run-full-tests-on-task.json` (PostTaskExec) runs the suite. No complex automation added.
+
+## D-017 — Phase 01 Core autoloads (the singleton budget)  — **Accepted** (2026-10-03, Phase 01)
+**Context:** Phase 01 needs cross-cutting runtime services. The autoload budget
+(`.kiro/steering/03-architecture.md`) requires each one to be justified. Only services the
+Phase-1 boot path actually needs are added now.
+**Decision — 5 autoloads, each with a single responsibility:**
+- **EventBus** (`src/infrastructure/event_bus.gd`) — global cross-system notification
+  (signals only). Exists so emitters (SceneRouter, menu, localization) don't reference
+  listeners. Not state, not logic. Needed now by the transition + language-change flow.
+- **GameState** (`src/infrastructure/game_state.gd`) — the application lifecycle state
+  machine + runtime session state (phase, session_active, run_id, current world/map/scene
+  ids). Single source of truth for "where in the app are we". Separate from EventBus
+  (notification) and SceneRouter (scene mechanics) because it owns authoritative session
+  state, nothing else. No disk I/O (exposes to_dict/from_dict for a future SaveService).
+- **Localization** (`src/infrastructure/localization.gd`) — key→string lookup (vi/en) +
+  language switching. Separate service so call sites stay stable behind `t()`/`t_args()`
+  regardless of backing format (D-008). Needed now by the main menu.
+- **InputService** (`src/infrastructure/input_service.gd`) — semantic input intent +
+  input-gating ownership (context stack UI_MODAL > MENU > GAMEPLAY). Separate from
+  gameplay so physical-device details never leak into gameplay/UI. Needed now so the menu
+  and first-scene own input correctly.
+- **SceneRouter** (`src/infrastructure/scene_router.gd`) — the single scene/map transition
+  entry point. Separate from GameState (it owns *how* to move, not session truth) and from
+  gameplay (it does not decide *why*). Needed now for menu → first scene.
+**Explicitly NOT added yet:** `Config`, `RNG`, `SaveService`. No Phase-1 use case requires
+them: there is no gameplay randomness, no on-disk save, and the only config needed
+(language, main scene) is already covered by Localization + `project.godot`. They will be
+added by the phase that first needs them, each with its own justification — avoiding
+speculative singletons (`§19`, `§25`, `§38`).
+**No God object:** there is no GameManager/MasterManager; `Main` (bootstrap) only
+sequences these services.
 
 ---
 

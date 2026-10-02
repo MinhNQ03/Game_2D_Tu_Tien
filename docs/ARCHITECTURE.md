@@ -4,12 +4,23 @@
 > `.kiro/steering/03-architecture.md`; this document explains the *why* and the shape.
 >
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
-> (clearly labelled), not an existing tree. **CURRENT STATE (2026-10-03):** the repo has
-> a bootable, non-gameplay bootstrap — `main.tscn` (root `Main`, script
-> `src/bootstrap/main.gd`, children `Systems`/`World`/`UI`), a custom test runner
-> (`tests/run_tests.gd` + `tests/framework/`), a smoke test, a project-wide parse checker
-> (`tools/parse_check.gd`), and CI (`.github/workflows/ci.yml`). No gameplay, no
-> autoloads, no domain/data/presentation systems exist yet — those are TARGET.
+> (clearly labelled), not an existing tree.
+>
+> **CURRENT STATE (Phase 01, 2026-10-03):** the repo has a bootable, non-gameplay Core
+> runtime skeleton:
+> - Bootstrap scene `main.tscn` (root `Main`, script `src/bootstrap/main.gd`, children
+>   `Systems`/`World`/`UI`); `Main` only coordinates boot and wiring.
+> - 5 infrastructure autoloads (D-017): `EventBus`, `GameState` (lifecycle + session),
+>   `Localization` (vi/en), `InputService` (semantic intent + gating), `SceneRouter`
+>   (single transition entry).
+> - A localized main-menu shell (`src/presentation/menus/`) and a non-gameplay first-scene
+>   shell (`src/presentation/scenes/prologue_shell`).
+> - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`.
+> - Custom test runner + framework (`tests/`), parse checker (`tools/parse_check.gd`), CI.
+>
+> **Not yet present (TARGET):** any gameplay/domain/data system (player, combat, character,
+> sect, …), `Config`/`RNG`/`SaveService` autoloads, persistence, and content Resources.
+> Those are the TARGET sections below.
 
 ## 1. Goals
 
@@ -109,9 +120,13 @@ that is the premature abstraction `.kiro/steering/04-coding-standards.md` forbid
 
 ## 7. Autoloads (the singleton budget)
 
-Added only when first needed, each justified in `docs/DECISIONS.md`:
-`EventBus`, `GameState`, `SceneRouter`, `Localization`, `SaveService`, `Config`, `RNG`.
-Everything else is a node in the tree or a Resource.
+Added only when first needed, each justified in `docs/DECISIONS.md`.
+- **[exists, Phase 01, D-017]** `EventBus`, `GameState`, `Localization`, `InputService`,
+  `SceneRouter`.
+- **[TARGET, added when first needed]** `SaveService` (Phase 23), `Config` / `RNG` (when a
+  gameplay system first requires them — e.g. seeded combat/world-sim RNG).
+
+Everything else is a node in the tree or a Resource. There is no catch-all GameManager.
 
 ## 8. Folder layout — TARGET (grown incrementally)
 
@@ -122,15 +137,15 @@ Everything else is a node in the tree or a Resource.
 res://
   main.tscn                      # [exists] bootstrap scene (Main/Systems/World/UI)
   src/
-    bootstrap/        main.gd                              # [exists]
-    infrastructure/   event_bus.gd  localization.gd  scene_router.gd
-                      config.gd  rng.gd  logger.gd
-    persistence/      save_service.gd  save_migrations/
-    domain/           combat/  progression/  cultivation/  quest/  story/
-    gameplay/         entities/  components/  maps/  spawning/
-    presentation/     ui/  hud/  menus/  fx/
+	bootstrap/        main.gd                              # [exists]
+	infrastructure/   event_bus.gd  localization.gd  scene_router.gd
+					  config.gd  rng.gd  logger.gd
+	persistence/      save_service.gd  save_migrations/
+	domain/           combat/  progression/  cultivation/  quest/  story/
+	gameplay/         entities/  components/  maps/  spawning/
+	presentation/     ui/  hud/  menus/  fx/
   data/               items/ skills/ enemies/ bosses/ techniques/
-                      pets/ realms/ quests/ dialogue/ maps/ chapters/
+					  pets/ realms/ quests/ dialogue/ maps/ chapters/
   assets/             sprites/ tiles/ ui/ audio/ fonts/
   locale/             vi.* en.*            # translation tables
   tools/              parse_check.gd                       # [exists] CI tooling

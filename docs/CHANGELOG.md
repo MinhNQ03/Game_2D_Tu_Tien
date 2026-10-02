@@ -8,6 +8,36 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Phase 01 Core Framework (runtime skeleton, no gameplay)
+- **Lifecycle + session:** `GameState` autoload — explicit lifecycle state machine
+  (`BOOT→INITIALIZING→READY→MENU→STARTING_SESSION→RUNNING→TRANSITIONING/PAUSED`), runtime
+  session state (run_id, current world/map/scene ids), intent-revealing methods, illegal
+  transitions rejected loudly, `to_dict/from_dict` seam, no disk I/O, no presentation refs.
+- **EventBus** autoload — minimal cross-system signals for Phase 1 only (boot, session,
+  scene transition, language). Emitters never reference listeners.
+- **Localization** autoload — vi/en via a CSV table (`locale/aetheria.csv`), `t()`/`t_args()`
+  with `{placeholder}` substitution, `set_language/get_language`, missing-key returns the
+  key + warns. Backing format decided (D-008: CSV).
+- **InputService** autoload — semantic input intent over named InputMap actions + input
+  gating ownership (context stack UI_MODAL > MENU > GAMEPLAY). No physical-key leakage.
+- **SceneRouter** autoload — the single scene-transition entry point; swaps content under
+  `Main/World`, guards duplicate/stale/invalid/leak, explicit success/failure, records
+  location in GameState. Keeps map strategy open (D-003).
+- **Semantic InputMap** in `project.godot`: move_up/down/left/right, interact, attack,
+  skill_1..4, dodge, open_menu, pause.
+- **Presentation shells:** localized main menu (New Game / Quit; Load Game disabled) and a
+  non-gameplay first-scene (`prologue_shell`) proving router + gamestate + input ownership.
+- **Bootstrap** `main.gd` rewired as a thin coordinator (BOOT → MENU → New Game → first
+  scene) — not a God object.
+- **Autoloads justified** in `DECISIONS.md` D-017 (5 autoloads; Config/RNG/SaveService
+  deliberately deferred). **D-008 Accepted** (CSV).
+- **Roadmap reordered** to 35 phases (00–34): Character/Relationship/Sect/Faction/World-Sim
+  moved to 04–08 (before Combat 09); Save→23; Multiplayer→32–34. Phase-number references in
+  `DECISIONS.md` blocking lines updated (D-003→03, D-005→23, D-007→09, D-008→01/24).
+- **Tests:** `tests/unit/core/` (GameState, SceneRouter, EventBus, Localization,
+  InputService) + `tests/integration/test_boot_flow.gd` (boot→menu→new game→first scene).
+- No gameplay, no networking.
+
 ### 2026-10-03 — Phase 0 CLOSED (documentation close-out, no gameplay)
 - **Foundation hardening verified by CI.** GitHub Actions job "Foundation gates
   (Godot 4.7)" ran on commit `651c16f` with `conclusion=success` (confirmed via the
