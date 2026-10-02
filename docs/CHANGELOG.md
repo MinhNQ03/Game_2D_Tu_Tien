@@ -8,6 +8,21 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Phase 0 CLOSED (documentation close-out, no gameplay)
+- **Foundation hardening verified by CI.** GitHub Actions job "Foundation gates
+  (Godot 4.7)" ran on commit `651c16f` with `conclusion=success` (confirmed via the
+  GitHub check-runs API).
+- **Runtime boot smoke — verified by CI:** project boots `application/run/main_scene`,
+  `Main._ready()` runs, clean exit (`--quit-after 2`).
+- **Parse check — verified by CI:** `tools/parse_check.gd` found no GDScript parse errors.
+- **Headless test suite — verified by CI:** `tests/run_tests.gd` ran green (`RESULT: PASS`).
+- **Phase 0 → READY FOR PHASE 1.** `docs/PHASE_0_EXIT_CHECKLIST.md` all blocking items
+  [x]; `docs/ROADMAP.md` Phase 0 marked CLOSED, Phase 1 (Core) is next and not started.
+- **Docs synced to verified state:** D-012 marked Accepted & verified; D-009 clarified
+  (local-agent limitation only, CI ran Godot for real); removed "pending CI"/"first green
+  run" wording across ROADMAP/checklist.
+- No gameplay, no Phase 1 work.
+
 ### Changed / Added — 2026-10-03 — Foundation hardening (Phase 0, no gameplay)
 - **Smoke test now really boots:** `tests/smoke/test_boot.gd` adds Main to the live
   SceneTree (runs `_ready`), asserts `is_inside_tree` + Systems/World/UI + bootstrap

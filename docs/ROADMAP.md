@@ -8,11 +8,12 @@
 > review protocol (`.kiro/steering/08-ai-review-protocol.md`). "Build passes" is never
 > an exit criterion by itself.
 >
-> **28 phases (0–27).** Phase 0 is nearly complete (foundation fix 2026-10-03); the core
-> social/world systems (Character/Relationship/Sect/Faction/World-Sim) are sequenced as
-> Phases 11–15, before the NPC/Dialogue/Quest/Story phases that depend on them.
+> **28 phases (0–27).** Phase 0 (Foundation) is **CLOSED** — verified green by CI on
+> `651c16f` (2026-10-03). The current/next phase is **Phase 1 — Core** (not started). The
+> core social/world systems (Character/Relationship/Sect/Faction/World-Sim) are sequenced
+> as Phases 11–15, before the NPC/Dialogue/Quest/Story phases that depend on them.
 
-## Phase 0 — Foundation *(current)*
+## Phase 0 — Foundation *(CLOSED — CI-verified 2026-10-03)*
 Documentation, standards, process. **Done in the 2026-10-03 foundation fix:** project
 renamed → `Aetheria` (D-006); 2D config cleaned, 3D physics removed (D-002); test
 framework decided = custom runner (D-004); bootable bootstrap `main.tscn` (D-010); real
@@ -21,13 +22,14 @@ smoke test + runner; core social/world system design docs (D-011); CI added (D-0
 D-004, D-006) or explicitly deferred with triggers (D-003/005/007/008); `tests/` has a
 real runner + a passing smoke test; project boots to a real main scene; CI runs the
 suite headless (checkout → Godot 4.7 → import → parse check → runtime boot → tests).
-**Status:** foundation hardening complete and all gates authored. The authoritative
-green-CI confirmation must be read from GitHub Actions (the agent cannot run Godot or
-Actions locally — D-009; everything was validated statically via GDScript diagnostics).
-The gating checklist lives in `docs/PHASE_0_EXIT_CHECKLIST.md` — Phase 0 is READY FOR
-PHASE 1 once that checklist's CI item is confirmed green on GitHub.
+**Status: MET — Phase 0 CLOSED.** GitHub Actions executed the full pipeline on commit
+`651c16f` with `conclusion=success` (real Godot 4.7: import + parse check + runtime boot +
+headless test suite). Full checklist with evidence: `docs/PHASE_0_EXIT_CHECKLIST.md`
+(status READY FOR PHASE 1). Decisions D-002/D-004/D-006 Accepted; D-012 verified; the
+remaining Open decisions (D-003/005/007/008) are deferred with triggers and do not block
+Phase 0.
 
-## Phase 1 — Core
+## Phase 1 — Core *(NEXT — not started)*
 Infrastructure autoloads as needed: `EventBus`, `GameState`, `Config`, `RNG`,
 `SceneRouter`, `Localization`, `SaveService` (stubs where appropriate). Input map.
 Main-menu → new-game → first scene boot path.

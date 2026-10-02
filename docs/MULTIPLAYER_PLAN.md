@@ -1,8 +1,9 @@
 # MULTIPLAYER_PLAN — Aetheria
 
 > **Stage 2, future.** This document describes the architectural zones we keep clean now
-> so multiplayer can be added later **without a rewrite**. It is a plan, not a design to
-> implement.
+> so that introducing multiplayer later is **designed to minimize changes to core
+> gameplay/domain code** — a design goal, not a guarantee that no changes will be needed.
+> It is a plan, not a design to implement.
 >
 > **No networking code and no networking dependency is added in Stage 1.** Offline is the
 > source of truth for all gameplay until the offline game is complete and stable
@@ -50,8 +51,9 @@ sim):
 | **Presentation** | each client, local only | no | no (never) |
 
 Keeping these tiers separate **now** (offline) is what lets a server own the persistent
-tier and clients own only presentation **later**, with no rewrite. The save snapshot
-(`docs/SAVE_FORMAT.md`) already serializes only the persistent tier.
+tier and clients own only presentation **later**, aiming to keep core-code changes small
+when multiplayer is introduced. The save snapshot (`docs/SAVE_FORMAT.md`) already
+serializes only the persistent tier.
 
 ## 3. Why the current design already helps
 

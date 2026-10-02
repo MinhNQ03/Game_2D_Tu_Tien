@@ -334,7 +334,8 @@ The seams already named above — **combat command** (intent), **player state**,
 state**, plus the core social/world state (**character**, **relationship**, **sect**,
 **faction**, **world-event/sim**) — are kept serializable and presentation-free, split
 into persistent/runtime/presentation tiers, so Stage 2 can add authority and replication
-without rewriting these systems. Detail in `docs/MULTIPLAYER_PLAN.md`.
+with minimal changes to these systems (a design goal, not a guarantee). Detail in
+`docs/MULTIPLAYER_PLAN.md`.
 
 ## 6. Open design questions
 

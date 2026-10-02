@@ -90,9 +90,9 @@ simulation ticks rather than real time. Measure before optimizing.
 ## 8. Multiplayer readiness
 
 The relationship graph is exactly the kind of **authoritative world state** a server
-would own. Keeping it a serializable domain store (not scattered on nodes) is why Stage 2
-can replicate it without a rewrite. Added to `docs/MULTIPLAYER_PLAN.md`. No networking
-now.
+would own. Keeping it a serializable domain store (not scattered on nodes) is intended to
+let Stage 2 replicate it with minimal changes to core code. Added to
+`docs/MULTIPLAYER_PLAN.md`. No networking now.
 
 ## 9. Testing (high-risk once implemented)
 

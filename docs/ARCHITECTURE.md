@@ -13,9 +13,10 @@
 
 ## 1. Goals
 
-Clean, maintainable, extensible, performant, and able to grow a multiplayer layer later
-*without* a rewrite. We achieve this with layered separation, composition, event-driven
-coupling, and data-driven content.
+Clean, maintainable, extensible, performant, and structured so a multiplayer layer can be
+added later with **minimal changes to core gameplay/domain code** (a design goal, not a
+guarantee). We pursue this with layered separation, composition, event-driven coupling,
+and data-driven content.
 
 ## 2. Layers
 

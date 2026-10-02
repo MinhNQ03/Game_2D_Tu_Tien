@@ -100,16 +100,20 @@ opened in the editor on this machine, so Godot exists but is not on the agent's 
 therefore cannot produce a local test-run log. This is stated honestly rather than
 claiming a pass that did not happen (`.kiro/steering/08-ai-review-protocol.md`:
 build/run-pass is never assumed).
-**Mitigations:**
-- The GDScript language server IS available; all new scripts were validated with zero
-  errors/warnings (static verification).
-- CI (GitHub Actions, D-012) is the authoritative headless run: it installs Godot 4.7
-  and runs `godot --headless --path . -s res://tests/run_tests.gd`.
-- **Manual local run** (for the developer who has Godot installed):
-  `godot --headless --path . -s res://tests/run_tests.gd` — expect `RESULT: PASS` and
-  exit code 0.
+**Scope of this limitation (important — it is LOCAL only):** this is about the AI agent's
+shell, **not** about the project being unverified. Godot *has* run against this project
+for real — in CI. See D-012: the GitHub Actions job ran Godot 4.7 headless on commit
+`651c16f` with `conclusion=success`. So:
+- **Local AI agent:** cannot invoke a Godot binary → cannot produce a local run log.
+- **GitHub Actions:** ran Godot 4.7 successfully (import + parse check + runtime boot +
+  test suite). This is the authoritative verification and it has passed.
+**Mitigations (now realized, not pending):**
+- GDScript language server validated all scripts (zero errors/warnings) — static check.
+- CI (D-012) is the authoritative headless run and has executed green on `651c16f`.
+- **Manual local run** (for a developer who has Godot installed):
+  `godot --headless --path . -s res://tests/run_tests.gd` — expect `RESULT: PASS`, exit 0.
 **Action for maintainer:** add Godot 4.7 to PATH (or set a `GODOT` env var) if you want
-the agent to run tests locally in future.
+the agent to run tests locally in future; otherwise CI remains the verification path.
 
 ## D-010 — Bootstrap main-scene structure (Main / Systems / World / UI)  — **Accepted** (2026-10-03)
 **Context:** Phase 0 needs a real, bootable `main.tscn`. The example structure suggested
@@ -133,15 +137,22 @@ New entities = data + content, no core rewrite.
 `SECT_SYSTEM`, `WORLD_SIMULATION`), schema additions, flow + roadmap + multiplayer updates.
 No gameplay code.
 
-## D-012 — Minimal GitHub Actions CI  — **Accepted** (2026-10-03)
+## D-012 — Minimal GitHub Actions CI  — **Accepted & verified** (2026-10-03)
 **Context:** Repo had no CI. Phase 0 wants automated headless checks.
-**Decision:** Add `.github/workflows/ci.yml` that checks out, installs Godot **4.7**
-(matching `project.godot` feature tag), imports the project, and runs the custom headless
-runner, failing the job on non-zero exit. It does not swallow errors.
-**Verification note:** the agent cannot run GitHub Actions locally (D-009); the workflow
-YAML is authored to the documented `godot-ci` conventions. First real validation happens
-on push to GitHub. Manual check instructions are in the workflow comments and
-`docs/TEST_PLAN.md`.
+**Decision:** `.github/workflows/ci.yml` checks out, installs Godot **4.7** (matching
+`project.godot` feature tag), imports the project, runs a project-wide GDScript parse
+check, a runtime boot smoke (`--quit-after 2`), and the custom headless test runner —
+failing the job on any non-zero exit. It does not swallow errors (no `|| true`).
+**Verification (actual, not projected):** the workflow ran on commit `651c16f`. The job
+"Foundation gates (Godot 4.7)" completed with `conclusion=success` (confirmed via the
+GitHub check-runs API). All gates executed on real Godot 4.7:
+- import — ran, no failure
+- GDScript parse check (`tools/parse_check.gd`) — ran, no parse errors
+- runtime boot smoke — booted `application/run/main_scene`, ran `Main._ready()`, exited clean
+- headless test suite (`tests/run_tests.gd`) — ran, `RESULT: PASS`
+**Status:** GitHub Actions is the automated **authoritative** verification for this
+project. (The AI agent still cannot run Godot in its own shell — D-009 — but that is a
+local-agent limitation, not a gap in CI verification.)
 
 ## D-013 — Document-review contradictions found during Phase 0 fix  — **Accepted / tracked** (2026-10-03)
 **Context:** Mandatory cross-document review (`.kiro/steering` + `docs`).

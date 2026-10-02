@@ -84,8 +84,9 @@ Design docs: `docs/CHARACTER_SYSTEM.md`, `docs/RELATIONSHIP_SYSTEM.md`,
 ## Multiplayer-ready seams (keep clean now, wire later)
 
 Keep these independently serializable and free of presentation coupling so Stage 2 can
-add authority/replication without a rewrite: player state, combat commands, world
-state, inventory, progression, authoritative state, persistence, **character state,
+add authority/replication with minimal changes to core code: player state, combat
+commands, world state, inventory, progression, authoritative state, persistence,
+**character state,
 relationship state, sect state, faction state, world-event/sim state** (in
 persistent/runtime/presentation tiers). See `docs/MULTIPLAYER_PLAN.md`. **No networking
 code or dependency in Stage 1.**
