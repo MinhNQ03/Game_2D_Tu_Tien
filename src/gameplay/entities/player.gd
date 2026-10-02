@@ -37,7 +37,21 @@ var _input: Node = null
 
 
 func _ready() -> void:
-	_stats.validate()
+	# Fail CLOSED on invalid/missing authored stats: a broken scene must not quietly run as
+	# if valid (`04-coding-standards.md`: fail loud; no silent-fallback as the normal path).
+	# `validate()` already reports loudly; here we stop wiring and disable processing so the
+	# entity is inert rather than half-initialized. Valid `.tres` files take the normal path.
+	if not _stats.validate():
+		set_physics_process(false)
+		push_error("[player] invalid StatBlock; player disabled (fail-closed)")
+		return
+
+	# Collision wiring from the single source of truth (`CollisionLayers`), not scene magic
+	# numbers: the player occupies the PLAYER layer and collides with WORLD (walls) and the
+	# DUMMY body. Setting it here means the named constants are authoritative at runtime.
+	collision_layer = CollisionLayers.PLAYER
+	collision_mask = CollisionLayers.WORLD | CollisionLayers.DUMMY
+
 	_health.initialize(_stats.get_max_hp())
 	_movement.setup(self)
 
@@ -50,12 +64,12 @@ func _ready() -> void:
 	_input = get_node_or_null("/root/InputService")
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	# No input service (e.g. an isolated unit harness) → no movement; deterministic.
 	if _input == null:
 		return
 	var intent: Vector2 = _input.call("get_move_vector")
-	_movement.apply_intent(intent, _stats.get_move_speed())
+	_movement.apply_intent(intent, _stats.get_move_speed(), delta)
 
 	# Edge-triggered attack INTENT. The service gates this on GAMEPLAY context, so an open
 	# menu/modal can never leak an attack to the world.

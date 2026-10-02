@@ -21,7 +21,7 @@
 - `SAVE_VERSION_CURRENT` is a constant in `SaveService`.
 - On load: if `save_version < current`, run ordered migrations
   `v(n) → v(n+1) → … → current`. Migrations live in `src/persistence/save_migrations/`.
-- A migration is pure data transformation + a test proving `old → new` works. Phase 17
+- A migration is pure data transformation + a test proving `old → new` works. Phase 23
   demonstrates a v1→v2 migration as its exit criterion (`docs/ROADMAP.md`).
 - Unknown/newer `save_version` (from a future build) → refuse to load with a clear
   localized message, don't corrupt it.
@@ -103,7 +103,7 @@ change requiring a migration.
 
 ## 4. Serialization mechanism (decision pending — D-005)
 
-Options to decide in `DECISIONS.md` before Phase 17:
+Options to decide in `DECISIONS.md` before Phase 23:
 - **JSON** (`JSON.stringify` over plain dicts) — human-readable, easy to debug/migrate,
   version-friendly. Default lean.
 - **Godot `Resource`/binary (`.tres`/`.res`)** — convenient but couples save to class

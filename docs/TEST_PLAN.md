@@ -4,7 +4,11 @@
 > Goal: **not** blind 100% coverage — strong coverage of high-risk logic, cheap smoke
 > coverage of the whole flow, and every fixed bug pinned by a regression test.
 >
-> Status: strategy defined; `tests/` scaffold created; no gameplay to test yet.
+> Status: strategy defined; runner + framework in place. Through Phase 02 the suite covers
+> the core framework (lifecycle/scene-router/input/localization/event-bus) and the Player
+> core (stats/health/movement/damage + player↔dummy integration), plus two dedicated
+> real-application E2E processes (app-flow and player-flow). Gameplay beyond the Player
+> sandbox is added phase by phase.
 
 ## 1. Test layers
 
@@ -185,9 +189,23 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
   (Player + Dummy + walls + camera + HUD + the return-to-menu contract) WITHOUT booting it
   into the tree (so it never mutates the shared InputService).
 - `tests/e2e/run_player_flow.gd` + `tests/e2e/player_flow_case.gd` — **dedicated isolated
-  process**: boots the real app, New Game → Player Sandbox, drives real movement, resolves
-  the real coordinator attack (bidirectional damage), kills the dummy deterministically
-  (died once; dead = terminal), and tears down with no orphan. Its own CI gate.
+  process**: boots the real app, New Game → Player Sandbox, then drives the REAL semantic
+  input boundary — `Input.action_press("move_right")` → `InputService` → Player movement,
+  and `Input.action_press("attack")` → Player `attack_requested` → sandbox coordinator →
+  `DamageRules` (bidirectional damage). Includes an input-gating regression (attack does
+  NOT fire in MENU context, DOES fire in GAMEPLAY), deterministic repeated-hit death
+  (died once per life), and a no-orphan / no-duplicate-autoload teardown that releases all
+  pressed actions. Its own CI gate. It does NOT shortcut through `MovementComponent.apply_intent`
+  or `resolve_player_attack()` (those direct calls are only in unit/integration layers).
+
+**Phase 02 hardening added:**
+- `test_player_components.gd` — collision wiring from the `CollisionLayers` single source
+  of truth (Player on PLAYER + collides WORLD|DUMMY; Dummy on DUMMY, mask 0) and a
+  **fail-closed** check (a Player with a missing/invalid StatBlock disables its physics
+  instead of half-running).
+- `test_health_component.gd` — death/reset lifecycle: no duplicate `died` within a life;
+  re-initialize begins a new life so the entity can die again (one `died` PER LIFE), matching
+  `TrainingDummy.reset_dummy()`.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push. **Note:** these tests were authored and statically validated (GDScript

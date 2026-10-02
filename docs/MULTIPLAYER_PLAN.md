@@ -95,9 +95,9 @@ movable later.
 - No splitting state for network ownership yet — only keeping it serializable and
   centralized.
 
-## 6. What Phase 22 (Multiplayer preparation) will actually do
+## 6. What Phase 32 (Multiplayer readiness audit) will actually do
 
-Research + readiness only (`docs/ROADMAP.md` Phase 22):
+Research + readiness only (`docs/ROADMAP.md` Phase 32):
 - Validate each seam above is clean (serializable, presentation-free, domain-authored).
 - Choose a model to investigate (likely server-authoritative for a co-op/PvE fantasy
   world; the exact model is undecided and will be a `DECISIONS.md` entry).

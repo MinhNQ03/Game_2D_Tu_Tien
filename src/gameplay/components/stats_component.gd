@@ -22,18 +22,19 @@ class_name StatsComponent
 @export var stat_block: StatBlock = null
 
 
-## Validates the assigned StatBlock at the boundary. Call from the owner's _ready(). Fails
-## loudly in dev (assert + push_error) rather than silently running with bad/missing data
-## (`04-coding-standards.md` error handling). Returns true when usable.
+## Validates the assigned StatBlock at the boundary. Call from the owner's _ready(). Reports
+## loudly via `push_error` and returns false on missing/invalid data; the OWNER is expected
+## to fail closed on a false result (`Player`/`TrainingDummy` disable themselves). We do NOT
+## `assert()`/abort here: aborting the process would prevent the owner from degrading
+## gracefully and would differ between debug/release builds. Loud error + a checked return
+## value is the robust fail-loud-and-closed contract (`04-coding-standards.md`).
 func validate() -> bool:
 	if stat_block == null:
 		push_error("[stats] no StatBlock assigned")
-		assert(false, "StatsComponent requires a StatBlock")
 		return false
 	var errors := stat_block.validation_errors()
 	if not errors.is_empty():
 		push_error("[stats] invalid StatBlock: %s" % str(errors))
-		assert(false, "StatsComponent StatBlock invalid: %s" % str(errors))
 		return false
 	return true
 

@@ -37,7 +37,14 @@ static func resolve_velocity(intent: Vector2, speed: float) -> Vector2:
 ## `resolve_velocity()` and advances it with `move_and_slide()` (collision-aware; never a
 ## raw `position += velocity * delta` teleport). Returns the body's post-slide velocity.
 ## Call from the owner's `_physics_process` only.
-func apply_intent(intent: Vector2, speed: float) -> Vector2:
+##
+## `_delta` is part of the Phase-02 contract but intentionally UNUSED: `move_and_slide()`
+## already integrates against Godot's fixed physics step internally, so multiplying speed
+## by `delta` here would double-apply the timestep. The parameter is kept so the call site
+## reads as a normal per-physics-frame call and so a future movement model that *does* need
+## the frame time (e.g. manual acceleration curves) can use it without changing the
+## signature callers depend on (the multiplayer intent boundary, `docs/MULTIPLAYER_PLAN.md`).
+func apply_intent(intent: Vector2, speed: float, _delta: float = 0.0) -> Vector2:
 	if body == null:
 		push_error("[movement] apply_intent with no body assigned")
 		return Vector2.ZERO

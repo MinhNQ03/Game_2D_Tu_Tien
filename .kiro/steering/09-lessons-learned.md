@@ -138,3 +138,21 @@
   signal last.
 - **Fixed:** Phase 02 follow-up. `player_sandbox.gd` + `prologue_shell.gd` capture + null-check
   the viewport and mark input handled before emitting the return-to-menu signal.
+
+## L-014 — Spec/implementation/doc drift (contract words that don't match code)
+- **Symptom (Phase 02 hardening found several):** `apply_intent` contract said `(intent,
+  speed, delta)` but code was `(intent, speed)`; HealthComponent said "`died` once, ever"
+  while `reset_dummy()` could die again; `CollisionLayers` constants existed but scenes
+  hard-coded `1/2/4/5`; docs referenced old phase numbers (11–15, Phase 17) after a
+  renumber; a test called `MovementComponent.apply_intent`/`resolve_player_attack()`
+  directly and claimed to prove the "real player flow".
+- **Rule:** **A contract/comment/doc that contradicts the code is a bug.** When you write
+  an invariant or signature in a docstring/spec, the code must match it (or change the
+  words). A named-constant "source of truth" must actually be consumed at runtime (add a
+  test that fails on drift). An E2E that claims to test a boundary must drive THAT boundary
+  (semantic input), not a shortcut. On any renumber/rename, grep the whole repo for the old
+  value.
+- **Also:** do not `assert()`-abort inside a boundary validator used for fail-closed
+  behaviour — aborting the process prevents the owner from degrading gracefully and differs
+  between debug/release. Use loud `push_error` + a checked return; the OWNER fails closed.
+- **Fixed:** Phase 02 final hardening (contract alignment + source-of-truth tests + doc sync).

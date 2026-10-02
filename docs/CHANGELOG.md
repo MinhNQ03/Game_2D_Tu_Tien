@@ -8,6 +8,35 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Phase 02 Final Hardening (contract/invariant/doc consistency, no new scope)
+- **Semantic-input E2E (real boundary):** the player E2E (`tests/e2e/player_flow_case.gd`)
+  now drives movement and attack through the actual InputMap → `InputService` → Player
+  path (`Input.action_press("move_right")` / `Input.action_press("attack")`), not direct
+  `MovementComponent.apply_intent` / `resolve_player_attack()` calls. Added an input-gating
+  regression (attack does NOT fire in MENU context, DOES in GAMEPLAY) and a teardown that
+  releases pressed actions + asserts no orphan / no duplicate autoload / legal GameState.
+- **Collision single source of truth:** Player / Training Dummy / sandbox walls now set
+  `collision_layer`/`collision_mask` from `CollisionLayers.*` at runtime (Player =
+  PLAYER + mask WORLD|DUMMY; Dummy = DUMMY, mask 0; walls = WORLD). Added an integration
+  test that fails if the constants and runtime wiring drift.
+- **MovementComponent contract:** `apply_intent(intent, speed, _delta := 0.0)` — the
+  Phase-02 contract's `delta` is explicit but intentionally unused (`move_and_slide` owns
+  physics integration; no `velocity * delta`). Player passes `delta`; tests updated.
+- **Health death/reset invariant made consistent:** reworded from "`died` once, ever" to
+  "`died` once PER LIFE (per `initialize()` cycle)", matching `TrainingDummy.reset_dummy()`
+  (a new life can die again). Added regression tests (no duplicate `died` within a life;
+  re-initialize → second-life death). No resurrection added.
+- **Stats fail-closed:** `Player._ready()` / `TrainingDummy._ready()` now branch on
+  `StatsComponent.validate()`; an invalid/missing StatBlock reports loudly and the entity
+  stays inert (Player disables physics) instead of half-running. `validate()` no longer
+  `assert()`-aborts (loud `push_error` + checked return is the robust fail-loud-and-closed
+  contract). Added a fail-closed test.
+- **Docs sync:** `01-product` core-systems phases 11–15 → 04–08; `SAVE_FORMAT` migration
+  references Phase 17 → 23; `TEST_PLAN` status line updated to the post-Phase-02 reality.
+- No new scope: no combat system, no AI, no Character/Save/Inventory/networking, no new
+  autoload. D-003 / D-005 / D-007 remain Open. Sandbox remains the temporary Phase-02
+  validation scene.
+
 ### 2026-10-02 — Phase 02 Player Core (first playable; no combat system)
 - **Player entity (composition, D-020):** `CharacterBody2D` under `src/gameplay/entities/`
   composed of `StatsComponent` + `HealthComponent` + `MovementComponent`

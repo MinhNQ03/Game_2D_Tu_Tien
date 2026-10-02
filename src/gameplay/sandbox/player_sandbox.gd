@@ -35,6 +35,14 @@ func _ready() -> void:
 	_input = get_node_or_null("/root/InputService")
 	_bus = get_node_or_null("/root/EventBus")
 
+	# Boundary walls occupy the WORLD collision layer from the single source of truth
+	# (`CollisionLayers`), not scene magic numbers. They are static targets, so they detect
+	# nothing (mask 0); the player's mask includes WORLD, so the player stays inside.
+	for wall in $Walls.get_children():
+		if wall is StaticBody2D:
+			wall.collision_layer = CollisionLayers.WORLD
+			wall.collision_mask = 0
+
 	if _input != null:
 		_input.call("set_gameplay_context")
 

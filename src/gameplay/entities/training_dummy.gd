@@ -22,7 +22,19 @@ signal died()
 
 
 func _ready() -> void:
-	_stats.validate()
+	# Fail CLOSED on invalid/missing authored stats (same contract as Player): do not wire
+	# health or signals on a broken scene; report loudly and stay inert. Valid `.tres` files
+	# take the normal path.
+	if not _stats.validate():
+		push_error("[dummy] invalid StatBlock; training dummy disabled (fail-closed)")
+		return
+
+	# Collision wiring from the single source of truth (`CollisionLayers`): the dummy is a
+	# solid body on the DUMMY layer; it detects nothing itself (mask 0 — it is a target, not
+	# a sensor). Authoritative at runtime, not a scene magic number.
+	collision_layer = CollisionLayers.DUMMY
+	collision_mask = 0
+
 	_health.initialize(_stats.get_max_hp())
 	_health.health_changed.connect(_on_health_changed)
 	_health.died.connect(_on_health_died)
@@ -56,7 +68,9 @@ func is_dead() -> bool:
 	return _health.is_dead()
 
 
-## Reset to full health for a fresh sandbox run (deterministic re-initialize).
+## Reset to full health for a fresh sandbox run (deterministic re-initialize). This begins
+## a NEW LIFE on the HealthComponent (`died` can fire once more for the new life — see
+## HealthComponent). It is an explicit sandbox reuse, NOT a general revive/resurrection.
 func reset_dummy() -> void:
 	_health.initialize(_stats.get_max_hp())
 

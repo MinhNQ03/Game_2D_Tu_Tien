@@ -10,9 +10,11 @@ class_name HealthComponent
 ##
 ## INVARIANTS (always true after any public call):
 ##   0 <= current_health <= max_health
-##   `died` is emitted exactly once, ever
-##   DEAD is terminal this life: no damage, no heal, no resurrection (revive is a later
-##   phase's explicit feature, not an accident of a heal call)
+##   `died` is emitted exactly ONCE PER LIFE (per initialize() cycle), never twice for the
+##     same life. `initialize()` begins a new life — a reused entity (e.g. the Training
+##     Dummy's `reset_dummy()`) can therefore die again, emitting `died` once for THAT life.
+##   DEAD is terminal within a life: no damage, no heal, no resurrection. Coming back is only
+##     possible via an explicit `initialize()` (a new life), never as a side effect of heal.
 ##
 ## Health is a RUNTIME tier (`docs/CHARACTER_SYSTEM.md` §3): not serialized as-is; a future
 ## save stores authoritative persistent data and rebuilds current health on load.
@@ -30,6 +32,11 @@ var _is_dead: bool = false
 ## Set up max + current health. `maximum` is clamped to >= 1 (an entity can't have 0 max
 ## HP). Current starts full unless `start_current` is given (then clamped into range).
 ## Emits health_changed so a freshly-wired HUD reflects the initial value.
+##
+## This BEGINS A NEW LIFE: it clears the dead flag (unless started at 0), so the next time
+## current health reaches 0 `died` fires again — once for the new life. This is how
+## `TrainingDummy.reset_dummy()` reuses the entity. It is NOT a resurrection feature; it is
+## an explicit re-initialization chosen by the owner.
 func initialize(maximum: int, start_current: int = -1) -> void:
 	_max_health = max(1, maximum)
 	var start: int = _max_health if start_current < 0 else start_current

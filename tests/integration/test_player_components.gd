@@ -8,7 +8,36 @@ extends TestCase
 ## contamination guard (shared GameState phase) therefore stays green.
 
 const PlayerScene := preload("res://src/gameplay/entities/player.tscn")
+const DummyScene := preload("res://src/gameplay/entities/training_dummy.tscn")
 const MovementScript := preload("res://src/gameplay/components/movement_component.gd")
+const CollisionLayersScript := preload("res://src/gameplay/collision_layers.gd")
+
+
+## Collision wiring must come from the CollisionLayers single source of truth (D-020 /
+## hardening). This fails if someone edits collision_layers.gd without re-wiring the
+## entities, or hard-codes a divergent layer in a scene.
+func test_collision_layers_are_wired_from_source_of_truth() -> void:
+	var player: Node = PlayerScene.instantiate()
+	var dummy: Node = DummyScene.instantiate()
+	add_to_tree(player)
+	add_to_tree(dummy)
+	await scene_tree.process_frame  # let _ready() apply the named constants
+
+	# Player is on the PLAYER layer and collides with WORLD + DUMMY.
+	assert_eq(player.collision_layer, CollisionLayersScript.PLAYER,
+		"player occupies the PLAYER layer")
+	assert_true((player.collision_mask & CollisionLayersScript.WORLD) != 0,
+		"player collides with WORLD (walls)")
+	assert_true((player.collision_mask & CollisionLayersScript.DUMMY) != 0,
+		"player collides with the DUMMY body")
+
+	# Dummy is a solid body on the DUMMY layer, detecting nothing itself.
+	assert_eq(dummy.collision_layer, CollisionLayersScript.DUMMY,
+		"dummy occupies the DUMMY layer")
+	assert_eq(dummy.collision_mask, 0, "dummy is a target, not a sensor (mask 0)")
+
+	free_node(player)
+	free_node(dummy)
 
 
 func test_player_scene_has_required_components() -> void:
@@ -26,6 +55,23 @@ func test_player_scene_has_required_components() -> void:
 	assert_eq(player.get_current_health(), 100, "starts full")
 	assert_false(player.is_dead(), "alive")
 	assert_true(player.get_attack_power() > 0, "has attack from stats")
+
+	free_node(player)
+
+
+## Fail-closed: a Player whose StatBlock is invalid/missing must NOT run as if valid. We
+## clear the StatBlock before the node enters the tree, so _ready() sees invalid stats and
+## disables physics processing instead of half-initializing.
+func test_player_fails_closed_on_missing_statblock() -> void:
+	var player: Node = PlayerScene.instantiate()
+	var stats: Node = player.get_node("StatsComponent")
+	stats.stat_block = null  # break the authored data before _ready()
+	add_to_tree(player)
+	await scene_tree.process_frame
+
+	# Physics processing is disabled (inert), proving it did not continue as a valid entity.
+	assert_false(player.is_physics_processing(),
+		"player with invalid stats disables physics (fail-closed, not half-running)")
 
 	free_node(player)
 
@@ -65,9 +111,11 @@ func test_movement_moves_body_in_tree() -> void:
 
 	mover.setup(body)
 	var start := body.global_position
-	# Apply rightward intent across a few physics frames.
+	# Apply rightward intent across a few physics frames. Pass delta (3-arg contract); it is
+	# intentionally unused by apply_intent (move_and_slide owns integration), but the call
+	# site uses the full signature the Player uses.
 	for _i in range(5):
-		mover.apply_intent(Vector2.RIGHT, 200.0)
+		mover.apply_intent(Vector2.RIGHT, 200.0, 0.016)
 		await scene_tree.physics_frame
 	assert_true(body.global_position.x > start.x, "body moved right under intent")
 

@@ -60,7 +60,7 @@
 - No sustained per-frame heap growth during combat (allocation budget ≈ flat).
 - Map transition: no leaked nodes/signals (verified by tests, not just eyeballing).
 
-These numbers are provisional until Phase 20 lets us measure on target hardware.
+These numbers are provisional until Phase 29 (Performance) lets us measure on target hardware.
 
 ## 3. How to measure (quick reference)
 

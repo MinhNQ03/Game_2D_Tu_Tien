@@ -128,3 +128,41 @@ func test_initialize_with_partial_current() -> void:
 	assert_false(h.is_full(), "not full")
 	assert_false(h.is_dead(), "alive at 25")
 	h.free()
+
+
+# --- Death/reset lifecycle (per-life "died once", not lifetime-global) --------
+
+## After death, further damage AND heal are rejected and do NOT emit a second `died`
+## within the same life (the "once per life" invariant).
+func test_no_duplicate_died_within_a_life() -> void:
+	var h := _make(40)
+	var count := {"n": 0}
+	h.died.connect(func() -> void: count["n"] += 1)
+	h.apply_damage(40)   # dies (died #1)
+	h.apply_damage(10)   # dead → rejected, no died
+	h.heal(50)           # dead → rejected, no revive, no died
+	h.apply_damage(10)   # dead → rejected, no died
+	assert_eq(count["n"], 1, "died fires exactly once for this life")
+	assert_true(h.is_dead(), "still dead; heal did not resurrect")
+	h.free()
+
+
+## A NEW LIFE via initialize() (how TrainingDummy.reset_dummy works): the entity is alive
+## again and can die once more — `died` fires exactly once PER LIFE, not once ever.
+func test_reinitialize_begins_new_life_and_can_die_again() -> void:
+	var h := _make(30)
+	var count := {"n": 0}
+	h.died.connect(func() -> void: count["n"] += 1)
+
+	h.apply_damage(30)   # life 1 death (died #1)
+	assert_true(h.is_dead())
+	assert_eq(count["n"], 1, "one died in life 1")
+
+	h.initialize(30)     # NEW LIFE: full health, alive again
+	assert_false(h.is_dead(), "alive after re-initialize (new life)")
+	assert_eq(h.get_current_health(), 30, "full health in life 2")
+
+	h.apply_damage(30)   # life 2 death (died #2 total, but one per life)
+	assert_true(h.is_dead(), "dead again in life 2")
+	assert_eq(count["n"], 2, "exactly one died per life (2 lives → 2 deaths)")
+	h.free()
