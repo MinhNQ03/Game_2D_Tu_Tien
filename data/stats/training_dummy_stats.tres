@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="StatBlock" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/stats/stat_block.gd" id="1_statblock"]
+
+[resource]
+script = ExtResource("1_statblock")
+max_hp = 60
+attack = 8
+defense = 2
+move_speed = 0.0
