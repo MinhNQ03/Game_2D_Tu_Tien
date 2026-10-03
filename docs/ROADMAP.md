@@ -15,7 +15,8 @@
 > (D-023 character core + D-024 UI hardening, both CI-verified on `7615d88`, all 9 gates
 > green, 163 tests passed / 0 failed; D-025 close-out then removed a residual
 > 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship core +
-> early character visual pipeline) is **IN PROGRESS** (D-026). Phase 06 (Sect) is NOT STARTED.
+> early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
+> all 7 gates green). Phase 06 (Sect) is NOT STARTED.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -118,7 +119,7 @@ to three un-freed `InputService` Nodes in `tests/unit/core/test_input_display_la
 unfreed `Node` pins its GDScript + native class; L-019) and fixed (`svc.free()` in each
 method). **Phase 04 is CLOSED.** Phase 05 (Relationship) is NOT STARTED.
 
-## Phase 05 — Relationship System *(IN PROGRESS — D-026)*
+## Phase 05 — Relationship System *(CLOSED — CI-verified 2026-10-03 on `21ef622`, D-026)*
 Serializable relationship graph (`docs/RELATIONSHIP_SYSTEM.md`): `RelationshipEdge` with
 affinity/trust/respect/fear/rivalry/debt + type; Char↔Char, Player↔Char, Char↔Sect.
 Data-driven dimension config (`RelationshipConfigData`), a single mutation path
@@ -135,9 +136,12 @@ Scope guard: structural Character+Sect endpoints only (no real SectState — Pha
 NPC/Dialogue/Quest/Story/Faction/WorldSim/Combat/Inventory/Save/networking; NO new autoload;
 the current game flow (Menu → New Game → Hub ↔ Field → Menu) is unchanged and no preview/
 sandbox becomes the first scene.
-**Exit:** edges create/update/query + round-trip save; event→delta deterministic; symmetric
-+ debt semantics tested; RelationshipRuntime persists across hub↔field; character visual
-pipeline loads 4 profiles from data; tests pass headless with 0 leaks; CI green.
+**Exit (MET):** edges create/update/query + round-trip save; event→delta deterministic;
+symmetric + debt semantics tested; RelationshipRuntime persists across hub↔field (world E2E,
+20 round trips) and is NOT an autoload; character visual pipeline loads 4 profiles from data +
+the player renders its `sprite_set_ref`; the current game flow + first scene are unchanged.
+All 7 CI gates green on `21ef622` (2026-10-03). No new autoload; SECT endpoints structural-only
+(Phase 06 adds the real `SectState` + referential validation).
 
 ## Phase 06 — Sect System
 Core sects (`docs/SECT_SYSTEM.md`): `SectTemplateData` + `SectState`, membership/ranks,
