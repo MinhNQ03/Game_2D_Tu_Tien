@@ -45,6 +45,14 @@
 > frame. `InputService.get_action_display_label` is called only when a hint is (re)built, not
 > per frame. The camera zoom is set once per map in `apply_map_data`. `CharacterState` is a
 > plain `RefCounted` built once per session and read by reference (no copying on map swap).
+>
+> **Phase 04 UI-hardening note (D-024, no optimization, just discipline):** the asset-backed
+> UI loads each texture through `load()` (cached by Godot's resource loader; the same `.ctex`
+> is shared across styleboxes) and builds the `Theme` ONCE when a UI node enters the tree —
+> there is no per-frame `Theme.new()`, no per-frame texture load, and no per-frame node
+> creation. Styleboxes/textures are `RefCounted` and freed with their owning UI node. The menu
+> background is a single tiled `TextureRect` (one draw path), not a per-frame redraw. 9-slice
+> stretching is GPU-side `StyleBoxTexture`, not CPU work.
 
 ## 1. Principles
 

@@ -103,8 +103,12 @@ Combat/Inventory/Skill/Quest/Dialogue/Save/Networking.
 `CharacterState` round-trips through `to_dict/from_dict` ✅ (save seam; `SaveService` is
 Phase 23); life-state ALIVE→DEAD transitions + round-trip ✅; no presentation leaks into the
 persistent tier ✅ (tested); Player bound to ONE state, not recreated on map swap ✅ (world
-E2E, 20 round trips); UI never hard-codes keys/user text ✅. CLOSED once CI is green on the
-Phase-04 commit.
+E2E, 20 round trips); UI never hard-codes keys/user text ✅.
+**UI hardening (reopen, D-024):** the menu + HUD now use REAL project-owned pixel-art 9-slice
+assets (framed panels, per-state buttons, graphic key badges, title treatment, framed HUD) via
+a shared `UITheme`/`UIPalette` + reusable components — no longer default-Godot controls. The
+preferred CC0 pack (tiopalada Mana Soul GUI) is recorded but not bundled (itch.io not
+auto-downloadable). CLOSED once CI is green on the Phase-04 reopen commit.
 
 ## Phase 05 — Relationship System
 Serializable relationship graph (`docs/RELATIONSHIP_SYSTEM.md`): `RelationshipEdge` with

@@ -1,8 +1,11 @@
 extends Control
-## MainMenu — Aetheria presentation (main-menu shell, foundation presentation pass).
+## MainMenu — Aetheria presentation (main-menu, asset-backed pixel-art pass).
 ##
-## Offers a route to New Game and Quit; Load Game is a disabled placeholder (no save system
-## yet, Phase 23). This is the FOUNDATION look (shared `UITheme`/`UIPalette`), not final art.
+## A framed pixel-art menu (shared `UITheme`/`UIPalette` + 9-slice panel assets): a dark
+## textured background, a centered framed panel holding the title treatment (title + subtitle
+## + ornamental divider) and the action buttons with real normal/hover/pressed/focus/disabled
+## states. New Game and Quit are live; Load Game and Settings are disabled placeholders (no
+## save/settings system yet).
 ##
 ## The menu does not know *why* a new game starts or *how* scenes load — it emits intent
 ## signals and the coordinator (Main) drives GameState + SceneRouter. All text is resolved
@@ -13,11 +16,13 @@ extends Control
 signal new_game_pressed()
 signal quit_pressed()
 
-var _background: ColorRect
+var _background: TextureRect
 var _title: Label
 var _subtitle: Label
+var _divider: TextureRect
 var _new_game_button: Button
 var _load_game_button: Button
+var _settings_button: Button
 var _quit_button: Button
 
 
@@ -47,21 +52,38 @@ func _exit_tree() -> void:
 
 
 func _build_ui() -> void:
-	# Full-rect background behind everything (so the menu is not on transparent black).
-	_background = ColorRect.new()
-	_background.color = UIPalette.COLOR_BACKGROUND
+	# --- Background: a dark tiled pixel surface (not a flat ColorRect) -------------
+	_background = TextureRect.new()
 	_background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_background.stretch_mode = TextureRect.STRETCH_TILE
+	if ResourceLoader.exists(UIPalette.TEX_PANEL_INSET):
+		_background.texture = load(UIPalette.TEX_PANEL_INSET)
+	else:
+		# Fallback: a solid dark fill if the texture is missing.
+		var fill := ColorRect.new()
+		fill.color = UIPalette.COLOR_BACKGROUND
+		fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(fill)
 	add_child(_background)
 
+	# --- Centered framed panel -----------------------------------------------------
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.panel_stylebox())
+	panel.custom_minimum_size = Vector2(360, 0)
+	center.add_child(panel)
+
 	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", UIPalette.SPACE_MD)
-	# Center the VBox on its own pivot so PRESET_CENTER anchors the middle, not the corner.
-	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	box.grow_vertical = Control.GROW_DIRECTION_BOTH
-	add_child(box)
+	panel.add_child(box)
 
 	_title = Label.new()
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -75,9 +97,19 @@ func _build_ui() -> void:
 	_subtitle.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
 	box.add_child(_subtitle)
 
-	# A little breathing room between the title block and the buttons.
+	# Ornamental divider under the title treatment.
+	_divider = TextureRect.new()
+	_divider.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_divider.stretch_mode = TextureRect.STRETCH_SCALE
+	_divider.custom_minimum_size = Vector2(0, 10)
+	_divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if ResourceLoader.exists(UIPalette.TEX_TITLE_DIVIDER):
+		_divider.texture = load(UIPalette.TEX_TITLE_DIVIDER)
+	box.add_child(_divider)
+
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, UIPalette.SPACE_LG)
+	spacer.custom_minimum_size = Vector2(0, UIPalette.SPACE_SM)
 	box.add_child(spacer)
 
 	_new_game_button = _make_menu_button()
@@ -88,15 +120,20 @@ func _build_ui() -> void:
 	_load_game_button.disabled = true  # No save system yet (Phase 23).
 	box.add_child(_load_game_button)
 
+	_settings_button = _make_menu_button()
+	_settings_button.disabled = true  # No settings system yet (placeholder slot).
+	box.add_child(_settings_button)
+
 	_quit_button = _make_menu_button()
 	_quit_button.pressed.connect(_on_quit)
 	box.add_child(_quit_button)
 
 
-## A uniformly sized menu button (so the three line up as a tidy column).
+## A uniformly sized menu button (so the column lines up) wearing the shared theme.
 func _make_menu_button() -> Button:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(260, 0)
+	button.custom_minimum_size = Vector2(300, 0)
+	button.focus_mode = Control.FOCUS_ALL
 	return button
 
 
@@ -108,6 +145,7 @@ func _refresh_text() -> void:
 	_subtitle.text = String(loc.call("t", "UI_MENU_SUBTITLE"))
 	_new_game_button.text = String(loc.call("t", "UI_MENU_NEW_GAME"))
 	_load_game_button.text = String(loc.call("t", "UI_MENU_LOAD_GAME"))
+	_settings_button.text = String(loc.call("t", "UI_MENU_SETTINGS"))
 	_quit_button.text = String(loc.call("t", "UI_MENU_QUIT"))
 
 

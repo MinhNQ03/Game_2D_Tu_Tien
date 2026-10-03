@@ -267,6 +267,21 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
   `CharacterState` (stable id, ALIVE) and that it is the SAME instance across all 20 round
   trips (not recreated on a map swap — D-023 invariant).
 
+**Phase 04 UI hardening added presentation + asset-contract tests (D-024):**
+- `tests/unit/presentation/test_ui_theme.gd` — the asset-backed theme: distinct button
+  styleboxes per state, panel/inset/badge styleboxes build, `PanelContainer` carries the
+  framed panel style, the theme is a `StyleBoxTexture` (asset-backed) when textures are
+  present, and the **asset contract**: every path in `UIPalette.UI_TEXTURES` exists on disk
+  (a missing/renamed/un-tracked UI asset fails here, not as a blank UI).
+- `tests/unit/presentation/test_gameplay_hud.gd` (updated) — the HUD renders the character's
+  localized name and shows graphic key badges with display labels ([E]/[Esc] + Interact/Menu),
+  never a raw keycode or raw action name, with ≥2 key-badge panels.
+- `tests/unit/presentation/test_main_menu.gd` — the menu wears the shared theme, builds four
+  action buttons, keeps Load Game + Settings disabled, emits `new_game_pressed`/`quit_pressed`
+  via the real button signals (owning no gameplay), and shows localized text (not raw keys).
+- `tests/unit/core/test_localization.gd` (extended) — the new UI keys (`UI_MENU_SETTINGS`,
+  `UI_HUD_INTERACT_ACTION`, `UI_HUD_MENU_ACTION`) exist in both vi + en.
+
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push. **Note:** these tests were authored and statically validated (GDScript
 diagnostics clean); the agent cannot run Godot locally (D-009), so the authoritative run

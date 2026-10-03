@@ -8,6 +8,43 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Phase 04 reopen / UI hardening (D-024; asset-backed pixel-art UI)
+- **Real pixel-art UI assets:** added `tools/gen_ui_assets.py` (pure-Python PNG writer, no
+  download) producing a project-owned 9-slice UI set under `assets/ui/mana_soul/` — framed
+  `panel`/`panel_inset`, button states `normal/hover/pressed/disabled/focus`, a `key_badge`
+  keycap, a `portrait_frame`, and a `title_divider`. Self-made/CC0-equivalent because the
+  preferred pack (tiopalada "Tiny RPG - Mana Soul GUI", CC0) is not auto-downloadable here
+  (itch.io 403); recorded in `docs/ASSET_LICENSES.md` with the intended upgrade noted.
+- **Asset-backed theme + components:** `UIPalette` gains the texture paths + 9-slice margins
+  (single source of truth); `UITheme` now builds `StyleBoxTexture` panels/buttons/badge with
+  the authored border margins (crisp corners, graceful flat fallback). New reusable
+  `src/presentation/ui/components/` — `UIKeyBadge` (graphic keycap) + `UIPromptRow` (badge +
+  action label).
+- **Main menu redesign:** tiled pixel background + centered framed `PanelContainer`, title +
+  subtitle + ornamental divider, four buttons with real states; Load Game and Settings are
+  distinct disabled placeholders. Signals/localization/input-context unchanged. Added
+  `UI_MENU_SETTINGS` (vi/en).
+- **HUD redesign:** three framed panels — identity (portrait-frame slot + name/title from
+  `CharacterState`), map name, and a control-prompt panel showing graphic `[E] Interact` /
+  `[Esc] Menu` badges (via `InputService.get_action_display_label`, never raw keycodes). No
+  fake HP/mana/cultivation bars (reserved for a later phase). Added `UI_HUD_INTERACT_ACTION`
+  / `UI_HUD_MENU_ACTION` (vi/en). Public HUD API unchanged.
+- **Map exit visual:** added a gold directional arrow ornament to the hub/field exit gates
+  (still a gameplay marker; no VFX system).
+- **Tests:** rewrote the UI-theme test (distinct button states, panel/badge build, PanelContainer
+  panel style, **asset-contract: all 10 UI textures exist**, asset-backed `StyleBoxTexture`
+  when present); rewrote the HUD prompt test (graphic badges + E/Esc/Interact/Menu, no raw
+  keycode/action name, ≥2 badge panels); added a main-menu structural test (shared theme, 4
+  buttons, Load Game + Settings disabled, emits intents, localized text). All existing tests
+  stay green.
+- **Resource-in-use warning:** investigated per steering 10 — the earlier `resources still in
+  use at exit` + leaked physics body/texture came from the `default_goals` crash aborting the
+  character tests before their `free_node` (fixed in D-023), not a UI leak. Documented in
+  D-024; no assertions lowered.
+- Docs synced: ASSET_LICENSES (UI rows + source), 06-art-assets (UI baseline), ARCHITECTURE,
+  GAME_FLOW, TEST_PLAN, PERFORMANCE, ROADMAP, DECISIONS (D-024). Character core unchanged; no
+  new autoloads; Phase 05 still NOT STARTED.
+
 ### 2026-10-02 — Phase 04 (D-023; Character core + early UI/presentation foundation)
 - **Character core (domain + data):** added `CharacterTemplateData`
   (`src/data/characters/character_template_data.gd`, `char_*`) — the data definition with

@@ -70,6 +70,7 @@ func test_phase04_keys_exist_in_both_languages() -> void:
 	var keys := [
 		"CHARACTER_PLAYER_NAME", "CHARACTER_PLAYER_TITLE", "CHARACTER_PLAYER_ORIGIN",
 		"UI_MENU_SUBTITLE", "UI_HUD_INTERACT_HINT", "UI_HUD_MENU_HINT",
+		"UI_MENU_SETTINGS", "UI_HUD_INTERACT_ACTION", "UI_HUD_MENU_ACTION",
 	]
 	for key in keys:
 		assert_true(loc.has_key(key), "key '%s' exists in the table" % key)

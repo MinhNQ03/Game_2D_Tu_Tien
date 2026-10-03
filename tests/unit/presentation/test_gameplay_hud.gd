@@ -57,23 +57,50 @@ func test_hud_shows_character_name() -> void:
 	free_node(hud)
 
 
-func test_hud_hint_uses_display_label_not_keycode() -> void:
+func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 	var hud := _hud()
 	var loc: Node = scene_tree.root.get_node_or_null("Localization")
 	if loc != null:
 		loc.call("set_language", "en")
 	hud.set_interact_available(true)
-	var labels: Array[Label] = []
-	_collect_labels(hud, labels)
-	var hint_text := ""
-	for label in labels:
-		if label.text.contains("Interact") or label.text.contains("Menu"):
-			hint_text = label.text
-	assert_true(hint_text.contains("E"), "interact hint shows the 'E' key label")
-	assert_true(hint_text.contains("Esc"), "menu hint shows the 'Esc' key label")
-	# It must NOT leak a raw keycode number.
-	assert_false(hint_text.contains("69"), "no raw keycode in the hint")
+
+	# Gather all label text + confirm the key badges exist as graphic chips (UIKeyBadge is a
+	# PanelContainer wearing an asset-backed stylebox — not plain floating text).
+	var all_text := _all_label_text(hud)
+	assert_true("E" in all_text, "a key badge shows the 'E' glyph")
+	assert_true("Esc" in all_text, "a key badge shows the 'Esc' glyph")
+	assert_true("Interact" in all_text, "the interact prompt shows the localized action word")
+	assert_true("Menu" in all_text, "the menu prompt shows the localized action word")
+	# Never leak a raw keycode number or a raw action name.
+	for t in all_text:
+		assert_false(t.contains("69"), "no raw keycode in a prompt (%s)" % t)
+		assert_false(t.contains("interact"), "no raw action name in a prompt (%s)" % t)
+		assert_false(t.contains("open_menu"), "no raw action name in a prompt (%s)" % t)
+
+	# The key glyphs sit inside graphic badge panels (PanelContainer holding a single Label),
+	# proving a graphic treatment, not floating text. Interact + menu => at least 2.
+	assert_true(_key_badge_count(hud) >= 2, "interact + menu each have a graphic key badge")
 	free_node(hud)
+
+
+## Collect every Label's text under a node (recursive).
+func _all_label_text(node: Node) -> Array:
+	var out: Array = []
+	var labels: Array[Label] = []
+	_collect_labels(node, labels)
+	for label in labels:
+		out.append(label.text)
+	return out
+
+
+## Count key-badge chips: PanelContainers whose only child is a Label (the UIKeyBadge shape).
+func _key_badge_count(node: Node) -> int:
+	var n := 0
+	if node is PanelContainer and node.get_child_count() == 1 and node.get_child(0) is Label:
+		n += 1
+	for child in node.get_children():
+		n += _key_badge_count(child)
+	return n
 
 
 ## Walk the HUD subtree collecting every Label (the HUD builds them under a Control root).

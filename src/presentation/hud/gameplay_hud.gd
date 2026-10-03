@@ -1,16 +1,21 @@
 extends CanvasLayer
 class_name GameplayHUD
-## GameplayHUD — Aetheria presentation (in-map heads-up display, foundation pass).
+## GameplayHUD — Aetheria presentation (in-map heads-up display, asset-backed pass).
 ##
-## A presentation-only overlay that RENDERS a view of the running session: the player
-## character's identity (name + title, from the authoritative `CharacterState`), the current
-## map name (localized), and the contextual control hints (interact / menu) expressed through
-## `InputService`'s display-label API — never raw keycodes (`07-localization.md`, L-003).
+## A screen-space (`CanvasLayer`) overlay that RENDERS a view of the running session inside
+## framed pixel-art panels (shared `UITheme`/`UIPalette` 9-slice assets):
+##   - top-left   : an identity panel (portrait-frame slot + character name/title),
+##   - top-right  : a map-name panel,
+##   - bottom-left: a control-prompt panel with graphic key badges ([E] Interact / [Esc] Menu).
 ##
 ## It OWNS no truth. The owner (MapBase) pushes data in via `set_character()`, `set_map_name()`
-## and `set_interact_available()`; the HUD only formats + displays. It refreshes on demand
+## and `set_interact_available()`; the HUD only formats + displays. Key glyphs come from
+## `InputService.get_action_display_label` (never raw keycodes, L-003). It refreshes on demand
 ## (owner call) and on language change — never per frame (`05-performance-testing.md`). This is
-## the FOUNDATION HUD (name/map/hints), not the final combat HUD (health bars, resources, …).
+## the FOUNDATION HUD (identity/map/prompts); HP/mana/cultivation bars are intentionally NOT
+## shown (no gameplay semantics yet) — a later phase adds them to the reserved panels.
+
+const PromptRowScript := preload("res://src/presentation/ui/components/ui_prompt_row.gd")
 
 const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
@@ -28,7 +33,8 @@ var _interact_available: bool = false
 var _name_label: Label
 var _title_label: Label
 var _map_label: Label
-var _hint_label: Label
+var _interact_row: UIPromptRow
+var _menu_row: UIPromptRow
 
 
 func _ready() -> void:
@@ -52,40 +58,78 @@ func _build_ui() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	# Top-left identity plate (name + title).
-	var identity := VBoxContainer.new()
-	identity.position = Vector2(UIPalette.SPACE_LG, UIPalette.SPACE_LG)
-	identity.add_theme_constant_override("separation", 2)
-	root.add_child(identity)
+	# --- Top-left: identity panel (portrait slot + name/title) --------------------
+	var identity_panel := _panel()
+	identity_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	identity_panel.position = Vector2(UIPalette.SPACE_MD, UIPalette.SPACE_MD)
+	root.add_child(identity_panel)
+
+	var identity_row := HBoxContainer.new()
+	identity_row.add_theme_constant_override("separation", UIPalette.SPACE_MD)
+	identity_panel.add_child(identity_row)
+
+	# Portrait frame slot (empty well for now; a portrait texture drops in later).
+	var portrait := TextureRect.new()
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.custom_minimum_size = Vector2(40, 40)
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if ResourceLoader.exists(UIPalette.TEX_PORTRAIT_FRAME):
+		portrait.texture = load(UIPalette.TEX_PORTRAIT_FRAME)
+	identity_row.add_child(portrait)
+
+	var identity_text := VBoxContainer.new()
+	identity_text.alignment = BoxContainer.ALIGNMENT_CENTER
+	identity_text.add_theme_constant_override("separation", 2)
+	identity_row.add_child(identity_text)
 
 	_name_label = Label.new()
 	_name_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_SUBTITLE)
 	_name_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
-	identity.add_child(_name_label)
+	identity_text.add_child(_name_label)
 
 	_title_label = Label.new()
 	_title_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
 	_title_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
-	identity.add_child(_title_label)
+	identity_text.add_child(_title_label)
 
-	# Top-right map name.
+	# --- Top-right: map-name panel ------------------------------------------------
+	var map_panel := _panel()
+	map_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	map_panel.position = Vector2(-UIPalette.SPACE_MD, UIPalette.SPACE_MD)
+	map_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	root.add_child(map_panel)
+
 	_map_label = Label.new()
-	_map_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_map_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_map_label.position = Vector2(-UIPalette.SPACE_LG, UIPalette.SPACE_LG)
-	_map_label.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_map_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_map_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_SUBTITLE)
 	_map_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
-	root.add_child(_map_label)
+	map_panel.add_child(_map_label)
 
-	# Bottom control hints.
-	_hint_label = Label.new()
-	_hint_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_hint_label.position = Vector2(UIPalette.SPACE_LG, -UIPalette.SPACE_XL)
-	_hint_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_hint_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
-	_hint_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
-	root.add_child(_hint_label)
+	# --- Bottom-left: control-prompt panel (graphic key badges) -------------------
+	var prompt_panel := _panel()
+	prompt_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	prompt_panel.position = Vector2(UIPalette.SPACE_MD, -UIPalette.SPACE_MD)
+	prompt_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	root.add_child(prompt_panel)
+
+	var prompt_box := HBoxContainer.new()
+	prompt_box.add_theme_constant_override("separation", UIPalette.SPACE_LG)
+	prompt_panel.add_child(prompt_box)
+
+	_interact_row = PromptRowScript.new() as UIPromptRow
+	prompt_box.add_child(_interact_row)
+
+	_menu_row = PromptRowScript.new() as UIPromptRow
+	prompt_box.add_child(_menu_row)
+
+
+## A framed HUD panel wearing the shared 9-slice panel style.
+func _panel() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UITheme.panel_stylebox())
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return p
 
 
 # --- Owner-pushed view state -------------------------------------------------
@@ -109,7 +153,7 @@ func set_map_name(name_key: StringName) -> void:
 	_refresh()
 
 
-## Whether the player can currently interact with an exit (drives which hint shows).
+## Whether the player can currently interact with an exit (drives the interact prompt).
 func set_interact_available(available: bool) -> void:
 	if _interact_available == available:
 		return
@@ -126,7 +170,7 @@ func _refresh() -> void:
 	_title_label.text = _resolve(_title_key)
 	_title_label.visible = _title_key != &""
 	_map_label.text = _resolve(_map_name_key)
-	_hint_label.text = _build_hint()
+	_refresh_prompts()
 
 
 ## Resolve a localization key to text (empty key -> empty string, no warning spam).
@@ -136,18 +180,29 @@ func _resolve(key: StringName) -> String:
 	return String(_loc.call("t", key))
 
 
-## Build the contextual control hint using InputService display labels (never raw keycodes).
-## Shows the interact hint when an exit is in reach, plus the always-available menu hint.
-func _build_hint() -> String:
-	if _loc == null or _input == null:
-		return ""
-	var menu_key := String(_input.call("get_action_display_label", OPEN_MENU_ACTION))
-	var menu_hint := String(_loc.call("t_args", "UI_HUD_MENU_HINT", {"key": menu_key}))
-	if not _interact_available:
-		return menu_hint
-	var interact_key := String(_input.call("get_action_display_label", INTERACT_ACTION))
-	var interact_hint := String(_loc.call("t_args", "UI_HUD_INTERACT_HINT", {"key": interact_key}))
-	return "%s     %s" % [interact_hint, menu_hint]
+## Fill the two prompt rows from InputService display labels (never raw keycodes). The
+## interact row is hidden until the player is standing in an exit; the menu row is always on.
+func _refresh_prompts() -> void:
+	if _menu_row == null:
+		return
+	var menu_key := _display_label(OPEN_MENU_ACTION)
+	_menu_row.set_prompt(menu_key, _text("UI_HUD_MENU_ACTION"))
+	_interact_row.visible = _interact_available
+	if _interact_available:
+		var interact_key := _display_label(INTERACT_ACTION)
+		_interact_row.set_prompt(interact_key, _text("UI_HUD_INTERACT_ACTION"))
+
+
+func _display_label(action: StringName) -> String:
+	if _input == null:
+		return "?"
+	return String(_input.call("get_action_display_label", action))
+
+
+func _text(key: String) -> String:
+	if _loc == null:
+		return key
+	return String(_loc.call("t", key))
 
 
 func _on_language_changed(_language_code: String) -> void:

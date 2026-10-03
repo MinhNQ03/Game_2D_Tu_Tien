@@ -7,6 +7,8 @@
 > Status (as of Phase 04): the player is now a real **Character** (one authoritative
 > `CharacterState` bound to the Player node, D-023), the in-map **HUD** shows the character's
 > identity + map name + localized control hints, and the main menu has a presentation pass.
+> UI hardening (D-024) dressed the menu + HUD in REAL pixel-art 9-slice panels/buttons with
+> graphic key badges ([E]/[Esc]) — a game UI, not default Godot controls.
 > The runnable flow is unchanged (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD);
 > the start map is now data-driven (`MapCatalog.start_map_id`). Below:
 >

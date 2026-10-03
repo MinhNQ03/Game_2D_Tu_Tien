@@ -20,3 +20,6 @@ CHARACTER_PLAYER_ORIGIN,Born in a remote mountain village.,Sinh ra ở một th�
 UI_HUD_INTERACT_HINT,{key} Interact,{key} Tương tác
 UI_HUD_MENU_HINT,{key} Menu,{key} Menu
 UI_MENU_SUBTITLE,A tu tiên journey,Hành trình tu tiên
+UI_MENU_SETTINGS,Settings,Thiết lập
+UI_HUD_INTERACT_ACTION,Interact,Tương tác
+UI_HUD_MENU_ACTION,Menu,Menu

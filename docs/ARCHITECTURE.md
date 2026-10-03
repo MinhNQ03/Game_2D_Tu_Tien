@@ -21,10 +21,12 @@
 >   + `CharacterState` (domain, `src/domain/character/`, authoritative + serializable). The
 >   Player is a VIEW bound to ONE `CharacterState` that `WorldRuntime` owns for the session;
 >   StatsComponent reads it, HealthComponent syncs HP/death back. Life-state ALIVE→DEAD.
-> - **UI foundation (Phase 04, D-023):** `src/presentation/ui/` (`UIPalette` tokens +
->   `UITheme` builder), a dressed main menu, and `src/presentation/hud/` (`GameplayHUD`
->   showing character identity + map name + input-label hints). `InputService` exposes
->   display labels so the UI never reads keycodes. The start map is data-driven
+> - **UI foundation (Phase 04, D-023 + D-024):** `src/presentation/ui/` (`UIPalette` tokens +
+>   asset-backed `UITheme` builder + reusable `components/` `UIKeyBadge`/`UIPromptRow`), a
+>   framed pixel-art main menu, and `src/presentation/hud/` (`GameplayHUD` showing character
+>   identity + map name + graphic key-badge prompts). UI is 9-slice `StyleBoxTexture` from
+>   project-owned pixel art (`assets/ui/mana_soul/`, D-024), not flat controls. `InputService`
+>   exposes display labels so the UI never reads keycodes. The start map is data-driven
 >   (`MapCatalog.start_map_id`).
 > - **World/Map (Phase 03, D-022):** `MapData` + `MapExit` + `MapCatalog` data Resources
 >   (`src/data/maps/`, authored in `data/maps/*.tres`) are the source of truth; `WorldRuntime`
@@ -176,7 +178,7 @@ res://
 	data/             maps/map_exit.gd map_data.gd map_catalog.gd  # [exists, Phase 03] (map Resources)
 					  characters/character_template_data.gd  # [exists, Phase 04]
 	domain/           character/character_state.gd         # [exists, Phase 04] (authoritative)
-	presentation/     menus/ scenes/ ui/ hud/      # [exists; ui/hud Phase 04]  fx/  [TARGET]
+	presentation/     menus/ scenes/ ui/ ui/components/ hud/  # [exists; ui/hud Phase 04]  fx/  [TARGET]
   data/               stats/player_stats.tres training_dummy_stats.tres  # [exists, Phase 02]
 					  characters/player_default.tres       # [exists, Phase 04]
 					  maps/map_hub.tres map_field.tres map_catalog.tres prototype_tileset.tres  # [exists, Phase 03]

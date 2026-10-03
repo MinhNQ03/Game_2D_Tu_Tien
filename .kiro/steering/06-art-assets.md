@@ -46,10 +46,29 @@
 assets/
   sprites/     characters/ enemies/ bosses/ pets/ items/ equipment/ fx/
   tiles/       <tileset>/
-  ui/
+  ui/          <pack>/panels/ buttons/ frames/   # [exists: ui/mana_soul, Phase 04]
   audio/       music/ sfx/
   fonts/       # must include a font with full Vietnamese glyph coverage
 ```
+
+## UI assets baseline (confirmed, D-024 / Phase 04 UI hardening)
+
+- **UI is pixel art too**: nearest filter, mipmaps off, like the world art. The project
+  default `rendering/textures/canvas_textures/default_texture_filter=0` (nearest) applies;
+  UI `TextureRect`s also set `texture_filter = nearest` locally.
+- **9-slice is mandatory for stretchable frames.** Panel/button/badge textures are small
+  (24×24 panels/buttons, 16×16 badge) with a documented, non-stretched border MARGIN
+  (8px for 24px frames, 6px for the badge) consumed as the `StyleBoxTexture.texture_margin`.
+  Only the center stretches, so corners stay crisp at any panel size — never scale a whole
+  pixel-art frame with fractional/stretch that distorts corners.
+- **Integer scaling only** for pixel UI; no fractional scale that blurs edges.
+- **Single source of truth for UI tokens + asset paths**: `src/presentation/ui/ui_palette.gd`
+  (colors, type scale, spacing, texture paths, 9-slice margins) → `ui_theme.gd` builds the
+  shared `Theme` → `MainMenu` / `GameplayHUD` / future screens consume it. Swapping the art
+  pack is editing files under `UIPalette.UI_ASSET_DIR`, not touching gameplay/UI logic.
+- **Provenance**: the current UI set is self-made/project-owned (`tools/gen_ui_assets.py`),
+  recorded in `docs/ASSET_LICENSES.md`. The intended external upgrade is tiopalada's CC0
+  "Tiny RPG - Mana Soul GUI" (not auto-downloadable in CI; recorded, not bundled).
 
 ## Fonts & localization
 
