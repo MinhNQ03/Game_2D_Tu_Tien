@@ -40,6 +40,11 @@ Dates are ISO (YYYY-MM-DD).
   cross-file `class_name` LSP cache false-positives, resolved by CI `--import`).
 - Docs synced: CHARACTER_SYSTEM (status §10), DATA_SCHEMA, ARCHITECTURE, GAME_FLOW, TEST_PLAN,
   PERFORMANCE, ROADMAP (Phase 04 IN PROGRESS), DECISIONS (D-023). No new autoloads; scope held.
+- CI triage (steering 10): the first Phase-04 push failed the headless suite — `CharacterState`
+  read `template.default_goals` which `CharacterTemplateData` never declared (parse-clean,
+  runtime crash). Root-caused via a one-time `::error::` diagnostic on the gate, then fixed by
+  declaring `default_goals` and adding `MapCatalog.start_map_id` coverage to the catalog unit
+  test; diagnostic scaffolding removed. New lesson L-018 (parse-clean ≠ fields exist).
 
 ### 2026-10-03 — Phase 03 reopen / hardening (D-022; data-driven maps, transactional transitions, real prototype art)
 - **MapData is the full source of truth:** added `scene_path`, `bounds: Rect2`,

@@ -221,3 +221,30 @@
 - **Fixed:** Phase 03 reopen (D-022). `tests/e2e/world_flow_case.gd` drives interact/open_menu
   via `Input.parse_input_event` real key events + a real movement step; only the exit sensor's
   `body_entered` is emitted (L-016).
+
+
+## L-018 — A `.gd` referencing a field/method that doesn't exist passes parse but crashes at runtime (the class_name LSP false-positive hid it)
+- **Symptom (Phase 04, D-023):** `CharacterState.create_from_template()` read
+  `template.default_goals`, but `CharacterTemplateData` never declared that field. GDScript
+  **parse** (and the CI parse-check gate) PASSED — dynamic property access is only resolved at
+  runtime — so steps 1–6 of CI were green. The headless suite (step 7) then hit
+  `Invalid access to property or key 'default_goals' ...`, `create_from_template` returned
+  `null`, and every dependent test errored (`Nonexistent function on base 'Nil'`). It shipped
+  because the known `class_name` LSP cache false-positive ("Could not find type
+  CharacterState") trained the eye to dismiss ALL diagnostics on the new cross-file classes —
+  including this real one, which `get_diagnostics` did NOT actually report (it only shows a
+  missing TYPE, not a missing property on a dynamically-typed `Resource`).
+- **Rule:** **A field/method accessed on another class must be declared on that class — verify
+  it, do not assume.** When class A reads `b.some_field`, open B and confirm `some_field`
+  exists (grep it) BEFORE committing. `get_diagnostics` clean is necessary but NOT sufficient:
+  it cannot catch a property that doesn't exist on a dynamically-typed base (`Resource`,
+  `Node`, `Object`), nor anything behind `.call()`. For a new data↔domain seam, cross-check
+  every field the factory copies against the data class's `@export`s. The parse-check gate is
+  not a substitute for the headless suite (L-007). Also: when adding a `@export` field to a
+  Resource that a factory consumes, add it to BOTH the class and the authored `.tres` if the
+  value is non-default.
+- **Also (data-vs-code drift, ties to L-014):** `docs/DATA_SCHEMA.md` listed `default_goals`
+  for `CharacterTemplateData`; the code read it; the class omitted it. A documented field that
+  the code consumes MUST be declared. On a schema touch, reconcile doc ↔ data class ↔ factory.
+- **Fixed:** Phase 04. Declared `CharacterTemplateData.default_goals: Array`; added
+  `MapCatalog.start_map_id` coverage to the catalog unit test; re-ran via CI.

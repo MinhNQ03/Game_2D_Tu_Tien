@@ -105,6 +105,11 @@ enum Profession { CULTIVATOR, ALCHEMIST, BLACKSMITH, MERCHANT, FARMER, SCHOLAR }
 ## Localization/vocabulary key for the character's core drive. Optional.
 @export var motivation_key: StringName = &""
 
+## Default structured goals (`{ kind, target_id, priority }`), seeded into a new
+## `CharacterState.goals` (`docs/DATA_SCHEMA.md` §3b). CONTRACT only in Phase 04 — stored +
+## copied, no goal/world-sim logic yet. Optional (empty = no authored goals).
+@export var default_goals: Array = []
+
 
 # --- Default affiliations (optional) -----------------------------------------
 

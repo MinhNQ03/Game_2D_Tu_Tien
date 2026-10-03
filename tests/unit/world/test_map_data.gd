@@ -100,6 +100,7 @@ func test_catalog_valid() -> void:
 	var field := _valid_map(&"map_field", "map_field", [_exit(&"e", &"map_hub", &"from_field")])
 	var cat: Resource = MapCatalogScript.new()
 	cat.maps.assign([hub, field])
+	cat.start_map_id = &"map_hub"  # data-driven start map is required (D-023)
 	assert_true(cat.is_valid(), "catalog valid: %s" % str(cat.validation_errors()))
 
 
@@ -117,6 +118,24 @@ func test_catalog_duplicate_scene_key_invalid() -> void:
 	var cat: Resource = MapCatalogScript.new()
 	cat.maps.assign([a, b])
 	assert_false(cat.is_valid(), "duplicate scene_key invalid")
+
+
+func test_catalog_missing_start_map_id_invalid() -> void:
+	# A catalog with maps but no start_map_id is invalid (D-023 data-driven start map).
+	var a := _valid_map(&"map_a", "sk_a", [])
+	var cat: Resource = MapCatalogScript.new()
+	cat.maps.assign([a])
+	assert_false(cat.is_valid(), "catalog without start_map_id is invalid")
+
+
+func test_catalog_start_map_id_must_resolve() -> void:
+	var a := _valid_map(&"map_a", "sk_a", [])
+	var cat: Resource = MapCatalogScript.new()
+	cat.maps.assign([a])
+	cat.start_map_id = &"map_ghost"  # not a real map in the catalog
+	assert_false(cat.is_valid(), "start_map_id that doesn't resolve is invalid")
+	cat.start_map_id = &"map_a"
+	assert_true(cat.is_valid(), "start_map_id resolving to a real map is valid")
 
 
 func test_catalog_dangling_exit_invalid() -> void:
