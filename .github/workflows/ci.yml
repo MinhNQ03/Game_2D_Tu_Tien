@@ -72,29 +72,26 @@ jobs:
           # test mutates the shared GameState (isolation guard).
           ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd
 
-      # TEMPORARY DIAGNOSTIC (D-025 / steering 10 §1.3): the suite exits 0 but Godot prints
-      # "N ObjectDB instances were leaked" / "M resources still in use" at shutdown, which the
-      # GitHub API logs endpoint does not expose. Re-run the suite with --verbose so the leak
-      # reporter dumps each leaked instance's class/path, and surface those lines as ::error::
-      # + a step summary so the root cause is READABLE exactly once. REMOVE after the fix.
-      - name: TEMP leak diagnostic (verbose)
-        if: always()
+      # TEMPORARY VERIFICATION (D-025 / steering 10 §1.3 + §9): re-run the suite with --verbose
+      # and FAIL this step if the shutdown leak reporter still prints any leaked ObjectDB /
+      # resource-in-use line. This PROVES on the fixed SHA that 0 ObjectDB are leaked and 0
+      # resources remain in use (the API logs endpoint can't be read without auth, so we assert
+      # here and surface any offender as ::error::). REMOVED in the immediate follow-up commit
+      # once this run is green — it is diagnostic scaffolding, not a permanent gate.
+      - name: TEMP leak verification (verbose; fails on any leak)
         run: |
           set +e
           ./${GODOT_BIN} --headless --verbose --path . -s res://tests/run_tests.gd > leak_diag.log 2>&1
-          echo "## Leak diagnostic (verbose run)" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          # The leak banner + every per-instance "leaked" dump line + resource-in-use lines.
-          grep -niE "leaked|still in use|ObjectDB|StringName|resources" leak_diag.log >> "$GITHUB_STEP_SUMMARY" || true
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep -niE "leaked|still in use" leak_diag.log | while IFS= read -r line; do
-            echo "::error::leak-diag: ${line}"
-          done
-          # Also dump the tail so we see the shutdown block in context.
-          echo "## Shutdown tail" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          tail -n 60 leak_diag.log >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          hits=$(grep -niE "instances were leaked at exit|resources still in use at exit|Leaked instance:" leak_diag.log)
+          if [ -n "$hits" ]; then
+            echo "## Leak STILL present" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "$hits" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "$hits" | while IFS= read -r line; do echo "::error::leak-still: ${line}"; done
+            exit 1
+          fi
+          echo "leak verification: 0 ObjectDB leaked / 0 resources in use (clean)" >> "$GITHUB_STEP_SUMMARY"
           exit 0
 
       - name: Real-application E2E flow

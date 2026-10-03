@@ -11,9 +11,11 @@
 > 2026-10-02). Phase 01 (Core Framework) is **CLOSED** (CI-verified 2026-10-02). Phase 02
 > (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) is **CLOSED**
 > (reopened for hardening — D-022 — then CI-verified 2026-10-03 on `53f342f`, all 9 gates
-> green). Phase 04 (Character core + early UI/presentation foundation) is **IN PROGRESS**
-> (D-023; CLOSED once CI verifies all 9 gates on the Phase-04 commit). Phase 05
-> (Relationship) is NOT STARTED.
+> green). Phase 04 (Character core + early UI/presentation foundation) is **CLOSED**
+> (D-023 character core + D-024 UI hardening, both CI-verified on `7615d88`, all 9 gates
+> green, 163 tests passed / 0 failed; D-025 close-out then removed a residual
+> 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship) is
+> NOT STARTED.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -108,7 +110,13 @@ E2E, 20 round trips); UI never hard-codes keys/user text ✅.
 assets (framed panels, per-state buttons, graphic key badges, title treatment, framed HUD) via
 a shared `UITheme`/`UIPalette` + reusable components — no longer default-Godot controls. The
 preferred CC0 pack (tiopalada Mana Soul GUI) is recorded but not bundled (itch.io not
-auto-downloadable). CLOSED once CI is green on the Phase-04 reopen commit.
+auto-downloadable).
+**Close-out (D-025):** CI is green on `7615d88` (all 9 gates, 163 tests passed / 0 failed).
+A residual the green CI still printed at test-process exit — `5 ObjectDB instances leaked` +
+`1 resource still in use` — was root-caused (a `--verbose` CI diagnostic, steering 10 §1.3)
+to three un-freed `InputService` Nodes in `tests/unit/core/test_input_display_label.gd` (an
+unfreed `Node` pins its GDScript + native class; L-019) and fixed (`svc.free()` in each
+method). **Phase 04 is CLOSED.** Phase 05 (Relationship) is NOT STARTED.
 
 ## Phase 05 — Relationship System
 Serializable relationship graph (`docs/RELATIONSHIP_SYSTEM.md`): `RelationshipEdge` with

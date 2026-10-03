@@ -8,6 +8,22 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Phase 04 close-out (D-025; residual test-exit leak fixed + doc drift)
+- **Residual leak root-caused and fixed.** The green headless suite still printed
+  `WARNING: 5 ObjectDB instances were leaked at exit` + `ERROR: 1 resources still in use at
+  exit`. A one-time `--verbose` CI diagnostic (steering 10 §1.3, commit `906e4ef`, then
+  removed) named the leaked instances: 3× `Node`, 1× `GDScript`
+  (`src/infrastructure/input_service.gd`), 1× `GDScriptNativeClass`. Root cause: three un-freed
+  `InputService` Nodes in `tests/unit/core/test_input_display_label.gd` (an unfreed `Node`
+  pins its GDScript + native class). Fixed by `svc.free()` in each of the three methods; the
+  suite now exits with 0 ObjectDB leaked / 0 resources in use. No production code changed, no
+  assertion lowered, D-019 isolation untouched. Added lesson **L-019**.
+- **Doc drift corrected (L-014).** `ROADMAP.md` Phase 04 → **CLOSED** with evidence (`7615d88`,
+  9 gates green, 163 tests). Corrected the D-024 "resource-in-use" bullet (it wrongly assumed a
+  green run was leak-free). Added **D-025** to `DECISIONS.md`.
+- **Scope:** close-out only — no Character/UI/Combat/Quest/Dialogue/Save/networking work; no new
+  autoloads; Phase 05 (Relationship) still NOT STARTED.
+
 ### 2026-10-02 — Phase 04 reopen / UI hardening (D-024; asset-backed pixel-art UI)
 - **Real pixel-art UI assets:** added `tools/gen_ui_assets.py` (pure-Python PNG writer, no
   download) producing a project-owned 9-slice UI set under `assets/ui/mana_soul/` — framed

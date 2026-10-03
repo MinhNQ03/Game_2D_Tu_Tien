@@ -648,19 +648,61 @@ WorldSim/Combat/Inventory/Quest/Dialogue/Save/Networking.
   key→label mapping.
 - **UI owns no gameplay truth** (unchanged boundary): it renders state + emits intents; it
   never mutates `CharacterState`, HP, or calls `SceneRouter` (verified by grep + a test).
-- **Resource-in-use warning — root-caused, not a UI leak.** The `9 resources still in use at
-  exit` + leaked `GodotBody2D`/`GodotShape2D`/`DummyTexture` in the earlier RED run were a
-  SIDE EFFECT of the `default_goals` crash (D-023 fix): the character integration tests
-  aborted mid-method, so their `free_node(player)` never ran and the Player's physics body +
-  dummy texture leaked at process exit. On the GREEN run every test frees its nodes. The new
-  UI nodes are children of the HUD/menu (freed by their owners); styleboxes/textures are
-  `RefCounted`. If a leak still appears on a green run it will be investigated — assertions
-  are NOT lowered to hide it.
+- **Resource-in-use warning — partially root-caused here; the rest closed in D-025.** The
+  earlier RED-run leak (`9 resources still in use` + `GodotBody2D`/`GodotShape2D`/
+  `DummyTexture`) WAS a side effect of the `default_goals` crash (D-023 fix): the character
+  integration tests aborted mid-method, so their `free_node(player)` never ran. That part
+  cleared on the green run. **However, a SMALLER independent leak survived the green runs**
+  (`5 ObjectDB instances leaked` + `1 resource still in use`) and this bullet's assumption
+  that a green run is leak-free was wrong — see D-025, which root-caused it to three un-freed
+  `InputService` Nodes in a Phase-04 test and fixed it. Assertions were NOT lowered to hide
+  it (the finding here held: investigate, don't suppress).
 **Consequence:** the menu and HUD read as a framed pixel-art game UI (not default Godot
 controls), buttons have distinct states, key prompts are graphic, and corners stay crisp on
 resize. Verified by the presentation unit/structural tests + the asset-contract test + the
 unchanged app/player/world E2E gates. Self-made assets recorded in `docs/ASSET_LICENSES.md`.
 No new autoloads; Character core unchanged; D-005/D-007 remain Open.
+
+---
+
+## D-025 — Phase 04 close-out: residual test-exit leak root-caused + fixed; ROADMAP/DECISIONS drift corrected — **Accepted** (2026-10-03, Phase 04 close-out)
+
+**Context:** Phase 04 (D-023 core + D-024 UI) was CI-green on `7615d88`, but two residuals
+blocked a clean CLOSE: (1) the green headless-suite process still printed
+`WARNING: 5 ObjectDB instances were leaked at exit` + `ERROR: 1 resources still in use at
+exit` at shutdown, and (2) `docs/ROADMAP.md` still said Phase 04 was `IN PROGRESS`. No new
+gameplay, UI, Character, Save, Combat, Quest, Dialogue, networking, or Relationship/Sect/
+Faction/WorldSim work was done — close-out only.
+
+**Decisions:**
+- **Root-cause by evidence, not assumption (steering 10).** The leak lines are a non-fatal
+  Godot shutdown WARNING/ERROR (the suite still exits 0), and the GitHub API logs endpoint
+  needs auth, so a ONE-TIME CI diagnostic re-ran the suite with `--verbose` and surfaced the
+  leak reporter's per-instance dump as `::error::` annotations (auth-free) on commit `906e4ef`.
+  The dump named: 3× `Node` (empty node path = never entered the tree), 1× `GDScript`
+  (`res://src/infrastructure/input_service.gd`, refcount 3), 1× `GDScriptNativeClass`
+  (refcount 1); the "1 resource still in use" is that same GDScript.
+- **Single root cause.** `tests/unit/core/test_input_display_label.gd` (added in D-023) created
+  a fresh `InputService` via `.new()` in each of its 3 methods and never freed it. `InputService`
+  extends `Node` (manual memory), so an un-added, un-`free()`d local leaks until the process
+  dies; each live Node pinned the script (refcount 3) which pinned its native class (refcount 1).
+  3 Nodes + 1 GDScript + 1 GDScriptNativeClass = the 5 ObjectDB; the GDScript = the 1 resource.
+  The sibling `test_input_service.gd` freed its instances; the newer test simply forgot. Fixed by
+  `svc.free()` in all three methods (matching the sibling). No production code changed, no
+  assertion lowered, no teardown removed, D-019 isolation untouched. Diagnostic step then removed
+  (CI back to the clean 9 gates). Lesson **L-019** added (unfreed Node in the `-s` runner leaks
+  silently; a clean suite ends with 0 ObjectDB leaked / 0 resources in use).
+- **No brittle regression test.** A "0 ObjectDB leaked" assertion inside the shared runner would
+  be flaky (the 5 live project autoloads under `/root` make absolute object counts
+  nondeterministic, and the runner can't fail on a shutdown-time leak). The fix + L-019 are the
+  durable guard (`05-performance-testing.md` "no test for count's sake").
+- **Doc drift corrected (L-014).** ROADMAP Phase 04 → CLOSED with evidence; the D-024
+  "resource-in-use" bullet corrected (it wrongly implied a green run was leak-free — the smaller
+  5-ObjectDB leak survived the green runs until this fix).
+
+**Consequence:** the headless suite now exits with 0 ObjectDB leaked / 0 resources in use;
+Phase 04 is CLOSED (CI-verified); docs match reality. No new autoloads; Character core + UI
+unchanged; D-005 (save) / D-007 (combat) remain Open; Phase 05 (Relationship) NOT STARTED.
 
 ---
 

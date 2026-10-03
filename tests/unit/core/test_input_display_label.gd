@@ -8,18 +8,21 @@ const InputServiceScript := preload("res://src/infrastructure/input_service.gd")
 
 
 func test_interact_label_is_e() -> void:
-	var svc = InputServiceScript.new()
+	var svc: Node = InputServiceScript.new()
 	assert_eq(svc.get_action_display_label(&"interact"), "E",
 		"interact is bound to physical key E")
+	svc.free()  # InputService is a Node: free it or it leaks at process exit (D-025).
 
 
 func test_open_menu_label_is_esc() -> void:
-	var svc = InputServiceScript.new()
+	var svc: Node = InputServiceScript.new()
 	assert_eq(svc.get_action_display_label(&"open_menu"), "Esc",
 		"open_menu is bound to Escape, shortened to 'Esc'")
+	svc.free()
 
 
 func test_unknown_action_returns_placeholder() -> void:
-	var svc = InputServiceScript.new()
+	var svc: Node = InputServiceScript.new()
 	assert_eq(svc.get_action_display_label(&"no_such_action"), "?",
 		"an unknown action yields a safe placeholder, not a crash or raw code")
+	svc.free()

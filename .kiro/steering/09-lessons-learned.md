@@ -248,3 +248,32 @@
   the code consumes MUST be declared. On a schema touch, reconcile doc ↔ data class ↔ factory.
 - **Fixed:** Phase 04. Declared `CharacterTemplateData.default_goals: Array`; added
   `MapCatalog.start_map_id` coverage to the catalog unit test; re-ran via CI.
+
+## L-019 — A test that `.new()`s a Node but never frees it leaks at process exit (silent; CI stays green)
+- **Symptom (Phase 04 close-out, D-025):** CI was `success` yet the headless suite process
+  printed at shutdown `WARNING: 5 ObjectDB instances were leaked at exit` and
+  `ERROR: 1 resources still in use at exit`. A `--verbose` CI diagnostic (steering 10 §1.3)
+  named them: 3× `Node` (empty node path = never entered the tree), 1× `GDScript`
+  (`res://src/infrastructure/input_service.gd`, refcount 3), 1× `GDScriptNativeClass`
+  (refcount 1), and the "1 resource still in use" was that same GDScript. Root cause: the
+  Phase-04 test `tests/unit/core/test_input_display_label.gd` created a fresh
+  `InputService` via `InputServiceScript.new()` in **each of its 3 methods** and never freed
+  it. `InputService` extends `Node` (manual memory), so an un-added, un-`free()`d local does
+  NOT auto-release when the method returns — it leaks until the process dies. Each live Node
+  held a ref to its script → the `input_service.gd` GDScript stayed alive (refcount 3) →
+  which kept its native base class alive (refcount 1). 3 Nodes + 1 GDScript + 1
+  GDScriptNativeClass = the 5 ObjectDB; the GDScript = the 1 resource. The sibling test
+  `test_input_service.gd` freed its instances correctly; the newer display-label test simply
+  forgot — and nothing caught it because the leak is a non-fatal shutdown WARNING (exit stays
+  0) and `get_diagnostics`/parse-check cannot see a runtime ownership mistake.
+- **Rule:** **In the headless `-s` runner, a `Node`/`Object` created in a test MUST be freed
+  by that test** — either `add_to_tree(n)` + `free_node(n)` (TestCase helpers), or `n.free()`
+  if it was never added. Only `RefCounted` (Resource, custom `RefCounted`) auto-releases;
+  `Node`/`Object` do not. A leaked Node also pins its GDScript + native class, so one unfreed
+  node shows up as several leaked ObjectDB + a "resource still in use". A clean suite must end
+  with **0 ObjectDB leaked / 0 resources in use** — treat those shutdown lines as a failure to
+  fix, never as harmless noise. When adding a test that mirrors an existing one, copy its
+  teardown too (`.free()`/`free_node`), not just its arrange/act.
+- **Fixed:** Phase 04 close-out (D-025). `test_input_display_label.gd` now `svc.free()`s the
+  InputService node in all three methods; verified 0 leaks via CI after removing the temporary
+  `--verbose` diagnostic step.
