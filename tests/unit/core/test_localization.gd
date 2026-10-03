@@ -89,3 +89,28 @@ func test_hud_hint_substitutes_key_placeholder() -> void:
 	assert_eq(loc.t_args("UI_HUD_MENU_HINT", {"key": "Esc"}), "Esc Menu",
 		"menu hint substitutes the key label")
 	free_node(loc)
+
+
+## Phase-06 Sect keys (names, doctrines, ranks, type labels, HUD/panel labels) must exist in
+## BOTH languages so the Sect UI never shows a raw key or a blank (`07-localization.md`).
+func test_phase06_sect_keys_exist_in_both_languages() -> void:
+	var loc := _make()
+	var keys := [
+		"SECT_AZURE_CLOUD_NAME", "SECT_AZURE_CLOUD_DOCTRINE",
+		"SECT_CRIMSON_FLAME_NAME", "SECT_CRIMSON_FLAME_DOCTRINE",
+		"SECT_RANK_OUTER_DISCIPLE", "SECT_RANK_INNER_DISCIPLE", "SECT_RANK_CORE_DISCIPLE",
+		"SECT_RANK_ELDER", "SECT_RANK_SECT_MASTER",
+		"SECT_RANK_FLAME_INITIATE", "SECT_RANK_FLAME_ADEPT", "SECT_RANK_FLAME_OVERLORD",
+		"SECT_TYPE_ORTHODOX", "SECT_TYPE_DEMONIC", "SECT_TYPE_NEUTRAL", "SECT_TYPE_HIDDEN",
+		"UI_HUD_SECT_NONE", "UI_SECT_PANEL_TITLE", "UI_SECT_PANEL_DOCTRINE", "UI_SECT_PANEL_TYPE",
+		"UI_SECT_PANEL_TIER", "UI_SECT_PANEL_RANK", "UI_SECT_PANEL_REPUTATION",
+		"UI_SECT_PANEL_INFLUENCE", "UI_SECT_PANEL_TERRITORY", "UI_SECT_PANEL_RESOURCES",
+		"UI_SECT_PANEL_NONE", "UI_SECT_PANEL_TOGGLE",
+	]
+	for key in keys:
+		assert_true(loc.has_key(key), "sect key '%s' exists in the table" % key)
+		loc.set_language("en")
+		assert_ne(loc.t(key), key, "en value present for '%s'" % key)
+		loc.set_language("vi")
+		assert_ne(loc.t(key), key, "vi value present for '%s'" % key)
+	free_node(loc)

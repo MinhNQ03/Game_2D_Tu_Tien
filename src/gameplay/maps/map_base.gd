@@ -39,6 +39,7 @@ var _map_data: MapData = null          # authoritative data for THIS map (set by
 var _active_exit: MapExit = null       # the exit (data) the player currently stands in
 var _active_zone: MapExitZone = null   # which zone set _active_exit (for exit tracking)
 var _hud: GameplayHUD = null           # presentation overlay (name/map/hints); owned here
+var _sect_view: SectMembershipView = null  # cached read-only sect view (Phase 06); pushed in
 
 
 func _ready() -> void:
@@ -95,6 +96,15 @@ func get_map_data() -> MapData:
 ## (apply_map_data runs before the player is placed, so the HUD can't read it there).
 func refresh_hud() -> void:
 	_refresh_hud()
+
+
+## Push the player's read-only sect membership view into the HUD (Phase 06). Called by
+## WorldRuntime (which reads SectRuntime) after the player is placed + on membership changes.
+## MapBase stays sect-agnostic about the DATA SOURCE — it just forwards a view to its HUD.
+func set_sect_view(view: SectMembershipView) -> void:
+	_sect_view = view
+	if _hud != null:
+		_hud.set_sect_view(view)
 
 
 # --- Camera (data-driven limits from MapData.bounds; shared zoom baseline) ---
@@ -246,6 +256,9 @@ func _refresh_hud() -> void:
 	_hud.set_map_name(map_name_key)
 	_hud.set_character(_find_player_character())
 	_hud.set_interact_available(_active_exit != null)
+	# Re-apply the cached sect view so a fresh HUD (new map) still shows the player's sect.
+	if _sect_view != null:
+		_hud.set_sect_view(_sect_view)
 
 
 ## Read the authoritative player CharacterState from the player realized in this map (or null

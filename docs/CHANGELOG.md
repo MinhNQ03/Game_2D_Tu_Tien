@@ -8,6 +8,48 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Phase 06: Sect System (core domain + runtime + UI) (D-032)
+- **Sect domain (core system, data-driven):** `SectTemplateData` + `SectRankData` (ordered
+  rank ladder as content, not code) + `SectCatalog`; `SectState` (authoritative roster —
+  leader/elders/disciples + rank_by_character — resources/territory/reputation/influence/
+  declared allies+enemies, fail-closed `to_dict`/`from_dict`); `SectStore` (single collection
+  SoT); `SectService` (the ONLY mutation path: join/leave/rank/leader/elder, resource/
+  reputation/influence/territory, diplomacy, with full membership + economy invariants).
+- **Membership authority = the roster (D-015):** `CharacterState.sect_id`/`sect_rank` are a
+  DERIVED cache the service writes on join/leave/rank; `sync_character_cache()` rebuilds the
+  cache FROM the roster (roster wins on drift). Enrolling a non-existent character is rejected
+  via an injected character-resolver seam (no `/root`, no fake character).
+- **Relationship mirror, transactional:** declared sect alliances/enemies are mirrored to
+  symmetric Sect↔Sect edges in the existing RelationshipService (stable `sect_rel:a|b` id,
+  one edge per pair). The mutation is transactional — if the relationship edge fails, the sect
+  declaration rolls back so the two stores never diverge.
+- **SectRuntime** (`Main/Systems`, NOT an autoload — budget stays 5): per-session owner that
+  loads the catalog, registers sects, mirrors default diplomacy, enrolls the player into the
+  authored start sect, survives map swaps, and ends/clears on return to menu. Wired in
+  `main.gd` after the world + relationship sessions.
+- **Sect UI (Continuous Visual Integration):** a compact sect chip (emblem + name + rank +
+  reputation) in the GameplayHUD + a toggleable `SectPanel` (doctrine/type/tier/rank/
+  reputation/influence/territory/resources) in the live Xianxia UI language, opened via the new
+  semantic `sect_panel` action (display label through InputService; no raw keycode). All text
+  localized (vi + en); no raw sect ids shown; a localized "no sect" empty state. A sect banner
+  (emblem) decorates the hub. UI reads a read-only `SectMembershipView` DTO — no sect truth in
+  presentation.
+- **Content:** `sect_azure_cloud` (orthodox, player's start sect) + `sect_crimson_flame`
+  (demonic, its enemy) authored as data; self-made CC0-equivalent 16×16 emblems; player
+  template `default_sect_id` seeds the cache, the roster is authoritative.
+- **Tests:** `tests/unit/sect/` domain (28 cases) + runtime (Node/session/survival/view),
+  localization sect-key coverage (vi+en), and the world/map E2E extended to assert SectRuntime
+  exists/active, player membership matches the roster, the HUD renders the sect, the panel
+  toggles via REAL `sect_panel` input, membership survives 20 map round trips, and the session
+  clears on return to menu. No new CI gate; 9 gates unchanged.
+- **Scope:** NO Faction/Politics engine (Phase 07), World Simulation (Phase 08), Combat,
+  Inventory, Save, or networking. No new autoload.
+
+### 2026-10-03 — Changelog correction: D-030 added 2 (not 4) test methods (D-031)
+- Corrected the D-030 entry's test-method count to "+2 test methods" (the two
+  `test_hub_decor_contract`/`test_field_decor_contract`); the other D-030 test changes were
+  assertion edits, not new methods. Documentation only; no code/test change.
+
 ### 2026-10-03 — Phase 05 close-out + visual-foundation hardening (D-030)
 - **Documentation drift reconciled:** ROADMAP Phase 05 now reads *all 9 gates green* (matches
   `ci.yml`, was "7"); Phase 25 renamed **"UI Consolidation / Production Polish"** (final polish,

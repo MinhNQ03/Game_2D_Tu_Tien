@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_tree.png" id="6_tree"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="7_rock"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_planter.png" id="8_planter"]
+[ext_resource type="Texture2D" path="res://assets/sprites/sects/emblem_azure_cloud.png" id="9_emblem"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(480, 16)
@@ -30,6 +31,12 @@ script = ExtResource("4_ground")
 fill_rect = Rect2i(1, 1, 28, 18)
 
 [node name="Decor" type="Node2D" parent="Visual"]
+
+[node name="SectBanner" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(240, 56)
+scale = Vector2(2, 2)
+texture = ExtResource("9_emblem")
 
 [node name="TreeNW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1

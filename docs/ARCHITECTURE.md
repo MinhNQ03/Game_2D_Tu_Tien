@@ -46,8 +46,15 @@
 > - **Relationship (Phase 05, D-026):** a serializable relationship graph owned by a
 >   `RelationshipRuntime` node under `Main/Systems` (sibling of `WorldRuntime`, NOT an autoload)
 >   that starts with New Game and survives map swaps. Domain-only (`src/domain/relationship/`),
->   single mutation path + domain `relationship_changed` signal; SECT endpoints are structural
->   only (no `SectState` yet — Phase 06).
+>   single mutation path + domain `relationship_changed` signal.
+> - **Sect (Phase 06, D-032):** a roster-authoritative sect domain (`src/domain/sect/`:
+>   `SectState`/`SectStore`/`SectService`; data `src/data/sects/`) owned by a `SectRuntime` node
+>   under `Main/Systems` (sibling, NOT an autoload) that enrolls the player into the authored
+>   start sect and survives map swaps. Membership roster is the source of truth (D-015);
+>   `CharacterState.sect_id`/`sect_rank` are a derived cache. Declared alliances/enemies mirror
+>   (transactionally) to Sect↔Sect edges in the ONE relationship graph. A localized Sect HUD
+>   chip + `SectPanel` + hub banner render a read-only `SectMembershipView` (presentation owns no
+>   sect truth). SECT relationship endpoints are now backed by real `SectState`s.
 > - Phase-02 Player Sandbox (`src/gameplay/sandbox/`) is retained for combat validation but
 >   is not reachable from New Game. The `prologue_shell` is retained but no longer first.
 > - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`;
@@ -56,7 +63,7 @@
 > - Custom test runner + framework (`tests/`), parse checker (`tools/parse_check.gd`), CI
 >   (9 gates incl. a dedicated world/map E2E process).
 >
-> **Not yet present (TARGET):** Sect/Faction/World-Sim domain systems, Combat,
+> **Not yet present (TARGET):** Faction/World-Sim domain systems, Combat,
 > Inventory/Equipment/Skill/Cultivation mechanics (Character holds cultivation fields as
 > CONTRACT only), Dialogue/Quest/Story, non-player Character spawning + the EventBus character
 > events, `Config`/`RNG`/`SaveService` autoloads, persistence, and most content Resources.

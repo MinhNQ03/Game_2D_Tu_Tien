@@ -1,8 +1,17 @@
 # SECT_SYSTEM — Aetheria
 
-> **Design only. No gameplay implemented.** Tông môn (Sect) is a **core** system
-> (D-011), not quest decoration. Includes internal factions & politics (§7). Companion
-> to `docs/CHARACTER_SYSTEM.md`, `docs/RELATIONSHIP_SYSTEM.md`, `docs/WORLD_SIMULATION.md`.
+> Tông môn (Sect) is a **core** system (D-011), not quest decoration. Includes internal
+> factions & politics (§7). Companion to `docs/CHARACTER_SYSTEM.md`,
+> `docs/RELATIONSHIP_SYSTEM.md`, `docs/WORLD_SIMULATION.md`.
+>
+> **Implementation status (Phase 06, D-032):** the Sect CORE is now IMPLEMENTED — the §3–§6,
+> §8 contract (SectTemplateData/SectRankData/SectCatalog + SectState/SectStore/SectService +
+> SectRuntime, roster-authoritative membership D-015, resources/territory/reputation/influence,
+> alliance/enemy mirror to the relationship graph, serialization seam) plus a localized Sect UI
+> (HUD chip + detail panel + hub banner). **Factions & internal politics (§7) are NOT yet
+> implemented — that is Phase 07.** The §4 fields `factions`/`technique_ids`/`rules`/`secrets`/
+> `event_hooks`/`story_flags` remain design contract only (not modeled on `SectTemplateData`/
+> `SectState` yet; added when their phase needs them — anti-over-engineering).
 
 ## 1. Why Sect is core
 

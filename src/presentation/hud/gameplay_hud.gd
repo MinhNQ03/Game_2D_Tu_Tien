@@ -16,9 +16,11 @@ class_name GameplayHUD
 ## shown (no gameplay semantics yet) — a later phase adds them to the reserved panels.
 
 const PromptRowScript := preload("res://src/presentation/ui/components/ui_prompt_row.gd")
+const SectPanelScript := preload("res://src/presentation/sect/sect_panel.gd")
 
 const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
+const SECT_PANEL_ACTION := &"sect_panel"
 
 var _loc: Node = null
 var _input: Node = null
@@ -29,12 +31,21 @@ var _name_key: StringName = &""
 var _title_key: StringName = &""
 var _map_name_key: StringName = &""
 var _interact_available: bool = false
+var _sect_view: SectMembershipView = null  # read-only sect view (Phase 06); may be null
 
 var _name_label: Label
 var _title_label: Label
 var _map_label: Label
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
+var _sect_row: UIPromptRow
+
+# Compact sect chip in the identity panel (emblem + name + rank + reputation).
+var _sect_emblem: TextureRect
+var _sect_name_label: Label
+var _sect_rank_label: Label
+# The toggleable Sect detail panel (owned here; hidden until the player opens it).
+var _sect_panel: SectPanel
 
 
 func _ready() -> void:
@@ -93,6 +104,32 @@ func _build_ui() -> void:
 	_title_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
 	identity_text.add_child(_title_label)
 
+	# Compact sect chip (Phase 06): emblem + sect name + rank, under the character identity.
+	var sect_chip := HBoxContainer.new()
+	sect_chip.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	identity_text.add_child(sect_chip)
+
+	_sect_emblem = TextureRect.new()
+	_sect_emblem.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_sect_emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_sect_emblem.custom_minimum_size = Vector2(16, 16)
+	_sect_emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sect_chip.add_child(_sect_emblem)
+
+	var sect_text := VBoxContainer.new()
+	sect_text.add_theme_constant_override("separation", 0)
+	sect_chip.add_child(sect_text)
+
+	_sect_name_label = Label.new()
+	_sect_name_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_sect_name_label.add_theme_color_override("font_color", UIPalette.COLOR_TITLE)
+	sect_text.add_child(_sect_name_label)
+
+	_sect_rank_label = Label.new()
+	_sect_rank_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_sect_rank_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
+	sect_text.add_child(_sect_rank_label)
+
 	# --- Top-right: map-name panel ------------------------------------------------
 	var map_panel := _panel()
 	map_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -120,8 +157,23 @@ func _build_ui() -> void:
 	_interact_row = PromptRowScript.new() as UIPromptRow
 	prompt_box.add_child(_interact_row)
 
+	_sect_row = PromptRowScript.new() as UIPromptRow
+	prompt_box.add_child(_sect_row)
+
 	_menu_row = PromptRowScript.new() as UIPromptRow
 	prompt_box.add_child(_menu_row)
+
+	# --- Sect detail panel (Phase 06): hidden until the player presses `sect_panel` ----
+	var sect_panel_anchor := Control.new()
+	sect_panel_anchor.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	sect_panel_anchor.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	sect_panel_anchor.grow_vertical = Control.GROW_DIRECTION_BOTH
+	sect_panel_anchor.position = Vector2(-UIPalette.SPACE_MD, 0)
+	sect_panel_anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(sect_panel_anchor)
+	_sect_panel = SectPanelScript.new() as SectPanel
+	_sect_panel.visible = false
+	sect_panel_anchor.add_child(_sect_panel)
 
 
 ## A framed HUD panel wearing the shared 9-slice panel style.
@@ -161,6 +213,34 @@ func set_interact_available(available: bool) -> void:
 	_refresh()
 
 
+## Push the player's read-only sect membership view (Phase 06). The owner (MapBase, fed by
+## WorldRuntime→SectRuntime) rebuilds + pushes this on map arrival / membership change — NOT
+## per frame. Refreshes the compact chip + the (possibly open) detail panel.
+func set_sect_view(view: SectMembershipView) -> void:
+	_sect_view = view
+	if _sect_panel != null:
+		_sect_panel.set_view(view)
+	_refresh()
+
+
+## Semantic `sect_panel` intent toggles the detail panel. Driven through InputService (gated
+## to GAMEPLAY context) — never a raw keycode (L-003). Read + handle locally, then mark the
+## input handled; no scene teardown happens here so this is a safe place to touch the viewport.
+func _unhandled_input(_event: InputEvent) -> void:
+	if _input == null or _sect_panel == null:
+		return
+	if _input.call("is_gameplay_action_just_pressed", SECT_PANEL_ACTION):
+		_sect_panel.visible = not _sect_panel.visible
+		var vp := get_viewport()
+		if vp != null:
+			vp.set_input_as_handled()
+
+
+## Is the Sect detail panel currently shown? (for tests)
+func is_sect_panel_open() -> bool:
+	return _sect_panel != null and _sect_panel.visible
+
+
 # --- Rendering ---------------------------------------------------------------
 
 func _refresh() -> void:
@@ -170,7 +250,31 @@ func _refresh() -> void:
 	_title_label.text = _resolve(_title_key)
 	_title_label.visible = _title_key != &""
 	_map_label.text = _resolve(_map_name_key)
+	_refresh_sect_chip()
 	_refresh_prompts()
+
+
+## Render the compact sect chip from the read-only view (localized; never a raw id). A null
+## view or a "not a member" view shows a localized "No Sect" line + no emblem.
+func _refresh_sect_chip() -> void:
+	if _sect_name_label == null:
+		return
+	if _sect_view != null and _sect_view.is_member:
+		_sect_name_label.text = _resolve(_sect_view.sect_name_key)
+		_sect_rank_label.text = "%s · %s %d" % [
+			_resolve(_sect_view.rank_name_key),
+			_text("UI_SECT_PANEL_REPUTATION"), _sect_view.reputation]
+		_sect_rank_label.visible = true
+		if _sect_view.emblem_ref != "" and ResourceLoader.exists(_sect_view.emblem_ref):
+			_sect_emblem.texture = load(_sect_view.emblem_ref)
+		else:
+			_sect_emblem.texture = null
+		_sect_emblem.visible = _sect_emblem.texture != null
+	else:
+		_sect_name_label.text = _text("UI_HUD_SECT_NONE")
+		_sect_rank_label.visible = false
+		_sect_emblem.texture = null
+		_sect_emblem.visible = false
 
 
 ## Resolve a localization key to text (empty key -> empty string, no warning spam).
@@ -191,6 +295,10 @@ func _refresh_prompts() -> void:
 	if _interact_available:
 		var interact_key := _display_label(INTERACT_ACTION)
 		_interact_row.set_prompt(interact_key, _text("UI_HUD_INTERACT_ACTION"))
+	# Sect panel prompt: always available (the player can always inspect their sect, §19).
+	if _sect_row != null:
+		var sect_key := _display_label(SECT_PANEL_ACTION)
+		_sect_row.set_prompt(sect_key, _text("UI_SECT_PANEL_TOGGLE"))
 
 
 func _display_label(action: StringName) -> String:

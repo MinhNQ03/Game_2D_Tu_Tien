@@ -22,6 +22,7 @@ const MAIN_SCENE_PATH := "res://main.tscn"
 const INTERACT := &"interact"
 const OPEN_MENU := &"open_menu"
 const MOVE_RIGHT := &"move_right"
+const SECT_PANEL := &"sect_panel"
 const ROUND_TRIPS := 20
 const REQUIRED_AUTOLOADS := [
 	"EventBus", "GameState", "Localization", "InputService", "SceneRouter",
@@ -85,6 +86,20 @@ func test_real_world_map_flow() -> void:
 		assert_eq(_count_named("RelationshipRuntime"), 0,
 			"RelationshipRuntime is NOT an autoload (not under /root)")
 
+	# Phase 06 (Sect): a SectRuntime sibling must exist under Main/Systems, be a non-autoload
+	# node, run a session, and have enrolled the player into the authored start sect. Capture
+	# its id to assert it survives map swaps.
+	var sect_runtime := _find_sect_runtime(main)
+	assert_not_null(sect_runtime, "SectRuntime exists under Main/Systems")
+	var sect_runtime_id := -1
+	if sect_runtime != null:
+		sect_runtime_id = sect_runtime.get_instance_id()
+		assert_true(sect_runtime.call("is_session_active"),
+			"SectRuntime session active after New Game")
+		assert_eq(_count_named("SectRuntime"), 0, "SectRuntime is NOT an autoload (not under /root)")
+		assert_eq(sect_runtime.call("get_player_sect_id"), &"sect_azure_cloud",
+			"player enrolled in the authored start sect")
+
 	var player: Node = world_runtime.call("get_player")
 	assert_not_null(player, "WorldRuntime owns a persistent player")
 	if player == null:
@@ -101,12 +116,46 @@ func test_real_world_map_flow() -> void:
 		character_id = character.get_instance_id()
 		assert_eq(String(character.instance_id), "player", "player state has the stable id")
 		assert_true(character.is_alive(), "player starts ALIVE")
+		# Phase 06 / D-015: the player's DERIVED cache matches the authoritative sect roster.
+		if sect_runtime != null:
+			var player_sect: SectState = sect_runtime.call("get_player_sect")
+			assert_not_null(player_sect, "player's authoritative SectState resolves")
+			if player_sect != null:
+				assert_true(player_sect.is_member(character.instance_id),
+					"player is on the authoritative sect roster")
+				assert_eq(character.sect_id, player_sect.id,
+					"CharacterState.sect_id matches the roster sect")
+				assert_eq(character.sect_rank, player_sect.rank_of(character.instance_id),
+					"CharacterState.sect_rank matches the roster rank")
 
 	var hub_map: Node = router.get_current_scene()
 	assert_true(_player_is_in_map(player, hub_map), "player is parented inside the hub map")
 
 	# Camera limits are data-driven from MapData.bounds (Rect2(16,16,448,288)).
 	_assert_camera_limits(hub_map, 16, 16, 464, 304, "hub")
+
+	# --- 3b. Sect is VISIBLE in the HUD + the panel toggles via REAL input (Phase 06) ----
+	var hud := _find_gameplay_hud(hub_map)
+	assert_not_null(hud, "the hub map owns a GameplayHUD")
+	if hud != null:
+		# The HUD renders the player's sect: the localized name appears somewhere, and NO raw
+		# sect id leaks into any label.
+		var hud_text := _all_label_text(hud)
+		var loc: Node = scene_tree.root.get_node_or_null("Localization")
+		var sect_name := String(loc.call("t", "SECT_AZURE_CLOUD_NAME")) if loc != null else ""
+		assert_true(sect_name != "" and (sect_name in hud_text),
+			"HUD shows the localized sect name")
+		for t in hud_text:
+			assert_false(t.contains("sect_azure_cloud"), "no raw sect id leaks into the HUD (%s)" % t)
+		# Toggle the Sect detail panel via a REAL `sect_panel` key event (bounded retry for
+		# input-dispatch frame timing). It starts closed, opens on the key.
+		assert_false(hud.call("is_sect_panel_open"), "sect panel starts closed")
+		for _attempt in range(8):
+			await _fire_action(SECT_PANEL)
+			await scene_tree.process_frame
+			if bool(hud.call("is_sect_panel_open")):
+				break
+		assert_true(hud.call("is_sect_panel_open"), "a real sect_panel key opened the panel")
 
 	# --- 4. a REAL semantic MOVEMENT step (proves InputService movement path) -----
 	await _prove_movement(player, input)
@@ -139,6 +188,14 @@ func test_real_world_map_flow() -> void:
 		var round_rel := _find_relationship_runtime(main)
 		assert_true(round_rel != null and round_rel.get_instance_id() == relationship_id,
 			"round %d: SAME RelationshipRuntime instance (survives map swap)" % i)
+		# The SectRuntime (+ the player's SectState membership) is the SAME across the swap
+		# (Phase 06): it lives under Main/Systems and is never freed/rebuilt by a content swap.
+		var round_sect := _find_sect_runtime(main)
+		assert_true(round_sect != null and round_sect.get_instance_id() == sect_runtime_id,
+			"round %d: SAME SectRuntime instance (survives map swap)" % i)
+		if round_sect != null:
+			assert_eq(round_sect.call("get_player_sect_id"), &"sect_azure_cloud",
+				"round %d: player's sect membership persists across the swap" % i)
 		assert_eq(_count_player_instances(scene_tree.root), 1, "round %d: exactly one Player" % i)
 		var active: Node = router.get_current_scene()
 		assert_true(_player_is_in_map(player, active), "round %d: player in active map" % i)
@@ -168,6 +225,12 @@ func test_real_world_map_flow() -> void:
 	if relationship_runtime != null and is_instance_valid(relationship_runtime):
 		assert_false(relationship_runtime.call("is_session_active"),
 			"RelationshipRuntime session ended on return to menu")
+	# The sect subsystem likewise ends its session + clears its state on return to menu.
+	if sect_runtime != null and is_instance_valid(sect_runtime):
+		assert_false(sect_runtime.call("is_session_active"),
+			"SectRuntime session ended on return to menu")
+		assert_eq(sect_runtime.call("get_player_sect_id"), &"",
+			"SectRuntime cleared the player's sect on session end")
 
 	# --- 8. cleanup / isolation --------------------------------------------------
 	_teardown(main)
@@ -199,6 +262,33 @@ func _find_relationship_runtime(main: Node) -> Node:
 		if child is RelationshipRuntime:
 			return child
 	return null
+
+
+func _find_sect_runtime(main: Node) -> Node:
+	var systems := main.get_node_or_null("Systems")
+	if systems == null:
+		return null
+	for child in systems.get_children():
+		if child is SectRuntime:
+			return child
+	return null
+
+
+## The GameplayHUD inside the active map (a CanvasLayer named "GameplayHUD" MapBase adds).
+func _find_gameplay_hud(map: Node) -> Node:
+	if map == null:
+		return null
+	return map.get_node_or_null("GameplayHUD")
+
+
+## Every Label's text anywhere under `node` (recursive) — for asserting rendered UI content.
+func _all_label_text(node: Node) -> Array:
+	var out: Array = []
+	if node is Label:
+		out.append((node as Label).text)
+	for child in node.get_children():
+		out += _all_label_text(child)
+	return out
 
 
 func _player_is_in_map(player: Node, map: Node) -> bool:

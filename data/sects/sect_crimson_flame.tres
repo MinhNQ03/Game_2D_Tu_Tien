@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="SectTemplateData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/data/sects/sect_template_data.gd" id="1_tmpl"]
+[ext_resource type="Script" path="res://src/data/sects/sect_rank_data.gd" id="2_rank"]
+
+[sub_resource type="Resource" id="rank_initiate"]
+script = ExtResource("2_rank")
+rank_id = &"rank_initiate"
+name_key = &"SECT_RANK_FLAME_INITIATE"
+authority = 10
+
+[sub_resource type="Resource" id="rank_adept"]
+script = ExtResource("2_rank")
+rank_id = &"rank_adept"
+name_key = &"SECT_RANK_FLAME_ADEPT"
+authority = 25
+
+[sub_resource type="Resource" id="rank_overlord"]
+script = ExtResource("2_rank")
+rank_id = &"rank_overlord"
+name_key = &"SECT_RANK_FLAME_OVERLORD"
+authority = 50
+
+[resource]
+script = ExtResource("1_tmpl")
+id = &"sect_crimson_flame"
+name_key = &"SECT_CRIMSON_FLAME_NAME"
+doctrine_key = &"SECT_CRIMSON_FLAME_DOCTRINE"
+emblem_ref = "res://assets/sprites/sects/emblem_crimson_flame.png"
+sect_type = 1
+tier = 3
+rank_ladder = [SubResource("rank_initiate"), SubResource("rank_adept"), SubResource("rank_overlord")]
+starting_resources = {
+"spirit_stones": 900,
+"blood_crystals": 60,
+"manpower": 260
+}
+starting_territory = [&"region_scarlet_wastes"]
+reputation_seed = {
+"world": -30
+}
+influence_seed = 45
+default_ally_sect_ids = []
+default_enemy_sect_ids = [&"sect_azure_cloud"]

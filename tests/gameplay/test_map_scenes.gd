@@ -129,6 +129,9 @@ const EXPECTED_PROP_SIZES := {
 	"res://assets/sprites/props/prop_tree.png": Vector2i(32, 32),
 	"res://assets/sprites/props/prop_rock.png": Vector2i(16, 16),
 	"res://assets/sprites/props/prop_planter.png": Vector2i(16, 16),
+	# Phase 06: a sect banner (emblem) is a valid Visual/Decor decoration too.
+	"res://assets/sprites/sects/emblem_azure_cloud.png": Vector2i(16, 16),
+	"res://assets/sprites/sects/emblem_crimson_flame.png": Vector2i(16, 16),
 }
 
 

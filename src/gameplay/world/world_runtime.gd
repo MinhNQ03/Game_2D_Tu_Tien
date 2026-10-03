@@ -261,8 +261,44 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# into the map, so the identity plate reflects the live character (D-023).
 	if _active_map != null and _active_map.has_method("refresh_hud"):
 		_active_map.call("refresh_hud")
+	# Push the player's sect membership view into the new map's HUD (Phase 06). Read from the
+	# SectRuntime sibling (optional, null-safe) so a fresh HUD on each map still shows the
+	# player's sect. WorldRuntime stays sect-agnostic beyond forwarding a read-only view.
+	_push_sect_view_to_active_map()
 	# The old scene was freed by the router's _free_current_scene(); nothing to do here.
 	return true
+
+
+## Push the player's sect view into the CURRENT map's HUD (Phase 06). Public so the
+## coordinator (Main) can call it once the sect session has started — the START map loads
+## inside start_session(), BEFORE Main starts the sect session, so the first push there is a
+## no-op; Main calls this right after _start_sect_session() to populate the hub HUD.
+func refresh_active_map_sect_view() -> void:
+	_push_sect_view_to_active_map()
+
+
+## Find the optional SectRuntime sibling (under the same Systems parent) and push the player's
+## read-only membership view into the active map's HUD. Null-safe: if there is no SectRuntime
+## (or no active session), nothing happens — the map simply shows no sect chip.
+func _push_sect_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_sect_view"):
+		return
+	var sect_runtime := _find_sect_runtime()
+	if sect_runtime == null or not sect_runtime.call("is_session_active"):
+		return
+	_active_map.call("set_sect_view", sect_runtime.call("get_player_membership_view"))
+
+
+## Locate the SectRuntime among this node's siblings under Main/Systems (or null). A direct
+## sibling lookup — no /root, no deep tree walk, resolved once per transition (not per frame).
+func _find_sect_runtime() -> Node:
+	var parent := get_parent()
+	if parent == null:
+		return null
+	for sibling in parent.get_children():
+		if sibling is SectRuntime:
+			return sibling
+	return null
 
 
 ## Restore the player into a previous parent at a previous position (rollback path). If the

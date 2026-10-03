@@ -378,6 +378,54 @@ def gen_prop_planter():
     _png(os.path.join(ROOT, "assets/sprites/props/prop_planter.png"), w, h, px)
 
 
+# --- Sect emblems (16x16, Aetheria tu-tiên palette, Phase 06) -----------------
+# Small self-made pixel insignia used by the Sect UI (HUD chip + detail panel) and a hub
+# banner. Jade/ink for an orthodox cloud sect; vermilion/gold for a demonic flame sect.
+# nearest filter, project-owned (recorded in docs/ASSET_LICENSES.md).
+
+def gen_sect_emblem_azure():
+    # A jade "cloud" sigil on a dark ink roundel (Azure Cloud Sect — orthodox).
+    w, h = 16, 16
+    px = _blank(w, h)
+    ink = (26, 32, 38, 255)
+    jade = (72, 170, 140, 255)
+    jade_hi = _shade(jade, 1.3)
+    _oval(px, 8, 8, 7, 7, ink)              # roundel
+    _oval(px, 8, 8, 6, 6, _shade(ink, 1.4))
+    # Stylized ruyi cloud: two curls + a sweep.
+    _oval(px, 6, 7, 2, 2, jade)
+    _oval(px, 10, 7, 2, 2, jade)
+    _rect(px, 4, 9, 12, 11, jade)
+    _rect(px, 6, 6, 7, 7, jade_hi)
+    _rect(px, 9, 6, 10, 7, jade_hi)
+    _png(os.path.join(ROOT, "assets/sprites/sects/emblem_azure_cloud.png"), w, h, px)
+
+
+def gen_sect_emblem_crimson():
+    # A vermilion flame tipped with gold on a dark roundel (Crimson Flame Sect — demonic).
+    w, h = 16, 16
+    px = _blank(w, h)
+    ink = (34, 24, 26, 255)
+    red = (176, 48, 48, 255)
+    red_hi = _shade(red, 1.3)
+    gold = (210, 180, 90, 255)
+    _oval(px, 8, 8, 7, 7, ink)
+    _oval(px, 8, 8, 6, 6, _shade(ink, 1.3))
+    # Flame body (teardrop): wide base, narrow tip.
+    _rect(px, 6, 9, 10, 13, red)
+    _oval(px, 8, 10, 3, 4, red)
+    _rect(px, 7, 5, 9, 10, red)
+    _rect(px, 7, 5, 8, 8, red_hi)           # inner highlight
+    px[4][8] = gold                          # gold tip
+    px[5][8] = gold
+    _png(os.path.join(ROOT, "assets/sprites/sects/emblem_crimson_flame.png"), w, h, px)
+
+
+def gen_sect_emblems():
+    gen_sect_emblem_azure()
+    gen_sect_emblem_crimson()
+
+
 def gen_props():
     gen_prop_lantern()
     gen_prop_tree()
@@ -390,4 +438,5 @@ if __name__ == "__main__":
     gen_tileset()
     gen_character_sheets()
     gen_props()
+    gen_sect_emblems()
     print("done")

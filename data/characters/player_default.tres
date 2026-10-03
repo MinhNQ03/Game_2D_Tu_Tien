@@ -21,6 +21,6 @@ starting_technique_ids = []
 base_stats = ExtResource("2_stats")
 default_traits = []
 motivation_key = &""
-default_sect_id = &""
+default_sect_id = &"sect_azure_cloud"
 default_faction_id = &""
 schedule_ref = &""

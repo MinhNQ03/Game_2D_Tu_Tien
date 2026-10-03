@@ -31,6 +31,13 @@ const WORLD_RUNTIME_SCRIPT := "res://src/gameplay/world/world_runtime.gd"
 ## subsystem so WorldRuntime stays the map/player coordinator (no God object).
 const RELATIONSHIP_RUNTIME_SCRIPT := "res://src/gameplay/world/relationship_runtime.gd"
 
+## PHASE 06 (Sect): the per-session sect domain lives in a `SectRuntime` node under
+## `Main/Systems` — another SIBLING, also NOT an autoload. It depends on the relationship
+## subsystem (it mirrors Sect↔Sect alliances into the relationship graph) and on the player's
+## CharacterState (to enroll the player + sync the derived cache), so it starts AFTER both the
+## world + relationship sessions. Same no-God-object discipline.
+const SECT_RUNTIME_SCRIPT := "res://src/gameplay/world/sect_runtime.gd"
+
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
 ## are therefore always present when Main actually runs (real app, the runtime boot smoke,
@@ -48,6 +55,8 @@ var _menu: Control = null
 var _world: Node = null   # WorldRuntime (per-session world/map coordinator), under Systems
 # RelationshipRuntime (per-session relationship graph), under Systems (D-026).
 var _relationship: Node = null
+# SectRuntime (per-session sect domain), under Systems (Phase 06).
+var _sect: Node = null
 
 
 func _ready() -> void:
@@ -99,6 +108,10 @@ func _boot() -> void:
 	# also a node not an autoload — D-026). Idle until New Game.
 	_create_relationship_runtime()
 
+	# Create the SectRuntime subsystem under Systems too (sibling, node not autoload —
+	# Phase 06). Idle until New Game.
+	_create_sect_runtime()
+
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
 		return
@@ -139,6 +152,22 @@ func _create_relationship_runtime() -> void:
 	_relationship.name = "RelationshipRuntime"
 	_relationship.set_script(script)
 	get_node(CONTAINER_SYSTEMS).add_child(_relationship)
+
+
+## Instantiate the SectRuntime subsystem under Systems (Phase 06). Mirrors the other two
+## runtime creators: a script-created node, not an autoload, not a scene. It owns no intents
+## to wire — Main starts/ends its session alongside the world + relationship sessions.
+func _create_sect_runtime() -> void:
+	if _sect != null and is_instance_valid(_sect):
+		return
+	var sect_script: Script = load(SECT_RUNTIME_SCRIPT)
+	if sect_script == null:
+		push_error("[boot] failed to load SectRuntime script: %s" % SECT_RUNTIME_SCRIPT)
+		return
+	_sect = Node.new()
+	_sect.name = "SectRuntime"
+	_sect.set_script(sect_script)
+	get_node(CONTAINER_SYSTEMS).add_child(_sect)
 
 
 ## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
@@ -208,6 +237,12 @@ func _on_new_game_pressed() -> void:
 		if not bool(_relationship.call("start_session")):
 			push_warning("[main] relationship session did not start (see errors above)")
 
+	# Start the sect session (Phase 06), AFTER the world + relationship sessions: it enrolls
+	# the player (from WorldRuntime's CharacterState) into the authored start sect and mirrors
+	# Sect↔Sect alliances into the relationship graph. NON-FATAL: a sect-load failure is logged
+	# and must not abort an otherwise-good New Game.
+	_start_sect_session()
+
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
@@ -215,9 +250,42 @@ func _on_new_game_pressed() -> void:
 		_world.call("end_session")
 		if _relationship != null and is_instance_valid(_relationship):
 			_relationship.call("end_session")
+		if _sect != null and is_instance_valid(_sect):
+			_sect.call("end_session")
 		gs.call("end_session")
 		_show_menu()
 		return
+
+
+## Start the SectRuntime session (Phase 06). Pulls the shared RelationshipService from the
+## RelationshipRuntime (for the Sect↔Sect mirror), builds a character resolver bound to
+## WorldRuntime's single player CharacterState (so the service validates membership + syncs
+## the player's derived cache without touching /root or the tree, §11), and enrolls the player
+## using WorldRuntime's stable instance id. All null-safe + NON-FATAL (logged, never aborts).
+func _start_sect_session() -> void:
+	if _sect == null or not is_instance_valid(_sect):
+		return
+	var rel_service: Variant = null
+	if _relationship != null and is_instance_valid(_relationship):
+		rel_service = _relationship.call("get_service")
+	var player_character = _world.call("get_player_character") if _world != null else null
+	var player_id: StringName = &""
+	if player_character != null:
+		player_id = player_character.instance_id
+	# Resolver: the ONLY character this session knows is the player (no CharacterRegistry yet,
+	# §11). It returns the player's CharacterState for the player's id, else null — so the
+	# service rejects enrolling any non-existent character and never invents one (§10).
+	var resolver := func(cid: StringName) -> CharacterState:
+		if player_character != null and cid == player_id:
+			return player_character
+		return null
+	if not bool(_sect.call("start_session", rel_service, resolver, player_id)):
+		push_warning("[main] sect session did not start (see errors above)")
+		return
+	# The hub map loaded during world start_session (BEFORE the sect session existed), so push
+	# the now-available sect view into the already-active map's HUD.
+	if _world != null and is_instance_valid(_world) and _world.has_method("refresh_active_map_sect_view"):
+		_world.call("refresh_active_map_sect_view")
 
 
 func _on_return_to_menu() -> void:
@@ -228,6 +296,9 @@ func _on_return_to_menu() -> void:
 	# End the relationship session too (drops the per-session graph).
 	if _relationship != null and is_instance_valid(_relationship):
 		_relationship.call("end_session")
+	# End the sect session (drops the per-session sect store/service).
+	if _sect != null and is_instance_valid(_sect):
+		_sect.call("end_session")
 	var gs := _game_state()
 	if gs != null and gs.call("is_session_active"):
 		gs.call("end_session")

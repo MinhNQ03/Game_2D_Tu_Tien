@@ -23,7 +23,7 @@ const SEMANTIC_ACTIONS := [
 	"move_up", "move_down", "move_left", "move_right",
 	"interact", "attack",
 	"skill_1", "skill_2", "skill_3", "skill_4",
-	"dodge", "open_menu", "pause",
+	"dodge", "open_menu", "pause", "sect_panel",
 ]
 
 ## Context stack. Bottom is the implicit baseline; we start in a non-gameplay MENU at boot.

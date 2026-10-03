@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="SectTemplateData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/data/sects/sect_template_data.gd" id="1_tmpl"]
+[ext_resource type="Script" path="res://src/data/sects/sect_rank_data.gd" id="2_rank"]
+
+[sub_resource type="Resource" id="rank_outer"]
+script = ExtResource("2_rank")
+rank_id = &"rank_outer"
+name_key = &"SECT_RANK_OUTER_DISCIPLE"
+authority = 10
+
+[sub_resource type="Resource" id="rank_inner"]
+script = ExtResource("2_rank")
+rank_id = &"rank_inner"
+name_key = &"SECT_RANK_INNER_DISCIPLE"
+authority = 20
+
+[sub_resource type="Resource" id="rank_core"]
+script = ExtResource("2_rank")
+rank_id = &"rank_core"
+name_key = &"SECT_RANK_CORE_DISCIPLE"
+authority = 30
+
+[sub_resource type="Resource" id="rank_elder"]
+script = ExtResource("2_rank")
+rank_id = &"rank_elder"
+name_key = &"SECT_RANK_ELDER"
+authority = 40
+
+[sub_resource type="Resource" id="rank_master"]
+script = ExtResource("2_rank")
+rank_id = &"rank_master"
+name_key = &"SECT_RANK_SECT_MASTER"
+authority = 50
+
+[resource]
+script = ExtResource("1_tmpl")
+id = &"sect_azure_cloud"
+name_key = &"SECT_AZURE_CLOUD_NAME"
+doctrine_key = &"SECT_AZURE_CLOUD_DOCTRINE"
+emblem_ref = "res://assets/sprites/sects/emblem_azure_cloud.png"
+sect_type = 0
+tier = 3
+rank_ladder = [SubResource("rank_outer"), SubResource("rank_inner"), SubResource("rank_core"), SubResource("rank_elder"), SubResource("rank_master")]
+starting_resources = {
+"spirit_stones": 1200,
+"pills": 48,
+"manpower": 320
+}
+starting_territory = [&"region_azure_peak", &"region_cloud_vale"]
+reputation_seed = {
+"world": 45
+}
+influence_seed = 60
+default_ally_sect_ids = []
+default_enemy_sect_ids = [&"sect_crimson_flame"]

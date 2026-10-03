@@ -862,6 +862,60 @@ remain Open.
 
 ---
 
+## D-032 — Phase 06 Sect System: roster-authoritative domain, single mutation path, transactional relationship mirror, SectRuntime (no autoload), data-driven content + localized Xianxia UI — **Accepted** (2026-10-03, Phase 06)
+
+**Context:** Phase 06 makes Tông môn (Sect) a real CORE domain system (D-011) built ON the
+Phase-05 relationship graph, with usable UI in the same phase (Continuous Visual Integration,
+D-030). Scope guard: NO Faction/Politics engine (Phase 07), World Simulation (Phase 08), Combat,
+NPC/Dialogue/Quest/Story, Inventory, SaveService, or networking; NO new autoload; the runnable
+flow (Menu → New Game → Hub ↔ Field → Menu) is unchanged.
+
+**Decisions:**
+- **Layering = DATA → DOMAIN → GAMEPLAY RUNTIME → PRESENTATION.** `SectTemplateData` +
+  `SectRankData` + `SectCatalog` (data); `SectState`/`SectStore`/`SectService` (domain,
+  presentation-free, serializable); `SectRuntime` (a node under `Main/Systems`); the HUD chip +
+  `SectPanel` (presentation, read a `SectMembershipView` DTO). UI holds NO sect truth; a scene
+  node is never the SectState; `CharacterState` holds NO copy of the sect.
+- **The roster is the single source of truth (D-015).** `SectState` owns leader/elders/
+  disciples + `rank_by_character`. `CharacterState.sect_id`/`sect_rank` are a DERIVED cache the
+  `SectService` writes on join/leave/rank; `sync_character_cache()` rebuilds the cache FROM the
+  roster, so on any drift the roster wins. A character the resolver can't find is rejected (no
+  fake character); the resolver is an injected `Callable` seam (no `/root`, no tree walk, no new
+  singleton, no per-mutation lookup — §11).
+- **Single mutation path with full invariants (§7/§12).** Every change goes through
+  `SectService` (no caller edits a SectState array): duplicate join / unknown leave / unknown
+  rank / self-membership / two-leaders / leader-also-elder are all rejected; resources clamp at
+  0 (int only), reputation clamps to [-100,100], influence clamps at 0, territory stays unique.
+  The service emits domain signals (not EventBus — domain stays infra-free).
+- **Rank ladder is DATA, not code.** The vocabulary (Outer Disciple → … → Sect Master) is
+  authored as ordered `SectRankData`; `SectService` never hard-codes a rank string. `authority`
+  is a comparable int so rules order ranks without string matching.
+- **Alliances/enemies mirror to ONE relationship graph, transactionally (§14).** Declared sect
+  diplomacy is mirrored to a symmetric Sect↔Sect edge via the existing `RelationshipService`
+  (deterministic stable `sect_rel:a|b` id; one edge per pair; ally↔enemy retypes the single
+  edge). The mirror runs FIRST; if it fails the sect-side declaration is rolled back, so the two
+  stores never diverge. There is no third duplicate relationship store.
+- **SectRuntime is per-session, under `Main/Systems`, NOT an autoload** (budget frozen at 5).
+  It loads the catalog, registers sects, applies default diplomacy, enrolls the player into the
+  authored start sect through the service (so the ROSTER is authoritative, not just the cache),
+  survives map swaps, and ends/clears on return to menu. Main sequences it after the world +
+  relationship sessions; WorldRuntime stays the map/player coordinator (no God object).
+- **Serialization seam only (SaveService is Phase 23).** `SectState`/`SectStore` have
+  deterministic `to_dict`/fail-closed `from_dict`/`hydrate`; nothing is wired to a save yet.
+- **Visible in-game (Continuous Visual Integration).** The HUD shows a sect chip; a `SectPanel`
+  toggles via the new semantic `sect_panel` action (label via InputService); the hub shows a
+  sect banner. All text localized vi+en; no raw ids; a localized no-sect state. Self-made CC0
+  emblems (recorded in `ASSET_LICENSES.md`). No new screen, no default-Godot look, no new UI
+  stack (reuses `UITheme`/`UIPalette`/Xianxia).
+
+**Consequence:** sects are a tested, serializable, roster-authoritative domain system with one
+mutation path and a consistent single relationship graph, visibly represented in the playable
+game, ready for Phase 07 (Faction/Politics) to add `FactionState` + internal politics on top. No
+new autoload; no networking; D-005 (save) / D-007 (combat) remain Open. **Phase 06 is CLOSED only
+after CI is green on the commit (all 9 gates) — see CHANGELOG/ROADMAP for the verified SHA.**
+
+---
+
 ## How to add a decision
 Append `D-00N — <title> — <status> (date)` with Context / Options / Decision /
 Consequence (or Blocking). Never silently change a shipped decision — mark the old one

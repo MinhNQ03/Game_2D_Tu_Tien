@@ -16,7 +16,9 @@
 > green, 163 tests passed / 0 failed; D-025 close-out then removed a residual
 > 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship core +
 > early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
-> all 9 gates green). Phase 06 (Sect) is NOT STARTED.
+> all 9 gates green). Phase 06 (Sect) is **IMPLEMENTED** (D-032) — CLOSED on CI-green
+> verification (see the Phase 06 section + CHANGELOG for the SHA). Phase 07 (Faction/Politics)
+> is NOT STARTED.
 >
 > **Visual follow-up (2026-10-03, D-028 — not a phase):** the production UI art was upgraded
 > from the self-made prototype set to the CC0 **Xianxia Pixel Pack** UI (`assets/ui/xianxia/`)
@@ -162,12 +164,23 @@ the player renders its `sprite_set_ref`; the current game flow + first scene are
 All 9 CI gates green on `21ef622` (2026-10-03). No new autoload; SECT endpoints structural-only
 (Phase 06 adds the real `SectState` + referential validation).
 
-## Phase 06 — Sect System
-Core sects (`docs/SECT_SYSTEM.md`): `SectTemplateData` + `SectState`, membership/ranks,
-resources/territory/reputation, alliances mirrored as relationship edges. Canonical
-membership = sect roster (D-015).
-**Exit:** add a sect via data only; `SectState` round-trips; membership stays in sync with
-`CharacterState`; tests pass.
+## Phase 06 — Sect System *(IMPLEMENTED — D-032; CLOSED on CI-green)*
+Core sects (`docs/SECT_SYSTEM.md`): `SectTemplateData` + `SectRankData` + `SectCatalog` (data);
+`SectState`/`SectStore`/`SectService` (domain) with membership/ranks, resources/territory/
+reputation/influence, and alliances/enemies mirrored (transactionally) as symmetric Sect↔Sect
+relationship edges. Canonical membership = sect roster (D-015); `CharacterState.sect_id`/
+`sect_rank` are a derived cache the service keeps in sync. `SectRuntime` (node under
+`Main/Systems`, NOT an autoload) owns the per-session store+service, enrolls the player into the
+authored start sect, and survives map swaps. Continuous Visual Integration: a HUD sect chip + a
+toggleable `SectPanel` (semantic `sect_panel` action) + a hub banner, all localized vi+en, no
+raw ids, in the live Xianxia UI. Content: `sect_azure_cloud` (player start) + `sect_crimson_flame`
+(enemy). Scope guard honored: NO Faction/Politics (Phase 07), WorldSim (Phase 08), Combat, NPC,
+Save, networking; no new autoload.
+**Exit (MET):** a sect is added via data only (new `.tres` + catalog entry); `SectState`
+round-trips through `to_dict`/`from_dict`; membership stays in sync with `CharacterState` and the
+roster wins on drift; the alliance/enemy mirror stays consistent with the relationship graph
+(rollback on failure); domain + runtime + localization tests pass and the world/map E2E asserts
+the player's sect is live + visible + survives map round trips. CLOSED on the CI-green commit.
 
 ## Phase 07 — Faction / Sect Politics
 Internal factions + emergent politics (`docs/SECT_SYSTEM.md` §7): `FactionState`,

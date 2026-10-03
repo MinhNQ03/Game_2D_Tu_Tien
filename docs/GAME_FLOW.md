@@ -384,3 +384,18 @@ MENU). Phase 05 adds, underneath that flow:
   hard-coded prototype sprite.
 A dev-only `character_preview` scene showcases the four archetypes; it is NOT the first scene
 and nothing in the flow loads it. No new first scene, no new autoload.
+
+## Phase 06 note (D-032) — Sect substrate + sect UI, flow unchanged
+
+The runnable flow is UNCHANGED (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
+MENU). Phase 06 adds, underneath + on top of that flow:
+- a **sect domain** owned by a new `SectRuntime` under `Main/Systems` (sibling of
+  `WorldRuntime`/`RelationshipRuntime`, not an autoload) that starts with New Game, enrolls the
+  player into the authored start sect (**roster is authoritative**, D-015), survives map swaps,
+  and ends on return to menu;
+- declared sect **alliances/enemies mirrored** into the one relationship graph (transactional);
+- a **visible sect UI**: a HUD sect chip (emblem + name + rank + reputation), a toggleable
+  `SectPanel` opened via the semantic `sect_panel` action, and a sect banner in the hub — all
+  localized (vi + en), no raw ids, in the live Xianxia UI.
+
+No new first scene, no new autoload. Faction/internal-politics (SECT_SYSTEM §7) is Phase 07.

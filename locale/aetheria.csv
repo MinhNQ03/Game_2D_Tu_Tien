@@ -23,3 +23,31 @@ UI_MENU_SUBTITLE,A tu tiên journey,Hành trình tu tiên
 UI_MENU_SETTINGS,Settings,Thiết lập
 UI_HUD_INTERACT_ACTION,Interact,Tương tác
 UI_HUD_MENU_ACTION,Menu,Menu
+SECT_AZURE_CLOUD_NAME,Azure Cloud Sect,Thanh Vân Tông
+SECT_AZURE_CLOUD_DOCTRINE,Ride the clouds; temper the heart before the blade.,Cưỡi mây lướt gió; luyện tâm trước khi luyện kiếm.
+SECT_CRIMSON_FLAME_NAME,Crimson Flame Sect,Xích Diễm Tông
+SECT_CRIMSON_FLAME_DOCTRINE,Burn away all restraint; power is the only law.,Thiêu rụi mọi ràng buộc; sức mạnh là luật duy nhất.
+SECT_RANK_OUTER_DISCIPLE,Outer Disciple,Ngoại Môn Đệ Tử
+SECT_RANK_INNER_DISCIPLE,Inner Disciple,Nội Môn Đệ Tử
+SECT_RANK_CORE_DISCIPLE,Core Disciple,Hạch Tâm Đệ Tử
+SECT_RANK_ELDER,Elder,Trưởng Lão
+SECT_RANK_SECT_MASTER,Sect Master,Tông Chủ
+SECT_RANK_FLAME_INITIATE,Flame Initiate,Diễm Môn Nhập Đạo
+SECT_RANK_FLAME_ADEPT,Flame Adept,Diễm Môn Chân Truyền
+SECT_RANK_FLAME_OVERLORD,Flame Overlord,Diễm Môn Bá Chủ
+SECT_TYPE_ORTHODOX,Orthodox,Chính Đạo
+SECT_TYPE_DEMONIC,Demonic,Ma Đạo
+SECT_TYPE_NEUTRAL,Neutral,Trung Lập
+SECT_TYPE_HIDDEN,Hidden,Ẩn Thế
+UI_HUD_SECT_NONE,No Sect,Chưa có tông môn
+UI_SECT_PANEL_TITLE,Sect,Tông Môn
+UI_SECT_PANEL_DOCTRINE,Doctrine,Tông Chỉ
+UI_SECT_PANEL_TYPE,Type,Loại Hình
+UI_SECT_PANEL_TIER,Tier,Phẩm Cấp
+UI_SECT_PANEL_RANK,Your Rank,Chức Vị
+UI_SECT_PANEL_REPUTATION,Reputation,Danh Vọng
+UI_SECT_PANEL_INFLUENCE,Influence,Thế Lực
+UI_SECT_PANEL_TERRITORY,Territory,Lãnh Địa
+UI_SECT_PANEL_RESOURCES,Resources,Tài Nguyên
+UI_SECT_PANEL_NONE,You do not belong to a sect.,Bạn chưa gia nhập tông môn nào.
+UI_SECT_PANEL_TOGGLE,Sect,Tông Môn

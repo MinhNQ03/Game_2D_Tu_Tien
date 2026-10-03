@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SectCatalog" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/data/sects/sect_catalog.gd" id="1_cat"]
+[ext_resource type="Resource" path="res://data/sects/sect_azure_cloud.tres" id="2_azure"]
+[ext_resource type="Resource" path="res://data/sects/sect_crimson_flame.tres" id="3_crimson"]
+
+[resource]
+script = ExtResource("1_cat")
+sects = [ExtResource("2_azure"), ExtResource("3_crimson")]
+player_start_sect_id = &"sect_azure_cloud"
+player_start_rank_id = &"rank_outer"
