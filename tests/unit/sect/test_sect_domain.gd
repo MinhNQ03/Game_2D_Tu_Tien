@@ -12,7 +12,6 @@ const RankScript := preload("res://src/data/sects/sect_rank_data.gd")
 const StateScript := preload("res://src/domain/sect/sect_state.gd")
 const StoreScript := preload("res://src/domain/sect/sect_store.gd")
 const ServiceScript := preload("res://src/domain/sect/sect_service.gd")
-const CharacterStateScript := preload("res://src/domain/character/character_state.gd")
 const CharacterTemplateScript := preload("res://src/data/characters/character_template_data.gd")
 const StatBlockScript := preload("res://src/data/stats/stat_block.gd")
 const RelConfigScript := preload("res://src/data/relationship/relationship_config_data.gd")
@@ -85,12 +84,12 @@ func _character(cid: StringName) -> CharacterState:
 	ct.id = &"char_x"
 	ct.name_key = &"NAME"
 	ct.base_stats = stats
-	return CharacterStateScript.create_from_template(ct, cid)
+	return CharacterState.create_from_template(ct, cid)
 
 
 func _reg(svc: SectService, sid: StringName) -> void:
 	var t := _template(sid)
-	svc.register_sect(StateScript.create_from_template(t), t)
+	svc.register_sect(SectState.create_from_template(t), t)
 
 
 # --- 1-3: template + rank validation -----------------------------------------
@@ -125,7 +124,7 @@ func test_3_rank_ladder_validation() -> void:
 # --- 4-6: state creation + serialization -------------------------------------
 
 func test_4_state_creation() -> void:
-	var state := StateScript.create_from_template(_template(&"sect_a"))
+	var state := SectState.create_from_template(_template(&"sect_a"))
 	assert_not_null(state, "state builds from a valid template")
 	assert_eq(state.id, &"sect_a", "id copied")
 	assert_eq(state.get_resource(&"spirit_stones"), 100, "resources seeded")
@@ -138,7 +137,7 @@ func test_4_state_creation() -> void:
 func test_5_state_serialization_round_trip() -> void:
 	var svc := _service(false, [])
 	var t := _template(&"sect_a")
-	var state := StateScript.create_from_template(t)
+	var state := SectState.create_from_template(t)
 	svc.register_sect(state, t)
 	svc.join_member(&"sect_a", PLAYER, &"rank_inner")
 	svc.assign_leader(&"sect_a", PLAYER)
@@ -169,15 +168,15 @@ func test_6_malformed_state_rejected() -> void:
 
 func test_7_add_sect() -> void:
 	var store: SectStore = StoreScript.new()
-	assert_true(store.add(StateScript.create_from_template(_template(&"sect_a"))), "add succeeds")
+	assert_true(store.add(SectState.create_from_template(_template(&"sect_a"))), "add succeeds")
 	assert_true(store.has(&"sect_a"), "store has the sect")
 	assert_eq(store.count(), 1, "count is 1")
 
 
 func test_8_duplicate_sect_rejected() -> void:
 	var store: SectStore = StoreScript.new()
-	store.add(StateScript.create_from_template(_template(&"sect_a")))
-	assert_false(store.add(StateScript.create_from_template(_template(&"sect_a"))),
+	store.add(SectState.create_from_template(_template(&"sect_a")))
+	assert_false(store.add(SectState.create_from_template(_template(&"sect_a"))),
 		"duplicate sect id rejected")
 	assert_eq(store.count(), 1, "still only one")
 

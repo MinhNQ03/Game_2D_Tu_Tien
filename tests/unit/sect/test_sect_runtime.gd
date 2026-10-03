@@ -6,7 +6,6 @@ extends TestCase
 ## it is freed afterward (L-019 — a Node created in a test must be freed by that test).
 
 const SectRuntimeScript := preload("res://src/gameplay/world/sect_runtime.gd")
-const CharacterStateScript := preload("res://src/domain/character/character_state.gd")
 const CharacterTemplateScript := preload("res://src/data/characters/character_template_data.gd")
 const StatBlockScript := preload("res://src/data/stats/stat_block.gd")
 
@@ -23,7 +22,7 @@ func _player_state() -> CharacterState:
 	ct.id = &"char_player"
 	ct.name_key = &"NAME"
 	ct.base_stats = stats
-	return CharacterStateScript.create_from_template(ct, PLAYER)
+	return CharacterState.create_from_template(ct, PLAYER)
 
 
 ## Start a sect session on a fresh runtime Node, with a player-only resolver and NO
