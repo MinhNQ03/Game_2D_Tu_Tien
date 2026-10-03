@@ -59,6 +59,12 @@
 - Target 60 FPS on the desktop dev machine with a representative combat scene.
 - No sustained per-frame heap growth during combat (allocation budget ≈ flat).
 - Map transition: no leaked nodes/signals (verified by tests, not just eyeballing).
+  **Phase 03:** now enforced — `tests/integration/test_map_transitions.gd` and the
+  `tests/e2e/run_world_flow.gd` E2E assert that repeated hub↔field transitions do not grow
+  `Performance.OBJECT_ORPHAN_NODE_COUNT` (SceneRouter frees the outgoing scene; WorldRuntime
+  re-parents the persistent player out before the free, so neither the player nor stale
+  signal connections leak). This is a correctness/no-leak assertion, not a tuned
+  optimization (no `PERFORMANCE.md` optimization entry needed).
 
 These numbers are provisional until Phase 29 (Performance) lets us measure on target hardware.
 

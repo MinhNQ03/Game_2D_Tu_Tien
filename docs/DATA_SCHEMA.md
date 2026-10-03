@@ -158,12 +158,22 @@ choices: Array[Choice]            # { text_key, set_flags, goto_line, requires }
 ### MapData (`map_*`)
 ```
 id, name_key
-scene: PackedScene ref            # the content scene for this map
-tileset_ref: ...
-spawn_tables: Array[SpawnEntry]   # { enemy_id, weight, max }
+scene_key: String                 # SceneRouter registry key for this map's content scene
+tileset_ref: ...                  # (deferred to the art pass; prototype maps use vector art)
+spawn_tables: Array[SpawnEntry]   # { enemy_id, weight, max }  (deferred; no spawns in Phase 03)
 exits: Array[MapExit]             # { to_map_id, entry_point }
-music: StringName
+music: StringName                 # (deferred to the audio pass)
 ```
+
+> **Phase 03 note (D-021):** `MapData` references its content scene by a stable
+> `scene_key: String` (resolved through `SceneRouter`'s registry), **not** a direct
+> `scene: PackedScene` ref. This keeps `MapData` a pure data resource with no hard
+> `PackedScene` dependency, and keeps the single transition entry point (SceneRouter)
+> authoritative for *how* a scene loads. `tileset_ref`, `spawn_tables`, and `music` are
+> declared here as the intended shape but are **not implemented in Phase 03** (world/map
+> traversal only); they land with the art/audio/combat passes. Implemented in Phase 03:
+> `id`, `name_key`, `scene_key`, `exits`. `MapExit` = `{ to_map_id: StringName,
+> entry_point: StringName }`.
 
 ### ChapterData (`chapter_*`)
 ```

@@ -1,9 +1,17 @@
 extends TestCase
-## E2E player-flow assertions (Phase 02, D-019 + hardening). A normal TestCase reusing the
-## shared assert_* API. Driven ONLY by the dedicated entrypoint `tests/e2e/run_player_flow.gd`
-## in its OWN isolated Godot process (file name is not `test_*`; `tests/e2e/` is excluded
-## from the in-runner discovery), because booting the real app drives the shared
-## /root/GameState — which must not happen inside the common runner (D-019).
+## E2E player-flow assertions (Phase 02 combat sandbox, D-019 + hardening). A normal TestCase
+## reusing the shared assert_* API. Driven ONLY by the dedicated entrypoint
+## `tests/e2e/run_player_flow.gd` in its OWN isolated Godot process (file name is not
+## `test_*`; `tests/e2e/` is excluded from in-runner discovery), because adding the sandbox
+## under /root drives the shared /root/InputService (GAMEPLAY context) — which must not
+## happen inside the common runner (D-019 / L-010).
+##
+## PHASE 03 NOTE: New Game no longer loads the player sandbox (it now enters the World/Map
+## via WorldRuntime — see run_world_flow.gd). The sandbox is retained as the Phase-02 combat
+## validation scene, so this E2E instantiates `player_sandbox.tscn` DIRECTLY against the real
+## autoloads instead of reaching it through the menu. That keeps the Phase-02 combat boundary
+## covered without a dead New-Game → sandbox path. (D-003 / Phase-03 retention of the
+## sandbox.)
 ##
 ## It exercises the REAL semantic-input boundary, not shortcuts:
 ##   InputMap action → InputService → Player._physics_process (poll get_move_vector /
@@ -13,7 +21,7 @@ extends TestCase
 ## Attack is driven by `Input.action_press("attack")` (NOT a direct resolve_player_attack()).
 ## Direct positioning is used ONLY as setup to make the fixed-range check deterministic.
 
-const MAIN_SCENE_PATH := "res://main.tscn"
+const SANDBOX_SCENE_PATH := "res://src/gameplay/sandbox/player_sandbox.tscn"
 
 # Semantic actions this test drives (names only — never physical keys).
 const MOVE_RIGHT := &"move_right"
@@ -21,49 +29,36 @@ const ATTACK := &"attack"
 
 
 func test_real_player_sandbox_flow() -> void:
-	# --- boot the real app, no duplicate autoloads --------------------------------
+	# --- real autoloads present, none duplicated ----------------------------------
 	for autoload_name in ["EventBus", "GameState", "Localization", "InputService", "SceneRouter"]:
 		assert_eq(_count_named(autoload_name), 1,
 			"exactly one /root/%s (no duplicate autoload)" % autoload_name)
 
-	var gs: Node = scene_tree.root.get_node_or_null("GameState")
-	var router: Node = scene_tree.root.get_node_or_null("SceneRouter")
 	var input: Node = scene_tree.root.get_node_or_null("InputService")
-	assert_not_null(gs)
-	assert_not_null(router)
 	assert_not_null(input)
-	if gs == null or router == null or input == null:
+	if input == null:
 		return
 
-	var packed: PackedScene = load(MAIN_SCENE_PATH)
-	var main: Node = packed.instantiate()
-	scene_tree.root.add_child(main)
-	await scene_tree.process_frame
-
-	# New Game via the REAL menu intent → first gameplay scene (the sandbox).
-	var ui: Node = main.get_node_or_null("UI")
-	assert_not_null(ui)
-	if ui == null or ui.get_child_count() == 0:
-		_teardown(main)
+	# Instantiate the Phase-02 combat sandbox DIRECTLY under /root (no Main, no New Game).
+	# Its _ready() sets the GAMEPLAY input context — exactly as the real first scene did in
+	# Phase 02 — so the semantic-input boundary below is driven for real.
+	var packed: PackedScene = load(SANDBOX_SCENE_PATH)
+	assert_not_null(packed, "player_sandbox.tscn loads")
+	if packed == null:
 		return
-	var menu: Node = ui.get_child(0)
-	menu.emit_signal("new_game_pressed")
-	await scene_tree.process_frame
-
-	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "running after New Game")
-	assert_eq(router.get_current_key(), "player_sandbox", "sandbox is the first scene")
-	var sandbox: Node = router.get_current_scene()
-	assert_not_null(sandbox, "sandbox instance exists")
+	var sandbox: Node = packed.instantiate()
+	assert_not_null(sandbox, "sandbox instantiates")
 	if sandbox == null:
-		_teardown(main)
 		return
+	scene_tree.root.add_child(sandbox)
+	await scene_tree.process_frame  # let the sandbox _ready() run
 
 	var player: Node = sandbox.get_node_or_null("Player")
 	var dummy: Node = sandbox.get_node_or_null("TrainingDummy")
 	assert_not_null(player, "sandbox has a Player")
 	assert_not_null(dummy, "sandbox has a TrainingDummy")
 	if player == null or dummy == null:
-		_teardown(main)
+		_teardown(sandbox)
 		return
 
 	# The sandbox put input into GAMEPLAY context on enter.
@@ -125,21 +120,15 @@ func test_real_player_sandbox_flow() -> void:
 		"no further exchange once the dummy is dead (deterministic terminal state)")
 
 	# --- cleanup / isolation ------------------------------------------------------
-	_teardown(main)
+	_teardown(sandbox)
 	await scene_tree.process_frame
-	assert_false(is_instance_valid(sandbox), "sandbox freed with Main (no orphan)")
+	assert_false(is_instance_valid(sandbox), "sandbox freed (no orphan)")
 	assert_false(is_instance_valid(player), "player freed (no orphan)")
 	assert_false(is_instance_valid(dummy), "dummy freed (no orphan)")
-	assert_false(is_instance_valid(main), "Main freed (no orphan)")
 	# No duplicate autoloads were created by the test.
 	for autoload_name in ["EventBus", "GameState", "Localization", "InputService", "SceneRouter"]:
 		assert_eq(_count_named(autoload_name), 1,
 			"still exactly one /root/%s after teardown" % autoload_name)
-	# GameState is not left corrupt: we never ended the session, so it is still RUNNING (a
-	# legal phase), not some garbage value. (This isolated process exits right after.)
-	assert_eq(gs.get_phase(), gs.Phase.RUNNING,
-		"GameState remains in a legal phase (RUNNING) after teardown, not corrupt")
-	assert_true(gs.is_session_active(), "session still marked active (no corruption)")
 
 
 ## One semantic attack: keep the player in range (setup positioning), press the attack
@@ -164,14 +153,14 @@ func _count_named(node_name: String) -> int:
 	return count
 
 
-## Release any still-pressed actions and free Main (and its whole subtree).
-func _teardown(main: Node) -> void:
+## Release any still-pressed actions and free the sandbox subtree.
+func _teardown(node: Node) -> void:
 	if Input.is_action_pressed(MOVE_RIGHT):
 		Input.action_release(MOVE_RIGHT)
 	if Input.is_action_pressed(ATTACK):
 		Input.action_release(ATTACK)
-	if main == null or not is_instance_valid(main):
+	if node == null or not is_instance_valid(node):
 		return
-	if main.get_parent() != null:
-		main.get_parent().remove_child(main)
-	main.queue_free()
+	if node.get_parent() != null:
+		node.get_parent().remove_child(node)
+	node.queue_free()

@@ -4,11 +4,12 @@
 > Goal: **not** blind 100% coverage — strong coverage of high-risk logic, cheap smoke
 > coverage of the whole flow, and every fixed bug pinned by a regression test.
 >
-> Status: strategy defined; runner + framework in place. Through Phase 02 the suite covers
-> the core framework (lifecycle/scene-router/input/localization/event-bus) and the Player
-> core (stats/health/movement/damage + player↔dummy integration), plus two dedicated
-> real-application E2E processes (app-flow and player-flow). Gameplay beyond the Player
-> sandbox is added phase by phase.
+> Status: strategy defined; runner + framework in place. Through Phase 03 the suite covers
+> the core framework (lifecycle/scene-router/input/localization/event-bus), the Player core
+> (stats/health/movement/damage + player↔dummy integration), and the World/Map system
+> (MapData validation, no-leak map transitions, map-scene structure), plus three dedicated
+> real-application E2E processes (app-flow, player-flow, world-flow). Gameplay beyond
+> world/map traversal is added phase by phase.
 
 ## 1. Test layers
 
@@ -91,6 +92,7 @@ tests/
       test_nested_discovery.gd  # proves recursive discovery + harness fail-detection
   integration/     # components together (fresh instances; never the live autoloads)
   e2e/             # real-application flow — OWN process (D-019), excluded from run_tests.gd
+                   #   run_world_flow.gd + world_flow_case.gd (Phase 03 — world/map)
     run_app_flow.gd    # dedicated SceneTree entrypoint (adapter)
     app_flow_case.gd   # the E2E TestCase (reuses the shared assert_* API)
   gameplay/        # scripted scenarios
@@ -206,6 +208,27 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
 - `test_health_component.gd` — death/reset lifecycle: no duplicate `died` within a life;
   re-initialize begins a new life so the entity can die again (one `died` PER LIFE), matching
   `TrainingDummy.reset_dummy()`.
+
+**Phase 03 added World/Map tests (high-risk: map transitions):**
+- `tests/unit/world/test_map_data.gd` — `MapData` / `MapExit` validation + the authored
+  `map_hub.tres` / `map_field.tres` are well-formed and the exit graph is bidirectional
+  (hub ↔ field).
+- `tests/integration/test_map_transitions.gd` — the REAL `SceneRouter` (fresh instance,
+  never the live autoload) loads both maps, and **repeated** hub↔field transitions do not
+  grow the orphan-node count (`Performance.OBJECT_ORPHAN_NODE_COUNT`); clearing frees the
+  active scene; an unregistered `scene_key` is rejected (negative path).
+- `tests/gameplay/test_map_scenes.gd` — the hub/field scenes are structurally sound
+  (PlayerHost, Spawns, Exits→MapExitZone, Walls, Camera2D, HUD/MapLabel, localized name key,
+  the `exit_requested` + `return_to_menu_requested` signals) WITHOUT entering the tree (no
+  shared-InputService mutation).
+- `tests/e2e/run_world_flow.gd` + `tests/e2e/world_flow_case.gd` — **dedicated isolated
+  process** (9th CI gate): boots the real app, New Game → hub map, then drives a REAL
+  `interact` InputEvent (`Input.parse_input_event`) → `MapBase._unhandled_input` →
+  `InputService` → `WorldRuntime` → `SceneRouter` to move hub↔field repeatedly with the
+  persistent player surviving each swap and no orphan-node growth, then a REAL `open_menu`
+  returns cleanly to the menu with the player freed. The Phase-02 player-flow E2E now
+  instantiates `player_sandbox.tscn` directly (New Game no longer routes to it); the
+  app-flow E2E now expects `map_hub` as the first scene.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push. **Note:** these tests were authored and statically validated (GDScript

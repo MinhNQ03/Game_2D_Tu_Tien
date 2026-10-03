@@ -10,6 +10,7 @@ name: CI
 #   6. headless test suite (custom runner — unit + integration + gameplay; excludes tests/e2e/)
 #   7. real-application E2E flow (dedicated isolated process — D-019)
 #   8. player sandbox E2E flow (dedicated isolated process — Phase 02)
+#   9. world/map E2E flow (dedicated isolated process — Phase 03)
 #
 # NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
 # scripts were statically validated via the GDScript language server. The first real
@@ -88,3 +89,13 @@ jobs:
           # the Training Dummy + deterministic death + clean teardown. Separate process so
           # it can't contaminate the shared suite. Non-zero exit on any failure; not swallowed.
           ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_player_flow.gd
+
+      - name: World/Map E2E flow (Phase 03)
+        run: |
+          set -euo pipefail
+          # Dedicated, ISOLATED process (D-019): boots the real app, New Game → hub map,
+          # then drives a REAL `interact` input to transition hub ↔ field repeatedly with
+          # the persistent player surviving each swap and no orphan-node leak, then a REAL
+          # `open_menu` returns cleanly to the menu. Separate process so it can't contaminate
+          # the shared suite. Non-zero exit on any failure; not swallowed.
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_world_flow.gd

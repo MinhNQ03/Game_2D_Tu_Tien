@@ -147,11 +147,15 @@ res://
 					  entities/player.* training_dummy.*  # [exists, Phase 02]
 					  components/stats_* health_* movement_component.gd  # [exists, Phase 02]
 					  sandbox/player_sandbox.*            # [exists, Phase 02 — temporary]
-					  maps/  spawning/                     # [TARGET]
+					  world/world_runtime.gd              # [exists, Phase 03]
+					  maps/map_base.gd map_exit_zone.gd hub_map.* field_map.*  # [exists, Phase 03]
+					  spawning/                            # [TARGET]
+	data/             maps/map_exit.gd map_data.gd        # [exists, Phase 03] (map Resources)
 	presentation/     menus/  scenes/              # [exists]  ui/ hud/ fx/  [TARGET]
   data/               stats/player_stats.tres training_dummy_stats.tres  # [exists, Phase 02]
+					  maps/map_hub.tres map_field.tres                   # [exists, Phase 03]
 					  items/ skills/ enemies/ bosses/ techniques/        # [TARGET]
-					  pets/ realms/ quests/ dialogue/ maps/ chapters/
+					  pets/ realms/ quests/ dialogue/ chapters/
   assets/             sprites/ tiles/ ui/ audio/ fonts/
   locale/             vi.* en.*            # translation tables
   tools/              parse_check.gd                       # [exists] CI tooling

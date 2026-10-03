@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MapData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/data/maps/map_data.gd" id="1_mapdata"]
+[ext_resource type="Script" path="res://src/data/maps/map_exit.gd" id="2_mapexit"]
+
+[sub_resource type="Resource" id="MapExit_to_field"]
+script = ExtResource("2_mapexit")
+to_map_id = &"map_field"
+entry_point = &"from_hub"
+
+[resource]
+script = ExtResource("1_mapdata")
+id = &"map_hub"
+name_key = "UI_MAP_HUB_NAME"
+scene_key = "map_hub"
+exits = [SubResource("MapExit_to_field")]

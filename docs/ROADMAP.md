@@ -9,8 +9,9 @@
 >
 > **35 phases (00–34).** Phase 00 (Foundation) is **CLOSED** (CI-verified on `651c16f`,
 > 2026-10-02). Phase 01 (Core Framework) is **CLOSED** (CI-verified 2026-10-02). Phase 02
-> (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) is **NOT STARTED**
-> and is the next phase.
+> (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) is **IN PROGRESS**
+> (code + tests written 2026-10-02; CLOSED only once all 9 CI gates are green). Phase 04
+> (Character) is the next phase after Phase 03 closes.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -63,6 +64,17 @@ save/load, no new autoloads (D-003 / D-005 / D-007 remain Open).
 MapData-driven maps, SceneRouter transitions, a hub map + one field map. Clean
 load/unload (no leaked nodes/signals). Uses stable `world_id` / `map_id` / `scene_key`.
 **Exit:** move between ≥2 maps repeatedly with no leaks; map-transition tests pass.
+
+**Implementation (2026-10-02, D-003 resolved / D-021):** `MapData` + `MapExit` resources
+(`src/data/maps/`), two authored maps `data/maps/map_hub.tres` + `map_field.tres`, a
+`WorldRuntime` node under `Main/Systems` (not an autoload) that registers each map's
+`scene_key` with SceneRouter, owns ONE persistent per-session Player, and resolves
+transitions; two content scenes `src/gameplay/maps/hub_map.tscn` + `field_map.tscn`
+(`MapBase` + `MapExitZone`, semantic `interact` exits via InputService, prototype vector
+art). New Game now enters the hub map (the Phase-02 sandbox is retained but no longer first
+scene). Tests: `tests/unit/world/test_map_data.gd`, `tests/integration/test_map_transitions.gd`
+(no-leak), `tests/gameplay/test_map_scenes.gd` (structure), and the dedicated E2E
+`tests/e2e/run_world_flow.gd` (9th CI gate). CLOSED pending all gates green in CI.
 
 > **Core social/world systems come next (Phases 04–08), BEFORE Combat and before
 > NPC/Dialogue/Quest/Story**, because those depend on them (D-011, `GAME_FLOW.md` §1b).

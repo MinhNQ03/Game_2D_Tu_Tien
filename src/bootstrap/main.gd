@@ -17,14 +17,13 @@ const REQUIRED_CONTAINERS := [CONTAINER_SYSTEMS, CONTAINER_WORLD, CONTAINER_UI]
 
 const MENU_SCENE := "res://src/presentation/menus/main_menu.tscn"
 
-## The first gameplay scene loaded after New Game. For PHASE 02 this is the Player Sandbox
-## — a temporary gameplay-VALIDATION scene (move + attack a training dummy), NOT a story
-## system. Phase 03 (World/Map) replaces this with a real first map; because the choice is a
-## single registered scene_key routed through SceneRouter, swapping it later is a one-line
-## change here, no caller edits (`docs/ARCHITECTURE.md` §9). The prologue shell from Phase 01
-## is retained in the project but is no longer the first scene.
-const FIRST_SCENE_KEY := "player_sandbox"
-const FIRST_SCENE_PATH := "res://src/gameplay/sandbox/player_sandbox.tscn"
+## PHASE 03: New Game now enters the WORLD via `WorldRuntime` (a node under `Main/Systems`),
+## which owns the per-session persistent Player and loads the first MAP (the hub) through
+## SceneRouter. This replaces the Phase-02 single `FIRST_SCENE_KEY` wiring — maps are now
+## catalog-driven in WorldRuntime, not a hard-coded first scene here (`docs/ARCHITECTURE.md`
+## §9; D-021). The Phase-02 sandbox + Phase-01 prologue shell are retained in the repo but
+## are no longer the first scene.
+const WORLD_RUNTIME_SCRIPT := "res://src/gameplay/world/world_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -40,6 +39,7 @@ const REQUIRED_AUTOLOADS := [
 ]
 
 var _menu: Control = null
+var _world: Node = null   # WorldRuntime (per-session world/map coordinator), under Systems
 
 
 func _ready() -> void:
@@ -79,9 +79,13 @@ func _boot() -> void:
 		push_error("[boot] begin_initialization rejected; aborting boot")
 		return
 
-	# Give the router its content host and register the first gameplay scene (by key).
+	# Give the router its content host (the World node). Map scene_keys are registered by
+	# WorldRuntime at session start, not here (catalog-driven — D-021).
 	router.call("set_scene_host", get_node(CONTAINER_WORLD))
-	router.call("register_scene", FIRST_SCENE_KEY, FIRST_SCENE_PATH)
+
+	# Create the WorldRuntime coordinator under Systems (a node, not an autoload — D-017).
+	# It is idle until New Game starts a session.
+	_create_world_runtime()
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -90,6 +94,22 @@ func _boot() -> void:
 	_event_bus().call("emit_game_booted")
 
 	_show_menu()
+
+
+## Instantiate the WorldRuntime node under Systems and connect its return-to-menu intent.
+func _create_world_runtime() -> void:
+	if _world != null and is_instance_valid(_world):
+		return
+	var script: Script = load(WORLD_RUNTIME_SCRIPT)
+	if script == null:
+		push_error("[boot] failed to load WorldRuntime script: %s" % WORLD_RUNTIME_SCRIPT)
+		return
+	_world = Node.new()
+	_world.name = "WorldRuntime"
+	_world.set_script(script)
+	get_node(CONTAINER_SYSTEMS).add_child(_world)
+	if not _world.is_connected("return_to_menu_requested", _on_return_to_menu):
+		_world.connect("return_to_menu_requested", _on_return_to_menu)
 
 
 ## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
@@ -131,48 +151,42 @@ func _hide_menu() -> void:
 ## confirm the session is running. The menu decided nothing about how this happens.
 func _on_new_game_pressed() -> void:
 	var gs := _game_state()
-	var router := _scene_router()
+
+	if _world == null or not is_instance_valid(_world):
+		push_error("[main] cannot start new game: WorldRuntime missing")
+		return
 
 	if not bool(gs.call("start_new_game")):
 		push_error("[main] start_new_game rejected from current phase")
 		return
 
 	_hide_menu()
-	var ok: bool = router.call("request_transition", FIRST_SCENE_KEY)
-	if not ok:
-		# Transition failed — recover to a usable state rather than a half-started session.
-		push_error("[main] first-scene transition failed; returning to menu")
+
+	# WorldRuntime registers the map catalog, spawns the persistent player, and loads the
+	# first map (the hub) through SceneRouter. It owns the "why/when"; the router owns the
+	# "how". On any failure, unwind to a usable menu rather than a half-started session.
+	if not bool(_world.call("start_session")):
+		push_error("[main] world session failed to start; returning to menu")
+		_world.call("end_session")
 		gs.call("end_session")
 		_show_menu()
 		return
 
-	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If it is
-	# rejected the first scene is up but the lifecycle is wrong, so do not pretend we are
-	# RUNNING: unwind to a usable menu state and report loudly.
+	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
+	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
 		push_error("[main] confirm_session_running rejected; unwinding to menu")
-		router.call("clear_current_scene")
+		_world.call("end_session")
 		gs.call("end_session")
 		_show_menu()
 		return
-
-	_connect_scene_return()
-
-
-## The first gameplay scene asks to return to the menu via its `return_to_menu_requested`
-## signal (event-driven). Scene-agnostic: any content scene that exposes the signal is
-## wired, so swapping the first scene (prologue → sandbox → future map) needs no change here.
-func _connect_scene_return() -> void:
-	var router := _scene_router()
-	if router == null:
-		return
-	var scene: Node = router.call("get_current_scene")
-	if scene != null and scene.has_signal("return_to_menu_requested"):
-		if not scene.is_connected("return_to_menu_requested", _on_return_to_menu):
-			scene.connect("return_to_menu_requested", _on_return_to_menu)
 
 
 func _on_return_to_menu() -> void:
+	# End the world session (frees the persistent player + clears the active map) before the
+	# lifecycle returns to MENU.
+	if _world != null and is_instance_valid(_world):
+		_world.call("end_session")
 	var gs := _game_state()
 	if gs != null and gs.call("is_session_active"):
 		gs.call("end_session")

@@ -22,9 +22,10 @@ const REQUIRED_AUTOLOADS := [
 ]
 
 
-## Full boot → menu → New Game → first gameplay scene (player_sandbox) → RUNNING, on the
-## real autoloads, then cleanup. (This app-flow E2E only checks the lifecycle/wiring reaches
-## the first scene; the player sandbox's gameplay is exercised by run_player_flow.gd.)
+## Full boot → menu → New Game → first gameplay scene (the hub map) → RUNNING, on the real
+## autoloads, then cleanup. (This app-flow E2E only checks the lifecycle/wiring reaches the
+## first scene; the world/map flow itself is exercised by run_world_flow.gd and the player
+## sandbox by run_player_flow.gd.)
 func test_real_application_flow() -> void:
 	# --- 1. all five real autoloads present; none duplicated -------------------
 	var autoloads := {}
@@ -83,8 +84,8 @@ func test_real_application_flow() -> void:
 	# --- 5. the whole chain wired itself --------------------------------------
 	assert_true(gs.is_session_active(), "session active after New Game")
 	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "lifecycle reached RUNNING")
-	assert_eq(router.get_current_key(), "player_sandbox",
-		"router loaded the first gameplay scene (Phase 02: player_sandbox)")
+	assert_eq(router.get_current_key(), "map_hub",
+		"router loaded the first gameplay scene (Phase 03: the hub map)")
 	var content: Node = router.get_current_scene()
 	assert_not_null(content, "a live content scene instance exists")
 

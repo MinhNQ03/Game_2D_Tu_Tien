@@ -156,3 +156,23 @@
   behaviour — aborting the process prevents the owner from degrading gracefully and differs
   between debug/release. Use loud `push_error` + a checked return; the OWNER fails closed.
 - **Fixed:** Phase 02 final hardening (contract alignment + source-of-truth tests + doc sync).
+
+## L-015 — Explicit-path staging drops sibling/companion files (hit TWICE in Phase 02)
+- **Symptom:** staging by explicit path (correctly avoiding `git add -A`, L-009) silently
+  left out files that belong with the change, forcing follow-up "fix" commits:
+  - Phase 02: committed `player.tscn`/`training_dummy.tscn` but forgot the `data/stats/*.tres`
+    those scenes reference (they live under `data/`, not `src/data/`) → patch commit.
+  - Phase 02 hardening: committed test `.gd` but forgot their generated `.uid` siblings →
+    patch commit.
+  Both would have broken scene loading / left untracked companions if not caught.
+- **Rule:** **Before every commit, reconcile the staged set against `git status`.** Run
+  `git status --short` and confirm EVERY intended change — and its companions — is staged:
+  - a `.tscn`/`.tres` → its `.uid`, AND every resource it `ext_resource`-references
+    (follow the paths; they may be in a different top-level dir like `data/`);
+  - a new `.gd`/scene → its generated `.uid`;
+  - a `.csv` that Godot imports → the regenerated `.import`/`.translation` outputs if tracked.
+  If `git status` still lists a `??`/` M` file that logically belongs to this change, stage
+  it NOW — do not ship a follow-up "oops" commit. Leftover unrelated noise (e.g. a Godot
+  line-reorder in `project.godot`) may stay unstaged, but decide consciously, not by omission.
+- **Fixed:** adopted as the pre-commit reconciliation step. Supersedes the narrow "remember
+  the .uid" of L-008 with "reconcile the whole staged set vs. git status".

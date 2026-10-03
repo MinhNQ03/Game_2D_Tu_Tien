@@ -1,0 +1,120 @@
+extends TestCase
+## Integration test: map load + repeated transitions via the REAL SceneRouter.
+##
+## Exercises SceneRouter + the authored map catalog together, driving the same scene_key
+## registration + request_transition sequence WorldRuntime uses — but with a FRESH router
+## instance and a fresh host (never the live /root/SceneRouter autoload, L-010). Proves:
+##   - both authored maps load through the router,
+##   - moving back and forth repeatedly does not grow orphan nodes (no leak, L-013 /
+##     docs/PERFORMANCE.md map-transition no-leak contract),
+##   - clearing the current scene frees it (no dangling content under the host).
+
+const RouterScript := preload("res://src/infrastructure/scene_router.gd")
+const MapDataScript := preload("res://src/data/maps/map_data.gd")
+
+const HUB := "res://data/maps/map_hub.tres"
+const FIELD := "res://data/maps/map_field.tres"
+const HUB_SCENE := "res://src/gameplay/maps/hub_map.tscn"
+const FIELD_SCENE := "res://src/gameplay/maps/field_map.tscn"
+
+
+func _register(router: Node) -> void:
+	var hub: MapData = load(HUB) as MapData
+	var field: MapData = load(FIELD) as MapData
+	router.register_scene(hub.scene_key, HUB_SCENE)
+	router.register_scene(field.scene_key, FIELD_SCENE)
+
+
+func test_both_maps_load_through_router() -> void:
+	var router: Node = RouterScript.new()
+	var host := Node2D.new()
+	add_to_tree(router)
+	add_to_tree(host)
+	router.set_scene_host(host)
+	_register(router)
+
+	assert_true(router.request_transition("map_hub", &"world_main", &"map_hub"),
+		"hub loads through the router")
+	assert_eq(router.get_current_key(), "map_hub", "router tracks the hub")
+	assert_eq(host.get_child_count(), 1, "exactly one content scene under host (hub)")
+
+	assert_true(router.request_transition("map_field", &"world_main", &"map_field"),
+		"field loads through the router")
+	assert_eq(router.get_current_key(), "map_field", "router tracks the field")
+	assert_eq(host.get_child_count(), 1, "old map freed, one content scene under host (field)")
+
+	router.clear_current_scene()
+	free_node(host)
+	free_node(router)
+
+
+func test_repeated_transitions_do_not_leak() -> void:
+	var router: Node = RouterScript.new()
+	var host := Node2D.new()
+	add_to_tree(router)
+	add_to_tree(host)
+	router.set_scene_host(host)
+	_register(router)
+
+	# Warm up: one full round trip, then let queued frees settle so the baseline is stable.
+	router.request_transition("map_hub", &"world_main", &"map_hub")
+	router.request_transition("map_field", &"world_main", &"map_field")
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	var baseline: float = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
+
+	# Many more round trips: each frees the previous content scene (queue_free).
+	for _i in range(8):
+		router.request_transition("map_hub", &"world_main", &"map_hub")
+		router.request_transition("map_field", &"world_main", &"map_field")
+	# Let every queued free actually run.
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	var after: float = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
+
+	assert_eq(host.get_child_count(), 1, "still exactly one content scene after many trips")
+	assert_true(after <= baseline,
+		"no orphan growth across repeated transitions (%d -> %d)" % [int(baseline), int(after)])
+
+	router.clear_current_scene()
+	await scene_tree.process_frame
+	free_node(host)
+	free_node(router)
+
+
+func test_clear_frees_the_active_scene() -> void:
+	var router: Node = RouterScript.new()
+	var host := Node2D.new()
+	add_to_tree(router)
+	add_to_tree(host)
+	router.set_scene_host(host)
+	_register(router)
+
+	router.request_transition("map_hub", &"world_main", &"map_hub")
+	assert_eq(host.get_child_count(), 1, "a scene is loaded")
+
+	router.clear_current_scene()
+	await scene_tree.process_frame
+	assert_eq(router.get_current_key(), "", "router key cleared")
+	assert_eq(host.get_child_count(), 0, "host has no content scene after clear")
+
+	free_node(host)
+	free_node(router)
+
+
+func test_unknown_map_key_is_rejected() -> void:
+	var router: Node = RouterScript.new()
+	var host := Node2D.new()
+	add_to_tree(router)
+	add_to_tree(host)
+	router.set_scene_host(host)
+	_register(router)
+
+	# Negative path: an unregistered key must be rejected loudly, not half-transition.
+	assert_false(router.request_transition("map_nope", &"world_main", &"map_nope"),
+		"unregistered scene_key rejected")
+	assert_eq(router.get_current_key(), "", "no scene became current on a rejected request")
+	assert_eq(host.get_child_count(), 0, "nothing loaded under host on rejection")
+
+	free_node(host)
+	free_node(router)

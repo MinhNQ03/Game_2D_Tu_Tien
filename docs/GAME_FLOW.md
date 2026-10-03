@@ -132,12 +132,15 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Dependencies:** gameplay, domain (initial progression), data (starting config),
   infrastructure.
 - **Events:** `run_started`, `chapter_entered(chapter_id)`, `story_beat(id)`.
-- **Implementation status (as of Phase 02):** this box is the *design* target. Today New
-  Game routes to a temporary **Player Sandbox** (move + attack a Training Dummy) as the
-  first gameplay scene — it validates the Player (movement, stats, health, a minimal
-  damage exchange), not story. Phase 03 (World/Map) introduces real maps and Phase 04+ the
-  Character/Dialogue/Story that fill in this Prologue box. The sandbox is a single
-  registered `scene_key`, so replacing it is a routing change, not a rewrite (D-020).
+- **Implementation status (as of Phase 03):** this box is the *design* target. Today New
+  Game enters the **World/Map**: `WorldRuntime` (a node under `Main/Systems`) spawns one
+  persistent Player and loads the **hub map** as the first scene; the player walks to a
+  `MapExitZone` and presses the semantic `interact` action to move between the hub and a
+  field map (traversal only — no story, NPCs, or combat yet). Phase 04+ (Character /
+  Dialogue / Story) fill in this Prologue box; the Phase-02 Player Sandbox is retained for
+  combat validation but is no longer the first scene. Maps are data-driven (`MapData` +
+  content scene registered by `scene_key`), so adding a map is data + content, not a core
+  edit (D-003 resolved / D-021).
 
 ### 3.4 VILLAGE (hub map)
 - **Input:** player movement/interaction; arrival from SceneRouter.

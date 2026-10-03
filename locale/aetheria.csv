@@ -10,3 +10,7 @@ UI_TEST_GREETING,Hello {name},Xin chào {name}
 UI_SANDBOX_HINT,Move with WASD. Attack to hit the dummy. Press [open_menu] to return.,Di chuyển bằng WASD. Tấn công để đánh mục tiêu. Nhấn [open_menu] để quay lại.
 UI_SANDBOX_PLAYER_HP,Player HP,Máu người chơi
 UI_SANDBOX_DUMMY_HP,Training Dummy HP,Máu mộc nhân
+UI_MAP_HUB_NAME,Village (hub),Thôn làng (trung tâm)
+UI_MAP_FIELD_NAME,Forest Field,Khu rừng
+UI_MAP_INTERACT_HINT,Press [interact] to use this exit.,Nhấn [interact] để dùng lối ra này.
+UI_MAP_RETURN_HINT,Move to an exit. Press [open_menu] to return to the menu.,Di chuyển tới lối ra. Nhấn [open_menu] để quay lại menu.

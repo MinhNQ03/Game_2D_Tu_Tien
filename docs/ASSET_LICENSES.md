@@ -16,6 +16,26 @@
 > placeholder and should be replaced with original Aetheria art before release. Verify
 > the Godot logo usage terms if it is kept.
 
+## Self-made placeholder art (project-owned, no external license)
+
+Programmer-art placeholders created in-repo (no download, no third-party license). Recorded
+here to keep the provenance ledger complete (`06-art-assets.md` provenance rule), even
+though self-made art needs no external attribution.
+
+| # | Name | Type | Source / Author | License | Used in | Attribution required? |
+|---|------|------|-----------------|---------|---------|-----------------------|
+| P1 | map floor/wall vector placeholders (`Polygon2D`/`ColorRect`) | tiles (vector placeholder) | self-made (project) | project-owned | Phase-03 hub + field map scenes | No |
+| P2 | Player / Training Dummy `Polygon2D` shapes | sprite (vector placeholder) | self-made (project) | project-owned | Phase-02 player/dummy, reused in Phase-03 maps | No |
+
+> **Prototype-tileset note (Phase 03, Early Visual Integration):** Phase 03 uses *vector*
+> placeholder visuals (`Polygon2D`/`ColorRect`) authored directly in the map scenes, with
+> collision shapes (`StaticBody2D` + `CollisionShape2D` on `CollisionLayers.WORLD`) aligned
+> to the same rectangles — this proves collision↔visual alignment without introducing a
+> binary `.png` tilesheet. A real pixel-art `TileSet` + `.png` (import: nearest filter,
+> mipmaps off; base tile size documented when it lands) replaces these placeholders in the
+> dedicated art pass; it will be recorded here with its source/license at that time. Base
+> prototype tile/cell size: **32 px** (documented so a future tileset keeps one density).
+
 ## How to add an entry (do this BEFORE importing the asset)
 
 Record all of:

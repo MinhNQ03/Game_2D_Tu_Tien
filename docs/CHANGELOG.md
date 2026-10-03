@@ -8,6 +8,37 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Phase 03 World / Map (traversable maps; D-003 resolved)
+- **Map data model (D-021):** added `MapData` + `MapExit` Resources (`src/data/maps/`), with
+  validation (`is_valid()` / `validation_errors()`), and two authored maps
+  `data/maps/map_hub.tres` + `data/maps/map_field.tres`. A map references its content scene
+  by a stable router `scene_key: String` (not a direct `PackedScene`), keeping `MapData` a
+  pure data resource — DATA_SCHEMA synced.
+- **WorldRuntime (node, not autoload):** `src/gameplay/world/world_runtime.gd` hangs under
+  `Main/Systems`. It builds the map catalog, registers each `scene_key` with `SceneRouter`,
+  owns ONE persistent per-session Player (parked under WorldRuntime between maps so a router
+  content-swap can't free it; re-parented into each map's `PlayerHost` at a named spawn),
+  and resolves `request_map_transition(to_map_id, entry_point)` through SceneRouter. The
+  autoload budget stays at 5 (D-017).
+- **Map scenes:** `src/gameplay/maps/hub_map.tscn` + `field_map.tscn` (`MapBase` +
+  `MapExitZone`). The player stands in a `MapExitZone` and presses the semantic `interact`
+  action (via `InputService`, never raw keys) to request an exit; `MapBase` emits
+  `exit_requested` and WorldRuntime drives the transition. `open_menu` returns to the menu.
+  Walls wired from `CollisionLayers.WORLD`. Prototype art = self-made vector placeholders
+  (recorded in `ASSET_LICENSES.md`, 32px base tile); real TileSet deferred to the art pass.
+- **Boot wiring:** New Game now enters the hub map via WorldRuntime (`main.gd`
+  `_create_world_runtime` + `start_session`/`end_session`); the Phase-02 sandbox + Phase-01
+  prologue are retained but are no longer the first scene.
+- **Tests + CI:** `tests/unit/world/test_map_data.gd`, `tests/integration/test_map_transitions.gd`
+  (repeated transitions, no orphan-node leak), `tests/gameplay/test_map_scenes.gd`
+  (structural), and the dedicated isolated E2E `tests/e2e/run_world_flow.gd` driving the real
+  New Game → hub → interact → field → back → menu flow — added as a **9th CI gate**. The
+  Phase-02 player E2E now instantiates the sandbox directly (New Game no longer routes to it);
+  the app-flow E2E now expects `map_hub` as the first scene.
+- No new scope: no Character/Combat/AI/World-Simulation/Save/Inventory/networking, no new
+  autoload, no new EventBus signal (`map_entered`/`map_exited` deferred to Quest/Story —
+  L-005). D-005 / D-007 remain Open; **D-003 resolved** (option a).
+
 ### 2026-10-02 — Phase 02 Final Hardening (contract/invariant/doc consistency, no new scope)
 - **Semantic-input E2E (real boundary):** the player E2E (`tests/e2e/player_flow_case.gd`)
   now drives movement and attack through the actual InputMap → `InputService` → Player

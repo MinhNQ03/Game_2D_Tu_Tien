@@ -30,13 +30,17 @@ D-009.)
 **Consequence:** honest 2D-only config; if 3D is ever needed (it should not be), re-add
 the setting. Low risk, reversible.
 
-## D-003 — Map/scene strategy: instanced scenes vs. streaming  — **Open**
+## D-003 — Map/scene strategy: instanced scenes vs. streaming  — **Accepted** (resolved 2026-10-02, Phase 03)
 **Context:** "nhiều map" + dungeons; need clean transitions with no leaks.
 **Options:** (a) one PackedScene per map, loaded/unloaded via SceneRouter; (b) a streamed
 / chunked world.
-**Decision:** *Undecided.* Lean toward (a) for a chapter-based top-down RPG; SceneRouter
-abstraction keeps this changeable later.
-**Blocking:** Phase 03 (World / Map).
+**Decision:** **(a)** — one PackedScene per map, loaded/unloaded through the existing
+`SceneRouter` (the single transition entry point). Rejected (b): a chapter-based top-down
+RPG does not need streaming/chunking; the router abstraction keeps the strategy changeable
+later if a specific huge map ever needs it, without touching call sites.
+**Consequence:** Phase 03 ships two authored map scenes (hub + field) registered with
+SceneRouter by `scene_key`, and a `WorldRuntime` node coordinates load/unload + the
+persistent per-session player. See **D-021** for the WorldRuntime/`scene_key` details.
 
 ## D-004 — Test framework: GUT vs. custom headless runner  — **Accepted** (resolved 2026-10-02)
 **Context:** Need headless CI tests from early on.
@@ -471,7 +475,43 @@ attack → death → cleanup) runs in its own isolated process (`tests/e2e/run_p
 added as a dedicated CI gate.
 **Consequence:** the player composition + `StatBlock` + domain damage slice are the seams
 Phase 04 (Character) and Phase 09 (Combat) build on without a rewrite. No new autoloads;
-D-003/D-005/D-007 remain Open.
+D-005/D-007 remain Open (D-003 resolved in Phase 03 — see below).
+
+## D-021 — Phase 03 World/Map: WorldRuntime node, `scene_key`-addressed maps, persistent player — **Accepted** (2026-10-02, Phase 03)
+**Context:** Phase 03 (World / Map) implements traversable maps and resolves D-003. It must
+add ≥2 maps the player moves between repeatedly with no leak, keep the autoload budget
+(D-017: 5), keep maps data-driven (new map = data + content scene, no core edit), and not
+drift into World Simulation (that is Phase 08).
+**Decisions:**
+- **D-003 → option (a):** one `PackedScene` per map, swapped by the existing `SceneRouter`
+  (the single transition entry point). No streaming.
+- **`WorldRuntime` is a NODE, not an autoload.** It hangs under `Main/Systems` and owns the
+  *why/when* of map movement + the per-session player lifecycle; `SceneRouter` keeps the
+  *how* of swapping content, and `GameState` keeps the authoritative *where*
+  (`set_current_location`, fed by the router). Rejected a 6th autoload — the budget stays
+  frozen at EventBus/GameState/Localization/InputService/SceneRouter.
+- **`MapData.scene_key: String` (not `scene: PackedScene`).** The DATA_SCHEMA sketch listed
+  a direct `PackedScene` ref; instead a map carries a stable router `scene_key`, keeping
+  `MapData` a pure data resource and SceneRouter authoritative for loading. DATA_SCHEMA
+  synced. `MapExit = { to_map_id, entry_point }`.
+- **Persistent per-session Player owned by WorldRuntime.** The player is parented under
+  WorldRuntime between maps (so a SceneRouter content-swap can't free it) and re-parented
+  into each map's `PlayerHost` at a named spawn marker on arrival. The map is detached from
+  the player *before* the router frees the old scene (no accidental free, no stale signal
+  connection).
+- **No new EventBus signal.** `map_entered`/`map_exited` are deferred to the Quest/Story
+  phases that will actually consume them (L-005: no speculative signal). Current state is
+  read via `scene_transition_completed` + `GameState.get_current_map_id()`.
+- **Prototype map art = self-made vector placeholders** (Polygon2D floor + StaticBody2D
+  walls), not a binary PNG TileSet; recorded in `ASSET_LICENSES.md`, base tile size 32px.
+  A real TileSet + PNG lands in the art pass. The Phase-02 sandbox + Phase-01 prologue are
+  retained in the repo but are no longer the first scene; New Game now enters the hub map
+  via WorldRuntime.
+**Consequence:** a new map is `MapData` + a content scene registered in WorldRuntime's
+catalog — no core edit (extensibility rule holds). Multiplayer seam stays clean (map/world
+state has no presentation coupling). Verified by a 9th CI gate: `tests/e2e/run_world_flow.gd`
+drives the real New Game → hub → interact → field → back → menu flow with a no-orphan-leak
+assertion. No new autoloads.
 
 ---
 

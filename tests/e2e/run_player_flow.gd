@@ -4,10 +4,11 @@ extends SceneTree
 ## Run with (its OWN Godot process — the point of isolation):
 ##   godot --headless --path . -s res://tests/e2e/run_player_flow.gd
 ##
-## Boots the real application against the ACTUAL project autoloads and exercises the real
-## Player Sandbox (New Game → move → attack → bidirectional damage → death → cleanup). It is
-## the only thing running here, so driving the shared GameState/InputService contaminates
-## nothing — unlike the in-process `tests/run_tests.gd`.
+## Runs against the ACTUAL project autoloads and exercises the real Phase-02 combat sandbox
+## (instantiated directly: move → attack → bidirectional damage → death → cleanup). It is the
+## only thing running here, so driving the shared InputService contaminates nothing — unlike
+## the in-process `tests/run_tests.gd`. (Phase 03: New Game now enters the World/Map, so the
+## sandbox is reached directly rather than through the menu — see run_world_flow.gd.)
 ##
 ## THIN ADAPTER only: reuses `tests/framework/test_case.gd` (assert_* + failure recording)
 ## and the assertions in `tests/e2e/player_flow_case.gd`. No assertion logic duplicated here.
