@@ -22,6 +22,8 @@ extends TestCase
 const MAIN_SCENE_PATH := "res://main.tscn"
 const INTERACT := &"interact"
 const OPEN_MENU := &"open_menu"
+const MOVE_LEFT := &"move_left"
+const MOVE_RIGHT := &"move_right"
 const REQUIRED_AUTOLOADS := [
 	"EventBus", "GameState", "Localization", "InputService", "SceneRouter",
 ]
@@ -161,44 +163,66 @@ func _player_is_in_map(player: Node, map: Node) -> bool:
 	return false
 
 
-## Setup-only teleport: drop the player onto the map's first exit zone so the Area2D sensor
-## detects it (via real physics overlap). Returns true if a zone was found.
-func _place_on_exit(player: Node, map: Node) -> bool:
-	if player == null or map == null or not (player is Node2D):
-		return false
+## Find the first MapExitZone in a map (as a Node2D), or null.
+func _first_exit(map: Node) -> Node2D:
+	if map == null:
+		return null
 	var exits := map.get_node_or_null("Exits")
 	if exits == null:
-		return false
+		return null
 	for zone in exits.get_children():
 		if zone is MapExitZone and zone is Node2D:
-			(player as Node2D).global_position = (zone as Node2D).global_position
-			return true
-	return false
+			return zone as Node2D
+	return null
+
+
+## Walk the player into the map's exit zone using REAL movement input, so the Area2D sensor
+## fires `body_entered` via genuine physics motion (teleporting a body by setting
+## `global_position` does NOT reliably re-trigger overlap detection — Godot forum / headless
+## physics). We press `move_left`/`move_right` toward the exit (polled by the Player in its
+## own `_physics_process` → MovementComponent → `move_and_slide`) until the player is within
+## the zone's horizontal extent, then release. Returns true if the exit was reached.
+func _walk_into_exit(player: Node, map: Node) -> bool:
+	var zone := _first_exit(map)
+	if zone == null or not (player is Node2D):
+		return false
+	var p := player as Node2D
+	var target_x: float = zone.global_position.x
+	var action: StringName = MOVE_RIGHT if target_x > p.global_position.x else MOVE_LEFT
+	Input.action_press(action)
+	var reached := false
+	for _i in range(240):  # bounded; the arena is ~400px wide, plenty of frames
+		await scene_tree.physics_frame
+		if absf(p.global_position.x - target_x) <= 16.0:
+			reached = true
+			break
+	Input.action_release(action)
+	# A couple of frames for the Area2D body_entered to register the overlap.
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	return reached
 
 
 ## Drive one full "walk to the exit + press interact" through the REAL boundary and wait for
 ## the resulting transition to complete.
 ##
-## Real path exercised: physics overlap fires the exit zone's `body_entered` →
-## `MapBase._active_exit` is set → the `interact` action's `just_pressed` state is set on the
-## Input singleton → `MapBase._unhandled_input` is dispatched → `InputService
-## .is_gameplay_action_just_pressed` (gated on GAMEPLAY) → `MapBase.exit_requested` →
-## `WorldRuntime.request_map_transition` → `SceneRouter`.
+## Real path exercised: real movement input → Player movement → physics overlap fires the
+## exit zone's `body_entered` → `MapBase._active_exit` is set → the `interact` action's
+## just_pressed state is set on the Input singleton → `MapBase._unhandled_input` is dispatched
+## → `InputService.is_gameplay_action_just_pressed` (gated on GAMEPLAY) →
+## `MapBase.exit_requested` → `WorldRuntime.request_map_transition` → `SceneRouter`.
 ##
 ## `_unhandled_input` is invoked directly (headless has no window to pump viewport input),
-## but every downstream link — the active-exit detection, the InputService gate, the signal,
-## WorldRuntime, and SceneRouter — runs for real. The action state is set with the real
-## `Input.action_press` so the service's `is_action_just_pressed` check is genuine.
+## but every downstream link — real movement, the Area2D active-exit detection, the
+## InputService gate, the signal, WorldRuntime, and SceneRouter — runs for real.
 func _interact_to_transition(player: Node, map: Node) -> void:
 	var before_key := ""
 	var router := scene_tree.root.get_node_or_null("SceneRouter")
 	if router != null:
 		before_key = str(router.call("get_current_key"))
 
-	assert_true(_place_on_exit(player, map), "map has an exit zone to stand on")
-	# Let the Area2D register the player overlap (real physics) → _active_exit is set.
-	for _i in range(6):
-		await scene_tree.physics_frame
+	assert_true(await _walk_into_exit(player, map),
+		"player walked into the exit zone (from '%s')" % before_key)
 
 	# Drive the semantic `interact` just_pressed, then dispatch the map's input handler in
 	# the SAME frame (no intervening frame that would clear the just_pressed edge).
