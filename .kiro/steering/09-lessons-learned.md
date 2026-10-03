@@ -176,3 +176,28 @@
   line-reorder in `project.godot`) may stay unstaged, but decide consciously, not by omission.
 - **Fixed:** adopted as the pre-commit reconciliation step. Supersedes the narrow "remember
   the .uid" of L-008 with "reconcile the whole staged set vs. git status".
+
+## L-016 — Headless `-s` E2E can't rely on Area2D `body_entered` or input-pump timing
+- **Symptom:** the Phase-03 world E2E drove a map transition by teleporting/walking the
+  player onto a `MapExitZone` and bumping `interact`, expecting the Area2D's `body_entered`
+  to set `MapBase._active_exit`. In the headless `godot --headless -s run_world_flow.gd`
+  process there is no game window and the physics-overlap pipeline does NOT raise
+  `body_entered` the way a real game loop does, so `_active_exit` stayed `null` and `interact`
+  was a silent no-op. CI failed 5 commits in a row with the SAME message
+  (`interact actually changed the active map (was 'map_hub')`) because the fixes targeted the
+  input side, not the real cause (the sensor signal never firing).
+- **Rule:** **In a `-s` SceneTree E2E, do not depend on Area2D `body_entered`/physics overlap
+  or on precise `is_action_just_pressed` frame timing.** To exercise a sensor-gated path,
+  **emit the node's own real signal** (`zone.emit_signal("body_entered", player)`) — that
+  drives the REAL handler (`_on_exit_body_entered` → `_active_exit`) deterministically, and
+  everything downstream (gate, `exit_requested`, WorldRuntime, SceneRouter) still runs for
+  real. For an edge-triggered input gate, press the action and **retry the handler dispatch a
+  bounded number of frames** until the observable effect happens, instead of guessing the one
+  frame the edge is live. Keep a self-diagnosing assertion that names the exact failed link.
+- **Also (process):** Godot is not runnable locally (D-009), so a CI-only failure must be
+  diagnosed by **reading the code for the root cause**, not by push-and-pray. If a gate fails
+  opaquely, make it print the runner output (job summary + `::error::` annotations) ONCE so
+  the real message is readable via the API, then fix the true cause — don't push repeated
+  speculative fixes.
+- **Fixed:** Phase 03 (D-021 follow-up). See `tests/e2e/world_flow_case.gd`
+  (`_stand_in_exit` + bounded interact retry). CI green on `b7cc9b6`.
