@@ -119,9 +119,14 @@ func test_real_world_map_flow() -> void:
 	# --- 6. a REAL open_menu returns to the menu ---------------------------------
 	var active_map: Node = router.get_current_scene()
 	assert_not_null(active_map, "a map is active before open_menu")
-	_drive_system_action(active_map, OPEN_MENU)
+	# Real key event through the engine + direct handler dispatch while held (same headless
+	# belt-and-suspenders as interact). `open_menu` is a system action (not GAMEPLAY-gated).
+	_press_action_key(OPEN_MENU)
+	if is_instance_valid(active_map) and active_map.has_method("_unhandled_input"):
+		active_map.call("_unhandled_input", _make_action_event(OPEN_MENU, true))
 	await scene_tree.process_frame
 	await scene_tree.process_frame
+	_release_action_key(OPEN_MENU)
 	assert_eq(gs.get_phase(), gs.Phase.MENU, "open_menu ended the session back to MENU")
 	assert_false(gs.is_session_active(), "session ended")
 	assert_eq(router.get_current_key(), "", "no content scene after returning to menu")
@@ -224,12 +229,17 @@ func _interact_to_transition(player: Node, map: Node) -> void:
 	assert_true(await _walk_into_exit(player, map),
 		"player walked into the exit zone (from '%s')" % before_key)
 
-	# Drive the semantic `interact` just_pressed, then dispatch the map's input handler in
-	# the SAME frame (no intervening frame that would clear the just_pressed edge).
-	Input.action_press(INTERACT)
+	# Drive the `interact` intent through the engine's REAL input dispatch: feed a key event
+	# matching the `interact` action. The engine marks the action just_pressed and dispatches
+	# `_unhandled_input` to the in-tree map. As a headless belt-and-suspenders (viewport input
+	# propagation can be unreliable with no window), ALSO invoke the map's `_unhandled_input`
+	# directly WHILE the key is held — so `is_gameplay_action_just_pressed` is genuinely true.
+	_press_action_key(INTERACT)
 	if map != null and is_instance_valid(map) and map.has_method("_unhandled_input"):
-		map.call("_unhandled_input", InputEventAction.new())
-	Input.action_release(INTERACT)
+		map.call("_unhandled_input", _make_action_event(INTERACT, true))
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	_release_action_key(INTERACT)
 
 	# Let the transition (free old scene + load new + re-parent player) settle.
 	await scene_tree.process_frame
@@ -240,14 +250,34 @@ func _interact_to_transition(player: Node, map: Node) -> void:
 			"interact actually changed the active map (was '%s')" % before_key)
 
 
-## Drive a system action (e.g. open_menu) through `MapBase._unhandled_input` the same way:
-## set the action's just_pressed state, then dispatch the handler. `open_menu` is a system
-## action (not gated on GAMEPLAY), so this exercises `is_system_action_just_pressed`.
-func _drive_system_action(map: Node, action: StringName) -> void:
-	Input.action_press(action)
-	if map != null and is_instance_valid(map) and map.has_method("_unhandled_input"):
-		map.call("_unhandled_input", InputEventAction.new())
-	Input.action_release(action)
+## Synthesize and feed the FIRST physical key bound to `action` as a real press event, so the
+## engine updates the action state (just_pressed) and dispatches `_unhandled_input` to
+## in-tree nodes. Falls back to an InputEventAction if the action has no key event.
+func _press_action_key(action: StringName) -> void:
+	var ev := _make_action_event(action, true)
+	Input.parse_input_event(ev)
+	Input.flush_buffered_events()
+
+
+func _release_action_key(action: StringName) -> void:
+	var ev := _make_action_event(action, false)
+	Input.parse_input_event(ev)
+	Input.flush_buffered_events()
+
+
+func _make_action_event(action: StringName, pressed: bool) -> InputEvent:
+	for e in InputMap.action_get_events(action):
+		if e is InputEventKey:
+			var k := InputEventKey.new()
+			k.physical_keycode = (e as InputEventKey).physical_keycode
+			k.keycode = (e as InputEventKey).keycode
+			k.pressed = pressed
+			return k
+	var a := InputEventAction.new()
+	a.action = action
+	a.pressed = pressed
+	a.strength = 1.0 if pressed else 0.0
+	return a
 
 
 func _count_named(node_name: String) -> int:
