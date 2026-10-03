@@ -16,9 +16,8 @@
 > green, 163 tests passed / 0 failed; D-025 close-out then removed a residual
 > 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship core +
 > early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
-> all 9 gates green). Phase 06 (Sect) is **IMPLEMENTED** (D-032) — CLOSED on CI-green
-> verification (see the Phase 06 section + CHANGELOG for the SHA). Phase 07 (Faction/Politics)
-> is NOT STARTED.
+> all 9 gates green). Phase 06 (Sect) is **CLOSED** (D-032, CI-verified 2026-10-03 on
+> `b3c98cc`, all 9 gates green). Phase 07 (Faction/Politics) is NOT STARTED.
 >
 > **Visual follow-up (2026-10-03, D-028 — not a phase):** the production UI art was upgraded
 > from the self-made prototype set to the CC0 **Xianxia Pixel Pack** UI (`assets/ui/xianxia/`)
@@ -164,7 +163,7 @@ the player renders its `sprite_set_ref`; the current game flow + first scene are
 All 9 CI gates green on `21ef622` (2026-10-03). No new autoload; SECT endpoints structural-only
 (Phase 06 adds the real `SectState` + referential validation).
 
-## Phase 06 — Sect System *(IMPLEMENTED — D-032; CLOSED on CI-green)*
+## Phase 06 — Sect System *(CLOSED — D-032; CI-green on `b3c98cc`, 2026-10-03)*
 Core sects (`docs/SECT_SYSTEM.md`): `SectTemplateData` + `SectRankData` + `SectCatalog` (data);
 `SectState`/`SectStore`/`SectService` (domain) with membership/ranks, resources/territory/
 reputation/influence, and alliances/enemies mirrored (transactionally) as symmetric Sect↔Sect

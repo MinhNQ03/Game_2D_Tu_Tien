@@ -277,3 +277,33 @@
 - **Fixed:** Phase 04 close-out (D-025). `test_input_display_label.gd` now `svc.free()`s the
   InputService node in all three methods; verified 0 leaks via CI after removing the temporary
   `--verbose` diagnostic step.
+
+## L-020 — `:=` inferring from a `-> Variant` helper breaks the whole `class_name` compile ("base 'GDScript'")
+- **Symptom (Phase 06, D-032):** `SectState.from_dict()` did
+  `var staged_allies := _parse_unique_id_array(...)` where the helper is `-> Variant` (returns
+  `null` on malformed input, else `Array`). Godot's warning "The variable type is being
+  inferred from a Variant value, so it will be typed as Variant" is **treated as error** in
+  this project, so `sect_state.gd` FAILED TO COMPILE at lines 372/376/377. A script that fails
+  to compile does **not register its `class_name`**, so every `SectState.create_from_template(...)`
+  / `SectState.new()` across the suite raised the misleading runtime error
+  `Invalid call. Nonexistent function 'create_from_template' in base 'GDScript'.` — which looks
+  like a call-site problem but is really "the class never compiled". 13 sect tests cascaded
+  (`is_ally`/`is_member` on `Nil`, `set_diplomacy: unknown sect`). The parse-check gate caught
+  it as `SCRIPT ERROR: Parse Error ... at: GDScript::reload (sect_state.gd:372)` + "Failed to
+  compile depended scripts" for every file that depends on SectState — THAT is the real root,
+  not the call sites. **Two wasted guess-pushes** (converting test call sites preload-const
+  vs class_name) changed nothing because the class simply wasn't compiling; the real error was
+  only read once the FULL suite/parse log was examined (the user pasted it).
+- **Rule:** **A `-> Variant` helper used with `:=` yields a `Variant` var -> warning-as-error ->
+  the file won't compile.** When a value can legitimately be `null` OR a typed value, declare
+  the receiver `var x: Variant = helper(...)` explicitly, and cast at the typed assignment
+  (`field = x as Array[StringName]`). More generally: **"Nonexistent function X in base
+  'GDScript'" almost always means the target class failed to COMPILE (its `class_name` didn't
+  register), not that the call syntax is wrong** — read the parse/compile error for that
+  script FIRST (grep the suite log for `Parse Error`/`Compile Error`/`GDScript::reload`), fix
+  the compile, and the "nonexistent function" cascade disappears. Do NOT keep editing call
+  sites. `get_diagnostics`/LSP may not surface this when the inferred-Variant warning is only
+  promoted to an error by the project's warning config at full compile (ties to L-018: parse-
+  clean != compiles-clean under warnings-as-errors).
+- **Fixed:** Phase 06 (D-032). `sect_state.gd` `from_dict` now types the three staged arrays
+  as `Variant` and casts on commit; CI `b3c98cc` green (all 9 gates).

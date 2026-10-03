@@ -44,6 +44,13 @@ Dates are ISO (YYYY-MM-DD).
   clears on return to menu. No new CI gate; 9 gates unchanged.
 - **Scope:** NO Faction/Politics engine (Phase 07), World Simulation (Phase 08), Combat,
   Inventory, Save, or networking. No new autoload.
+- **CI bring-up:** the first Phase-06 push (`088921a`) was CI-red — `sect_state.gd` failed to
+  compile because `from_dict` inferred `Variant` locals via `:=` from a `-> Variant` helper
+  (warning-as-error), so `class_name SectState` never registered and every
+  `SectState.create_from_template`/`.new()` reported the misleading "base 'GDScript'". Fixed by
+  typing the three staged arrays `Variant` + casting on commit (`b3c98cc`). **CLOSED: CI green
+  on `b3c98cc` — all 9 gates.** See lesson L-020. (Temporary CI diagnostic from steering 10 §1.3
+  was added to read the real error, then fully removed in the same fix commit.)
 
 ### 2026-10-03 — Changelog correction: D-030 added 2 (not 4) test methods (D-031)
 - Corrected the D-030 entry's test-method count to "+2 test methods" (the two
