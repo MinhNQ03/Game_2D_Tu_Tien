@@ -35,6 +35,30 @@ const ATTACK_ACTION := &"attack"
 
 var _input: Node = null
 
+## The authoritative CharacterState this node realizes (Phase 04, `docs/CHARACTER_SYSTEM.md`
+## §6). The player node is a runtime VIEW; identity + stats + life-state truth live here. Set
+## ONCE by the session owner (`WorldRuntime`) via `bind_character_state()` BEFORE the node is
+## added to the tree, so `_ready()` initializes the composition from the one source of truth.
+## When null (isolated harness/test), the node falls back to the authored StatBlock.
+var _character_state: CharacterState = null
+
+
+## Bind the authoritative CharacterState BEFORE adding this node to the tree. Idempotent-ish:
+## intended to be called once per realization. Also pushes the state into the StatsComponent
+## so stat reads come from the domain authority, not a parallel copy.
+func bind_character_state(state: CharacterState) -> void:
+	_character_state = state
+	# `_stats` is an @onready var; it is only resolved once the node is in the tree. Guard so
+	# a pre-tree bind doesn't touch a null — `_ready()` re-applies the binding to the
+	# component. If called after _ready (rebind), apply immediately.
+	if is_node_ready():
+		_stats.bind_character_state(state)
+
+
+## The authoritative CharacterState this node realizes (or null in an isolated harness).
+func get_character_state() -> CharacterState:
+	return _character_state
+
 
 func _ready() -> void:
 	# Collision wiring from the single source of truth (`CollisionLayers`), not scene magic
@@ -44,16 +68,27 @@ func _ready() -> void:
 	collision_layer = CollisionLayers.PLAYER
 	collision_mask = CollisionLayers.WORLD | CollisionLayers.DUMMY
 
-	# Fail CLOSED on invalid/missing authored stats: a broken scene must not quietly run as
-	# if valid (`04-coding-standards.md`: fail loud; no silent-fallback as the normal path).
+	# Make the StatsComponent a VIEW of the authoritative state (if one was bound before the
+	# node entered the tree). After this, `_stats` reads the character's current numbers.
+	if _character_state != null:
+		_stats.bind_character_state(_character_state)
+
+	# Fail CLOSED on invalid/missing stat source: a broken scene must not quietly run as if
+	# valid (`04-coding-standards.md`: fail loud; no silent-fallback as the normal path).
 	# `validate()` already reports loudly; here we stop wiring and disable processing so the
-	# entity is inert rather than half-initialized. Valid `.tres` files take the normal path.
+	# entity is inert rather than half-initialized. Valid state/`.tres` take the normal path.
 	if not _stats.validate():
 		set_physics_process(false)
-		push_error("[player] invalid StatBlock; player disabled (fail-closed)")
+		push_error("[player] invalid stat source; player disabled (fail-closed)")
 		return
 
-	_health.initialize(_stats.get_max_hp())
+	# Initialize runtime health from the authority. With a bound state, max comes from the
+	# state and current from the state's authoritative current_hp (so a loaded save restores
+	# wounded HP); without a state, start full from the StatBlock max.
+	if _character_state != null:
+		_health.initialize(_stats.get_max_hp(), _character_state.current_hp)
+	else:
+		_health.initialize(_stats.get_max_hp())
 	_movement.setup(self)
 
 	# Forward component signals outward as player-level signals (local, direct).
@@ -110,9 +145,18 @@ func is_dead() -> bool:
 	return _health.is_dead()
 
 
-func _on_health_changed(current: int, maximum: int) -> void:
-	health_changed.emit(current, maximum)
+func _on_health_changed(current: int, _maximum: int) -> void:
+	# Keep the authoritative CharacterState's current_hp in sync with the runtime health view
+	# (the domain stays the single source of truth; a future save reads current_hp from it).
+	if _character_state != null:
+		_character_state.set_current_hp(current)
+	health_changed.emit(current, _maximum)
 
 
 func _on_health_died() -> void:
+	# Propagate the runtime death into the authoritative life-state (ALIVE -> DEAD, once).
+	# The domain rejects a second kill; death_cause is left empty here (the sandbox/combat
+	# phase that computes the hit will supply a cause when it exists).
+	if _character_state != null:
+		_character_state.mark_dead()
 	died.emit()

@@ -8,6 +8,39 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Phase 04 (D-023; Character core + early UI/presentation foundation)
+- **Character core (domain + data):** added `CharacterTemplateData`
+  (`src/data/characters/character_template_data.gd`, `char_*`) — the data definition with
+  identity/origin/age/profession/cultivation-contract/base-stats/traits/affiliation fields +
+  validation — and the player template `data/characters/player_default.tres`. Added
+  `CharacterState` (`src/domain/character/character_state.gd`, `RefCounted`): the AUTHORITATIVE,
+  serializable, presentation-free character instance with a life-state machine
+  (ALIVE→DEAD once, DEAD terminal), current-HP authority, and persistent-tier-only
+  `to_dict`/`from_dict` (boundary-validated; a SAVE SEAM — `SaveService` is still Phase 23).
+- **Player is a view of one authoritative state:** `WorldRuntime` builds ONE player
+  `CharacterState` (fixed `instance_id="player"`) and binds it to the persistent Player before
+  it enters the tree. `StatsComponent` reads its numbers from the bound state (falls back to
+  the authored `StatBlock` only when unbound); `HealthComponent` syncs HP/death back
+  (`set_current_hp`/`mark_dead`). Composition kept; state NOT recreated on map swap.
+- **Data-driven start map:** `MapCatalog` gains validated `start_map_id`; `WorldRuntime`
+  reads it (removed the hard-coded `START_MAP_ID`).
+- **Early UI/presentation foundation:** `UIPalette` design tokens + `UITheme.build()`
+  (code-built shared Theme). Main-menu presentation pass (background, title/subtitle, uniform
+  styled buttons, focus) — signals/localization/context unchanged. New `GameplayHUD`
+  (owned by MapBase) shows the character's name/title + localized map name + control hints.
+  New `InputService.get_action_display_label` resolves real key labels (interact→E,
+  open_menu→Esc); the UI never reads keycodes. Shared data-driven camera zoom (2× for 16px);
+  exit zones show a jade prototype gate instead of the yellow debug block.
+- **Localization:** added `CHARACTER_PLAYER_NAME/TITLE/ORIGIN`, `UI_MENU_SUBTITLE`,
+  `UI_HUD_INTERACT_HINT`, `UI_HUD_MENU_HINT` (vi + en).
+- **Tests:** character unit (template validation, state construction/life-state/HP/round-trip),
+  player↔state binding integration, UI theme + HUD structural, input-display-label, Phase-04
+  localization-key coverage. The world E2E now asserts the SAME `CharacterState` instance
+  across 20 round trips (not recreated on map swap). All diagnostics clean (only the known
+  cross-file `class_name` LSP cache false-positives, resolved by CI `--import`).
+- Docs synced: CHARACTER_SYSTEM (status §10), DATA_SCHEMA, ARCHITECTURE, GAME_FLOW, TEST_PLAN,
+  PERFORMANCE, ROADMAP (Phase 04 IN PROGRESS), DECISIONS (D-023). No new autoloads; scope held.
+
 ### 2026-10-03 — Phase 03 reopen / hardening (D-022; data-driven maps, transactional transitions, real prototype art)
 - **MapData is the full source of truth:** added `scene_path`, `bounds: Rect2`,
   `default_spawn_id`, and stable exit `id`s with full validation (`scene_path` exists,

@@ -7,3 +7,4 @@
 [resource]
 script = ExtResource("1_catalog")
 maps = [ExtResource("2_hub"), ExtResource("3_field")]
+start_map_id = &"map_hub"

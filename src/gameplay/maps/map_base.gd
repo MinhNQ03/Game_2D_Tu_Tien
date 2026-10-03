@@ -32,16 +32,17 @@ signal return_to_menu_requested()
 const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
 
+const GameplayHUDScript := preload("res://src/presentation/hud/gameplay_hud.gd")
+
 var _input: Node = null
-var _bus: Node = null
 var _map_data: MapData = null          # authoritative data for THIS map (set by WorldRuntime)
 var _active_exit: MapExit = null       # the exit (data) the player currently stands in
 var _active_zone: MapExitZone = null   # which zone set _active_exit (for exit tracking)
+var _hud: GameplayHUD = null           # presentation overlay (name/map/hints); owned here
 
 
 func _ready() -> void:
 	_input = get_node_or_null("/root/InputService")
-	_bus = get_node_or_null("/root/EventBus")
 
 	if _input != null:
 		_input.call("set_gameplay_context")
@@ -68,15 +69,8 @@ func _ready() -> void:
 				zone.body_entered.connect(_on_exit_body_entered.bind(zone))
 				zone.body_exited.connect(_on_exit_body_exited.bind(zone))
 
-	if _bus != null and not _bus.is_connected("language_changed", _on_language_changed):
-		_bus.connect("language_changed", _on_language_changed)
-
+	_setup_hud()
 	_refresh_hud()
-
-
-func _exit_tree() -> void:
-	if _bus != null and _bus.is_connected("language_changed", _on_language_changed):
-		_bus.disconnect("language_changed", _on_language_changed)
 
 
 ## Bind the authoritative MapData to this scene (called by WorldRuntime after load). Drives
@@ -96,13 +90,27 @@ func get_map_data() -> MapData:
 	return _map_data
 
 
-# --- Camera (data-driven limits from MapData.bounds) -------------------------
+## Re-read view state into the HUD. Called by WorldRuntime AFTER the persistent player is
+## parented into this map, so the HUD identity plate reflects the now-present CharacterState
+## (apply_map_data runs before the player is placed, so the HUD can't read it there).
+func refresh_hud() -> void:
+	_refresh_hud()
+
+
+# --- Camera (data-driven limits from MapData.bounds; shared zoom baseline) ---
+
+## Shared camera zoom baseline for all maps. At 2x, the 16px pixel-art tiles
+## (`06-art-assets.md`) read at a comfortable size on the default window without per-map
+## tuning. It is a single baseline (not per-MapData) by decision (D-023): a map's framing
+## differs by its `bounds`, not by a bespoke zoom. Integer factor keeps pixels crisp.
+const CAMERA_ZOOM := Vector2(2.0, 2.0)
 
 func _configure_camera_limits(bounds: Rect2) -> void:
 	var cam := get_node_or_null("Camera2D")
 	if cam == null or not (cam is Camera2D):
 		return
 	var camera := cam as Camera2D
+	camera.zoom = CAMERA_ZOOM
 	camera.limit_left = int(bounds.position.x)
 	camera.limit_top = int(bounds.position.y)
 	camera.limit_right = int(bounds.position.x + bounds.size.x)
@@ -211,23 +219,42 @@ func _is_player(body: Node) -> bool:
 	return body is Player
 
 
-# --- HUD (localized; presentation only) --------------------------------------
+# --- HUD (presentation overlay; owned here, self-localizing) -----------------
+# MapBase OWNS a GameplayHUD overlay and PUSHES view data into it (map name, player identity,
+# interact availability). The HUD renders + self-refreshes on language change (it is pure
+# presentation). The map's own `HUD` CanvasLayer (if the scene has one) is hidden so the new
+# overlay is the single HUD — the old `HUD/MapLabel` is superseded, not duplicated (L-002).
+
+func _setup_hud() -> void:
+	# Hide the scene's legacy HUD plate (the pre-Phase-04 MapLabel) if present; the GameplayHUD
+	# overlay replaces it. We don't delete it so the .tscn stays untouched/portable.
+	var legacy := get_node_or_null("HUD")
+	if legacy != null and legacy is CanvasLayer:
+		(legacy as CanvasLayer).visible = false
+
+	_hud = GameplayHUDScript.new() as GameplayHUD
+	_hud.name = "GameplayHUD"
+	add_child(_hud)
+
 
 func _refresh_hud() -> void:
-	var label := get_node_or_null("HUD/MapLabel")
-	if label == null or not (label is Label):
+	if _hud == null:
 		return
-	var loc := get_node_or_null("/root/Localization")
-	var name_key := _map_data.name_key if _map_data != null else ""
-	var map_name := name_key
-	if loc != null and name_key != "":
-		map_name = String(loc.call("t", name_key))
-	var hint := ""
-	if loc != null:
-		hint = String(loc.call("t", "UI_MAP_INTERACT_HINT")) if _active_exit != null \
-			else String(loc.call("t", "UI_MAP_RETURN_HINT"))
-	(label as Label).text = "%s\n%s" % [map_name, hint]
+	# MapData.name_key is a String; the HUD takes a StringName key. Convert explicitly so both
+	# ternary branches share a type (and no implicit String/StringName coercion warning).
+	var map_name_key: StringName = StringName(_map_data.name_key) if _map_data != null else &""
+	_hud.set_map_name(map_name_key)
+	_hud.set_character(_find_player_character())
+	_hud.set_interact_available(_active_exit != null)
 
 
-func _on_language_changed(_language_code: String) -> void:
-	_refresh_hud()
+## Read the authoritative player CharacterState from the player realized in this map (or null
+## if the player is not yet parented / is not a Character). Presentation reads a VIEW only.
+func _find_player_character() -> CharacterState:
+	var host := get_player_host()
+	if host == null:
+		return null
+	for child in host.get_children():
+		if child is Player:
+			return (child as Player).get_character_state()
+	return null

@@ -135,7 +135,23 @@ load. Content references are template `id`s, so saves survive as long as those i
 - No presentation field leaks into the persistent tier.
 See `docs/TEST_PLAN.md`.
 
-## 10. Explicitly NOT in this step
+## 10. Implementation status (Phase 04, D-023)
 
-No character controller, no AI code, no spawning code, no dialogue. This document is the
-contract the Character phase (`docs/ROADMAP.md`) will implement.
+Phase 04 implemented the **core character data + authoritative state + player binding**
+slice of this contract:
+
+- `CharacterTemplateData` (`src/data/characters/character_template_data.gd`) — the §4/§5
+  data definition, with the player authored as `data/characters/player_default.tres`.
+- `CharacterState` (`src/domain/character/character_state.gd`, `RefCounted`) — the §3
+  authoritative, persistent-tier-only, serializable instance. Life-state (§5) implements
+  ALIVE→DEAD (once, terminal); MISSING/ASCENDED and the cultivation/relationship/sect/world
+  fields are stored as CONTRACT but carry no mechanics yet.
+- Player binding (§6) — the Player node is a runtime VIEW bound to ONE `CharacterState`
+  owned by `WorldRuntime`; `StatsComponent` reads the authoritative numbers, `HealthComponent`
+  syncs HP/death back. Composition kept.
+
+Still NOT implemented (later phases): the §7 EventBus character events, AI/schedule/world
+simulation (§5 schedule, `WORLD_SIMULATION.md`), relationships/sect/faction authority
+(`RELATIONSHIP_SYSTEM.md`/`SECT_SYSTEM.md`), spawning of non-player characters, dialogue, and
+save orchestration (`SaveService`, Phase 23 — `CharacterState.to_dict/from_dict` is the ready
+seam). No character controller beyond the existing Player composition.

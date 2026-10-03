@@ -241,6 +241,32 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
   emitting the exit sensor's own `body_entered` signal (L-016/L-017). The Phase-02 player
   E2E instantiates `player_sandbox.tscn` directly; the app-flow E2E expects `map_hub` first.
 
+**Phase 04 added Character + UI tests (high-risk: character state / life-state / save seam):**
+- `tests/unit/character/test_character_template_data.gd` — `CharacterTemplateData` validation
+  at the content boundary (missing id/name_key/base_stats, invalid StatBlock, negative age,
+  out-of-range enum) and that the shipped `player_default.tres` loads + is valid.
+- `tests/unit/character/test_character_state.gd` — `create_from_template` copies identity +
+  stats (value copies, not shared with the template), rejects null/empty id; `mark_dead`
+  transitions ALIVE→DEAD exactly once (DEAD terminal, cause recorded once); `set_current_hp`
+  clamps and does NOT change life_state; `to_dict`/`from_dict` round-trips the persistent tier
+  (incl. wounded HP and the DEAD state), `from_dict` rejects invalid snapshots, and the
+  serialized dict carries NO presentation/runtime field (L-001).
+- `tests/integration/test_player_character_binding.gd` — the Player reads stats from the
+  bound `CharacterState` (overriding the scene StatBlock), damage syncs back to the state,
+  death marks the state DEAD, a wounded state restores current HP, and composition is kept.
+- `tests/unit/presentation/test_ui_theme.gd` — `UITheme.build()` carries the Button state
+  styleboxes + Label styling + a key-badge box; `UIPalette` tokens are sane.
+- `tests/unit/presentation/test_gameplay_hud.gd` — the HUD builds its labels, renders the
+  character's localized name, and composes the control hint from the InputService display
+  label (shows "E"/"Esc", never a raw keycode).
+- `tests/unit/core/test_input_display_label.gd` — `get_action_display_label` resolves
+  interact→"E", open_menu→"Esc", and an unknown action → "?" (no keycode leak).
+- `tests/unit/core/test_localization.gd` (extended) — the Phase-04 keys exist in both vi + en
+  and the HUD-hint keys substitute the `{key}` placeholder.
+- `tests/e2e/world_flow_case.gd` (extended) — asserts `WorldRuntime` built the player's
+  `CharacterState` (stable id, ALIVE) and that it is the SAME instance across all 20 round
+  trips (not recreated on a map swap — D-023 invariant).
+
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push. **Note:** these tests were authored and statically validated (GDScript
 diagnostics clean); the agent cannot run Godot locally (D-009), so the authoritative run

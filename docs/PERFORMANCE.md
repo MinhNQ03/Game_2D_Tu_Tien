@@ -36,6 +36,15 @@
 > (`InputService` context stack) decides who receives input while paused. We did NOT build
 > a pause framework (no autoload `process_mode` juggling) — later gameplay follows this
 > ownership rule when it needs pause.
+>
+> **Phase 04 note (no optimization, just discipline):** the new UI/HUD do NOT run per-frame
+> loops. `GameplayHUD` and the main menu build their nodes once and refresh ONLY on demand
+> (owner push) or on the `language_changed` EventBus signal — no `_process`/`_physics_process`,
+> no per-frame string building. `MapBase.set_interact_available` early-returns when the value
+> is unchanged, so the HUD re-renders only on an actual enter/exit edge, not every overlap
+> frame. `InputService.get_action_display_label` is called only when a hint is (re)built, not
+> per frame. The camera zoom is set once per map in `apply_map_data`. `CharacterState` is a
+> plain `RefCounted` built once per session and read by reference (no copying on map swap).
 
 ## 1. Principles
 

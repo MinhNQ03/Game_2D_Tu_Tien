@@ -78,6 +78,17 @@ func test_real_world_map_flow() -> void:
 		_teardown(main)
 		return
 	var player_id := player.get_instance_id()  # proven-persistent identity across all maps
+
+	# Phase 04 (D-023): the player is bound to ONE authoritative CharacterState that must NOT
+	# be recreated on a map swap. Capture its identity now and assert it persists below.
+	var character = world_runtime.call("get_player_character")
+	assert_not_null(character, "WorldRuntime built the player's CharacterState")
+	var character_id := -1
+	if character != null:
+		character_id = character.get_instance_id()
+		assert_eq(String(character.instance_id), "player", "player state has the stable id")
+		assert_true(character.is_alive(), "player starts ALIVE")
+
 	var hub_map: Node = router.get_current_scene()
 	assert_true(_player_is_in_map(player, hub_map), "player is parented inside the hub map")
 
@@ -105,6 +116,11 @@ func test_real_world_map_flow() -> void:
 		var now_key := str(router.call("get_current_key"))
 		assert_ne(now_key, from_key, "round %d: map changed (%s -> %s)" % [i, from_key, now_key])
 		assert_eq(player.get_instance_id(), player_id, "round %d: SAME player instance" % i)
+		# The authoritative CharacterState is NOT recreated on a map swap (D-023 invariant):
+		# WorldRuntime owns one for the session and the SAME player node keeps carrying it.
+		var round_character = world_runtime.call("get_player_character")
+		assert_true(round_character != null and round_character.get_instance_id() == character_id,
+			"round %d: SAME CharacterState instance (not recreated on map swap)" % i)
 		assert_eq(_count_player_instances(scene_tree.root), 1, "round %d: exactly one Player" % i)
 		var active: Node = router.get_current_scene()
 		assert_true(_player_is_in_map(player, active), "round %d: player in active map" % i)

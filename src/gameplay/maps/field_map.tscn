@@ -77,8 +77,13 @@ exit_id = &"exit_to_hub"
 shape = SubResource("RectangleShape2D_exit")
 
 [node name="ExitVisual" type="Polygon2D" parent="Exits/ExitToHub"]
-color = Color(0.9, 0.8, 0.2, 1)
+color = Color(0.36, 0.78, 0.62, 0.33)
 polygon = PackedVector2Array(-20, -24, 20, -24, 20, 24, -20, 24)
+
+[node name="ExitFrame" type="Line2D" parent="Exits/ExitToHub"]
+points = PackedVector2Array(-20, 24, -20, -24, 20, -24, 20, 24)
+width = 2.0
+default_color = Color(0.36, 0.78, 0.62, 1)
 
 [node name="HUD" type="CanvasLayer" parent="."]
 

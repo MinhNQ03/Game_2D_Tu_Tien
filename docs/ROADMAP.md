@@ -11,7 +11,9 @@
 > 2026-10-02). Phase 01 (Core Framework) is **CLOSED** (CI-verified 2026-10-02). Phase 02
 > (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) is **CLOSED**
 > (reopened for hardening — D-022 — then CI-verified 2026-10-03 on `53f342f`, all 9 gates
-> green). Phase 04 (Character) is **NOT STARTED** and is the next phase.
+> green). Phase 04 (Character core + early UI/presentation foundation) is **IN PROGRESS**
+> (D-023; CLOSED once CI verifies all 9 gates on the Phase-04 commit). Phase 05
+> (Relationship) is NOT STARTED.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -91,9 +93,18 @@ invariants. **CLOSED** — all 9 CI gates green on `53f342f` (2026-10-03).
 ## Phase 04 — Character System
 Data-driven Characters as core domain state (`docs/CHARACTER_SYSTEM.md`):
 `CharacterTemplateData` + `CharacterState`, 3-tier state (persistent/runtime/presentation),
-`CharacterEntity` as a *view*, player modeled as a Character.
-**Exit:** add a character purely via data; `CharacterState` round-trips through save;
-life-state transitions persist; no presentation leaks into persistent tier; tests pass.
+the Player node as a *view* bound to one authoritative `CharacterState`. Phase 04 ALSO lays
+the first UI/presentation foundation (shared theme, main-menu presentation pass, in-map HUD
+showing the character's identity, input display labels, data-driven camera framing) and makes
+the session start map data-driven (`MapCatalog.start_map_id`). See D-023.
+Scope guard: cultivation fields are CONTRACT only; NO Relationship/Sect/Faction/WorldSim/
+Combat/Inventory/Skill/Quest/Dialogue/Save/Networking.
+**Exit (status, D-023):** add a character purely via data ✅ (`player_default.tres`);
+`CharacterState` round-trips through `to_dict/from_dict` ✅ (save seam; `SaveService` is
+Phase 23); life-state ALIVE→DEAD transitions + round-trip ✅; no presentation leaks into the
+persistent tier ✅ (tested); Player bound to ONE state, not recreated on map swap ✅ (world
+E2E, 20 round trips); UI never hard-codes keys/user text ✅. CLOSED once CI is green on the
+Phase-04 commit.
 
 ## Phase 05 — Relationship System
 Serializable relationship graph (`docs/RELATIONSHIP_SYSTEM.md`): `RelationshipEdge` with

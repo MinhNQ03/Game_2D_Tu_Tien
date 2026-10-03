@@ -1,0 +1,72 @@
+extends RefCounted
+class_name UIPalette
+## UIPalette — Aetheria presentation (UI design tokens).
+##
+## The SINGLE SOURCE OF TRUTH for the foundation UI's colors, font sizes, and spacing
+## (`08-ai-review-protocol.md` no-duplication; `04-coding-standards.md` no magic numbers).
+## The main menu, HUD, and `UITheme` builder all read these tokens instead of each hard-coding
+## their own hex/sizes, so a later real art pass restyles the whole UI by editing ONE file.
+##
+## This is a prototype/foundation palette (NOT final art), chosen for legibility of both
+## Vietnamese diacritics and English in the two first-class languages (`07-localization.md`).
+## It carries NO behavior — just named constants.
+
+# --- Palette (prototype ink-and-jade tu-tiên tone) ---------------------------
+
+## App background (behind the menu).
+const COLOR_BACKGROUND := Color(0.07, 0.08, 0.10)
+
+## Panel/surface fill (menu button face, HUD plate).
+const COLOR_SURFACE := Color(0.13, 0.15, 0.18)
+
+## Surface when hovered/active.
+const COLOR_SURFACE_HOVER := Color(0.19, 0.22, 0.26)
+
+## Surface when pressed.
+const COLOR_SURFACE_PRESSED := Color(0.10, 0.12, 0.14)
+
+## Disabled surface (Load Game placeholder).
+const COLOR_SURFACE_DISABLED := Color(0.11, 0.12, 0.13)
+
+## Accent (focus ring, title underline, key-badge border) — a jade/qì green.
+const COLOR_ACCENT := Color(0.36, 0.78, 0.62)
+
+## Primary readable text.
+const COLOR_TEXT := Color(0.92, 0.94, 0.96)
+
+## Muted/secondary text (subtitles, hints).
+const COLOR_TEXT_MUTED := Color(0.62, 0.66, 0.72)
+
+## Disabled text.
+const COLOR_TEXT_DISABLED := Color(0.42, 0.45, 0.49)
+
+## Key-badge background (the little "E"/"Esc" chip in a hint).
+const COLOR_BADGE := Color(0.17, 0.20, 0.24)
+
+
+# --- Type scale --------------------------------------------------------------
+
+const FONT_SIZE_TITLE := 48
+const FONT_SIZE_SUBTITLE := 18
+const FONT_SIZE_BUTTON := 22
+const FONT_SIZE_BODY := 16
+const FONT_SIZE_HINT := 15
+const FONT_SIZE_BADGE := 14
+
+
+# --- Spacing / shape ---------------------------------------------------------
+
+const SPACE_SM := 6
+const SPACE_MD := 12
+const SPACE_LG := 24
+const SPACE_XL := 40
+
+## Button inner padding (horizontal, vertical).
+const BUTTON_PAD_H := 28
+const BUTTON_PAD_V := 10
+
+## Corner radius for surfaces/badges.
+const CORNER_RADIUS := 6
+
+## Focus ring thickness.
+const FOCUS_BORDER := 2

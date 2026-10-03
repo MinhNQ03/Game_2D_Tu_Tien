@@ -60,3 +60,31 @@ func test_args_substitution() -> void:
 	# A key with no placeholder is returned unchanged.
 	assert_eq(loc.t_args("UI_MENU_QUIT", {"name": "x"}), "Thoát", "no placeholder unchanged")
 	free_node(loc)
+
+
+## Phase-04 keys (character identity, menu subtitle, HUD hints) must exist in BOTH languages
+## (`07-localization.md` testing rule: no key used in content is missing a vi/en value, and
+## the HUD-hint keys carry the {key} placeholder the display-label API substitutes).
+func test_phase04_keys_exist_in_both_languages() -> void:
+	var loc := _make()
+	var keys := [
+		"CHARACTER_PLAYER_NAME", "CHARACTER_PLAYER_TITLE", "CHARACTER_PLAYER_ORIGIN",
+		"UI_MENU_SUBTITLE", "UI_HUD_INTERACT_HINT", "UI_HUD_MENU_HINT",
+	]
+	for key in keys:
+		assert_true(loc.has_key(key), "key '%s' exists in the table" % key)
+		loc.set_language("en")
+		assert_ne(loc.t(key), key, "en value present for '%s'" % key)
+		loc.set_language("vi")
+		assert_ne(loc.t(key), key, "vi value present for '%s'" % key)
+	free_node(loc)
+
+
+func test_hud_hint_substitutes_key_placeholder() -> void:
+	var loc := _make()
+	loc.set_language("en")
+	assert_eq(loc.t_args("UI_HUD_INTERACT_HINT", {"key": "E"}), "E Interact",
+		"interact hint substitutes the key label")
+	assert_eq(loc.t_args("UI_HUD_MENU_HINT", {"key": "Esc"}), "Esc Menu",
+		"menu hint substitutes the key label")
+	free_node(loc)

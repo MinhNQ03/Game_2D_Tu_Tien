@@ -121,3 +121,45 @@ func missing_actions() -> Array[String]:
 		if not InputMap.has_action(action):
 			missing.append(action)
 	return missing
+
+
+# --- Display labels (presentation reads these; never physical keycodes) ------
+# The UI must show "which key does X" without knowing WHICH physical key is bound (that is
+# this service's job as the input owner, §11 / L-003). It asks for an action's display label;
+# InputService resolves the first bound key/button event from the InputMap and returns a short
+# human string (e.g. "E", "Esc"). This keeps rebinding + device-type a single-owner concern:
+# a future key-remap or gamepad glyph changes only here, not across every HUD/menu call site.
+
+## Human-readable label for the FIRST key/button bound to `action` (e.g. interact -> "E",
+## open_menu -> "Esc"). Returns a safe placeholder ("?") for an unknown/unbound action rather
+## than leaking a raw keycode or crashing — a missing binding is a content/config issue the
+## UI should still render gracefully. The caller NEVER inspects keycodes itself.
+func get_action_display_label(action: StringName) -> String:
+	if not InputMap.has_action(action):
+		push_warning("[input] get_action_display_label: unknown action '%s'" % action)
+		return "?"
+	for event in InputMap.action_get_events(action):
+		if event is InputEventKey:
+			return _key_event_label(event as InputEventKey)
+		if event is InputEventJoypadButton:
+			return "Btn %d" % (event as InputEventJoypadButton).button_index
+		if event is InputEventMouseButton:
+			return "Mouse %d" % (event as InputEventMouseButton).button_index
+	push_warning("[input] action '%s' has no bound key/button event" % action)
+	return "?"
+
+
+## Short label for a key event. Uses the PHYSICAL keycode when present (layout-independent,
+## matches how WASD/E are authored in `project.godot`), else the Unicode keycode. Godot's
+## `OS.get_keycode_string` yields the canonical name (e.g. "Escape"); we shorten the few long
+## names a HUD hint wants compact. Private: only this service maps keycodes to text.
+func _key_event_label(event: InputEventKey) -> String:
+	var code := event.physical_keycode if event.physical_keycode != 0 else event.keycode
+	var key_name := OS.get_keycode_string(code)
+	match key_name:
+		"Escape":
+			return "Esc"
+		"":
+			return "?"
+		_:
+			return key_name

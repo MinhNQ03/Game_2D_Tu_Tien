@@ -4,6 +4,12 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
+> Status (as of Phase 04): the player is now a real **Character** (one authoritative
+> `CharacterState` bound to the Player node, D-023), the in-map **HUD** shows the character's
+> identity + map name + localized control hints, and the main menu has a presentation pass.
+> The runnable flow is unchanged (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD);
+> the start map is now data-driven (`MapCatalog.start_map_id`). Below:
+>
 > Status (as of Phase 03): **early gameplay implemented.** `main.tscn` is the **bootstrap**
 > scene (`Main → Systems / World / UI`, script `src/bootstrap/main.gd`; D-010). The CURRENT
 > runnable flow is: START → MAIN MENU → NEW GAME → WORLD SESSION (`WorldRuntime`) → **HUB

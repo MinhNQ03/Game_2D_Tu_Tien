@@ -564,6 +564,58 @@ safe under failure, the player provably persists, and the maps render real textu
 by the unit/integration/gameplay suites + the dedicated world E2E gate. Partially supersedes
 D-021's data-model + art bullets. No new autoloads; D-005/D-007 remain Open.
 
+## D-023 — Phase 04 Character core: CharacterState is authoritative; Player is a view; data-driven start map; early UI/HUD foundation — **Accepted** (2026-10-02, Phase 04)
+
+**Context:** Phase 04 makes Character a real CORE system (D-011) — the player becomes a
+Character — and lays the first UI/presentation foundation (theme, menu pass, in-map HUD,
+input display labels, camera framing). No Relationship/Sect/Faction/WorldSim/Combat/Inventory/
+Skill/Quest/Dialogue/Save/Networking is implemented; cultivation fields are CONTRACT only.
+**Decisions:**
+- **`CharacterState` (`src/domain/character/character_state.gd`, `RefCounted`) is the single
+  AUTHORITATIVE, serializable, presentation-free character instance** (`docs/CHARACTER_SYSTEM.md`
+  §3/§6). The player's identity + current stats + current HP + life-state live HERE, not in
+  the Player node. The node is a runtime VIEW bound to the state. Domain has NO Node/scene/
+  presentation dependency.
+- **`CharacterTemplateData` (`src/data/characters/character_template_data.gd`, Resource,
+  `char_*`) is the DATA definition** a state is built from; the player's is authored as
+  `data/characters/player_default.tres`. All display text is localization keys; stats are a
+  shared `StatBlock`. Validated at the content boundary. Adding a character = author a `.tres`.
+- **One source of truth binding.** `WorldRuntime` builds exactly ONE player `CharacterState`
+  from the template at session start (fixed `instance_id = "player"`) and binds it to the
+  persistent Player BEFORE the node enters the tree. `StatsComponent` reads its numbers from
+  the bound state (falls back to the authored `StatBlock` only when no state is bound, e.g.
+  the Training Dummy / isolated tests). `HealthComponent` stays the RUNTIME health view; the
+  Player mediates sync: HP changes → `state.set_current_hp`, death → `state.mark_dead()`.
+  Composition is kept (no inheritance). The state is NOT recreated on a map swap — the same
+  instance persists for the whole session (E2E-asserted over 20 round trips).
+- **Life-state machine.** `LifeState { ALIVE, DEAD, MISSING, ASCENDED }`. Phase 04 implements
+  ALIVE→DEAD exactly once; DEAD is terminal (no UI/gameplay revive); `death_cause` is set only
+  on a valid transition. MISSING/ASCENDED are contract values for later phases.
+- **Serialization is persistent-tier only.** `to_dict`/`from_dict` round-trip identity + data
+  (incl. `current_hp` and `life_state`) and NEVER a Node/position/scene/presentation field
+  (L-001). `from_dict` validates the snapshot and fails closed on an impossible one. This is a
+  SAVE SEAM; `SaveService` is still Phase 23 (not built here).
+- **Data-driven start map (completes D-022).** `MapCatalog` gains `start_map_id` (validated to
+  resolve to a real map). `WorldRuntime` reads it from the catalog; the hard-coded
+  `START_MAP_ID := &"map_hub"` constant is removed. Changing the start map is now a content
+  edit.
+- **Early UI/presentation foundation.** `UIPalette` (design tokens, single source of truth) +
+  `UITheme.build()` (code-built shared `Theme`, matching the project's code-built-UI
+  convention and unit-testable) style the menu + HUD. The main menu gets a presentation pass
+  (background, title/subtitle, uniform styled buttons, focus) with its signals/localization/
+  context behaviour UNCHANGED. A new `GameplayHUD` (presentation-only, owned by MapBase)
+  renders the character's name/title (from the authoritative state), the localized map name,
+  and control hints. **Input display labels** come from a new `InputService.get_action_display_label`
+  (resolves the real binding, e.g. interact→"E", open_menu→"Esc"); the UI never reads physical
+  keycodes (L-003). Camera uses a shared data-driven zoom baseline (2× for 16px tiles); exit
+  zones show a clearer jade prototype gate instead of the yellow debug block.
+**Consequence:** the player is a real Character with one authoritative, serializable,
+save-ready state; stats/health have a single owner; the UI has a consistent foundation and
+never hard-codes keys or user text. Verified by character unit tests (template/state/life-state/
+round-trip), a player↔state binding integration test, UI structural tests, and the extended
+world E2E (same CharacterState across 20 round trips). No new autoloads (WorldRuntime still
+owns the state as a node member). D-005 (save format) / D-007 (combat) remain Open.
+
 ---
 
 ## How to add a decision

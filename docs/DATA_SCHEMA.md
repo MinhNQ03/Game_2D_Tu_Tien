@@ -216,6 +216,13 @@ start_character_template: StringName   # the player's CharacterTemplateData (see
 > These are **core** systems (D-011). Full design: `docs/CHARACTER_SYSTEM.md`,
 > `docs/RELATIONSHIP_SYSTEM.md`, `docs/SECT_SYSTEM.md`, `docs/WORLD_SIMULATION.md`.
 > The schemas below are the data contract; the player is itself a Character.
+>
+> **Status (Phase 04, D-023):** `CharacterTemplateData` and `CharacterState` are IMPLEMENTED
+> (`src/data/characters/character_template_data.gd`, `src/domain/character/character_state.gd`);
+> the player uses `data/characters/player_default.tres`. `CharacterState` serializes its
+> persistent tier via `to_dict`/`from_dict` (the save seam; cultivation fields are stored as
+> CONTRACT only — no mechanics yet). The Relationship/Sect/Faction/WorldSim schemas below
+> remain design-only contracts for their phases.
 
 ### CharacterTemplateData — definition (`char_*`)
 ```

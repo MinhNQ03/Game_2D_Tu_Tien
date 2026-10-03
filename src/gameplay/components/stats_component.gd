@@ -21,14 +21,39 @@ class_name StatsComponent
 ## set in code before the component is used.
 @export var stat_block: StatBlock = null
 
+## Optional authoritative character state this component is a VIEW of (Phase 04 binding,
+## `docs/CHARACTER_SYSTEM.md` §6). When bound, the read accessors return the character's
+## CURRENT numbers (the single source of truth, `src/domain/character/character_state.gd`)
+## instead of the raw StatBlock. The StatBlock remains the authored DATA shape the state was
+## seeded from; it is still used when NO state is bound (e.g. the Training Dummy, isolated
+## tests). Set once by the owner via `bind_character_state()`; never mutated here.
+var _character_state: CharacterState = null
 
-## Validates the assigned StatBlock at the boundary. Call from the owner's _ready(). Reports
+
+## Bind the authoritative CharacterState this component views. The owner (Player) calls this
+## once after the state is created, so stat reads come from the one domain source of truth
+## rather than a parallel copy. Null unbinds (falls back to the StatBlock), which is the
+## normal path for entities that are not Characters yet (Training Dummy).
+func bind_character_state(state: CharacterState) -> void:
+	_character_state = state
+
+
+## True when this component is a view of an authoritative CharacterState.
+func has_character_state() -> bool:
+	return _character_state != null
+
+
+## Validates the stat source at the boundary. Call from the owner's _ready(). When a
+## CharacterState is bound it is the authority (already validated at construction), so the
+## StatBlock is optional in that case. Otherwise a valid StatBlock is required. Reports
 ## loudly via `push_error` and returns false on missing/invalid data; the OWNER is expected
 ## to fail closed on a false result (`Player`/`TrainingDummy` disable themselves). We do NOT
 ## `assert()`/abort here: aborting the process would prevent the owner from degrading
 ## gracefully and would differ between debug/release builds. Loud error + a checked return
 ## value is the robust fail-loud-and-closed contract (`04-coding-standards.md`).
 func validate() -> bool:
+	if _character_state != null:
+		return true
 	if stat_block == null:
 		push_error("[stats] no StatBlock assigned")
 		return false
@@ -44,6 +69,8 @@ func validate() -> bool:
 # resource is loud, not a silent zero that looks intentional.
 
 func get_max_hp() -> int:
+	if _character_state != null:
+		return max(1, _character_state.max_hp)
 	if stat_block == null:
 		push_warning("[stats] get_max_hp with no StatBlock; returning 1")
 		return 1
@@ -51,6 +78,8 @@ func get_max_hp() -> int:
 
 
 func get_attack() -> int:
+	if _character_state != null:
+		return max(0, _character_state.attack)
 	if stat_block == null:
 		push_warning("[stats] get_attack with no StatBlock; returning 0")
 		return 0
@@ -58,6 +87,8 @@ func get_attack() -> int:
 
 
 func get_defense() -> int:
+	if _character_state != null:
+		return max(0, _character_state.defense)
 	if stat_block == null:
 		push_warning("[stats] get_defense with no StatBlock; returning 0")
 		return 0
@@ -65,6 +96,8 @@ func get_defense() -> int:
 
 
 func get_move_speed() -> float:
+	if _character_state != null:
+		return maxf(0.0, _character_state.move_speed)
 	if stat_block == null:
 		push_warning("[stats] get_move_speed with no StatBlock; returning 0")
 		return 0.0

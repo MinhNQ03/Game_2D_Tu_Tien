@@ -15,6 +15,11 @@ class_name MapCatalog
 ## Every map in this world grouping. Order is not significant; identity is by `MapData.id`.
 @export var maps: Array[MapData] = []
 
+## The map a new session starts in (data-driven, D-023). Replaces the hard-coded
+## `WorldRuntime.START_MAP_ID`: changing the start map is now a content edit here, not a code
+## edit (the extensibility rule, `02-game-design.md`). Must resolve to one of `maps`' ids.
+@export var start_map_id: StringName = &""
+
 
 func is_valid() -> bool:
 	return validation_errors().is_empty()
@@ -54,6 +59,11 @@ func validation_errors() -> Array[String]:
 			if map_exit.to_map_id != &"" and not seen_ids.has(map_exit.to_map_id):
 				errors.append("map '%s' exit '%s' targets unknown map '%s'" % [
 					map_data.id, map_exit.id, map_exit.to_map_id])
+	# The start map must be set and resolve to a real map (data-driven session start, D-023).
+	if start_map_id == &"":
+		errors.append("start_map_id must be set")
+	elif not seen_ids.has(start_map_id):
+		errors.append("start_map_id '%s' does not resolve to any map in the catalog" % start_map_id)
 	return errors
 
 

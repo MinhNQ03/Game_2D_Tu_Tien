@@ -30,8 +30,16 @@ const WORLD_ID := &"world_main"
 ## The ONLY content reference WorldRuntime holds: the data-driven map catalog (D-022).
 const MAP_CATALOG_PATH := "res://data/maps/map_catalog.tres"
 
-## The map the session starts in.
-const START_MAP_ID := &"map_hub"
+## The player's authoritative character definition (data). The session builds ONE
+## CharacterState from this and binds the persistent Player to it (D-023,
+## `docs/CHARACTER_SYSTEM.md` §6). Changing the player's starting identity/stats is a content
+## edit to this `.tres`, not a code edit.
+const PLAYER_TEMPLATE_PATH := "res://data/characters/player_default.tres"
+
+## The player's fixed per-save instance id. The player is a Character
+## (`docs/SAVE_FORMAT.md` characters.player_instance_id); the id is stable so a save keys the
+## player's CharacterState consistently.
+const PLAYER_INSTANCE_ID := &"player"
 
 const PlayerScene := preload("res://src/gameplay/entities/player.tscn")
 
@@ -42,7 +50,9 @@ signal return_to_menu_requested()
 var _router: Node = null
 var _game_state: Node = null
 var _catalog: Dictionary = {}        # map_id(StringName) -> MapData
+var _start_map_id: StringName = &""  # data-driven start map, read from the catalog (D-023)
 var _player: Node = null             # the persistent per-session Player
+var _player_character: CharacterState = null  # the player's ONE authoritative state (D-023)
 var _active_map: Node = null         # the currently loaded map scene (owned by SceneRouter)
 var _session_active: bool = false
 
@@ -62,10 +72,13 @@ func start_session() -> bool:
 	if not _load_catalog():
 		return false
 	_register_scenes()
-	_spawn_player()
+	if not _spawn_player():
+		push_error("[world] failed to spawn player; aborting session")
+		end_session()
+		return false
 	_session_active = true
-	if not _enter_map(START_MAP_ID, &""):
-		push_error("[world] failed to enter start map %s" % START_MAP_ID)
+	if not _enter_map(_start_map_id, &""):
+		push_error("[world] failed to enter start map %s" % _start_map_id)
 		# Unwind the half-started session so we don't leave a player with no map.
 		end_session()
 		return false
@@ -80,6 +93,10 @@ func end_session() -> void:
 	if _player != null and is_instance_valid(_player):
 		_player.queue_free()
 	_player = null
+	# Drop the authoritative player state with the session. A later save phase persists it
+	# BEFORE end_session; the runtime reference is cleared here (RefCounted is freed when the
+	# last reference goes).
+	_player_character = null
 	_active_map = null
 	if _router != null:
 		_router.call("clear_current_scene")
@@ -98,6 +115,13 @@ func get_current_map_id() -> StringName:
 ## The live persistent player (or null). For tests/coordinator wiring.
 func get_player() -> Node:
 	return _player
+
+
+## The player's ONE authoritative CharacterState for this session (or null). The HUD reads
+## identity from here; a save would serialize its persistent tier. It is NOT recreated on a
+## map transition — the same instance persists for the whole session (D-023 invariant).
+func get_player_character() -> CharacterState:
+	return _player_character
 
 
 ## The currently loaded map scene (or null). For tests/coordinator wiring.
@@ -122,6 +146,9 @@ func _load_catalog() -> bool:
 		push_error("[world] invalid map catalog: %s" % str(catalog.validation_errors()))
 		return false
 	_catalog = catalog.build_lookup()
+	# The start map is data-driven (D-023): read it from the validated catalog. Validation
+	# already guaranteed it resolves to a real map, so no second check is needed here.
+	_start_map_id = catalog.start_map_id
 	return not _catalog.is_empty()
 
 
@@ -134,12 +161,32 @@ func _register_scenes() -> void:
 
 # --- Player lifecycle (persistent across maps) ------------------------------
 
-func _spawn_player() -> void:
+## Build the ONE authoritative player CharacterState from the player template (data) and the
+## persistent Player node that realizes it, binding the state to the node BEFORE it enters
+## the tree so `_ready()` initializes the composition from the single source of truth (D-023).
+## Returns false (loud) on a missing/invalid template so the session fails closed rather than
+## spawning a player with no authoritative state. Idempotent: a second call with a live player
+## is a no-op.
+func _spawn_player() -> bool:
 	if _player != null and is_instance_valid(_player):
-		return
+		return true
+
+	var template := load(PLAYER_TEMPLATE_PATH) as CharacterTemplateData
+	if template == null:
+		push_error("[world] player template missing/invalid: %s" % PLAYER_TEMPLATE_PATH)
+		return false
+	_player_character = CharacterState.create_from_template(template, PLAYER_INSTANCE_ID)
+	if _player_character == null:
+		push_error("[world] failed to build player CharacterState from template")
+		return false
+
 	_player = PlayerScene.instantiate()
+	# Bind the authoritative state BEFORE add_child so the Player's _ready() reads from it.
+	if _player.has_method("bind_character_state"):
+		_player.call("bind_character_state", _player_character)
 	# Parent to WorldRuntime (under Systems) so a SceneRouter content swap can't free it.
 	add_child(_player)
+	return true
 
 
 ## Remove the player from whatever map currently holds it, parking it back under
@@ -205,6 +252,10 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	_bind_active_map(data)
 	_place_player_in_active_map(entry_point)
 	_wire_active_map()
+	# Refresh the map's HUD now that the persistent player (and its CharacterState) is parented
+	# into the map, so the identity plate reflects the live character (D-023).
+	if _active_map != null and _active_map.has_method("refresh_hud"):
+		_active_map.call("refresh_hud")
 	# The old scene was freed by the router's _free_current_scene(); nothing to do here.
 	return true
 

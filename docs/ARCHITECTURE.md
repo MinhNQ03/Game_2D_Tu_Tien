@@ -6,7 +6,8 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (Phase 03, 2026-10-03):** the repo boots to a playable world/map slice:
+> **CURRENT STATE (Phase 04, 2026-10-02):** the repo boots to a playable world/map slice
+> where the player is a real Character, with a UI foundation:
 > - Bootstrap scene `main.tscn` (root `Main`, script `src/bootstrap/main.gd`, children
 >   `Systems`/`World`/`UI`); `Main` only coordinates boot and wiring.
 > - 5 infrastructure autoloads (D-017): `EventBus`, `GameState` (lifecycle + session +
@@ -16,6 +17,15 @@
 >   session** via `WorldRuntime` (a gameplay NODE under `Main/Systems`, D-021/D-022).
 > - **Player** (`src/gameplay/entities/player.*`): a composition `CharacterBody2D` with
 >   Stats/Health/Movement components, moved via semantic input, with a prototype `Sprite2D`.
+> - **Character core (Phase 04, D-023):** `CharacterTemplateData` (data, `src/data/characters/`)
+>   + `CharacterState` (domain, `src/domain/character/`, authoritative + serializable). The
+>   Player is a VIEW bound to ONE `CharacterState` that `WorldRuntime` owns for the session;
+>   StatsComponent reads it, HealthComponent syncs HP/death back. Life-state ALIVE→DEAD.
+> - **UI foundation (Phase 04, D-023):** `src/presentation/ui/` (`UIPalette` tokens +
+>   `UITheme` builder), a dressed main menu, and `src/presentation/hud/` (`GameplayHUD`
+>   showing character identity + map name + input-label hints). `InputService` exposes
+>   display labels so the UI never reads keycodes. The start map is data-driven
+>   (`MapCatalog.start_map_id`).
 > - **World/Map (Phase 03, D-022):** `MapData` + `MapExit` + `MapCatalog` data Resources
 >   (`src/data/maps/`, authored in `data/maps/*.tres`) are the source of truth; `WorldRuntime`
 >   loads the catalog, registers scenes with `SceneRouter`, owns ONE persistent per-session
@@ -29,9 +39,11 @@
 > - Custom test runner + framework (`tests/`), parse checker (`tools/parse_check.gd`), CI
 >   (9 gates incl. a dedicated world/map E2E process).
 >
-> **Not yet present (TARGET):** Character/Relationship/Sect/World-Sim domain systems,
-> Combat, Inventory/Equipment/Skill/Cultivation, Dialogue/Quest/Story, `Config`/`RNG`/
-> `SaveService` autoloads, persistence, and most content Resources. Those are TARGET below.
+> **Not yet present (TARGET):** Relationship/Sect/Faction/World-Sim domain systems, Combat,
+> Inventory/Equipment/Skill/Cultivation mechanics (Character holds cultivation fields as
+> CONTRACT only), Dialogue/Quest/Story, non-player Character spawning + the EventBus character
+> events, `Config`/`RNG`/`SaveService` autoloads, persistence, and most content Resources.
+> Those are TARGET below.
 
 ## 1. Goals
 
@@ -162,8 +174,11 @@ res://
 					  maps/map_base.gd map_exit_zone.gd prototype_ground.gd hub_map.* field_map.*  # [exists, Phase 03]
 					  spawning/                            # [TARGET]
 	data/             maps/map_exit.gd map_data.gd map_catalog.gd  # [exists, Phase 03] (map Resources)
-	presentation/     menus/  scenes/              # [exists]  ui/ hud/ fx/  [TARGET]
+					  characters/character_template_data.gd  # [exists, Phase 04]
+	domain/           character/character_state.gd         # [exists, Phase 04] (authoritative)
+	presentation/     menus/ scenes/ ui/ hud/      # [exists; ui/hud Phase 04]  fx/  [TARGET]
   data/               stats/player_stats.tres training_dummy_stats.tres  # [exists, Phase 02]
+					  characters/player_default.tres       # [exists, Phase 04]
 					  maps/map_hub.tres map_field.tres map_catalog.tres prototype_tileset.tres  # [exists, Phase 03]
 					  items/ skills/ enemies/ bosses/ techniques/        # [TARGET]
 					  pets/ realms/ quests/ dialogue/ chapters/
