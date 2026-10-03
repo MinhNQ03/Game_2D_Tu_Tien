@@ -92,10 +92,26 @@ jobs:
 
       - name: World/Map E2E flow (Phase 03)
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Dedicated, ISOLATED process (D-019): boots the real app, New Game → hub map,
           # then drives a REAL `interact` input to transition hub ↔ field repeatedly with
           # the persistent player surviving each swap and no orphan-node leak, then a REAL
           # `open_menu` returns cleanly to the menu. Separate process so it can't contaminate
           # the shared suite. Non-zero exit on any failure; not swallowed.
-          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_world_flow.gd
+          # (Output is mirrored to the job summary so a failure is diagnosable from the API.)
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_world_flow.gd 2>&1 | tee world_flow_out.txt
+          code=${PIPESTATUS[0]}
+          {
+            echo '### World/Map E2E flow (Phase 03) output';
+            echo '```';
+            cat world_flow_out.txt;
+            echo '```';
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" != "0" ]; then
+            # Surface the runner's FAIL lines as workflow error annotations (readable via API).
+            grep -E "FAIL|RESULT|ERROR|SCRIPT ERROR" world_flow_out.txt | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+          fi
+          exit $code
