@@ -55,36 +55,66 @@ jobs:
           ./${GODOT_BIN} --headless --path . --import 2>&1 | tee _import.log
           rc=${PIPESTATUS[0]}
           set -e
-          echo "### Import output" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Import output (rc=$rc)" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          tail -n 60 _import.log >> "$GITHUB_STEP_SUMMARY"
+          tail -n 80 _import.log >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          grep -E 'ERROR|SCRIPT ERROR|Parse Error|Cannot|Failed' _import.log | while read -r line; do
-            echo "::error::[import] ${line}"
-          done || true
+          if [ "$rc" -ne 0 ]; then
+            # Unconditionally surface the tail of the import log as annotations (not just
+            # pattern-matched lines) so the real error is readable (steering 10 §1.3).
+            tail -n 25 _import.log | while IFS= read -r line; do
+              echo "::error::[import] ${line}"
+            done
+          fi
           exit "$rc"
 
       - name: GDScript parse check (whole project)
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Loads every .gd under src/ tests/ tools/; exits non-zero on any parse error.
-          ./${GODOT_BIN} --headless --path . -s res://tools/parse_check.gd
+          # CI diagnostic (steering 10 §1.3): tee + surface the tail as annotations on failure.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tools/parse_check.gd 2>&1 | tee _parse.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            tail -n 30 _parse.log | while IFS= read -r line; do echo "::error::[parse] ${line}"; done
+          fi
+          exit "$rc"
 
       - name: Runtime boot smoke
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Boots the real project from application/run/main_scene, runs Main._ready(),
           # then quits after 2 frames. Fails the job if boot crashes.
-          ./${GODOT_BIN} --headless --path . --quit-after 2
+          # CI diagnostic (steering 10 §1.3): tee + surface the tail as annotations on failure.
+          set +e
+          ./${GODOT_BIN} --headless --path . --quit-after 2 2>&1 | tee _boot.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            tail -n 30 _boot.log | while IFS= read -r line; do echo "::error::[boot] ${line}"; done
+          fi
+          exit "$rc"
 
       - name: Headless test suite
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Custom runner: exits non-zero on any failing assertion / missing smoke test.
           # Unit + integration tests only; it EXCLUDES tests/e2e/ and never boots Main, so
           # it cannot contaminate the shared /root autoloads (D-019). It also fails if any
           # test mutates the shared GameState (isolation guard).
-          ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd
+          # CI diagnostic (steering 10 §1.3): tee + surface FAIL/ERROR lines as annotations.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd 2>&1 | tee _suite.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            grep -E 'FAIL|ERROR|SCRIPT ERROR|assert' _suite.log | tail -n 40 | while IFS= read -r line; do
+              echo "::error::[suite] ${line}"
+            done
+          fi
+          exit "$rc"
 
       - name: Real-application E2E flow
         run: |
