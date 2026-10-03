@@ -369,12 +369,12 @@ func from_dict(data: Variant) -> bool:
 		push_error("[sect] from_dict '%s': influence must be >= 0 (%d)" % [in_id, in_influence])
 		return false
 
-	var staged_territory := _parse_unique_id_array(dict.get("territory", []))
+	var staged_territory: Variant = _parse_unique_id_array(dict.get("territory", []))
 	if staged_territory == null:
 		push_error("[sect] from_dict '%s': malformed/duplicate territory" % in_id)
 		return false
-	var staged_allies := _parse_unique_id_array(dict.get("ally_sect_ids", []))
-	var staged_enemies := _parse_unique_id_array(dict.get("enemy_sect_ids", []))
+	var staged_allies: Variant = _parse_unique_id_array(dict.get("ally_sect_ids", []))
+	var staged_enemies: Variant = _parse_unique_id_array(dict.get("enemy_sect_ids", []))
 	if staged_allies == null or staged_enemies == null:
 		push_error("[sect] from_dict '%s': malformed/duplicate ally or enemy list" % in_id)
 		return false
@@ -397,11 +397,11 @@ func from_dict(data: Variant) -> bool:
 	_elder_refs = staged_elders
 	_rank_by_character = staged_ranks
 	_resources = staged_resources
-	_territory = staged_territory
+	_territory = staged_territory as Array[StringName]
 	_reputation = staged_reputation
 	influence = in_influence
-	_ally_sect_ids = staged_allies
-	_enemy_sect_ids = staged_enemies
+	_ally_sect_ids = staged_allies as Array[StringName]
+	_enemy_sect_ids = staged_enemies as Array[StringName]
 	return true
 
 

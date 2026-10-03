@@ -34,9 +34,6 @@ func _initialize() -> void:
 		for f in failed:
 			push_error("[parse_check] %s" % f)
 			print("[parse_check] FAIL: %s" % f)
-			# CI diagnostic (steering 10 §1.3): emit a GitHub Actions error annotation so the
-			# failing file is readable via the check-run annotations API (logs need auth, D-009).
-			print("::error::[parse_check] %s" % f)
 		print("[parse_check] RESULT: FAIL")
 		quit(1)
 		return
