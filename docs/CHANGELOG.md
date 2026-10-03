@@ -22,7 +22,7 @@ Dates are ISO (YYYY-MM-DD).
 - **D-029 visual contracts tested:** `test_map_scenes.gd` now guards `Visual/Decor` (≥1 nearest-
   filtered prop `Sprite2D` with a known texture at authored size — lantern 16×24, tree 32×32,
   rock/planter 16×16), that `Visual/Ground` is still the first child, and ground TileMapLayer is
-  nearest-filtered. (+4 test methods; character contracts already covered.)
+  nearest-filtered. (+2 test methods; character contracts already covered.)
 - **UI polish (seam-only, no new screen):** added a muted-gold `COLOR_TITLE` token for the menu
   title plaque, tightened the type scale (subtitle 18→20, hint 15→14), evened button vertical
   padding (10→12) — all through `UIPalette`/`UITheme`. No gameplay/domain change; UI-theme
