@@ -8,6 +8,27 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Visual asset audit + production UI art (D-028; CC0 Xianxia UI)
+- **Asset audit:** audited 5 local candidate packs for license + fit and classified each
+  (recorded in `docs/ASSET_LICENSES.md`): Xianxia Pixel Pack (CC0) = APPROVED primary UI;
+  Verdant 00 16×16 tiles (free commercial) = APPROVED terrain but deferred; Foozle Lucifer RPG
+  UI (CC0) + Tiny RPG Mana Soul GUI (CC0) = candidate/supporting (not used, avoid collage);
+  Ancient Chinese Characters Pack 1 = UNVERIFIED (no license file) → NOT imported.
+- **Production UI art:** replaced the self-made prototype UI (`assets/ui/mana_soul/` +
+  `tools/gen_ui_assets.py`, D-024) with the CC0 **Xianxia Pixel Pack** UI set under
+  `assets/ui/xianxia/` — jade panel, ink inset, jade buttons (normal/hover/pressed), silk
+  disabled/focus, rosewood portrait frame, corner key-badge, jade title divider. The menu/HUD
+  now read as a wuxia dark-ink/jade game UI instead of flat prototype plates.
+- **Seam preserved:** only `UIPalette` (asset dir + per-slot 9-slice margins) and `UITheme`
+  (margin wiring + doc) changed; the `UITheme`/`UIPalette`/component/9-slice abstraction, slot
+  names, `UI_TEXTURES` contract, and flat fallbacks are unchanged, so `MainMenu`/`GameplayHUD`
+  consume the new look with no code edits. The menu background is now a flat deep-ink fill
+  (the framed inset texture is not a seamless tile).
+- **Scope:** UI art layer only — NO gameplay/domain change, NO new systems/screens, NO
+  character/terrain change (top-down CharacterArtBible untouched; no side-view assets). No test
+  count change (`test_ui_theme` asset-contract now verifies the xianxia textures). Docs synced
+  (ASSET_LICENSES, ARCHITECTURE, ROADMAP). Phase 06 NOT started.
+
 ### 2026-10-03 — Phase 05 (D-026; Relationship core + early character visual pipeline + narrative anchor)
 - **Relationship domain graph (core system):** added `RelationshipEndpoint` (typed
   `{kind,id}` CHARACTER|SECT), `RelationshipEdge` (id/from/to/type/dimensions/symmetric/known/

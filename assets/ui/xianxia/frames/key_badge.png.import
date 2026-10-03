@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://devoph331dt3t"
-path="res://.godot/imported/button_disabled.png-cb7c3a8948cbdbee2d87bdc2f600e776.ctex"
+uid="uid://sj5dy0fkbw7h"
+path="res://.godot/imported/key_badge.png-93b8a86f1fdf25d5e8e2f7f44df35595.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mana_soul/buttons/button_disabled.png"
-dest_files=["res://.godot/imported/button_disabled.png-cb7c3a8948cbdbee2d87bdc2f600e776.ctex"]
+source_file="res://assets/ui/xianxia/frames/key_badge.png"
+dest_files=["res://.godot/imported/key_badge.png-93b8a86f1fdf25d5e8e2f7f44df35595.ctex"]
 
 [params]
 

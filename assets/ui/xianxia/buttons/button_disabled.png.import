@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://s0hof3srn2ah"
-path="res://.godot/imported/button_normal.png-7b2ba97dd68ac900854cfc4ef9e0d229.ctex"
+uid="uid://dp7gh3ewqqt77"
+path="res://.godot/imported/button_disabled.png-e6596689c3b46f2e4aef98c955b00bfb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mana_soul/buttons/button_normal.png"
-dest_files=["res://.godot/imported/button_normal.png-7b2ba97dd68ac900854cfc4ef9e0d229.ctex"]
+source_file="res://assets/ui/xianxia/buttons/button_disabled.png"
+dest_files=["res://.godot/imported/button_disabled.png-e6596689c3b46f2e4aef98c955b00bfb.ctex"]
 
 [params]
 

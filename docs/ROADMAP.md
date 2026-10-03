@@ -18,6 +18,12 @@
 > early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
 > all 7 gates green). Phase 06 (Sect) is NOT STARTED.
 >
+> **Visual follow-up (2026-10-03, D-028 — not a phase):** the production UI art was upgraded
+> from the self-made prototype set to the CC0 **Xianxia Pixel Pack** UI (`assets/ui/xianxia/`)
+> through the existing `UITheme`/`UIPalette` seam (no gameplay/domain change, no new systems).
+> A full local asset audit (5 packs classified A/B/C/D) is recorded in `docs/ASSET_LICENSES.md`.
+> This does not advance the phase sequence; Phase 06 remains NOT STARTED.
+>
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
 > to phases 04–08, immediately after World/Map and **before Combat** — because they are

@@ -25,7 +25,8 @@
 >   asset-backed `UITheme` builder + reusable `components/` `UIKeyBadge`/`UIPromptRow`), a
 >   framed pixel-art main menu, and `src/presentation/hud/` (`GameplayHUD` showing character
 >   identity + map name + graphic key-badge prompts). UI is 9-slice `StyleBoxTexture` from
->   project-owned pixel art (`assets/ui/mana_soul/`, D-024), not flat controls. `InputService`
+>   the CC0 Xianxia Pixel Pack UI set (`assets/ui/xianxia/`, D-028; replaced the self-made
+>   `mana_soul` prototype of D-024), not flat controls. `InputService`
 >   exposes display labels so the UI never reads keycodes. The start map is data-driven
 >   (`MapCatalog.start_map_id`).
 > - **World/Map (Phase 03, D-022):** `MapData` + `MapExit` + `MapCatalog` data Resources

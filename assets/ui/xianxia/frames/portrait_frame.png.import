@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dtflhn7s0mbmm"
-path="res://.godot/imported/button_pressed.png-5df05eeac37acf86428633c2e8e6ccda.ctex"
+uid="uid://dqlok3klubcg8"
+path="res://.godot/imported/portrait_frame.png-de00d60b291299abdb212050d44ea3b2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mana_soul/buttons/button_pressed.png"
-dest_files=["res://.godot/imported/button_pressed.png-5df05eeac37acf86428633c2e8e6ccda.ctex"]
+source_file="res://assets/ui/xianxia/frames/portrait_frame.png"
+dest_files=["res://.godot/imported/portrait_frame.png-de00d60b291299abdb212050d44ea3b2.ctex"]
 
 [params]
 

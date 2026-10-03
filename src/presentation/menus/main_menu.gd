@@ -16,7 +16,6 @@ extends Control
 signal new_game_pressed()
 signal quit_pressed()
 
-var _background: TextureRect
 var _title: Label
 var _subtitle: Label
 var _divider: TextureRect
@@ -53,21 +52,15 @@ func _exit_tree() -> void:
 
 func _build_ui() -> void:
 	# --- Background: a dark tiled pixel surface (not a flat ColorRect) -------------
-	_background = TextureRect.new()
-	_background.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_background.stretch_mode = TextureRect.STRETCH_TILE
-	if ResourceLoader.exists(UIPalette.TEX_PANEL_INSET):
-		_background.texture = load(UIPalette.TEX_PANEL_INSET)
-	else:
-		# Fallback: a solid dark fill if the texture is missing.
-		var fill := ColorRect.new()
-		fill.color = UIPalette.COLOR_BACKGROUND
-		fill.set_anchors_preset(Control.PRESET_FULL_RECT)
-		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(fill)
-	add_child(_background)
+	# A deep ink fill behind the framed panel (D-028). The xianxia inset texture is a FRAMED
+	# panel, not a seamless tile, so we no longer tile it as a backdrop (that would repeat its
+	# border); a flat deep-ink base reads as the "dark lacquer" ground the jade panel sits on.
+	var fill := ColorRect.new()
+	fill.name = "Background"
+	fill.color = UIPalette.COLOR_BACKGROUND
+	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fill)
 
 	# --- Centered framed panel -----------------------------------------------------
 	var center := CenterContainer.new()

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dqplpwrps4v7n"
-path="res://.godot/imported/button_hover.png-f0e6ed780b9ef702e461c43b52d76e20.ctex"
+uid="uid://bp3coct306q8r"
+path="res://.godot/imported/button_focus.png-2c4b8b14597d7ce90b6dfda0964ac853.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mana_soul/buttons/button_hover.png"
-dest_files=["res://.godot/imported/button_hover.png-f0e6ed780b9ef702e461c43b52d76e20.ctex"]
+source_file="res://assets/ui/xianxia/buttons/button_focus.png"
+dest_files=["res://.godot/imported/button_focus.png-2c4b8b14597d7ce90b6dfda0964ac853.ctex"]
 
 [params]
 

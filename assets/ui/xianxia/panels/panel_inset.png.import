@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bpn11bj615ilm"
-path="res://.godot/imported/title_divider.png-dd9ed04e195691bf43b534715bbb52cc.ctex"
+uid="uid://dhkin4wshpx1s"
+path="res://.godot/imported/panel_inset.png-c92cf912a524f281002af897461c172e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mana_soul/frames/title_divider.png"
-dest_files=["res://.godot/imported/title_divider.png-dd9ed04e195691bf43b534715bbb52cc.ctex"]
+source_file="res://assets/ui/xianxia/panels/panel_inset.png"
+dest_files=["res://.godot/imported/panel_inset.png-c92cf912a524f281002af897461c172e.ctex"]
 
 [params]
 
