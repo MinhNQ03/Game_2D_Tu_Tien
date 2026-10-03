@@ -86,12 +86,7 @@ func test_real_world_map_flow() -> void:
 	assert_true(_player_is_in_map(player, hub_map), "player is parented inside the hub map")
 
 	# --- 4. move to the hub's exit zone and trigger a REAL interact → field ------
-	_place_on_exit(player, hub_map)
-	await scene_tree.physics_frame
-	await scene_tree.physics_frame  # let the Area2D body_entered register the active exit
-	_send_action(INTERACT)
-	await scene_tree.process_frame
-	await scene_tree.process_frame
+	await _interact_to_transition(player, hub_map)
 
 	assert_eq(router.get_current_key(), "map_field",
 		"a real interact on the hub exit transitioned to the field map")
@@ -109,18 +104,8 @@ func test_real_world_map_flow() -> void:
 	await scene_tree.process_frame
 	var baseline: float = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
 	for _i in range(5):
-		# field → hub
-		_place_on_exit(player, router.get_current_scene())
-		await scene_tree.physics_frame
-		await scene_tree.physics_frame
-		_send_action(INTERACT)
-		await scene_tree.process_frame
-		# hub → field
-		_place_on_exit(player, router.get_current_scene())
-		await scene_tree.physics_frame
-		await scene_tree.physics_frame
-		_send_action(INTERACT)
-		await scene_tree.process_frame
+		await _interact_to_transition(player, router.get_current_scene())  # field → hub
+		await _interact_to_transition(player, router.get_current_scene())  # hub → field
 	await scene_tree.process_frame
 	await scene_tree.process_frame
 	var after: float = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
@@ -130,7 +115,9 @@ func test_real_world_map_flow() -> void:
 	assert_true(is_instance_valid(player), "player still alive after many transitions")
 
 	# --- 6. a REAL open_menu returns to the menu ---------------------------------
-	_send_action(OPEN_MENU)
+	var active_map: Node = router.get_current_scene()
+	assert_not_null(active_map, "a map is active before open_menu")
+	_drive_system_action(active_map, OPEN_MENU)
 	await scene_tree.process_frame
 	await scene_tree.process_frame
 	assert_eq(gs.get_phase(), gs.Phase.MENU, "open_menu ended the session back to MENU")
@@ -175,29 +162,68 @@ func _player_is_in_map(player: Node, map: Node) -> bool:
 
 
 ## Setup-only teleport: drop the player onto the map's first exit zone so the Area2D sensor
-## detects it. The transition is still triggered by a real input event, not this move.
-func _place_on_exit(player: Node, map: Node) -> void:
+## detects it (via real physics overlap). Returns true if a zone was found.
+func _place_on_exit(player: Node, map: Node) -> bool:
 	if player == null or map == null or not (player is Node2D):
-		return
+		return false
 	var exits := map.get_node_or_null("Exits")
 	if exits == null:
-		return
+		return false
 	for zone in exits.get_children():
 		if zone is MapExitZone and zone is Node2D:
 			(player as Node2D).global_position = (zone as Node2D).global_position
-			return
+			return true
+	return false
 
 
-## Drive a REAL semantic input event through the viewport so `_unhandled_input` fires,
-## exactly as a key press would (not a direct method call). An InputEventAction with a
-## press+strength reaches InputMap/`Input.is_action_just_pressed` for one frame.
-func _send_action(action: StringName) -> void:
-	var ev := InputEventAction.new()
-	ev.action = action
-	ev.pressed = true
-	ev.strength = 1.0
-	Input.parse_input_event(ev)
-	Input.flush_buffered_events()
+## Drive one full "walk to the exit + press interact" through the REAL boundary and wait for
+## the resulting transition to complete.
+##
+## Real path exercised: physics overlap fires the exit zone's `body_entered` →
+## `MapBase._active_exit` is set → the `interact` action's `just_pressed` state is set on the
+## Input singleton → `MapBase._unhandled_input` is dispatched → `InputService
+## .is_gameplay_action_just_pressed` (gated on GAMEPLAY) → `MapBase.exit_requested` →
+## `WorldRuntime.request_map_transition` → `SceneRouter`.
+##
+## `_unhandled_input` is invoked directly (headless has no window to pump viewport input),
+## but every downstream link — the active-exit detection, the InputService gate, the signal,
+## WorldRuntime, and SceneRouter — runs for real. The action state is set with the real
+## `Input.action_press` so the service's `is_action_just_pressed` check is genuine.
+func _interact_to_transition(player: Node, map: Node) -> void:
+	var before_key := ""
+	var router := scene_tree.root.get_node_or_null("SceneRouter")
+	if router != null:
+		before_key = str(router.call("get_current_key"))
+
+	assert_true(_place_on_exit(player, map), "map has an exit zone to stand on")
+	# Let the Area2D register the player overlap (real physics) → _active_exit is set.
+	for _i in range(6):
+		await scene_tree.physics_frame
+
+	# Drive the semantic `interact` just_pressed, then dispatch the map's input handler in
+	# the SAME frame (no intervening frame that would clear the just_pressed edge).
+	Input.action_press(INTERACT)
+	if map != null and is_instance_valid(map) and map.has_method("_unhandled_input"):
+		map.call("_unhandled_input", InputEventAction.new())
+	Input.action_release(INTERACT)
+
+	# Let the transition (free old scene + load new + re-parent player) settle.
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+
+	if router != null:
+		assert_ne(str(router.call("get_current_key")), before_key,
+			"interact actually changed the active map (was '%s')" % before_key)
+
+
+## Drive a system action (e.g. open_menu) through `MapBase._unhandled_input` the same way:
+## set the action's just_pressed state, then dispatch the handler. `open_menu` is a system
+## action (not gated on GAMEPLAY), so this exercises `is_system_action_just_pressed`.
+func _drive_system_action(map: Node, action: StringName) -> void:
+	Input.action_press(action)
+	if map != null and is_instance_valid(map) and map.has_method("_unhandled_input"):
+		map.call("_unhandled_input", InputEventAction.new())
+	Input.action_release(action)
 
 
 func _count_named(node_name: String) -> int:
