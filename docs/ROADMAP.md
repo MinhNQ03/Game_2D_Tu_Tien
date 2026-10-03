@@ -9,10 +9,9 @@
 >
 > **35 phases (00–34).** Phase 00 (Foundation) is **CLOSED** (CI-verified on `651c16f`,
 > 2026-10-02). Phase 01 (Core Framework) is **CLOSED** (CI-verified 2026-10-02). Phase 02
-> (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) was **REOPENED**
-> for hardening (D-022: data-driven MapCatalog, authoritative MapData/MapExit, transactional
-> transitions, real prototype art, 20× round-trip real-input E2E); it is CLOSED again only
-> once all CI gates are green on the hardening commit. Phase 04 (Character) is **NOT STARTED**.
+> (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) is **CLOSED**
+> (reopened for hardening — D-022 — then CI-verified 2026-10-03 on `53f342f`, all 9 gates
+> green). Phase 04 (Character) is **NOT STARTED** and is the next phase.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -84,7 +83,7 @@ scene). Tests: `tests/unit/world/test_map_data.gd`, `tests/integration/test_map_
 transitions are transactional (rollback on failure); real self-made prototype pixel-art
 replaces the Polygon2D placeholders (`Sprite2D` player + `TileMapLayer` tileset, 16px); the
 world E2E drives the REAL input pipeline across 20 round trips with per-round + no-leak
-invariants. **CLOSED only when all CI gates are green on the hardening commit.**
+invariants. **CLOSED** — all 9 CI gates green on `53f342f` (2026-10-03).
 
 > **Core social/world systems come next (Phases 04–08), BEFORE Combat and before
 > NPC/Dialogue/Quest/Story**, because those depend on them (D-011, `GAME_FLOW.md` §1b).
