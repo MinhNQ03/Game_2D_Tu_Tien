@@ -65,12 +65,24 @@ jobs:
 
       - name: Headless test suite
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Custom runner: exits non-zero on any failing assertion / missing smoke test.
           # Unit + integration tests only; it EXCLUDES tests/e2e/ and never boots Main, so
           # it cannot contaminate the shared /root autoloads (D-019). It also fails if any
           # test mutates the shared GameState (isolation guard).
-          ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd
+          # DIAGNOSTIC (TEMPORARY, D-023 Phase-04 CI triage per steering 10 §1.3): capture
+          # output and surface the real FAIL/ERROR lines as ::error:: annotations (readable
+          # via the check-runs annotations API without auth). Remove once the suite is green.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd 2>&1 | tee _suite_out.txt
+          code=${PIPESTATUS[0]}
+          set -e
+          if [ "$code" -ne 0 ]; then
+            grep -E "\[FAIL\]|SCRIPT ERROR|ERROR|RESULT: FAIL" _suite_out.txt | while IFS= read -r line; do
+              echo "::error::${line}"
+            done
+          fi
+          exit $code
 
       - name: Real-application E2E flow
         run: |
