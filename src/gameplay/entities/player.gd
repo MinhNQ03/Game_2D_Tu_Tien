@@ -37,6 +37,13 @@ var _input: Node = null
 
 
 func _ready() -> void:
+	# Collision wiring from the single source of truth (`CollisionLayers`), not scene magic
+	# numbers: the player occupies the PLAYER layer and collides with WORLD (walls) and the
+	# DUMMY body. Done FIRST (before the stats check) so the body is always correctly layered
+	# even if the entity later fails closed — the named constants are the one authority.
+	collision_layer = CollisionLayers.PLAYER
+	collision_mask = CollisionLayers.WORLD | CollisionLayers.DUMMY
+
 	# Fail CLOSED on invalid/missing authored stats: a broken scene must not quietly run as
 	# if valid (`04-coding-standards.md`: fail loud; no silent-fallback as the normal path).
 	# `validate()` already reports loudly; here we stop wiring and disable processing so the
@@ -45,12 +52,6 @@ func _ready() -> void:
 		set_physics_process(false)
 		push_error("[player] invalid StatBlock; player disabled (fail-closed)")
 		return
-
-	# Collision wiring from the single source of truth (`CollisionLayers`), not scene magic
-	# numbers: the player occupies the PLAYER layer and collides with WORLD (walls) and the
-	# DUMMY body. Setting it here means the named constants are authoritative at runtime.
-	collision_layer = CollisionLayers.PLAYER
-	collision_mask = CollisionLayers.WORLD | CollisionLayers.DUMMY
 
 	_health.initialize(_stats.get_max_hp())
 	_movement.setup(self)

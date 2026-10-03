@@ -22,7 +22,9 @@ const REQUIRED_AUTOLOADS := [
 ]
 
 
-## Full boot → menu → New Game → prologue → RUNNING, on the real autoloads, then cleanup.
+## Full boot → menu → New Game → first gameplay scene (player_sandbox) → RUNNING, on the
+## real autoloads, then cleanup. (This app-flow E2E only checks the lifecycle/wiring reaches
+## the first scene; the player sandbox's gameplay is exercised by run_player_flow.gd.)
 func test_real_application_flow() -> void:
 	# --- 1. all five real autoloads present; none duplicated -------------------
 	var autoloads := {}
@@ -76,7 +78,7 @@ func test_real_application_flow() -> void:
 
 	# --- 4. drive the REAL player intent (menu signal), not the services ------
 	menu.emit_signal("new_game_pressed")
-	await scene_tree.process_frame  # let the prologue's _ready() run
+	await scene_tree.process_frame  # let the first gameplay scene's _ready() run
 
 	# --- 5. the whole chain wired itself --------------------------------------
 	assert_true(gs.is_session_active(), "session active after New Game")
@@ -91,11 +93,11 @@ func test_real_application_flow() -> void:
 	if world != null:
 		assert_eq(world.get_child_count(), 1, "exactly one content scene under World")
 
-	# --- 13. prologue set the input context to GAMEPLAY -----------------------
+	# --- 13. the first gameplay scene set the input context to GAMEPLAY -------
 	var input: Node = autoloads["InputService"]
 	if input != null:
 		assert_true(input.call("is_gameplay_active"),
-			"prologue _ready() set the input context to GAMEPLAY")
+			"the first gameplay scene's _ready() set the input context to GAMEPLAY")
 
 	# --- 15. cleanup: no orphan content scene, no leftover menu ---------------
 	_cleanup(main)

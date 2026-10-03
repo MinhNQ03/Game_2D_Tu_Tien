@@ -437,15 +437,18 @@ Phase-04 rewrite. Several shape decisions were needed up front.
   **not** a combat system and is model-agnostic, so it does not resolve the combat-timing
   model — **D-007 stays Open**. The `RNG` autoload remains deferred (D-017).
 - **Health invariants + intent-revealing API.** `apply_damage`/`heal` return the amount
-  actually applied, clamp to `[0,max]`, reject non-positive input, emit `died` exactly once,
-  and treat DEAD as terminal (no revive-by-heal). Local signals go direct to the owner, not
-  the EventBus; **no speculative EventBus combat signals were added** (L-005) — combat
-  broadcast events are a Phase-09 concern with real consumers.
-- **Movement intent boundary (MP seam).** `MovementComponent.apply_intent(intent, speed)`
-  takes a direction vector so a future network command can feed the same boundary
-  (`docs/MULTIPLAYER_PLAN.md` §2/§3); diagonals are normalized (not faster than cardinal);
-  motion uses `move_and_slide` (collision-aware, never `position +=`). Player polls
-  `InputService` semantic intent in `_physics_process` — the only input path.
+  actually applied, clamp to `[0,max]`, reject non-positive input, emit `died` exactly once
+  **per life** (an `initialize()` begins a new life, so a reused entity such as the Training
+  Dummy via `reset_dummy()` can die again — see the Phase-02 hardening entry in
+  `docs/CHANGELOG.md`), and treat DEAD as terminal within a life (no revive-by-heal). Local
+  signals go direct to the owner, not the EventBus; **no speculative EventBus combat signals
+  were added** (L-005) — combat broadcast events are a Phase-09 concern with real consumers.
+- **Movement intent boundary (MP seam).** `MovementComponent.apply_intent(intent, speed,
+  _delta)` takes a direction vector so a future network command can feed the same boundary
+  (`docs/MULTIPLAYER_PLAN.md` §2/§3); `_delta` is part of the contract but intentionally
+  unused (`move_and_slide` owns the physics-step integration). Diagonals are normalized (not
+  faster than cardinal); motion uses `move_and_slide` (collision-aware, never `position +=`).
+  Player polls `InputService` semantic intent in `_physics_process` — the only input path.
 - **First gameplay scene = Player Sandbox (temporary).** New Game now routes
   (`FIRST_SCENE_KEY` in `main.gd`) to `player_sandbox` instead of the prologue shell. This
   is explicitly a Phase-02 gameplay-VALIDATION scene (move + attack a dummy), NOT a story
@@ -454,8 +457,11 @@ Phase-04 rewrite. Several shape decisions were needed up front.
   prologue shell is retained but no longer the first scene. The sandbox COORDINATOR owns the
   demo interaction (range check + who-hits-whom) and resolves damage via the domain rule;
   presentation decides no outcomes (`docs/MULTIPLAYER_PLAN.md` §4).
-- **Collision layers are named constants** (`src/gameplay/collision_layers.gd`), not magic
-  numbers scattered in scenes.
+- **Collision layers are named constants** (`src/gameplay/collision_layers.gd`), the single
+  source of truth. The entity/wall scenes carry **no** `collision_layer`/`collision_mask`
+  numbers; each entity sets them from the constants in `_ready()` (Player = PLAYER + mask
+  WORLD|DUMMY; Dummy = DUMMY, mask 0; sandbox walls = WORLD, mask 0). An integration test
+  asserts the runtime wiring matches the constants so the two can't drift.
 **Testing / isolation (D-019):** unit tests (damage rule, health invariants, movement math,
 stat validation) and integration tests (player wiring + real-physics move + bidirectional
 damage exchange) use **fresh instances**, never the live autoloads, and never boot Main.

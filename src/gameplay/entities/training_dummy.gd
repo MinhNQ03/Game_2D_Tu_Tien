@@ -22,18 +22,19 @@ signal died()
 
 
 func _ready() -> void:
+	# Collision wiring from the single source of truth (`CollisionLayers`): the dummy is a
+	# solid body on the DUMMY layer; it detects nothing itself (mask 0 — it is a target, not
+	# a sensor). Done FIRST (before the stats check) so the body is always correctly layered
+	# even if the entity later fails closed. Authoritative at runtime, not a scene magic number.
+	collision_layer = CollisionLayers.DUMMY
+	collision_mask = 0
+
 	# Fail CLOSED on invalid/missing authored stats (same contract as Player): do not wire
 	# health or signals on a broken scene; report loudly and stay inert. Valid `.tres` files
 	# take the normal path.
 	if not _stats.validate():
 		push_error("[dummy] invalid StatBlock; training dummy disabled (fail-closed)")
 		return
-
-	# Collision wiring from the single source of truth (`CollisionLayers`): the dummy is a
-	# solid body on the DUMMY layer; it detects nothing itself (mask 0 — it is a target, not
-	# a sensor). Authoritative at runtime, not a scene magic number.
-	collision_layer = CollisionLayers.DUMMY
-	collision_mask = 0
 
 	_health.initialize(_stats.get_max_hp())
 	_health.health_changed.connect(_on_health_changed)
