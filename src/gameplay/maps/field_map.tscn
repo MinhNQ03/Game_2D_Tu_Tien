@@ -1,9 +1,13 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
 [ext_resource type="TileSet" path="res://data/maps/prototype_tileset.tres" id="3_tileset"]
 [ext_resource type="Script" path="res://src/gameplay/maps/prototype_ground.gd" id="4_ground"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern.png" id="5_lantern"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_tree.png" id="6_tree"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="7_rock"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_planter.png" id="8_planter"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(480, 16)
@@ -25,6 +29,53 @@ tile_set = ExtResource("3_tileset")
 script = ExtResource("4_ground")
 fill_rect = Rect2i(1, 1, 28, 18)
 draw_path_stripe = false
+
+[node name="Decor" type="Node2D" parent="Visual"]
+
+[node name="TreeN1" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(120, 72)
+texture = ExtResource("6_tree")
+
+[node name="TreeN2" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(300, 68)
+texture = ExtResource("6_tree")
+
+[node name="TreeS1" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(160, 252)
+texture = ExtResource("6_tree")
+
+[node name="TreeS2" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(400, 248)
+texture = ExtResource("6_tree")
+
+[node name="RockN" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(236, 76)
+texture = ExtResource("7_rock")
+
+[node name="RockS" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(300, 244)
+texture = ExtResource("7_rock")
+
+[node name="PlanterE" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(430, 160)
+texture = ExtResource("8_planter")
+
+[node name="LanternN" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(72, 104)
+texture = ExtResource("5_lantern")
+
+[node name="LanternS" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(72, 216)
+texture = ExtResource("5_lantern")
 
 [node name="Collision" type="Node2D" parent="."]
 

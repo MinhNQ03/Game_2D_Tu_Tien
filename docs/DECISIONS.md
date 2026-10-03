@@ -769,6 +769,55 @@ Open; Phase 06 (Sect) adds the real `SectState` + relationship referential valid
 
 ---
 
+## D-029 — Visual follow-up: production-foundation art for the currently-visible playable flow (world tileset + props + character), self-made in-place — **Accepted** (2026-10-03, visual follow-up to D-028)
+
+**Context:** D-028 upgraded the UI to the CC0 Xianxia Pixel Pack, but the actual playable
+flow (Menu → New Game → Hub ↔ Field) still rendered the FIRST flat prototype art: plain green
+grass, a tan path strip, grey brick walls, and a tiny flat figure. The task was to start
+upgrading the on-screen WORLD and CHARACTER *now*, by incremental replacement, without any
+gameplay/domain/data/architecture change and without importing side-scroller art into the
+top-down world.
+
+**Options:** (a) import the Xianxia Pixel Pack characters/terrain — REJECTED: that pack is a
+side-scroller set (characters/terrain not top-down, not the 16px art bible — `06-art-assets.md`);
+(b) import the Verdant 00 top-down CC0 tileset — DEFERRED: a 47-mask autotile set (~878 tiles)
+is heavy to wire and risks a style clash/collage with the self-made character;
+(c) **redraw the project's own self-made tileset + character + add props** via the existing
+`tools/gen_prototype_assets.py`, keeping the same files/dimensions/seams — CHOSEN.
+
+**Decision:**
+- **In-place art swap, no seam change.** The tileset stays the same 48×16 three-column strip
+  (0=grass, 1=path, 2=wall), same `prototype_tileset.tres`, same `prototype_ground.gd`; the
+  player sprite stays a single 16×24 frame used by `player.tscn`'s `Visual` `Sprite2D`; the
+  idle sheets stay 64×24 (4× 16×24). So the TileSet resource, ground script, map scenes,
+  `MapData`, camera bounds, wall collision, exit zones, and every test contract are UNCHANGED —
+  this is a pure presentation upgrade.
+- **Production-foundation tier.** Tiles get layered shading + a soft ordered (Bayer) dither so a
+  tiled field no longer reads as one flat colour (mossy jade grass / warm flagstone path /
+  blue-grey roof-tile wall). The character gets a full dark outline, shaded head/jaw, hair sheen,
+  robe hem + a per-archetype sash accent, shaded arms, and a foot contact shadow.
+- **One drawing routine for the character.** The in-game single frame (`gen_player`) now reuses
+  the SAME `_draw_character_frame` as the 4-direction idle sheets (DOWN facing, player palette),
+  so the sprite the player sees and the preview sheets are one coherent character — no second,
+  flatter copy (`04-coding-standards`: no duplicated drawing logic). This closed the gap where
+  the earlier pass had only upgraded the idle sheets, not the frame `player.tscn` actually uses.
+- **Props are presentation-only decorations.** Four NEW self-made Chinese garden-courtyard props
+  (lantern 16×24, tree 32×32, rock 16×16, planter 16×16) are placed as `Sprite2D` nodes under a
+  new `Visual/Decor` child in `hub_map.tscn` / `field_map.tscn`, positioned in open grass away
+  from the player corridor and the exit zones, within the camera bounds. They add NO collision,
+  NO exit, NO spawn, NO camera, NO MapData and NO gameplay behaviour. `Visual/Ground` remains the
+  first child of `Visual`, so the structural map test's node-path lookups keep resolving.
+- **Still self-made / project-owned.** No external pack was imported; the palette stays coherent
+  world↔character and the assets remain swappable later by a bespoke art pass. Recorded in
+  `docs/ASSET_LICENSES.md` (P1/P2 + P14–P17 redrawn; P18–P21 new props).
+
+**Consequence:** the visible playable flow now reads as a coherent production-foundation wuxia
+courtyard (shaded tiles + garden props) with a shaded, outlined cultivator, while every gameplay
+seam, camera bound, exit contract and test stays byte-for-byte in behaviour. This is a visual tier
+step (prototype → production foundation), NOT Phase 06. D-005 (save) / D-007 (combat) remain Open.
+
+---
+
 ## How to add a decision
 Append `D-00N — <title> — <status> (date)` with Context / Options / Decision /
 Consequence (or Blocking). Never silently change a shipped decision — mark the old one

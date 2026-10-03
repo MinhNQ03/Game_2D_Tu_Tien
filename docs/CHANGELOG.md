@@ -8,6 +8,26 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Production-foundation world + character art for the playable flow (D-029)
+- **World tileset redrawn (in place):** `assets/tiles/prototype/prototype_tileset.png` (same
+  48×16 three-column strip, same `prototype_tileset.tres` / `prototype_ground.gd`) upgraded from
+  flat colour blocks to shaded, ordered-dithered tiles — mossy jade grass, warm flagstone path,
+  blue-grey Chinese roof-tile wall. The hub/field no longer read as one flat green plane.
+- **Character redrawn (in place):** the in-game player frame `player_proto.png` (16×24) and the
+  four archetype idle sheets (`*_proto_idle.png`, 64×24) now share one drawing routine
+  (`_draw_character_frame`) — a fully-outlined, shaded top-down figure (hair sheen, jaw/arm
+  shadow, robe hem, per-archetype sash accent, foot contact shadow). Fixed a gap where only the
+  idle sheets, not the frame `player.tscn` actually uses, had been upgraded.
+- **Decorative props (new):** four self-made Chinese garden-courtyard props — `prop_lantern`
+  (16×24), `prop_tree` (32×32), `prop_rock` (16×16), `prop_planter` (16×16) — placed as
+  presentation-only `Sprite2D` nodes under a new `Visual/Decor` in `hub_map.tscn` /
+  `field_map.tscn`, in open grass clear of the player corridor and exit zones.
+- **Seam preserved:** pure presentation. No change to the TileSet resource, ground script,
+  `MapData`, camera bounds, wall collision, exit zones, spawns, or any gameplay/domain/data. All
+  tests (structural map test, world/player/app E2E, character-visual dims test) keep their
+  contracts. Self-made/project-owned (recorded in `ASSET_LICENSES.md` P1/P2 + P14–P17 redrawn,
+  P18–P21 new). Visual tier step (prototype → production foundation); Phase 06 NOT started.
+
 ### 2026-10-03 — Visual asset audit + production UI art (D-028; CC0 Xianxia UI)
 - **Asset audit:** audited 5 local candidate packs for license + fit and classified each
   (recorded in `docs/ASSET_LICENSES.md`): Xianxia Pixel Pack (CC0) = APPROVED primary UI;
