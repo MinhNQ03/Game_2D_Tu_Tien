@@ -119,3 +119,21 @@ Research + readiness only (`docs/ROADMAP.md` Phase 32):
   server-advanced world impossible to keep in sync.
 
 If any of these appear, flag in `docs/DECISIONS.md` immediately.
+
+## Phase 05 seam update (D-026) — relationship state is a clean authoritative seam
+
+The relationship graph is exactly the kind of authoritative world state a Stage-2 server
+would own, and Phase 05 keeps it replication-friendly WITHOUT any networking:
+- **Serializable + presentation-free:** `RelationshipStore.to_dict/hydrate` round-trips the
+  whole graph as plain data, deterministically (edges sorted by id), with boundary validation
+  that fails closed. No Node/Resource reference, no presentation field.
+- **Stable-id based:** endpoints are typed `{ kind, id }` referencing `CharacterState.instance_id`
+  / sect ids — not object references — so the graph is portable across process/host.
+- **Command-style mutation:** all changes flow through `RelationshipService.apply_delta/
+  apply_event/create_edge/remove_edge` with explicit inputs (target edge, dimension, delta,
+  cause/event id). This is the command-intent boundary a server would validate/apply
+  authoritatively; the API deliberately avoids hidden randomness or global mutable state, and
+  the mutation shape leaves room for a future stable event id (dedup) without new abstraction.
+- **No SceneTree/UI/network dependency** in the domain layer; the observable surface is a
+  plain domain signal.
+No RPC/MultiplayerAPI/replication/authority code is added. This is seam hygiene only.

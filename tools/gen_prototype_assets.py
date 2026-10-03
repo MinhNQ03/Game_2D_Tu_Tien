@@ -138,7 +138,105 @@ def gen_tileset():
     _png(os.path.join(ROOT, "assets/tiles/prototype/prototype_tileset.png"), w, h, px)
 
 
+# --- Character directional idle sheets (Phase 05 art pipeline, D-026) --------
+# A sheet is one row of 4 frames (DOWN, UP, LEFT, RIGHT) at 16x24 each (64x24 total), matching
+# CharacterVisualProfileData. All archetypes share the same silhouette/anchor baseline (feet at
+# the bottom row) and differ only by palette + a couple accent pixels, so the whole cast reads
+# as one game (docs/CHARACTER_ART_BIBLE.md), not a mix of packs. Self-made/CC0.
+
+FRAME_W, FRAME_H = 16, 24
+OUTLINE = (20, 20, 28, 255)
+
+
+def _draw_character_frame(px, ox, direction, pal):
+    """Draw one 16x24 figure at x-offset `ox` facing `direction` (0=down,1=up,2=left,3=right).
+
+    The silhouette is identical across directions (consistent footprint); only the
+    face/accent details change with facing.
+    """
+    skin = pal["skin"]
+    hair = pal["hair"]
+    robe = pal["robe"]
+    robe_dk = pal["robe_dk"]
+    boots = pal["boots"]
+    accent = pal["accent"]
+
+    # Head
+    _rect(px, ox + 5, 2, ox + 11, 8, skin)
+    _rect(px, ox + 5, 1, ox + 11, 3, hair)       # hair cap (all directions)
+    _rect(px, ox + 4, 2, ox + 5, 7, hair)
+    _rect(px, ox + 11, 2, ox + 12, 7, hair)
+    # Body / robe
+    _rect(px, ox + 4, 8, ox + 12, 17, robe)
+    _rect(px, ox + 4, 13, ox + 12, 17, robe_dk)
+    _rect(px, ox + 7, 8, ox + 9, 17, accent)     # a center sash accent (archetype color)
+    # Arms
+    _rect(px, ox + 2, 9, ox + 4, 15, skin)
+    _rect(px, ox + 12, 9, ox + 14, 15, skin)
+    # Legs / boots
+    _rect(px, ox + 5, 17, ox + 8, 23, boots)
+    _rect(px, ox + 9, 17, ox + 12, 23, boots)
+    # Silhouette outline (left/right of torso)
+    for y in range(8, 17):
+        px[y][ox + 3] = OUTLINE
+        px[y][ox + 12] = OUTLINE
+
+    # Facing-specific face details.
+    if direction == 0:        # DOWN: eyes visible, facing the camera
+        px[5][ox + 6] = OUTLINE
+        px[5][ox + 9] = OUTLINE
+    elif direction == 1:      # UP: back of head, no eyes, more hair
+        _rect(px, ox + 5, 2, ox + 11, 5, hair)
+    elif direction == 2:      # LEFT: one eye, shifted left
+        px[5][ox + 6] = OUTLINE
+        _rect(px, ox + 4, 2, ox + 6, 7, hair)
+    elif direction == 3:      # RIGHT: one eye, shifted right
+        px[5][ox + 9] = OUTLINE
+        _rect(px, ox + 10, 2, ox + 12, 7, hair)
+
+
+def _gen_character_sheet(name, pal):
+    w, h = FRAME_W * 4, FRAME_H
+    px = _blank(w, h)
+    for direction in range(4):
+        _draw_character_frame(px, direction * FRAME_W, direction, pal)
+    _png(os.path.join(ROOT, "assets/sprites/characters/%s_idle.png" % name), w, h, px)
+
+
+def gen_character_sheets():
+    # Four initial archetypes, one consistent style, distinct palettes (06-art / art bible).
+    archetypes = {
+        # Player / young cultivator — jade-blue robe.
+        "player_proto": {
+            "skin": (235, 200, 165, 255), "hair": (70, 50, 40, 255),
+            "robe": (60, 130, 200, 255), "robe_dk": (40, 95, 150, 255),
+            "boots": (55, 45, 40, 255), "accent": (120, 210, 190, 255),
+        },
+        # Female cultivator — rose robe.
+        "cultivator_f_proto": {
+            "skin": (240, 208, 176, 255), "hair": (40, 30, 46, 255),
+            "robe": (196, 92, 128, 255), "robe_dk": (150, 64, 96, 255),
+            "boots": (70, 48, 60, 255), "accent": (236, 196, 150, 255),
+        },
+        # Elder — grey robe, white hair.
+        "elder_proto": {
+            "skin": (224, 196, 168, 255), "hair": (220, 220, 224, 255),
+            "robe": (110, 112, 120, 255), "robe_dk": (78, 80, 88, 255),
+            "boots": (50, 50, 56, 255), "accent": (170, 150, 90, 255),
+        },
+        # Wandering cultivator / merchant — earthy brown robe.
+        "merchant_proto": {
+            "skin": (232, 196, 160, 255), "hair": (56, 40, 30, 255),
+            "robe": (150, 112, 68, 255), "robe_dk": (112, 82, 48, 255),
+            "boots": (60, 46, 34, 255), "accent": (210, 180, 90, 255),
+        },
+    }
+    for name in archetypes:
+        _gen_character_sheet(name, archetypes[name])
+
+
 if __name__ == "__main__":
     gen_player()
     gen_tileset()
+    gen_character_sheets()
     print("done")

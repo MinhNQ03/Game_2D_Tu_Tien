@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="RelationshipRuleCatalog" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/data/relationship/relationship_rule_catalog.gd" id="1_cat"]
+[ext_resource type="Script" path="res://src/data/relationship/relationship_rule_data.gd" id="2_rule"]
+
+[sub_resource type="Resource" id="rule_helped_stranger"]
+script = ExtResource("2_rule")
+event_kind = &"HELPED_STRANGER"
+dimension_deltas = {
+"affinity": 8,
+"trust": 5
+}
+required_relationship_type = &""
+
+[sub_resource type="Resource" id="rule_kept_promise"]
+script = ExtResource("2_rule")
+event_kind = &"KEPT_PROMISE"
+dimension_deltas = {
+"trust": 10,
+"respect": 4
+}
+required_relationship_type = &""
+
+[sub_resource type="Resource" id="rule_broke_promise"]
+script = ExtResource("2_rule")
+event_kind = &"BROKE_PROMISE"
+dimension_deltas = {
+"trust": -15,
+"affinity": -6
+}
+required_relationship_type = &""
+
+[sub_resource type="Resource" id="rule_won_fair_duel"]
+script = ExtResource("2_rule")
+event_kind = &"WON_FAIR_DUEL"
+dimension_deltas = {
+"respect": 10,
+"rivalry": 8
+}
+required_relationship_type = &""
+
+[sub_resource type="Resource" id="rule_saved_debtor"]
+script = ExtResource("2_rule")
+event_kind = &"SAVED_DEBTOR"
+dimension_deltas = {
+"debt": 20,
+"affinity": 5
+}
+required_relationship_type = &""
+
+[sub_resource type="Resource" id="rule_intimidated_weak"]
+script = ExtResource("2_rule")
+event_kind = &"INTIMIDATED_WEAK"
+dimension_deltas = {
+"fear": 15,
+"affinity": -10
+}
+required_relationship_type = &""
+
+[resource]
+script = ExtResource("1_cat")
+rules = [SubResource("rule_helped_stranger"), SubResource("rule_kept_promise"), SubResource("rule_broke_promise"), SubResource("rule_won_fair_duel"), SubResource("rule_saved_debtor"), SubResource("rule_intimidated_weak")]

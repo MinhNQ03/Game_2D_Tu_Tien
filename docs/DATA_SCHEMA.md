@@ -337,3 +337,32 @@ fails loudly in development (`push_error`), never silently. See `docs/TEST_PLAN.
 - **Stat deltas on equipment/technique** → the one damage formula consumes them; no
   parallel math.
 - **Phases/AI as data** → bosses and enemies scale by authoring, not by new classes.
+
+## Relationship data (Phase 05, D-026)
+
+Relationships are authored/tuned as DATA (`docs/RELATIONSHIP_SYSTEM.md`):
+
+- **`RelationshipConfigData`** (`src/data/relationship/relationship_config_data.gd`,
+  `data/relationship/relationship_config.tres`) — the single source of truth for dimension
+  tuning. `dimensions: Array[Dictionary]`, each `{ id, default, min, max }`, plus
+  `history_capacity: int`. Default ranges: `affinity` −100..100, `trust`/`respect`/`fear`/
+  `rivalry` 0..100, `debt` −100..100 (signed), history capacity 32. Validation enforces
+  `min ≤ default ≤ max`, unique ids, capacity ≥ 0. The relationship service reads ranges from
+  here — no range is hard-coded in logic.
+- **`RelationshipRuleData`** + **`RelationshipRuleCatalog`**
+  (`src/data/relationship/*`, `data/relationship/relationship_rules.tres`) — the deterministic
+  event→delta contract: a rule is `{ event_kind, dimension_deltas: { dimension: int }, optional
+  required_relationship_type }`; the catalog is a validated array (unique `event_kind`). No DSL.
+- **Serialized relationship graph** (`RelationshipStore.to_dict`) — `{ "edges": [ edge... ] }`,
+  edges sorted by id; each edge is `{ id, from{kind,id}, to{kind,id}, relationship_type,
+  symmetric, known, dimensions{dim:int}, history[...] }`. Plain data; this is the save seam's
+  `relationships` section (`SaveService` is Phase 23).
+
+## Character visual data (Phase 05, D-026)
+
+- **`CharacterVisualProfileData`** (`src/data/characters/character_visual_profile_data.gd`,
+  `data/characters/visual/*.tres`) — presentation definition referenced by
+  `CharacterTemplateData.sprite_set_ref`: `id`, `idle_sheet` (required), `walk_sheet`
+  (optional), `frame_size: Vector2i` (16×24 baseline), `anchor_offset`. One row of 4 cardinal
+  frames. Validated at the boundary (sheet dimensions = 4 frames × 1 row). It is PRESENTATION
+  data — never copied into `CharacterState` (`docs/CHARACTER_SYSTEM.md` §3).

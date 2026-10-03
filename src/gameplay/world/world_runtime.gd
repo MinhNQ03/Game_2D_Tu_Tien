@@ -184,6 +184,11 @@ func _spawn_player() -> bool:
 	# Bind the authoritative state BEFORE add_child so the Player's _ready() reads from it.
 	if _player.has_method("bind_character_state"):
 		_player.call("bind_character_state", _player_character)
+	# Pass the template's VISUAL profile ref (presentation; NOT on the domain CharacterState,
+	# Phase 05 / D-026) so the Player renders its data-driven sprite instead of a hard-coded
+	# scene sprite. Also set BEFORE add_child so _ready() resolves it.
+	if _player.has_method("set_visual_profile_from_ref"):
+		_player.call("set_visual_profile_from_ref", template.sprite_set_ref)
 	# Parent to WorldRuntime (under Systems) so a SceneRouter content swap can't free it.
 	add_child(_player)
 	return true

@@ -366,3 +366,17 @@ with minimal changes to these systems (a design goal, not a guarantee). Detail i
 Tracked in `docs/DECISIONS.md`. Notably: real-time vs. turn-based combat resolution;
 scene-instanced vs. single-scene map streaming; final save file format. These are
 **not** decided here and must be resolved before the relevant system is built.
+
+## Phase 05 note (D-026) — relationship substrate + character visuals, flow unchanged
+
+The runnable flow is UNCHANGED (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
+MENU). Phase 05 adds, underneath that flow:
+- a **relationship graph** owned by a new `RelationshipRuntime` under `Main/Systems` (a
+  sibling of `WorldRuntime`, not an autoload) that starts with New Game, survives map swaps,
+  and ends on return to menu — it has no gameplay surface yet (no NPC/dialogue/quest produces
+  real events in-game), it is the substrate those later systems will drive;
+- a **data-driven character sprite** on the Player (resolved from its template
+  `sprite_set_ref` via `CharacterVisualProfileData` + `CharacterVisualComponent`) replacing the
+  hard-coded prototype sprite.
+A dev-only `character_preview` scene showcases the four archetypes; it is NOT the first scene
+and nothing in the flow loads it. No new first scene, no new autoload.

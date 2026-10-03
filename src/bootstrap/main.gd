@@ -25,6 +25,12 @@ const MENU_SCENE := "res://src/presentation/menus/main_menu.tscn"
 ## are no longer the first scene.
 const WORLD_RUNTIME_SCRIPT := "res://src/gameplay/world/world_runtime.gd"
 
+## PHASE 05 (D-026): the per-session relationship graph lives in a `RelationshipRuntime` node
+## under `Main/Systems` — a SIBLING of WorldRuntime, NOT an autoload (the autoload budget
+## D-017 is unchanged). It survives map swaps the same way WorldRuntime does. It is a separate
+## subsystem so WorldRuntime stays the map/player coordinator (no God object).
+const RELATIONSHIP_RUNTIME_SCRIPT := "res://src/gameplay/world/relationship_runtime.gd"
+
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
 ## are therefore always present when Main actually runs (real app, the runtime boot smoke,
@@ -40,6 +46,8 @@ const REQUIRED_AUTOLOADS := [
 
 var _menu: Control = null
 var _world: Node = null   # WorldRuntime (per-session world/map coordinator), under Systems
+# RelationshipRuntime (per-session relationship graph), under Systems (D-026).
+var _relationship: Node = null
 
 
 func _ready() -> void:
@@ -87,6 +95,10 @@ func _boot() -> void:
 	# It is idle until New Game starts a session.
 	_create_world_runtime()
 
+	# Create the RelationshipRuntime subsystem under Systems too (sibling of WorldRuntime,
+	# also a node not an autoload — D-026). Idle until New Game.
+	_create_relationship_runtime()
+
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
 		return
@@ -110,6 +122,23 @@ func _create_world_runtime() -> void:
 	get_node(CONTAINER_SYSTEMS).add_child(_world)
 	if not _world.is_connected("return_to_menu_requested", _on_return_to_menu):
 		_world.connect("return_to_menu_requested", _on_return_to_menu)
+
+
+## Instantiate the RelationshipRuntime subsystem under Systems (D-026). Mirrors
+## `_create_world_runtime()`: a script-created node, not an autoload, not a scene. It owns no
+## intents to wire — Main just starts/ends its session alongside the world session.
+func _create_relationship_runtime() -> void:
+	if _relationship != null and is_instance_valid(_relationship):
+		return
+	var script: Script = load(RELATIONSHIP_RUNTIME_SCRIPT)
+	if script == null:
+		push_error("[boot] failed to load RelationshipRuntime script: %s"
+			% RELATIONSHIP_RUNTIME_SCRIPT)
+		return
+	_relationship = Node.new()
+	_relationship.name = "RelationshipRuntime"
+	_relationship.set_script(script)
+	get_node(CONTAINER_SYSTEMS).add_child(_relationship)
 
 
 ## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
@@ -172,11 +201,20 @@ func _on_new_game_pressed() -> void:
 		_show_menu()
 		return
 
+	# Start the relationship session alongside the world session (D-026). This is NON-FATAL
+	# in Phase 05: no gameplay yet depends on the graph, so a config-load failure is logged by
+	# the runtime but must not abort an otherwise-good New Game. It owns its own data.
+	if _relationship != null and is_instance_valid(_relationship):
+		if not bool(_relationship.call("start_session")):
+			push_warning("[main] relationship session did not start (see errors above)")
+
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
 		push_error("[main] confirm_session_running rejected; unwinding to menu")
 		_world.call("end_session")
+		if _relationship != null and is_instance_valid(_relationship):
+			_relationship.call("end_session")
 		gs.call("end_session")
 		_show_menu()
 		return
@@ -187,6 +225,9 @@ func _on_return_to_menu() -> void:
 	# lifecycle returns to MENU.
 	if _world != null and is_instance_valid(_world):
 		_world.call("end_session")
+	# End the relationship session too (drops the per-session graph).
+	if _relationship != null and is_instance_valid(_relationship):
+		_relationship.call("end_session")
 	var gs := _game_state()
 	if gs != null and gs.call("is_session_active"):
 		gs.call("end_session")

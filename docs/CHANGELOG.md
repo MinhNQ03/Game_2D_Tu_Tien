@@ -8,6 +8,44 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Phase 05 (D-026; Relationship core + early character visual pipeline + narrative anchor)
+- **Relationship domain graph (core system):** added `RelationshipEndpoint` (typed
+  `{kind,id}` CHARACTER|SECT), `RelationshipEdge` (id/from/to/type/dimensions/symmetric/known/
+  history), `RelationshipStore` (owns edges; indexes by edge id + endpoint; symmetric canonical
+  ordering; deterministic `to_dict`/fail-closed `hydrate` with index rebuild), and
+  `RelationshipService` (the SINGLE mutation path: validate → clamp to config range → bounded
+  history on a real change → domain signal `relationship_changed`; zero-delta no-op; missing
+  edge fails loud; debt perspective flips only on a symmetric reverse query). `CharacterState`
+  is deliberately NOT given a relationship dict (single source of truth).
+- **Data-driven relationship tuning:** `RelationshipConfigData`
+  (`data/relationship/relationship_config.tres`, 6 dimensions with the documented ranges +
+  history capacity) and `RelationshipRuleData` + `RelationshipRuleCatalog`
+  (`data/relationship/relationship_rules.tres`, 6 deterministic event→delta rules). No range or
+  rule is a magic number in code.
+- **Runtime ownership:** `RelationshipRuntime` node under `Main/Systems` (sibling of
+  `WorldRuntime`, NOT an autoload) owns the per-session store+service and survives map swaps;
+  started on New Game, ended on return to menu. Autoload budget unchanged (D-017).
+- **Early character visual pipeline (presentation):** `CharacterVisualProfileData` +
+  `CharacterVisualComponent` (4-direction sheet, nearest filter, feet-anchored, movement-driven
+  facing; `MovementComponent` stays the movement authority). The Player resolves its template's
+  `sprite_set_ref` into a data-driven sprite (missing/invalid → loud + static fallback). Four
+  self-made prototype archetype sheets (player/female cultivator/elder/merchant) via
+  `tools/gen_prototype_assets.py` + four `CharacterVisualProfileData` `.tres`. A dev-only
+  `character_preview` scene (NOT the first scene). `CharacterState` still carries NO presentation
+  data (tested).
+- **Design anchors:** `docs/CHARACTER_ART_BIBLE.md` (16px grid, 16×24 baseline, feet anchor,
+  collision independent of sprite height, palette/direction/animation rules) and
+  `docs/NARRATIVE_DIRECTION.md` (original tu-tiên premise + relationship-driven first arc; no
+  story engine, no copyrighted content).
+- **Tests:** `tests/unit/relationship/*` (config validity; the full B–U graph matrix incl.
+  symmetric/debt perspective, deterministic event→delta, serialize round-trip + fail-closed
+  hydrate + index rebuild; rules), `tests/integration/test_relationship_runtime.gd`, extended
+  `tests/e2e/world_flow_case.gd` (RelationshipRuntime persists across 20 map swaps, not an
+  autoload, session ends on menu), and `tests/unit/presentation/test_character_visual.gd`.
+- **Scope:** no NPC/Dialogue/Quest/Story/Sect/Faction/WorldSim/Combat/Inventory/Save/networking;
+  no new autoload; game flow + first scene unchanged. SECT endpoints structural-only (Phase 06
+  adds the real `SectState` + referential validation). Docs synced; D-026 recorded.
+
 ### 2026-10-03 — Phase 04 close-out (D-025; residual test-exit leak fixed + doc drift)
 - **Residual leak root-caused and fixed.** The green headless suite still printed
   `WARNING: 5 ObjectDB instances were leaked at exit` + `ERROR: 1 resources still in use at

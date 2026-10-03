@@ -217,3 +217,22 @@ chosen partly because it is also what a future authoritative server needs. Full 
 - Entities reaching across the tree with `get_node("../../..")`.
 - Interfaces/abstractions with one implementation and no seam.
 - Content types that require editing core systems to add.
+
+## Relationship + character-visual layering (Phase 05, D-026)
+
+- **Relationship = domain, single source of truth.** `src/domain/relationship/` holds
+  `RelationshipEndpoint`/`RelationshipEdge`/`RelationshipStore`/`RelationshipService` — pure
+  `RefCounted`, no Node/scene/presentation dependency. The graph is owned by the store, NOT
+  scattered on character nodes or duplicated in `CharacterState`. The service is the ONLY
+  mutation path and emits a DOMAIN signal (`relationship_changed`), not an EventBus signal —
+  domain stays infra/presentation-free (a bridge, if ever needed, lives in a higher layer).
+- **Data drives it.** Dimension ranges + event→delta rules are Resources
+  (`src/data/relationship/`), not code constants.
+- **Runtime ownership respects the autoload budget.** `RelationshipRuntime`
+  (`src/gameplay/world/relationship_runtime.gd`) is a node under `Main/Systems`, a sibling of
+  `WorldRuntime` — NOT a new autoload (D-017 unchanged). It survives map swaps because the
+  SceneRouter only swaps content under `Main/World`. `WorldRuntime` stays the map/player
+  coordinator (no God object).
+- **Character visual = presentation only.** `src/presentation/characters/` renders a
+  `CharacterVisualProfileData` and reads movement facing; it never owns movement or mutates
+  domain state. The dependency direction holds: presentation → gameplay/domain, never upward.

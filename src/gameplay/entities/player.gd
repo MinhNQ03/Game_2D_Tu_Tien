@@ -29,11 +29,21 @@ signal died()
 
 const ATTACK_ACTION := &"attack"
 
+const VisualComponentScript := preload(
+	"res://src/presentation/characters/character_visual_component.gd")
+
 @onready var _stats: StatsComponent = $StatsComponent
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _movement: MovementComponent = $MovementComponent
+@onready var _static_visual: Sprite2D = $Visual
 
 var _input: Node = null
+
+## Resource path of the character's VISUAL profile (`CharacterVisualProfileData`), taken from
+## the bound character's `CharacterTemplateData.sprite_set_ref` (presentation ref — NOT on the
+## domain CharacterState, Phase 05 / D-026). Empty = keep the scene's static prototype sprite.
+var _visual_profile_path: String = ""
+var _visual: CharacterVisualComponent = null
 
 ## The authoritative CharacterState this node realizes (Phase 04, `docs/CHARACTER_SYSTEM.md`
 ## §6). The player node is a runtime VIEW; identity + stats + life-state truth live here. Set
@@ -58,6 +68,21 @@ func bind_character_state(state: CharacterState) -> void:
 ## The authoritative CharacterState this node realizes (or null in an isolated harness).
 func get_character_state() -> CharacterState:
 	return _character_state
+
+
+## Set the visual profile resource path (from the template's `sprite_set_ref`). Call BEFORE
+## the node enters the tree (like `bind_character_state`); `_ready()` resolves + attaches the
+## `CharacterVisualComponent`. If called after _ready, applies immediately. Empty path leaves
+## the scene's static prototype sprite in place (isolated-harness fallback). Presentation only.
+func set_visual_profile_from_ref(profile_path: String) -> void:
+	_visual_profile_path = profile_path
+	if is_node_ready():
+		_apply_visual_profile()
+
+
+## The CharacterVisualComponent (or null if no profile was applied). For tests/debug.
+func get_visual_component() -> CharacterVisualComponent:
+	return _visual
 
 
 func _ready() -> void:
@@ -99,6 +124,38 @@ func _ready() -> void:
 	# every physics frame, to avoid a per-tick tree lookup (`docs/PERFORMANCE.md`).
 	_input = get_node_or_null("/root/InputService")
 
+	# Resolve the data-driven visual profile (if the bound template set a sprite_set_ref).
+	_apply_visual_profile()
+
+
+## Resolve `_visual_profile_path` to a CharacterVisualProfileData and attach a
+## CharacterVisualComponent that renders it, hiding the scene's static prototype sprite. A
+## missing/invalid profile is reported loudly and leaves the static sprite as a fallback
+## (presentation degrades, gameplay unaffected). An empty path is the no-op harness default.
+func _apply_visual_profile() -> void:
+	if _visual_profile_path == "":
+		return
+	if _visual != null and is_instance_valid(_visual):
+		return  # already applied
+	if not ResourceLoader.exists(_visual_profile_path):
+		push_error("[player] visual profile missing: %s" % _visual_profile_path)
+		return
+	var profile := load(_visual_profile_path) as CharacterVisualProfileData
+	if profile == null:
+		push_error("[player] sprite_set_ref did not load as CharacterVisualProfileData: %s"
+			% _visual_profile_path)
+		return
+	_visual = VisualComponentScript.new() as CharacterVisualComponent
+	add_child(_visual)
+	if not _visual.setup(profile):
+		# Invalid profile: drop the component, keep the static fallback sprite.
+		_visual.queue_free()
+		_visual = null
+		return
+	# The data-driven visual replaces the scene's static prototype sprite.
+	if _static_visual != null and is_instance_valid(_static_visual):
+		_static_visual.visible = false
+
 
 func _physics_process(delta: float) -> void:
 	# No input service (e.g. an isolated unit harness) → no movement; deterministic.
@@ -106,6 +163,11 @@ func _physics_process(delta: float) -> void:
 		return
 	var intent: Vector2 = _input.call("get_move_vector")
 	_movement.apply_intent(intent, _stats.get_move_speed(), delta)
+
+	# Drive the data-driven visual facing/animation from the SAME intent (presentation only;
+	# MovementComponent remains the movement authority). No-op when no profile is attached.
+	if _visual != null:
+		_visual.update_facing(intent, intent != Vector2.ZERO)
 
 	# Edge-triggered attack INTENT. The service gates this on GAMEPLAY context, so an open
 	# menu/modal can never leak an attack to the world.

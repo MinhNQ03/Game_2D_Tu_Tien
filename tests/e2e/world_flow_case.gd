@@ -72,6 +72,19 @@ func test_real_world_map_flow() -> void:
 		assert_true(false, "WorldRuntime missing under Main/Systems")
 		_teardown(main)
 		return
+
+	# Phase 05 (D-026): a RelationshipRuntime sibling must exist under Main/Systems, be a
+	# non-autoload node, and persist (same instance) across every map swap. Capture its id now.
+	var relationship_runtime := _find_relationship_runtime(main)
+	assert_not_null(relationship_runtime, "RelationshipRuntime exists under Main/Systems")
+	var relationship_id := -1
+	if relationship_runtime != null:
+		relationship_id = relationship_runtime.get_instance_id()
+		assert_true(relationship_runtime.call("is_session_active"),
+			"RelationshipRuntime session active after New Game")
+		assert_eq(_count_named("RelationshipRuntime"), 0,
+			"RelationshipRuntime is NOT an autoload (not under /root)")
+
 	var player: Node = world_runtime.call("get_player")
 	assert_not_null(player, "WorldRuntime owns a persistent player")
 	if player == null:
@@ -121,6 +134,11 @@ func test_real_world_map_flow() -> void:
 		var round_character = world_runtime.call("get_player_character")
 		assert_true(round_character != null and round_character.get_instance_id() == character_id,
 			"round %d: SAME CharacterState instance (not recreated on map swap)" % i)
+		# The RelationshipRuntime (and its graph) is the SAME instance across the map swap too
+		# (D-026): it lives under Main/Systems and is never freed/rebuilt by a content swap.
+		var round_rel := _find_relationship_runtime(main)
+		assert_true(round_rel != null and round_rel.get_instance_id() == relationship_id,
+			"round %d: SAME RelationshipRuntime instance (survives map swap)" % i)
 		assert_eq(_count_player_instances(scene_tree.root), 1, "round %d: exactly one Player" % i)
 		var active: Node = router.get_current_scene()
 		assert_true(_player_is_in_map(player, active), "round %d: player in active map" % i)
@@ -146,6 +164,10 @@ func test_real_world_map_flow() -> void:
 	assert_false(gs.is_session_active(), "session ended")
 	assert_eq(router.get_current_key(), "", "no content scene after returning to menu")
 	assert_false(is_instance_valid(player), "the persistent player was freed on session end")
+	# The relationship subsystem persists as a node but ends its session on return to menu.
+	if relationship_runtime != null and is_instance_valid(relationship_runtime):
+		assert_false(relationship_runtime.call("is_session_active"),
+			"RelationshipRuntime session ended on return to menu")
 
 	# --- 8. cleanup / isolation --------------------------------------------------
 	_teardown(main)
@@ -165,6 +187,16 @@ func _find_world_runtime(main: Node) -> Node:
 		return null
 	for child in systems.get_children():
 		if child is WorldRuntime:
+			return child
+	return null
+
+
+func _find_relationship_runtime(main: Node) -> Node:
+	var systems := main.get_node_or_null("Systems")
+	if systems == null:
+		return null
+	for child in systems.get_children():
+		if child is RelationshipRuntime:
 			return child
 	return null
 

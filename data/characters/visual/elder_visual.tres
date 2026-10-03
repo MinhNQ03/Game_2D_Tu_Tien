@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/characters/character_visual_profile_data.gd" id="1_vis"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_idle.png" id="2_idle"]
+
+[resource]
+script = ExtResource("1_vis")
+id = &"vis_elder"
+idle_sheet = ExtResource("2_idle")
+walk_sheet = null
+frame_size = Vector2i(16, 24)
+anchor_offset = Vector2(0, 0)

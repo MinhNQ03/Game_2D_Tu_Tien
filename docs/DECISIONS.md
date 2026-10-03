@@ -706,6 +706,69 @@ unchanged; D-005 (save) / D-007 (combat) remain Open; Phase 05 (Relationship) NO
 
 ---
 
+## D-026 — Phase 05 Relationship core (domain graph) + early character visual pipeline + narrative anchor — **Accepted** (2026-10-03, Phase 05)
+
+**Context:** Phase 05 makes Relationship a real CORE domain system (D-011) and, in parallel,
+starts the character VISUAL pipeline so the game stops being programmer-art-only. It also lays
+a narrative anchor so later story systems build toward one coherent direction. No
+NPC/Dialogue/Quest/Story/Sect/Faction/WorldSim/Combat/Inventory/Save/networking; no new
+autoload; the existing flow (Menu → New Game → Hub ↔ Field → Menu) and first scene are
+unchanged.
+
+**Decisions:**
+- **Relationships are a domain graph with a single source of truth** (`RELATIONSHIP_SYSTEM.md`
+  §1): `RelationshipStore` owns all edges; `CharacterState` is NOT given a relationship
+  dictionary. Endpoints are TYPED `{ kind, id }` (`RelationshipEndpoint`: CHARACTER | SECT), so
+  a character and a sect can never be confused by a shared raw id.
+- **Data-driven dimensions.** `RelationshipConfigData` (`data/relationship/relationship_config.tres`)
+  owns per-dimension default/min/max + history capacity (affinity/debt −100..100,
+  trust/respect/fear/rivalry 0..100). No range is a magic number in the service — it reads the
+  config. Adding/retuning a dimension is a data edit.
+- **One mutation path.** `RelationshipService.apply_delta/apply_event/create_edge/remove_edge`
+  is the ONLY way state changes: it validates, clamps to config range, writes bounded history
+  on a REAL change, and emits a DOMAIN signal `relationship_changed(edge_id, dimension, old,
+  new, cause)` (NOT an EventBus signal — domain stays presentation/infra-free). A zero-effect
+  delta is a no-op; a missing edge fails loud (no implicit create). No caller mutates an edge's
+  dict directly.
+- **Symmetric canonicalization + signed-debt perspective.** A symmetric edge is stored in
+  canonical endpoint order (smaller `(kind,id)` is `from`), so `A-B`/`B-A` resolve to ONE edge
+  and a duplicate symmetric create is rejected. `debt` is stored from the canonical-from
+  perspective; a reverse query negates ONLY debt (the non-directional dimensions are never
+  flipped). Directed edges read as stored.
+- **Deterministic event→delta.** `RelationshipRuleData` + `RelationshipRuleCatalog`
+  (`data/relationship/relationship_rules.tres`) map `event_kind → { dimension: delta }` with an
+  optional relationship_type gate — data, not a DSL, no RNG, no global mutable state. The same
+  event on the same start state is reproducible.
+- **Serializable, multiplayer-clean seam.** `RelationshipStore.to_dict/hydrate` round-trips the
+  whole graph deterministically (sorted by edge id), validates at the boundary and FAILS CLOSED
+  (never asserts) on a malformed snapshot, and rebuilds indexes. This is the save seam
+  (`SaveService` is Phase 23) and the Stage-2 authoritative-state seam (`MULTIPLAYER_PLAN.md`).
+- **Runtime ownership = a node under Main/Systems, NOT an autoload.** `RelationshipRuntime`
+  (sibling of `WorldRuntime`) owns the store+service+config for the session and survives map
+  swaps (SceneRouter only swaps content under `Main/World`). The autoload budget (D-017) is
+  unchanged; `WorldRuntime` stays the map/player coordinator (no God object).
+- **Referential integrity deferred to Phase 06.** SECT endpoints are structurally supported but
+  NOT validated against a real `SectState` (there isn't one yet). No fake SectState is created.
+- **Character visual pipeline is presentation-only + data-driven.** `CharacterVisualProfileData`
+  (referenced by the existing `CharacterTemplateData.sprite_set_ref` — a presentation ref NOT
+  copied into `CharacterState`) + a `CharacterVisualComponent` that reads movement facing and
+  renders a 4-direction sheet (nearest filter, anchored at the feet; `CHARACTER_ART_BIBLE.md`).
+  `MovementComponent` stays the movement authority; the visual never mutates domain state. Four
+  self-made CC0-equivalent prototype archetype sheets (player/female cultivator/elder/merchant,
+  `tools/gen_prototype_assets.py`), a preview scene that is NOT the first scene, and the player
+  wired to its `sprite_set_ref`. A missing/invalid profile fails loud and keeps the static
+  fallback sprite.
+- **Narrative anchor only.** `docs/NARRATIVE_DIRECTION.md` + `docs/CHARACTER_ART_BIBLE.md` are
+  design documents — no story/dialogue/quest engine; all content original to Aetheria.
+
+**Consequence:** relationships are a tested, serializable, deterministic domain graph behind one
+mutation path and one domain signal, ready for NPC/Dialogue/Quest/Sect/WorldSim/UI/MP to consume;
+the character visual pipeline turns a template's `sprite_set_ref` into an on-screen sprite with no
+domain leak; the game flow and autoload budget are unchanged. D-005 (save) / D-007 (combat) remain
+Open; Phase 06 (Sect) adds the real `SectState` + relationship referential validation.
+
+---
+
 ## How to add a decision
 Append `D-00N — <title> — <status> (date)` with Context / Options / Decision /
 Consequence (or Blocking). Never silently change a shipped decision — mark the old one

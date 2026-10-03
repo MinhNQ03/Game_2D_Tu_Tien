@@ -155,3 +155,26 @@ simulation (§5 schedule, `WORLD_SIMULATION.md`), relationships/sect/faction aut
 (`RELATIONSHIP_SYSTEM.md`/`SECT_SYSTEM.md`), spawning of non-player characters, dialogue, and
 save orchestration (`SaveService`, Phase 23 — `CharacterState.to_dict/from_dict` is the ready
 seam). No character controller beyond the existing Player composition.
+
+## 11. Visual pipeline (Phase 05, D-026)
+
+Phase 05 adds the presentation-side **character visual pipeline** (the domain tiers §3 are
+unchanged — a `CharacterState` still carries NO sprite/presentation data):
+
+- `CharacterVisualProfileData` (`src/data/characters/character_visual_profile_data.gd`, a
+  `Resource`) — the §5 `sprite_set_ref` target: a directional sprite sheet (4 cardinal frames
+  at a `16×24` baseline), `frame_size`, and a feet anchor. Authored per archetype under
+  `data/characters/visual/*.tres`. Style rules: `docs/CHARACTER_ART_BIBLE.md`.
+- `CharacterVisualComponent` (`src/presentation/characters/character_visual_component.gd`, a
+  `Node2D`) — renders the profile and reacts to a facing/moving state pushed by the owner. It
+  reads NO gameplay rules and never mutates `CharacterState`; `MovementComponent` stays the
+  movement authority (the component only picks the direction frame).
+- The Player resolves its bound template's `sprite_set_ref` into this component
+  (`set_visual_profile_from_ref` → `_apply_visual_profile`), replacing the scene's static
+  prototype sprite; a missing/invalid profile fails loud and keeps the static fallback.
+
+The §6 realization diagram's "Sprite/AnimationComponent" is now concretely the
+`CharacterVisualComponent`. Still NOT implemented: portrait rendering, layered/modular
+compositing, and non-idle/walk animation states (combat phase). Relationships (§5) are now a
+real domain graph (`docs/RELATIONSHIP_SYSTEM.md` §11) that a Character references by
+`instance_id`; Character still holds no relationship store of its own.

@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="RelationshipConfigData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/relationship/relationship_config_data.gd" id="1_cfg"]
+
+[resource]
+script = ExtResource("1_cfg")
+dimensions = [{
+"id": &"affinity",
+"default": 0,
+"min": -100,
+"max": 100
+}, {
+"id": &"trust",
+"default": 0,
+"min": 0,
+"max": 100
+}, {
+"id": &"respect",
+"default": 0,
+"min": 0,
+"max": 100
+}, {
+"id": &"fear",
+"default": 0,
+"min": 0,
+"max": 100
+}, {
+"id": &"rivalry",
+"default": 0,
+"min": 0,
+"max": 100
+}, {
+"id": &"debt",
+"default": 0,
+"min": -100,
+"max": 100
+}]
+history_capacity = 32

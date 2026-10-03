@@ -120,3 +120,15 @@ Template:
 Performance budgets become `tests/performance/` assertions where feasible (e.g. frame
 time or orphan count under a scripted combat scenario), so regressions surface in CI
 rather than during play. See `docs/TEST_PLAN.md`.
+
+> **Phase 05 note (D-026, no optimization, just discipline):** the relationship graph does NOT
+> run per-frame work. `RelationshipRuntime` has no `_process`/`_physics_process`; the graph
+> changes only on explicit mutations (events/commands), never on a tick. The `RelationshipStore`
+> indexes by edge id and by endpoint, so `find_between`/`find_for_endpoint` are indexed lookups
+> rather than full-graph scans; a mutation touches only the one edge; history is bounded by
+> `RelationshipConfigData.history_capacity` so it can't grow without limit. Decay/propagation
+> and off-screen relationship evolution are deferred to the World Simulation phase (batched
+> ticks), not real-time. The character visual pipeline builds its Sprite2D once per profile and
+> only changes the frame index on a facing change — no per-frame texture load or node creation.
+> No numbers were profiled; this is design discipline (`§1 Measure first`), so the optimization
+> log (§4) stays empty.

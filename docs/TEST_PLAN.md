@@ -286,3 +286,33 @@ Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates h
 every push. **Note:** these tests were authored and statically validated (GDScript
 diagnostics clean); the agent cannot run Godot locally (D-009), so the authoritative run
 is CI.
+
+**Phase 05 added Relationship + character-visual tests (high-risk: relationship state / save seam):**
+- `tests/unit/relationship/test_relationship_config.gd` — `RelationshipConfigData` validity
+  (authored config valid + the six documented dimension ranges; empty/out-of-range-default/
+  min>max/duplicate-id/negative-capacity rejected; clamp + defaults map).
+- `tests/unit/relationship/test_relationship_graph.gd` — the core graph (matrix B–U): typed
+  endpoint equality + serialize round-trip, edge create + invalid/self/duplicate reject,
+  dimension defaults, delta mutation + config clamp + zero-effect no-op + unknown-dimension and
+  missing-edge rejection, directed-edge query, symmetric query from either side + duplicate
+  symmetric reject + reverse-side update hitting one edge, **debt perspective** (symmetric
+  reverse negates only `debt`; directed never flips; non-directional dims never flip), history
+  append + capacity bound + no history on no-op, `relationship_changed` payload (one per real
+  change, none on no-op), **deterministic** event→delta from the authored catalog + unknown-
+  event reject, serialize round-trip + index rebuild after hydrate + byte-stable re-serialize,
+  malformed-snapshot fail-closed (dup id / bad endpoint / unknown dim / out-of-range), and edge
+  removal updating both indexes.
+- `tests/unit/relationship/test_relationship_rules.gd` — rule + catalog validity, authored
+  rules mapped, duplicate `event_kind` rejected, optional relationship_type gate.
+- `tests/integration/test_relationship_runtime.gd` — the `RelationshipRuntime` subsystem loads
+  config + rules, builds a usable store/service, drives an authored event end-to-end, and drops
+  the graph on `end_session` (fresh instance; Nodes freed, L-019).
+- `tests/e2e/world_flow_case.gd` (extended) — asserts a `RelationshipRuntime` exists under
+  `Main/Systems`, is session-active after New Game, is NOT an autoload, is the SAME instance
+  across all 20 hub↔field round trips, and ends its session on return to menu.
+- `tests/unit/presentation/test_character_visual.gd` — the four archetype
+  `CharacterVisualProfileData` load + validate at the 16×24 baseline; the
+  `CharacterVisualComponent` builds a nearest-filtered, feet-anchored, 4-frame Sprite2D; facing
+  selects the direction frame (diagonal→cardinal, zero keeps last facing); a missing/invalid
+  profile fails clearly; the preview builds all four; and a `CharacterState` serializes NO
+  presentation data (the layering invariant).

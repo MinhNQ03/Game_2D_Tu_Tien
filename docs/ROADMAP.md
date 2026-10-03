@@ -14,8 +14,8 @@
 > green). Phase 04 (Character core + early UI/presentation foundation) is **CLOSED**
 > (D-023 character core + D-024 UI hardening, both CI-verified on `7615d88`, all 9 gates
 > green, 163 tests passed / 0 failed; D-025 close-out then removed a residual
-> 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship) is
-> NOT STARTED.
+> 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship core +
+> early character visual pipeline) is **IN PROGRESS** (D-026). Phase 06 (Sect) is NOT STARTED.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -118,10 +118,26 @@ to three un-freed `InputService` Nodes in `tests/unit/core/test_input_display_la
 unfreed `Node` pins its GDScript + native class; L-019) and fixed (`svc.free()` in each
 method). **Phase 04 is CLOSED.** Phase 05 (Relationship) is NOT STARTED.
 
-## Phase 05 — Relationship System
+## Phase 05 — Relationship System *(IN PROGRESS — D-026)*
 Serializable relationship graph (`docs/RELATIONSHIP_SYSTEM.md`): `RelationshipEdge` with
 affinity/trust/respect/fear/rivalry/debt + type; Char↔Char, Player↔Char, Char↔Sect.
-**Exit:** edges create/update/query + round-trip save; event→delta deterministic; tests pass.
+Data-driven dimension config (`RelationshipConfigData`), a single mutation path
+(`RelationshipService`) with clamp + bounded history + a domain `relationship_changed`
+signal, a deterministic event→delta rule contract (`RelationshipRuleData`), a canonical
+`RelationshipStore` (indexed by edge id + endpoint, symmetric canonicalization, signed-debt
+perspective), and a `RelationshipRuntime` node under `Main/Systems` (NOT an autoload) that
+survives map swaps. Phase 05 ALSO starts the **early character visual pipeline**
+(presentation-only): `CharacterVisualProfileData` + a `CharacterVisualComponent` reading
+movement/facing, the Player wired to its template `sprite_set_ref`, 4 archetype visual
+profiles, and a preview scene — plus the design anchors `docs/CHARACTER_ART_BIBLE.md` and
+`docs/NARRATIVE_DIRECTION.md`.
+Scope guard: structural Character+Sect endpoints only (no real SectState — Phase 06); NO
+NPC/Dialogue/Quest/Story/Faction/WorldSim/Combat/Inventory/Save/networking; NO new autoload;
+the current game flow (Menu → New Game → Hub ↔ Field → Menu) is unchanged and no preview/
+sandbox becomes the first scene.
+**Exit:** edges create/update/query + round-trip save; event→delta deterministic; symmetric
++ debt semantics tested; RelationshipRuntime persists across hub↔field; character visual
+pipeline loads 4 profiles from data; tests pass headless with 0 leaks; CI green.
 
 ## Phase 06 — Sect System
 Core sects (`docs/SECT_SYSTEM.md`): `SectTemplateData` + `SectState`, membership/ranks,
