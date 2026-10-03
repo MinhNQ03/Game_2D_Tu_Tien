@@ -45,10 +45,24 @@ jobs:
 
       - name: Import project
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Generates the .godot resource cache. Not swallowed: if import fails, the job
           # fails here.
-          ./${GODOT_BIN} --headless --path . --import
+          # CI diagnostic (steering 10 §1.3, D-032 Phase-06 bring-up): capture import output so
+          # a malformed resource's real error is readable via annotations (logs need auth,
+          # D-009). Tee to a file + the step summary, surface ERROR/SCRIPT ERROR as annotations.
+          set +e
+          ./${GODOT_BIN} --headless --path . --import 2>&1 | tee _import.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "### Import output" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 60 _import.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E 'ERROR|SCRIPT ERROR|Parse Error|Cannot|Failed' _import.log | while read -r line; do
+            echo "::error::[import] ${line}"
+          done || true
+          exit "$rc"
 
       - name: GDScript parse check (whole project)
         run: |
