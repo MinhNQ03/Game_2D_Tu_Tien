@@ -155,25 +155,43 @@ lines: Array[DialogueLine]        # { speaker_key, text_key, choices }
 choices: Array[Choice]            # { text_key, set_flags, goto_line, requires }
 ```
 
-### MapData (`map_*`)
+### MapData (`map_*`)  — IMPLEMENTED (`src/data/maps/map_data.gd`, D-021 + D-022)
 ```
-id, name_key
+id: StringName                    # stable map identity (never changes once shipped)
+name_key: String                  # localization key for the display name
 scene_key: String                 # SceneRouter registry key for this map's content scene
-tileset_ref: ...                  # (deferred to the art pass; prototype maps use vector art)
-spawn_tables: Array[SpawnEntry]   # { enemy_id, weight, max }  (deferred; no spawns in Phase 03)
-exits: Array[MapExit]             # { to_map_id, entry_point }
+scene_path: String                # resource path of the content scene (registered under scene_key)
+bounds: Rect2                     # playable area; the active Camera2D's limits derive from this
+default_spawn_id: StringName      # spawn marker used when an exit gives no entry_point
+exits: Array[MapExit]             # outgoing edges, each { id, to_map_id, entry_point }
+tileset_ref: ...                  # (deferred: maps render via the shared prototype TileSet now)
+spawn_tables: Array[SpawnEntry]   # (deferred to Enemy/AI phase; no spawns yet)
 music: StringName                 # (deferred to the audio pass)
 ```
 
-> **Phase 03 note (D-021):** `MapData` references its content scene by a stable
-> `scene_key: String` (resolved through `SceneRouter`'s registry), **not** a direct
-> `scene: PackedScene` ref. This keeps `MapData` a pure data resource with no hard
-> `PackedScene` dependency, and keeps the single transition entry point (SceneRouter)
-> authoritative for *how* a scene loads. `tileset_ref`, `spawn_tables`, and `music` are
-> declared here as the intended shape but are **not implemented in Phase 03** (world/map
-> traversal only); they land with the art/audio/combat passes. Implemented in Phase 03:
-> `id`, `name_key`, `scene_key`, `exits`. `MapExit` = `{ to_map_id: StringName,
-> entry_point: StringName }`.
+### MapExit  — IMPLEMENTED (`src/data/maps/map_exit.gd`, D-022)
+```
+id: StringName                    # stable, unique within the owning MapData
+to_map_id: StringName             # destination map (a MapData.id in the same catalog)
+entry_point: StringName           # destination spawn marker ("" = destination default_spawn_id)
+```
+
+### MapCatalog  — IMPLEMENTED (`src/data/maps/map_catalog.gd`, D-022)
+```
+maps: Array[MapData]              # every map in a world grouping; the data-driven source of truth
+```
+
+> **Phase 03 source-of-truth (D-021 + D-022):** `MapData` is AUTHORITATIVE for its identity,
+> content scene, playable bounds, default spawn, and exits. It references the scene by a
+> stable `scene_key` + a `scene_path` (the one place the map↔scene binding is authored),
+> **not** a direct `scene: PackedScene` — so `MapData` stays a pure data resource and
+> `SceneRouter` owns *how* a scene loads. A `MapCatalog` resource
+> (`data/maps/map_catalog.tres`) lists all maps; `WorldRuntime` loads ONLY the catalog path,
+> validates it, and registers `scene_key -> scene_path` with the router. Adding a map =
+> author `MapData` + a content scene + add to the catalog, with NO core-code edit. A map
+> scene's `MapExitZone` references a `MapExit` by `id` only; the destination is never
+> duplicated in the scene. `tileset_ref`/`spawn_tables`/`music` are declared as the intended
+> shape but not yet implemented (they land with the art/audio/combat passes).
 
 ### ChapterData (`chapter_*`)
 ```

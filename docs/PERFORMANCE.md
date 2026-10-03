@@ -3,8 +3,10 @@
 > Performance principles + the mandatory log of every non-trivial optimization.
 > Rules summary: `.kiro/steering/05-performance-testing.md`.
 >
-> Status: no gameplay yet, so no profiler measurements exist. The optimization log (§4) is
-> empty on purpose.
+> Status (Phase 03): early gameplay exists (Player + World/Map), but NO formal profiler
+> benchmark has been run yet, so the optimization log (§4) is empty on purpose. The
+> performance guards that DO exist are correctness/no-leak assertions (map-transition
+> orphan-node checks), not tuned optimizations — those are not optimization-log entries.
 >
 > **Phase 01 note (no optimization, just discipline):** the Core services were written to
 > avoid needless continuous work. None of the 5 autoloads (`EventBus`, `GameState`,
@@ -92,7 +94,9 @@ Template:
 - Links:     commit / test / DECISIONS entry
 ```
 
-> No entries yet — nothing has been measured because no gameplay exists.
+> No entries yet — gameplay exists (Player + World/Map) but no profiler benchmark has been
+> run, so there is nothing *measured* to log. Correctness/no-leak guards (e.g. the
+> map-transition orphan-node assertions) are tests, not optimization-log entries.
 
 ## 5. Relationship to tests
 

@@ -4,10 +4,15 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> Status: **foundation / design only.** No gameplay is implemented yet. `main.tscn` is a
-> non-gameplay **bootstrap** scene (`Main → Systems / World / UI`, script
-> `src/bootstrap/main.gd`; D-010), not an empty node and not gameplay. Everything below is
-> the intended flow and the system contracts that implementation must satisfy.
+> Status (as of Phase 03): **early gameplay implemented.** `main.tscn` is the **bootstrap**
+> scene (`Main → Systems / World / UI`, script `src/bootstrap/main.gd`; D-010). The CURRENT
+> runnable flow is: START → MAIN MENU → NEW GAME → WORLD SESSION (`WorldRuntime`) → **HUB
+> MAP** → the player moves (semantic input) and uses map exits to travel **HUB ↔ FIELD**,
+> then `open_menu` returns to the menu. Combat exists only in the Phase-02 player sandbox
+> (not reachable from New Game now). The branching-story / dialogue / quest / NPC flow below
+> is still the *design target* for later phases; the "Prologue" box in §3 is a future story
+> scene, NOT the current first gameplay scene. Everything beyond world/map traversal remains
+> the intended flow + the contracts implementation must satisfy.
 
 ## 1. High-level flow
 

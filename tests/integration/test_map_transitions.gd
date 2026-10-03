@@ -14,15 +14,15 @@ const MapDataScript := preload("res://src/data/maps/map_data.gd")
 
 const HUB := "res://data/maps/map_hub.tres"
 const FIELD := "res://data/maps/map_field.tres"
-const HUB_SCENE := "res://src/gameplay/maps/hub_map.tscn"
-const FIELD_SCENE := "res://src/gameplay/maps/field_map.tscn"
 
 
+## Register scenes from the AUTHORITATIVE MapData (scene_key -> scene_path), exactly as
+## WorldRuntime does from the catalog — no hard-coded scene paths here (D-022).
 func _register(router: Node) -> void:
 	var hub: MapData = load(HUB) as MapData
 	var field: MapData = load(FIELD) as MapData
-	router.register_scene(hub.scene_key, HUB_SCENE)
-	router.register_scene(field.scene_key, FIELD_SCENE)
+	router.register_scene(hub.scene_key, hub.scene_path)
+	router.register_scene(field.scene_key, field.scene_path)
 
 
 func test_both_maps_load_through_router() -> void:
@@ -116,5 +116,42 @@ func test_unknown_map_key_is_rejected() -> void:
 	assert_eq(router.get_current_key(), "", "no scene became current on a rejected request")
 	assert_eq(host.get_child_count(), 0, "nothing loaded under host on rejection")
 
+	free_node(host)
+	free_node(router)
+
+
+func test_rejected_transition_leaves_previous_scene_intact() -> void:
+	# This is the INVARIANT WorldRuntime's transactional rollback depends on (D-022): a
+	# rejected transition must NOT free or change the currently-loaded scene, so WorldRuntime
+	# can safely re-attach the persistent player to the still-alive old map.
+	var router: Node = RouterScript.new()
+	var host := Node2D.new()
+	add_to_tree(router)
+	add_to_tree(host)
+	router.set_scene_host(host)
+	_register(router)
+
+	assert_true(router.request_transition("map_hub", &"world_main", &"map_hub"), "hub loaded")
+	var current_before: Node = router.get_current_scene()
+	assert_not_null(current_before, "a scene is current")
+
+	# Request a transition that the router will reject (unregistered key).
+	assert_false(router.request_transition("map_ghost", &"world_main", &"map_ghost"),
+		"rejected transition returns false")
+
+	# The previous scene is untouched: same instance, still current, still the only child,
+	# and the router is not stuck in a transitioning state.
+	assert_eq(router.get_current_key(), "map_hub", "current key unchanged after rejection")
+	assert_eq(router.get_current_scene(), current_before, "same scene instance after rejection")
+	assert_true(is_instance_valid(current_before), "previous scene not freed on rejection")
+	assert_eq(host.get_child_count(), 1, "still exactly one content scene after rejection")
+	assert_false(router.is_transitioning(), "router not left transitioning after rejection")
+
+	# And a subsequent valid transition still works (not wedged).
+	assert_true(router.request_transition("map_field", &"world_main", &"map_field"),
+		"a valid transition still works after a rejected one")
+
+	router.clear_current_scene()
+	await scene_tree.process_frame
 	free_node(host)
 	free_node(router)

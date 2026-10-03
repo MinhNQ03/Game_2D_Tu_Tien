@@ -9,9 +9,10 @@
 >
 > **35 phases (00–34).** Phase 00 (Foundation) is **CLOSED** (CI-verified on `651c16f`,
 > 2026-10-02). Phase 01 (Core Framework) is **CLOSED** (CI-verified 2026-10-02). Phase 02
-> (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) is **CLOSED**
-> (CI-verified 2026-10-03 on `b7cc9b6`, all 9 gates green). Phase 04 (Character) is **NOT
-> STARTED** and is the next phase.
+> (Player) is **CLOSED** (CI-verified 2026-10-02). Phase 03 (World / Map) was **REOPENED**
+> for hardening (D-022: data-driven MapCatalog, authoritative MapData/MapExit, transactional
+> transitions, real prototype art, 20× round-trip real-input E2E); it is CLOSED again only
+> once all CI gates are green on the hardening commit. Phase 04 (Character) is **NOT STARTED**.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -74,7 +75,16 @@ transitions; two content scenes `src/gameplay/maps/hub_map.tscn` + `field_map.ts
 art). New Game now enters the hub map (the Phase-02 sandbox is retained but no longer first
 scene). Tests: `tests/unit/world/test_map_data.gd`, `tests/integration/test_map_transitions.gd`
 (no-leak), `tests/gameplay/test_map_scenes.gd` (structure), and the dedicated E2E
-`tests/e2e/run_world_flow.gd` (9th CI gate). **CLOSED** — all 9 gates green on `b7cc9b6`.
+`tests/e2e/run_world_flow.gd` (9th CI gate).
+
+**Reopen / hardening (2026-10-03, D-022):** `MapData` became the full source of truth
+(`scene_path`, `bounds`, `default_spawn_id`, exit `id`s) + a data-driven `MapCatalog`;
+`WorldRuntime` loads only the catalog (no hard-coded paths); `MapExitZone` carries only
+`exit_id`; camera limits derive from `MapData.bounds`; the spawn contract fails loud; map
+transitions are transactional (rollback on failure); real self-made prototype pixel-art
+replaces the Polygon2D placeholders (`Sprite2D` player + `TileMapLayer` tileset, 16px); the
+world E2E drives the REAL input pipeline across 20 round trips with per-round + no-leak
+invariants. **CLOSED only when all CI gates are green on the hardening commit.**
 
 > **Core social/world systems come next (Phases 04–08), BEFORE Combat and before
 > NPC/Dialogue/Quest/Story**, because those depend on them (D-011, `GAME_FLOW.md` §1b).

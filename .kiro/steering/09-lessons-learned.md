@@ -186,18 +186,38 @@
   was a silent no-op. CI failed 5 commits in a row with the SAME message
   (`interact actually changed the active map (was 'map_hub')`) because the fixes targeted the
   input side, not the real cause (the sensor signal never firing).
-- **Rule:** **In a `-s` SceneTree E2E, do not depend on Area2D `body_entered`/physics overlap
-  or on precise `is_action_just_pressed` frame timing.** To exercise a sensor-gated path,
-  **emit the node's own real signal** (`zone.emit_signal("body_entered", player)`) — that
-  drives the REAL handler (`_on_exit_body_entered` → `_active_exit`) deterministically, and
-  everything downstream (gate, `exit_requested`, WorldRuntime, SceneRouter) still runs for
-  real. For an edge-triggered input gate, press the action and **retry the handler dispatch a
-  bounded number of frames** until the observable effect happens, instead of guessing the one
-  frame the edge is live. Keep a self-diagnosing assertion that names the exact failed link.
+- **Rule (refined in the Phase-03 reopen, D-022):** In a `-s` SceneTree E2E, the two
+  headless concessions are DIFFERENT and must be handled differently:
+  - **Area2D physics overlap:** headless won't reliably raise `body_entered`, so emit the
+    node's OWN real signal (`zone.emit_signal("body_entered", player)`). This runs the REAL
+    handler (`_on_exit_body_entered` → `_active_exit`); it is a documented substitution of
+    the engine-internal sensor only.
+  - **Semantic input:** this is the boundary under test, so DO drive it for real —
+    `Input.parse_input_event` with a real `InputEventKey` built from the action's binding —
+    and let the engine update the InputMap action state + dispatch `_input`/`_unhandled_input`.
+    **Do NOT call `node._unhandled_input(...)` directly** to simulate gameplay input (that
+    bypasses the boundary the test claims to cover — see L-017). To absorb frame-timing
+    variance, feed the key and poll the observable effect over a bounded number of frames.
+  - Keep a self-diagnosing assertion that names the exact failed link.
 - **Also (process):** Godot is not runnable locally (D-009), so a CI-only failure must be
-  diagnosed by **reading the code for the root cause**, not by push-and-pray. If a gate fails
-  opaquely, make it print the runner output (job summary + `::error::` annotations) ONCE so
-  the real message is readable via the API, then fix the true cause — don't push repeated
-  speculative fixes.
-- **Fixed:** Phase 03 (D-021 follow-up). See `tests/e2e/world_flow_case.gd`
-  (`_stand_in_exit` + bounded interact retry). CI green on `b7cc9b6`.
+  diagnosed per `.kiro/steering/10-ci-failure-protocol.md` — read the code for the root
+  cause, make the gate print its output ONCE if unreadable, then fix the true cause. No
+  guess-and-push.
+- **Fixed:** Phase 03 reopen (D-022). See `tests/e2e/world_flow_case.gd` (`_fire_action`
+  via `Input.parse_input_event`; sensor `body_entered` emit only).
+
+## L-017 — An E2E can be green while bypassing the boundary it claims to test
+- **Symptom:** the first Phase-03 world E2E called `MapBase._unhandled_input(...)` directly
+  (and even considered calling `WorldRuntime.request_map_transition` / `SceneRouter`) to make
+  the transition happen. The assertions passed, but the test proved nothing about the real
+  input pipeline (InputMap → engine dispatch → `_unhandled_input` → InputService gate): a
+  break anywhere in that chain would still show green.
+- **Rule:** **An E2E MUST drive the boundary it advertises.** If it says "real semantic
+  input", feed real input events through the engine (`Input.parse_input_event`), never call
+  the gameplay handler directly. Engine-nondeterministic internals (headless Area2D overlap)
+  may be substituted ONLY at the exact documented point (emit the sensor's own signal), never
+  by shortcutting the whole boundary. If a test can't exercise the real boundary, say so and
+  cover it elsewhere — don't fake a green.
+- **Fixed:** Phase 03 reopen (D-022). `tests/e2e/world_flow_case.gd` drives interact/open_menu
+  via `Input.parse_input_event` real key events + a real movement step; only the exit sensor's
+  `body_entered` is emitted (L-016).

@@ -7,9 +7,11 @@
 > Status: strategy defined; runner + framework in place. Through Phase 03 the suite covers
 > the core framework (lifecycle/scene-router/input/localization/event-bus), the Player core
 > (stats/health/movement/damage + player↔dummy integration), and the World/Map system
-> (MapData validation, no-leak map transitions, map-scene structure), plus three dedicated
-> real-application E2E processes (app-flow, player-flow, world-flow). Gameplay beyond
-> world/map traversal is added phase by phase.
+> (MapData/MapCatalog validation, data-driven catalog, source-of-truth scene↔data checks,
+> no-leak + transactional-rollback map transitions, data-driven camera bounds, persistent
+> player across 20 round trips), plus three dedicated real-application E2E processes
+> (app-flow, player-flow, world-flow). Gameplay beyond world/map traversal is added phase
+> by phase.
 
 ## 1. Test layers
 
@@ -210,25 +212,34 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
   `TrainingDummy.reset_dummy()`.
 
 **Phase 03 added World/Map tests (high-risk: map transitions):**
-- `tests/unit/world/test_map_data.gd` — `MapData` / `MapExit` validation + the authored
-  `map_hub.tres` / `map_field.tres` are well-formed and the exit graph is bidirectional
-  (hub ↔ field).
+- `tests/unit/world/test_map_data.gd` — `MapData` / `MapExit` / `MapCatalog` validation
+  (D-022): required fields incl. `scene_path` exists, positive `bounds`, `default_spawn_id`,
+  unique exit `id`s; catalog unique map ids / scene_keys + no dangling exit; `find_exit(id)`
+  + `build_lookup`; and the authored `map_hub.tres`/`map_field.tres`/`map_catalog.tres` are
+  valid with a bidirectional hub↔field graph.
 - `tests/integration/test_map_transitions.gd` — the REAL `SceneRouter` (fresh instance,
-  never the live autoload) loads both maps, and **repeated** hub↔field transitions do not
-  grow the orphan-node count (`Performance.OBJECT_ORPHAN_NODE_COUNT`); clearing frees the
-  active scene; an unregistered `scene_key` is rejected (negative path).
-- `tests/gameplay/test_map_scenes.gd` — the hub/field scenes are structurally sound
-  (PlayerHost, Spawns, Exits→MapExitZone, Walls, Camera2D, HUD/MapLabel, localized name key,
-  the `exit_requested` + `return_to_menu_requested` signals) WITHOUT entering the tree (no
-  shared-InputService mutation).
+  never the live autoload) registers scenes from `MapData.scene_path`, loads both maps, and
+  **repeated** hub↔field transitions do not grow the orphan-node count; clearing frees the
+  active scene; an unregistered key is rejected; and the **transactional-rollback invariant**
+  (a rejected transition leaves the current scene intact + router not stuck + a later valid
+  transition still works) is asserted — this is what `WorldRuntime`'s rollback relies on.
+- `tests/gameplay/test_map_scenes.gd` — SOURCE-OF-TRUTH consistency between each map scene
+  and its `MapData` (D-022): every `MapExitZone.exit_id` resolves to a `MapExit`, the
+  `default_spawn_id` marker exists, each exit's `entry_point` lands on a real marker in the
+  destination scene, the structure (Camera2D / Visual/Ground `TileMapLayer` / Collision/Walls
+  / PlayerHost / Spawns / Exits / HUD/MapLabel) is present, and the floor renders via the
+  prototype `TileMapLayer` (not a Polygon2D). Instantiated but NOT entered into the tree
+  (no shared-InputService mutation).
 - `tests/e2e/run_world_flow.gd` + `tests/e2e/world_flow_case.gd` — **dedicated isolated
-  process** (9th CI gate): boots the real app, New Game → hub map, then drives a REAL
-  `interact` InputEvent (`Input.parse_input_event`) → `MapBase._unhandled_input` →
-  `InputService` → `WorldRuntime` → `SceneRouter` to move hub↔field repeatedly with the
-  persistent player surviving each swap and no orphan-node growth, then a REAL `open_menu`
-  returns cleanly to the menu with the player freed. The Phase-02 player-flow E2E now
-  instantiates `player_sandbox.tscn` directly (New Game no longer routes to it); the
-  app-flow E2E now expects `map_hub` as the first scene.
+  process** (9th CI gate): boots the real app, New Game → hub map, does a REAL semantic
+  movement step, then drives interact / open_menu through the REAL input pipeline
+  (`Input.parse_input_event` key events — NEVER a direct `_unhandled_input` call) across
+  **20 round trips**, asserting per round: map changed, the SAME persistent Player instance,
+  exactly one Player, player in the active map, one content scene, GameState map id == router,
+  camera limits from `MapData.bounds`, router not stuck — plus no orphan-node growth; then a
+  REAL `open_menu` returns to the menu and frees the player. The only headless concession is
+  emitting the exit sensor's own `body_entered` signal (L-016/L-017). The Phase-02 player
+  E2E instantiates `player_sandbox.tscn` directly; the app-flow E2E expects `map_hub` first.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push. **Note:** these tests were authored and statically validated (GDScript

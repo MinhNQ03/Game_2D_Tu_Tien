@@ -5,6 +5,7 @@
 
 [sub_resource type="Resource" id="MapExit_to_field"]
 script = ExtResource("2_mapexit")
+id = &"exit_to_field"
 to_map_id = &"map_field"
 entry_point = &"from_hub"
 
@@ -13,4 +14,7 @@ script = ExtResource("1_mapdata")
 id = &"map_hub"
 name_key = "UI_MAP_HUB_NAME"
 scene_key = "map_hub"
+scene_path = "res://src/gameplay/maps/hub_map.tscn"
+bounds = Rect2(16, 16, 448, 288)
+default_spawn_id = &"spawn_default"
 exits = [SubResource("MapExit_to_field")]

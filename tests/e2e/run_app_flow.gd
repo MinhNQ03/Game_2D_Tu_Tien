@@ -44,7 +44,7 @@ func _run() -> void:
 
 	var failures: Array = case.call("get_failures")
 	if failures.is_empty():
-		print("[e2e] PASS — real application flow (boot -> menu -> new game -> prologue)")
+		print("[e2e] PASS — real application flow (boot -> menu -> new game -> hub map)")
 		print("[e2e] RESULT: PASS")
 		quit(0)
 		return

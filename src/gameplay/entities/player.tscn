@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://src/gameplay/components/health_component.gd" id="3_health"]
 [ext_resource type="Script" path="res://src/gameplay/components/movement_component.gd" id="4_move"]
 [ext_resource type="Resource" path="res://data/stats/player_stats.tres" id="5_statblock"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player_proto.png" id="6_sprite"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(24, 24)
@@ -15,9 +16,9 @@ script = ExtResource("1_player")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_player")
 
-[node name="Visual" type="Polygon2D" parent="."]
-color = Color(0.3, 0.7, 1, 1)
-polygon = PackedVector2Array(-12, -12, 12, -12, 12, 12, -12, 12)
+[node name="Visual" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = ExtResource("6_sprite")
 
 [node name="StatsComponent" type="Node" parent="."]
 script = ExtResource("2_stats")

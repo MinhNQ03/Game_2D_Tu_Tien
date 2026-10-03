@@ -6,21 +6,32 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (Phase 01, 2026-10-02):** the repo has a bootable, non-gameplay Core
-> runtime skeleton:
+> **CURRENT STATE (Phase 03, 2026-10-03):** the repo boots to a playable world/map slice:
 > - Bootstrap scene `main.tscn` (root `Main`, script `src/bootstrap/main.gd`, children
 >   `Systems`/`World`/`UI`); `Main` only coordinates boot and wiring.
-> - 5 infrastructure autoloads (D-017): `EventBus`, `GameState` (lifecycle + session),
->   `Localization` (vi/en), `InputService` (semantic intent + gating), `SceneRouter`
->   (single transition entry).
-> - A localized main-menu shell (`src/presentation/menus/`) and a non-gameplay first-scene
->   shell (`src/presentation/scenes/prologue_shell`).
-> - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`.
-> - Custom test runner + framework (`tests/`), parse checker (`tools/parse_check.gd`), CI.
+> - 5 infrastructure autoloads (D-017): `EventBus`, `GameState` (lifecycle + session +
+>   current location), `Localization` (vi/en), `InputService` (semantic intent + gating),
+>   `SceneRouter` (single transition entry).
+> - A localized main-menu shell (`src/presentation/menus/`). New Game starts a **world
+>   session** via `WorldRuntime` (a gameplay NODE under `Main/Systems`, D-021/D-022).
+> - **Player** (`src/gameplay/entities/player.*`): a composition `CharacterBody2D` with
+>   Stats/Health/Movement components, moved via semantic input, with a prototype `Sprite2D`.
+> - **World/Map (Phase 03, D-022):** `MapData` + `MapExit` + `MapCatalog` data Resources
+>   (`src/data/maps/`, authored in `data/maps/*.tres`) are the source of truth; `WorldRuntime`
+>   loads the catalog, registers scenes with `SceneRouter`, owns ONE persistent per-session
+>   Player, and runs transactional map transitions. Two map scenes (`hub_map`, `field_map`)
+>   use `MapBase` + `MapExitZone` + a `TileMapLayer` prototype tileset; walls are static
+>   collision; the camera limits come from `MapData.bounds`.
+> - Phase-02 Player Sandbox (`src/gameplay/sandbox/`) is retained for combat validation but
+>   is not reachable from New Game. The `prologue_shell` is retained but no longer first.
+> - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`; prototype
+>   pixel-art under `assets/` (self-made, D-022).
+> - Custom test runner + framework (`tests/`), parse checker (`tools/parse_check.gd`), CI
+>   (9 gates incl. a dedicated world/map E2E process).
 >
-> **Not yet present (TARGET):** any gameplay/domain/data system (player, combat, character,
-> sect, …), `Config`/`RNG`/`SaveService` autoloads, persistence, and content Resources.
-> Those are the TARGET sections below.
+> **Not yet present (TARGET):** Character/Relationship/Sect/World-Sim domain systems,
+> Combat, Inventory/Equipment/Skill/Cultivation, Dialogue/Quest/Story, `Config`/`RNG`/
+> `SaveService` autoloads, persistence, and most content Resources. Those are TARGET below.
 
 ## 1. Goals
 
@@ -148,17 +159,18 @@ res://
 					  components/stats_* health_* movement_component.gd  # [exists, Phase 02]
 					  sandbox/player_sandbox.*            # [exists, Phase 02 — temporary]
 					  world/world_runtime.gd              # [exists, Phase 03]
-					  maps/map_base.gd map_exit_zone.gd hub_map.* field_map.*  # [exists, Phase 03]
+					  maps/map_base.gd map_exit_zone.gd prototype_ground.gd hub_map.* field_map.*  # [exists, Phase 03]
 					  spawning/                            # [TARGET]
-	data/             maps/map_exit.gd map_data.gd        # [exists, Phase 03] (map Resources)
+	data/             maps/map_exit.gd map_data.gd map_catalog.gd  # [exists, Phase 03] (map Resources)
 	presentation/     menus/  scenes/              # [exists]  ui/ hud/ fx/  [TARGET]
   data/               stats/player_stats.tres training_dummy_stats.tres  # [exists, Phase 02]
-					  maps/map_hub.tres map_field.tres                   # [exists, Phase 03]
+					  maps/map_hub.tres map_field.tres map_catalog.tres prototype_tileset.tres  # [exists, Phase 03]
 					  items/ skills/ enemies/ bosses/ techniques/        # [TARGET]
 					  pets/ realms/ quests/ dialogue/ chapters/
-  assets/             sprites/ tiles/ ui/ audio/ fonts/
+  assets/             sprites/characters/player_proto.png  tiles/prototype/prototype_tileset.png  # [exists, Phase 03 prototype]
+					  ui/ audio/ fonts/                    # [TARGET]
   locale/             vi.* en.*            # translation tables
-  tools/              parse_check.gd                       # [exists] CI tooling
+  tools/              parse_check.gd  gen_prototype_assets.py   # [exists] CI + asset tooling
   tests/              [exists] framework/ unit/ integration/ gameplay/ smoke/ performance/
 ```
 

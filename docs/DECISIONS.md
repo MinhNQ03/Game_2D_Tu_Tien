@@ -493,7 +493,9 @@ drift into World Simulation (that is Phase 08).
 - **`MapData.scene_key: String` (not `scene: PackedScene`).** The DATA_SCHEMA sketch listed
   a direct `PackedScene` ref; instead a map carries a stable router `scene_key`, keeping
   `MapData` a pure data resource and SceneRouter authoritative for loading. DATA_SCHEMA
-  synced. `MapExit = { to_map_id, entry_point }`.
+  synced. *(The initial Phase-03 MapData was `scene_key` + `exits{to_map_id, entry_point}`;
+  the Phase-03 reopen D-022 made MapData the full source of truth — adding `scene_path`,
+  `bounds`, `default_spawn_id`, exit `id`s, and a `MapCatalog`. See D-022.)*
 - **Persistent per-session Player owned by WorldRuntime.** The player is parented under
   WorldRuntime between maps (so a SceneRouter content-swap can't free it) and re-parented
   into each map's `PlayerHost` at a named spawn marker on arrival. The map is detached from
@@ -502,16 +504,65 @@ drift into World Simulation (that is Phase 08).
 - **No new EventBus signal.** `map_entered`/`map_exited` are deferred to the Quest/Story
   phases that will actually consume them (L-005: no speculative signal). Current state is
   read via `scene_transition_completed` + `GameState.get_current_map_id()`.
-- **Prototype map art = self-made vector placeholders** (Polygon2D floor + StaticBody2D
-  walls), not a binary PNG TileSet; recorded in `ASSET_LICENSES.md`, base tile size 32px.
-  A real TileSet + PNG lands in the art pass. The Phase-02 sandbox + Phase-01 prologue are
-  retained in the repo but are no longer the first scene; New Game now enters the hub map
-  via WorldRuntime.
+- **Prototype map art.** *(Initially self-made vector placeholders. The Phase-03 reopen
+  D-022 replaced them with real self-made prototype PNG textures + a prototype `TileSet` +
+  a `Sprite2D` player; base tile size is now 16px. See D-022 + `ASSET_LICENSES.md`.)* The
+  Phase-02 sandbox + Phase-01 prologue are retained in the repo but are no longer the first
+  scene; New Game now enters the hub map via WorldRuntime.
 **Consequence:** a new map is `MapData` + a content scene registered in WorldRuntime's
 catalog — no core edit (extensibility rule holds). Multiplayer seam stays clean (map/world
 state has no presentation coupling). Verified by a 9th CI gate: `tests/e2e/run_world_flow.gd`
 drives the real New Game → hub → interact → field → back → menu flow with a no-orphan-leak
-assertion. No new autoloads.
+assertion. No new autoloads. **Superseded in part by D-022 (Phase-03 reopen hardening).**
+
+## D-022 — Phase 03 reopen: MapData is the full source of truth; data-driven catalog; transactional transitions; real prototype art — **Accepted** (2026-10-03, Phase 03 hardening)
+**Context:** Phase 03 passed CI but was closed earlier than its acceptance contract (D-021
+left several seams half-done). The reopen hardens them so CODE + TESTS + CI + DOCS + ART all
+agree before CLOSED. No Phase-04 (Character) work is done here.
+**Decisions:**
+- **MapData is AUTHORITATIVE, not a thin key holder.** It gains `scene_path` (the one place
+  the map↔scene binding is authored), `bounds: Rect2` (playable area; camera limits derive
+  from it), `default_spawn_id`, and `exits` with stable `id`s. Validation checks all fields
+  + `ResourceLoader.exists(scene_path)` + positive bounds + unique exit ids.
+- **`MapCatalog` resource (`src/data/maps/map_catalog.gd` + `data/maps/map_catalog.tres`) is
+  the data-driven map list.** It validates unique map ids / scene_keys and that every exit
+  `to_map_id` resolves within the catalog (no dangling edges). `WorldRuntime` holds ONLY
+  `MAP_CATALOG_PATH`; it loads + validates the catalog and registers `scene_key -> scene_path`
+  with SceneRouter. **Adding a 3rd map = author data + scene + add to catalog, no WorldRuntime
+  edit** (verified by test; the old hard-coded `MAP_CATALOG` array is gone).
+- **MapExit is the authoritative destination; `MapExitZone` carries only `exit_id`.** The
+  scene no longer duplicates `to_map_id`/`entry_point` (that caused identity drift). MapBase
+  resolves `exit_id -> MapExit` and emits `exit_requested` from the data. A structural test
+  fails on any zone whose `exit_id` doesn't resolve.
+- **Camera limits are data-driven** from `MapData.bounds` via `MapBase.apply_map_data` (set
+  by WorldRuntime on arrival); not duplicated per scene. Tested: each map's limits == bounds,
+  and the limits update on transition.
+- **Spawn contract fails loud.** Empty `entry_point` → `default_spawn_id`; an *explicit*
+  `entry_point` that doesn't exist is a content bug and is reported loudly — NO silent
+  fallback to default. Tested (structure + cross-map entry-point existence).
+- **Transactional map transition.** `WorldRuntime._enter_map` snapshots the player's
+  parent + position, parks the player, calls the router; on router failure it ROLLS BACK
+  (player restored to the still-alive old map, active map / GameState unchanged, router not
+  left transitioning), on success the old scene is freed and the SAME player instance is
+  placed at the new spawn. The router-level invariant it relies on (a rejected transition
+  leaves the current scene intact) is a permanent integration test.
+- **Real prototype art (replaces Polygon2D placeholders).** Self-made, project-owned PNGs
+  generated by `tools/gen_prototype_assets.py` (pure-Python, runtime-independent):
+  `assets/sprites/characters/player_proto.png` (16×24) and
+  `assets/tiles/prototype/prototype_tileset.png` (48×16, grass/path/wall). Player `Visual`
+  is a `Sprite2D`; maps render a `TileMapLayer` (`PrototypeGround`) using
+  `data/maps/prototype_tileset.tres`. **Base tile size = 16px**, nearest filter, mipmaps off
+  (`06-art-assets.md`). Static wall collision unchanged. Recorded in `ASSET_LICENSES.md`.
+- **E2E through the REAL input pipeline.** `tests/e2e/world_flow_case.gd` drives interact /
+  open_menu via `Input.parse_input_event` real key events (never a direct `_unhandled_input`
+  call), does a real semantic movement step, and runs **20 round trips** asserting per-round:
+  map changed, SAME player instance id, exactly one Player, player in active map, one content
+  scene, GameState map id == router, router not stuck — plus no orphan-node growth. The only
+  headless concession is emitting the exit sensor's own `body_entered` signal (L-016/L-017).
+**Consequence:** the map system is genuinely data-driven and extensible, transitions are
+safe under failure, the player provably persists, and the maps render real textures. Verified
+by the unit/integration/gameplay suites + the dedicated world E2E gate. Partially supersedes
+D-021's data-model + art bullets. No new autoloads; D-005/D-007 remain Open.
 
 ---
 
