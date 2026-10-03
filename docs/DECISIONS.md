@@ -818,6 +818,50 @@ step (prototype → production foundation), NOT Phase 06. D-005 (save) / D-007 (
 
 ---
 
+## D-030 — Phase 05 close-out + visual-foundation hardening: documentation drift reconciled, Continuous Visual Integration adopted, D-029 visual contracts tested, one small UI polish — **Accepted** (2026-10-03, close-out; not a phase)
+
+**Context:** After the D-027/D-028/D-029 visual follow-ups, several docs still described an
+older state (UI as self-made prototype with Mana Soul as the "intended upgrade"; world art as a
+flat prototype; ROADMAP Phase 05 "7 gates" while CI has 9; Phase 25 titled plainly "UI" implying
+production UI starts there). The D-029 decorative-prop contract had no automated guard, and the
+UI had not had a dedicated polish pass since the asset swap. This close-out hardens all of that
+WITHOUT starting Phase 06 or changing any gameplay/domain behaviour.
+
+**Decisions:**
+- **Documentation reconciled to the real current state.** ROADMAP: Phase 05 now reads *all 9
+  gates green* (matching `ci.yml`), and Phase 25 is renamed **"UI Consolidation / Production
+  Polish"** — explicitly a final consolidation/polish pass, NOT where production UI begins (and
+  NOT a rescue rewrite). `06-art-assets.md`, `ARCHITECTURE.md` and `GAME_FLOW.md` now state: UI =
+  CC0 Xianxia Pixel Pack live (D-028, superseding the retired self-made `mana_soul` prototype;
+  Mana Soul is no longer an "intended upgrade"), world/character art = **production-foundation**
+  (D-029, not flat prototype, not final), Relationship core CLOSED (Phase 05), player visual =
+  presentation-only, `CharacterState` = domain-only, Phase 06 NOT STARTED.
+- **Continuous Visual Integration is now binding policy** (`docs/ROADMAP.md`): visuals grow
+  incrementally; each feature phase owns the first usable visual treatment of its own feature;
+  no placeholder chains; replace by asset/component/theme layer (via the `UITheme`/`UIPalette`
+  seam) rather than rewriting; a visual swap never changes gameplay/domain truth; assets are
+  chosen per domain (no single giant pack forced on the whole game, no collage). Phase 25 is the
+  consolidation/polish endpoint, not a rescue.
+- **D-029 visual contracts guarded by tests.** `tests/gameplay/test_map_scenes.gd` now asserts
+  each map has a `Visual/Decor` with ≥1 nearest-filtered `Sprite2D` whose texture is a known prop
+  at its authored pixel size (lantern 16×24, tree 32×32, rock/planter 16×16), that `Visual/Ground`
+  is still the first child of `Visual`, and that the ground `TileMapLayer` is nearest-filtered.
+  Character-side contracts (16×24, nearest, feet-anchor, 4-direction, no presentation leak) were
+  already covered by `test_character_visual.gd`.
+- **One small UI polish pass, seam-only.** Through `UIPalette`/`UITheme` only (no new screen, no
+  gameplay, no architecture change): added a restrained muted-gold `COLOR_TITLE` token for the
+  menu title plaque (clear warm step above body/subtitle, tu-tiên seal tone), tightened the type
+  scale into a cleaner three-step hierarchy (subtitle 18→20, hint 15→14), and evened button
+  vertical padding (10→12). `title > body` and all other UI-theme invariants stay green.
+
+**Consequence:** the docs/steering no longer contradict the shipped visual state, the visual
+foundation policy is explicit for every future phase, the D-029 look is regression-guarded, and
+the live UI reads a step more intentionally as a tu-tiên interface. No gameplay/domain change, no
+new autoload, no new system; Phase 06 (Sect) remains NOT STARTED. D-005 (save) / D-007 (combat)
+remain Open.
+
+---
+
 ## How to add a decision
 Append `D-00N — <title> — <status> (date)` with Context / Options / Decision /
 Consequence (or Blocking). Never silently change a shipped decision — mark the old one

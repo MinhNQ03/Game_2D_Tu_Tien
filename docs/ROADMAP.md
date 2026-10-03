@@ -16,13 +16,26 @@
 > green, 163 tests passed / 0 failed; D-025 close-out then removed a residual
 > 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship core +
 > early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
-> all 7 gates green). Phase 06 (Sect) is NOT STARTED.
+> all 9 gates green). Phase 06 (Sect) is NOT STARTED.
 >
 > **Visual follow-up (2026-10-03, D-028 — not a phase):** the production UI art was upgraded
 > from the self-made prototype set to the CC0 **Xianxia Pixel Pack** UI (`assets/ui/xianxia/`)
 > through the existing `UITheme`/`UIPalette` seam (no gameplay/domain change, no new systems).
 > A full local asset audit (5 packs classified A/B/C/D) is recorded in `docs/ASSET_LICENSES.md`.
 > This does not advance the phase sequence; Phase 06 remains NOT STARTED.
+>
+> **Visual follow-up (2026-10-03, D-029 — not a phase):** the currently-visible WORLD (hub +
+> field tileset) and CHARACTER sprite were redrawn in-place from the first flat prototype to a
+> **production-foundation** tier (shaded + dithered tiles, a fully-outlined shaded top-down
+> figure, and self-made Chinese garden-courtyard props as `Visual/Decor` decorations) — same
+> files/dimensions/seams, pure presentation, no gameplay/domain/data change. Still self-made /
+> project-owned; a bespoke art pass can replace it later. Phase 06 remains NOT STARTED.
+>
+> **Close-out (2026-10-03, D-030 — not a phase):** Phase 05 close-out + visual-foundation
+> hardening — documentation drift reconciled (this ROADMAP, `ARCHITECTURE`, `GAME_FLOW`,
+> `06-art-assets` steering), **Continuous Visual Integration** adopted as policy (below), the
+> D-029 visual contracts guarded by tests, and one small UI polish pass through the existing
+> `UITheme`/`UIPalette` seam. No gameplay/domain change, no new systems; Phase 06 NOT STARTED.
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -146,7 +159,7 @@ sandbox becomes the first scene.
 symmetric + debt semantics tested; RelationshipRuntime persists across hub↔field (world E2E,
 20 round trips) and is NOT an autoload; character visual pipeline loads 4 profiles from data +
 the player renders its `sprite_set_ref`; the current game flow + first scene are unchanged.
-All 7 CI gates green on `21ef622` (2026-10-03). No new autoload; SECT endpoints structural-only
+All 9 CI gates green on `21ef622` (2026-10-03). No new autoload; SECT endpoints structural-only
 (Phase 06 adds the real `SectState` + referential validation).
 
 ## Phase 06 — Sect System
@@ -243,10 +256,21 @@ localization *foundation* and mechanism land in Phase 01 / D-008; this phase is 
 content sweep.)
 **Exit:** key-coverage test green for both languages; no literal UI strings in code.
 
-## Phase 25 — UI
-Production UI/HUD stack, menus, the full input-modal ownership built on the Phase 01
-input-gating rule.
-**Exit:** core screens navigable; UI never drives gameplay truth; tests pass.
+## Phase 25 — UI Consolidation / Production Polish
+**This is NOT where production UI begins.** Under Continuous Visual Integration (below), each
+feature phase already ships the first usable visual treatment of its own UI, and the UI
+foundation (`UITheme`/`UIPalette` + reusable components + the CC0 Xianxia asset set) is live
+from D-024/D-028. Phase 25 is the *final consolidation/polish* pass over everything that was
+built incrementally — NOT a rescue rewrite. It covers:
+- cross-screen consistency (one coherent tu-tiên language across every screen built so far),
+- a UX audit (navigation, modal ownership on the Phase 01 input-gating rule, flow friction),
+- accessibility / readability (contrast, font sizing, Vietnamese + English legibility),
+- responsive / layout behaviour (anchors, safe-area, resolution scaling),
+- asset cleanup (retire leftover placeholders, dedupe, confirm provenance),
+- visual rhythm (spacing/margins/hierarchy harmonised project-wide),
+- final polish.
+**Exit:** every screen built in earlier phases is consistent, navigable and readable; UI never
+drives gameplay truth; no placeholder-only screen remains; tests pass.
 
 ## Phase 26 — Audio / VFX
 Music, SFX, feedback, transition polish.
@@ -292,6 +316,36 @@ authoritative-state seams. Domain rules remain transport-agnostic.
 ## Phase 34 — Multiplayer Gameplay
 *Only if 33 succeeds.* Extend networking across the authoritative systems incrementally.
 **Exit:** co-op/PvE slice runs authoritatively; offline remains fully playable.
+
+## Continuous Visual Integration
+
+Binding policy (adopted D-030). Visuals are grown incrementally alongside features — they are
+NOT deferred to a single late phase.
+
+- **UI and assets are upgraded incrementally.** Do not wait for Phase 25.
+- **Each feature phase owns the first usable visual treatment of its own feature.** When a
+  gameplay feature actually exposes something to the player, that feature's UI/visual is done
+  **in that same phase** — not stubbed now and dressed later.
+- **No placeholder chains.** Do not build placeholder UI → placeholder UI → a Phase-25 rewrite.
+- **Replace by layer, not by rewrite.** Prefer swapping a single asset/component/theme token
+  over rewriting the whole UI; `UITheme` / `UIPalette` / the reusable components remain the
+  abstraction seam that makes a per-layer swap possible.
+- **Asset replacement never changes gameplay/domain truth.** A visual swap is presentation-only
+  (`.kiro/steering/03-architecture.md`); domain/data stay authoritative and untouched.
+- **Assets are chosen per domain.** Character / world / UI / VFX / icons are each selected to fit
+  the tu-tiên domain; do NOT force one giant asset pack to be the single source for the whole
+  game, and never assemble a collage of mismatched packs.
+- **Phase 25 is consolidation/polish, not a rescue rewrite** (see Phase 25 above).
+
+Per-phase examples (illustrative — never force a phase to build presentation it doesn't need):
+- **Phase 06 (Sect):** sect-related UI/visual treatment *only if* the feature actually exposes
+  it to the player.
+- **Phase 07 (Faction/Politics):** faction/politics panels if needed.
+- **Phase 09 (Combat):** combat HUD / hit feedback / VFX if combat exposes presentation.
+- **Phase 13 (Item):** inventory UI. **Phase 14 (Equipment):** equipment UI.
+- **Phase 15 (Skill):** skill UI. **Phase 17 (NPC):** NPC/shop UI.
+- **Phase 18 (Dialogue):** dialogue UI. **Phase 19 (Quest):** quest UI.
+- **Phase 20 (Story):** story UI.
 
 ## Guardrails across all phases
 - Offline is the source of truth until the multiplayer phases are explicitly approved.

@@ -31,6 +31,10 @@ const COLOR_SURFACE_DISABLED := Color(0.11, 0.12, 0.13)
 ## Accent (focus ring, title underline, key-badge border) — a jade/qì green.
 const COLOR_ACCENT := Color(0.36, 0.78, 0.62)
 
+## Title treatment — a muted antique gold (tu-tiên seal/plaque tone). Warmer than the jade
+## accent and clearly above body text in hierarchy; restrained, not a bright yellow (D-030).
+const COLOR_TITLE := Color(0.84, 0.72, 0.42)
+
 ## Primary readable text.
 const COLOR_TEXT := Color(0.92, 0.94, 0.96)
 
@@ -46,11 +50,13 @@ const COLOR_BADGE := Color(0.17, 0.20, 0.24)
 
 # --- Type scale --------------------------------------------------------------
 
+# Type scale (D-030 polish): a clearer three-step hierarchy — a large plaque title, a
+# distinct subtitle step above body, then body/hint. title > body stays invariant (tested).
 const FONT_SIZE_TITLE := 48
-const FONT_SIZE_SUBTITLE := 18
+const FONT_SIZE_SUBTITLE := 20
 const FONT_SIZE_BUTTON := 22
 const FONT_SIZE_BODY := 16
-const FONT_SIZE_HINT := 15
+const FONT_SIZE_HINT := 14
 const FONT_SIZE_BADGE := 14
 
 
@@ -61,9 +67,10 @@ const SPACE_MD := 12
 const SPACE_LG := 24
 const SPACE_XL := 40
 
-## Button inner padding (horizontal, vertical).
+## Button inner padding (horizontal, vertical). Vertical nudged up (D-030) so a 22px button
+## label sits with even breathing room top/bottom instead of feeling cramped.
 const BUTTON_PAD_H := 28
-const BUTTON_PAD_V := 10
+const BUTTON_PAD_V := 12
 
 ## Corner radius for surfaces/badges (used by the fallback flat styleboxes only).
 const CORNER_RADIUS := 6

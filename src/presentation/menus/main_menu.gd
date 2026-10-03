@@ -81,7 +81,9 @@ func _build_ui() -> void:
 	_title = Label.new()
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_TITLE)
-	_title.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
+	# Muted antique gold for the title plaque (D-030 polish) — a clear warm step above the
+	# off-white body/subtitle, reading as a tu-tiên seal rather than flat default text.
+	_title.add_theme_color_override("font_color", UIPalette.COLOR_TITLE)
 	box.add_child(_title)
 
 	_subtitle = Label.new()

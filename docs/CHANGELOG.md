@@ -8,6 +8,26 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Phase 05 close-out + visual-foundation hardening (D-030)
+- **Documentation drift reconciled:** ROADMAP Phase 05 now reads *all 9 gates green* (matches
+  `ci.yml`, was "7"); Phase 25 renamed **"UI Consolidation / Production Polish"** (final polish,
+  not where production UI begins, not a rescue rewrite). `06-art-assets.md`, `ARCHITECTURE.md`
+  and `GAME_FLOW.md` updated: live UI = CC0 Xianxia (D-028, the retired `mana_soul` prototype and
+  the "Mana Soul intended upgrade" wording removed), world/character art = production-foundation
+  (D-029, not flat prototype, not final), Relationship core CLOSED, Phase 06 NOT STARTED.
+- **Continuous Visual Integration adopted** as a binding ROADMAP policy: visuals grow per feature
+  phase, replace by asset/component/theme layer (via `UITheme`/`UIPalette`), never change
+  gameplay/domain truth, chosen per domain (no giant single pack, no collage); Phase 25 is the
+  consolidation/polish endpoint.
+- **D-029 visual contracts tested:** `test_map_scenes.gd` now guards `Visual/Decor` (≥1 nearest-
+  filtered prop `Sprite2D` with a known texture at authored size — lantern 16×24, tree 32×32,
+  rock/planter 16×16), that `Visual/Ground` is still the first child, and ground TileMapLayer is
+  nearest-filtered. (+4 test methods; character contracts already covered.)
+- **UI polish (seam-only, no new screen):** added a muted-gold `COLOR_TITLE` token for the menu
+  title plaque, tightened the type scale (subtitle 18→20, hint 15→14), evened button vertical
+  padding (10→12) — all through `UIPalette`/`UITheme`. No gameplay/domain change; UI-theme
+  invariants (incl. title > body) stay green.
+
 ### 2026-10-03 — Production-foundation world + character art for the playable flow (D-029)
 - **World tileset redrawn (in place):** `assets/tiles/prototype/prototype_tileset.png` (same
   48×16 three-column strip, same `prototype_tileset.tres` / `prototype_ground.gd`) upgraded from

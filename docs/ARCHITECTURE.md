@@ -6,8 +6,12 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (Phase 04, 2026-10-02):** the repo boots to a playable world/map slice
-> where the player is a real Character, with a UI foundation:
+> **CURRENT STATE (through Phase 05 close-out, 2026-10-03):** Phase 05 (Relationship core +
+> early character visual pipeline) is **CLOSED** (D-026); Phase 06 (Sect) is **NOT STARTED**.
+> The live UI is the CC0 Xianxia Pixel Pack set (D-028) and the visible world/character art is
+> at the **production-foundation** tier (D-029) — both presentation-only, no gameplay/domain
+> change. The repo boots to a playable world/map slice where the player is a real Character,
+> with a UI foundation:
 > - Bootstrap scene `main.tscn` (root `Main`, script `src/bootstrap/main.gd`, children
 >   `Systems`/`World`/`UI`); `Main` only coordinates boot and wiring.
 > - 5 infrastructure autoloads (D-017): `EventBus`, `GameState` (lifecycle + session +
@@ -16,7 +20,10 @@
 > - A localized main-menu shell (`src/presentation/menus/`). New Game starts a **world
 >   session** via `WorldRuntime` (a gameplay NODE under `Main/Systems`, D-021/D-022).
 > - **Player** (`src/gameplay/entities/player.*`): a composition `CharacterBody2D` with
->   Stats/Health/Movement components, moved via semantic input, with a prototype `Sprite2D`.
+>   Stats/Health/Movement components, moved via semantic input, rendered by a `Sprite2D`
+>   (production-foundation character art, D-029; presentation-only). The data-driven
+>   `CharacterVisualComponent` pipeline (D-026) resolves a `sprite_set_ref` → profile; the
+>   authoritative `CharacterState` carries NO presentation data.
 > - **Character core (Phase 04, D-023):** `CharacterTemplateData` (data, `src/data/characters/`)
 >   + `CharacterState` (domain, `src/domain/character/`, authoritative + serializable). The
 >   Player is a VIEW bound to ONE `CharacterState` that `WorldRuntime` owns for the session;
@@ -33,16 +40,23 @@
 >   (`src/data/maps/`, authored in `data/maps/*.tres`) are the source of truth; `WorldRuntime`
 >   loads the catalog, registers scenes with `SceneRouter`, owns ONE persistent per-session
 >   Player, and runs transactional map transitions. Two map scenes (`hub_map`, `field_map`)
->   use `MapBase` + `MapExitZone` + a `TileMapLayer` prototype tileset; walls are static
->   collision; the camera limits come from `MapData.bounds`.
+>   use `MapBase` + `MapExitZone` + a `TileMapLayer` tileset (production-foundation art, D-029)
+>   plus presentation-only `Visual/Decor` garden props; walls are static collision; the camera
+>   limits come from `MapData.bounds`.
+> - **Relationship (Phase 05, D-026):** a serializable relationship graph owned by a
+>   `RelationshipRuntime` node under `Main/Systems` (sibling of `WorldRuntime`, NOT an autoload)
+>   that starts with New Game and survives map swaps. Domain-only (`src/domain/relationship/`),
+>   single mutation path + domain `relationship_changed` signal; SECT endpoints are structural
+>   only (no `SectState` yet — Phase 06).
 > - Phase-02 Player Sandbox (`src/gameplay/sandbox/`) is retained for combat validation but
 >   is not reachable from New Game. The `prologue_shell` is retained but no longer first.
-> - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`; prototype
->   pixel-art under `assets/` (self-made, D-022).
+> - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`;
+>   production-foundation pixel-art under `assets/` (self-made world/character, D-029) + the
+>   CC0 Xianxia UI set (`assets/ui/xianxia/`, D-028).
 > - Custom test runner + framework (`tests/`), parse checker (`tools/parse_check.gd`), CI
 >   (9 gates incl. a dedicated world/map E2E process).
 >
-> **Not yet present (TARGET):** Relationship/Sect/Faction/World-Sim domain systems, Combat,
+> **Not yet present (TARGET):** Sect/Faction/World-Sim domain systems, Combat,
 > Inventory/Equipment/Skill/Cultivation mechanics (Character holds cultivation fields as
 > CONTRACT only), Dialogue/Quest/Story, non-player Character spawning + the EventBus character
 > events, `Config`/`RNG`/`SaveService` autoloads, persistence, and most content Resources.

@@ -40,6 +40,9 @@ func _assert_map_structure(scene: PackedScene, data_path: String) -> void:
 	assert_true(ground is TileMapLayer, "ground is a TileMapLayer (texture-based, not Polygon2D)")
 	if ground is TileMapLayer:
 		assert_not_null((ground as TileMapLayer).tile_set, "ground has a TileSet assigned")
+		# D-029: pixel-art tiles render nearest-filtered (no blur) like the rest of the world.
+		assert_eq((ground as TileMapLayer).texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+			"ground TileMapLayer is nearest-filtered (pixel art)")
 
 	# Boundary walls (static collision) under Collision/Walls.
 	var walls := map.get_node_or_null("Collision/Walls")
@@ -114,3 +117,63 @@ func test_hub_map_structure() -> void:
 
 func test_field_map_structure() -> void:
 	_assert_map_structure(FieldScene, FIELD_DATA)
+
+
+# --- D-029 decorative-prop visual contract (production-foundation art) --------
+# Each map renders presentation-only garden props under Visual/Decor. They must be nearest-
+# filtered Sprite2D with a real texture of the authored pixel dimensions — a decoration that
+# fails to load (null/wrong-size texture) is a visual regression even though it never touches
+# gameplay. STRUCTURAL ONLY (not added to the tree, like the structure test above).
+const EXPECTED_PROP_SIZES := {
+	"res://assets/sprites/props/prop_lantern.png": Vector2i(16, 24),
+	"res://assets/sprites/props/prop_tree.png": Vector2i(32, 32),
+	"res://assets/sprites/props/prop_rock.png": Vector2i(16, 16),
+	"res://assets/sprites/props/prop_planter.png": Vector2i(16, 16),
+}
+
+
+func _assert_decor_contract(scene: PackedScene, label: String) -> void:
+	var map: Node = scene.instantiate()  # NOT added to the tree
+	assert_not_null(map, "%s instantiates" % label)
+	if map == null:
+		return
+	# Ground must still be the FIRST child of Visual (node-path lookups depend on it).
+	var visual := map.get_node_or_null("Visual")
+	assert_not_null(visual, "%s has a Visual root" % label)
+	if visual != null and visual.get_child_count() > 0:
+		assert_eq(visual.get_child(0).name, StringName("Ground"),
+			"%s: Visual/Ground is still the first child" % label)
+	var decor := map.get_node_or_null("Visual/Decor")
+	assert_not_null(decor, "%s has a Visual/Decor container" % label)
+	if decor == null:
+		map.free()
+		return
+	var sprites := 0
+	for child in decor.get_children():
+		if not (child is Sprite2D):
+			continue
+		sprites += 1
+		var sprite := child as Sprite2D
+		assert_eq(sprite.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+			"%s decor '%s' is nearest-filtered (pixel art, no blur)" % [label, sprite.name])
+		assert_not_null(sprite.texture, "%s decor '%s' has a texture" % [label, sprite.name])
+		if sprite.texture == null:
+			continue
+		var tex_path := sprite.texture.resource_path
+		assert_true(EXPECTED_PROP_SIZES.has(tex_path),
+			"%s decor '%s' uses a known prop texture (%s)" % [label, sprite.name, tex_path])
+		if EXPECTED_PROP_SIZES.has(tex_path):
+			var want: Vector2i = EXPECTED_PROP_SIZES[tex_path]
+			var got := Vector2i(sprite.texture.get_width(), sprite.texture.get_height())
+			assert_eq(got, want,
+				"%s decor '%s' texture is authored size %s" % [label, sprite.name, str(want)])
+	assert_true(sprites >= 1, "%s has at least one decorative prop sprite" % label)
+	map.free()
+
+
+func test_hub_decor_contract() -> void:
+	_assert_decor_contract(HubScene, "hub")
+
+
+func test_field_decor_contract() -> void:
+	_assert_decor_contract(FieldScene, "field")

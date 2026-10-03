@@ -4,13 +4,17 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> Status (as of Phase 04): the player is now a real **Character** (one authoritative
-> `CharacterState` bound to the Player node, D-023), the in-map **HUD** shows the character's
-> identity + map name + localized control hints, and the main menu has a presentation pass.
-> UI hardening (D-024) dressed the menu + HUD in REAL pixel-art 9-slice panels/buttons with
-> graphic key badges ([E]/[Esc]) — a game UI, not default Godot controls.
-> The runnable flow is unchanged (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD);
-> the start map is now data-driven (`MapCatalog.start_map_id`). Below:
+> Status (through Phase 05 close-out, 2026-10-03): Phase 05 (Relationship core + early
+> character visual pipeline) is **CLOSED** (D-026); Phase 06 (Sect) is **NOT STARTED**. The
+> player is a real **Character** (one authoritative `CharacterState` bound to the Player node,
+> D-023), the in-map **HUD** shows the character's identity + map name + localized control hints,
+> and the main menu has a presentation pass. The live UI is the CC0 **Xianxia Pixel Pack** 9-slice
+> set (D-028, superseding the self-made prototype of D-024) with graphic key badges ([E]/[Esc]) —
+> a tu-tiên game UI, not default Godot controls. The visible world + player art is at the
+> **production-foundation** tier (D-029, presentation-only). The player sprite is data-driven via
+> `CharacterVisualProfileData` + `CharacterVisualComponent` (D-026), not a hard-coded sprite.
+> The runnable flow is unchanged (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
+> MENU); the start map is data-driven (`MapCatalog.start_map_id`). Below:
 >
 > Status (as of Phase 03): **early gameplay implemented.** `main.tscn` is the **bootstrap**
 > scene (`Main → Systems / World / UI`, script `src/bootstrap/main.gd`; D-010). The CURRENT
