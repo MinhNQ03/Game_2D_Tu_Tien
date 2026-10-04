@@ -187,3 +187,64 @@ func test_authored_sect_resource_ids_have_localized_names() -> void:
 			checked += 1
 	assert_true(checked > 0, "the authored catalog actually declares resources to check")
 	free_node(loc)
+
+
+## Phase-07 Faction keys (stance labels + panel chrome) must exist in BOTH languages so the
+## politics UI never shows a raw key or a blank (`07-localization.md`).
+func test_phase07_faction_chrome_keys_exist_in_both_languages() -> void:
+	var loc := _make()
+	var keys := [
+		"FACTION_STANCE_LOYALIST", "FACTION_STANCE_REFORMIST",
+		"FACTION_STANCE_RADICAL", "FACTION_STANCE_NEUTRAL",
+		"UI_FACTION_PANEL_TITLE", "UI_FACTION_PANEL_TOGGLE",
+		"UI_FACTION_PANEL_UNAVAILABLE", "UI_FACTION_PANEL_NONE",
+		"UI_FACTION_PANEL_STANCE", "UI_FACTION_PANEL_INFLUENCE",
+		"UI_FACTION_PANEL_SHARE", "UI_FACTION_PANEL_GOALS",
+		"UI_FACTION_PANEL_DOMINANT", "UI_FACTION_PANEL_CONTESTED",
+		"UI_FACTION_PANEL_SETTLED", "UI_FACTION_PANEL_DIRECTION",
+		"UI_FACTION_PANEL_YOUR_SIDE", "UI_FACTION_PANEL_NO_SIDE",
+		"UI_FACTION_PANEL_RELATION_ALLIED", "UI_FACTION_PANEL_RELATION_RIVAL",
+	]
+	for key in keys:
+		assert_true(loc.has_key(key), "faction key '%s' exists in the table" % key)
+		loc.set_language("en")
+		assert_ne(loc.t(key), key, "en value present for '%s'" % key)
+		loc.set_language("vi")
+		assert_ne(loc.t(key), key, "vi value present for '%s'" % key)
+	free_node(loc)
+
+
+## Every localization key in AUTHORED faction content must resolve in BOTH languages.
+##
+## A drift guard, not a fixed list: it reads the shipped catalog, so adding a faction (or a
+## goal) without adding its CSV rows fails the suite instead of showing the player a raw
+## `FACTION_*` token in the politics panel. Covers the faction name, its doctrine — the actual
+## argument it makes, which is the whole point of the panel — and every goal's display key.
+func test_authored_faction_content_is_fully_localized() -> void:
+	var loc := _make()
+	var cat := load("res://data/factions/faction_catalog.tres") as FactionCatalog
+	assert_not_null(cat, "the authored faction catalog loads")
+	if cat == null:
+		free_node(loc)
+		return
+	var checked := 0
+	for tmpl in cat.factions:
+		if tmpl == null:
+			continue
+		var required: Array[StringName] = [tmpl.name_key, tmpl.doctrine_key]
+		for goal in tmpl.goals:
+			if goal != null:
+				required.append(goal.name_key)
+		for key_name in required:
+			var key := String(key_name)
+			assert_true(loc.has_key(key),
+				"authored faction '%s' needs the display key '%s'" % [tmpl.id, key])
+			if not loc.has_key(key):
+				continue
+			loc.set_language("en")
+			assert_ne(loc.t(key), key, "en text present for '%s'" % key)
+			loc.set_language("vi")
+			assert_ne(loc.t(key), key, "vi text present for '%s'" % key)
+			checked += 1
+	assert_true(checked > 0, "the authored catalog actually declares keys to check")
+	free_node(loc)

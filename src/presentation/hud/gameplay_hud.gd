@@ -25,10 +25,12 @@ class_name GameplayHUD
 
 const PromptRowScript := preload("res://src/presentation/ui/components/ui_prompt_row.gd")
 const SectPanelScript := preload("res://src/presentation/sect/sect_panel.gd")
+const FactionPanelScript := preload("res://src/presentation/faction/faction_panel.gd")
 
 const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
 const SECT_PANEL_ACTION := &"sect_panel"
+const FACTION_PANEL_ACTION := &"faction_panel"
 
 ## Side of the small sect emblem chip in the identity panel. HUD-local: nothing else in the
 ## UI draws a chip this size, so it stays here rather than widening the shared palette.
@@ -55,6 +57,7 @@ var _map_label: Label
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
 var _sect_row: UIPromptRow
+var _faction_row: UIPromptRow
 
 # Compact sect chip in the identity panel (emblem + name + rank + reputation).
 var _sect_emblem: TextureRect
@@ -62,6 +65,11 @@ var _sect_name_label: Label
 var _sect_rank_label: Label
 # The toggleable Sect detail panel (owned here; hidden until the player opens it).
 var _sect_panel: SectPanel
+# The toggleable Sect Politics panel (Phase 07). Anchored on the opposite side of the screen
+# from the sect panel so the player can read membership and politics side by side rather than
+# having one cover the other.
+var _faction_panel: FactionPanel
+var _politics_view: SectPoliticsView = null  # read-only politics view; may be null
 
 
 func _ready() -> void:
@@ -220,6 +228,9 @@ func _build_ui() -> void:
 	_sect_row = PromptRowScript.new() as UIPromptRow
 	prompt_box.add_child(_sect_row)
 
+	_faction_row = PromptRowScript.new() as UIPromptRow
+	prompt_box.add_child(_faction_row)
+
 	_menu_row = PromptRowScript.new() as UIPromptRow
 	prompt_box.add_child(_menu_row)
 
@@ -236,6 +247,20 @@ func _build_ui() -> void:
 	_sect_panel.position = Vector2(-UIPalette.HUD_MARGIN, 0)
 	_sect_panel.visible = false
 	root.add_child(_sect_panel)
+
+	# --- Sect Politics panel (Phase 07): hidden until the player presses `faction_panel` ---
+	# Anchored CENTER_LEFT, opposite the sect panel, and growing END (rightwards) from the
+	# left edge. Anchors and growth go on the panel ITSELF, never on a wrapper: growth does
+	# not propagate to children, which is what pushed the Phase-06 sect panel off-screen
+	# (D-034). Both panels may be open at once by design — membership and politics are two
+	# halves of one question.
+	_faction_panel = FactionPanelScript.new() as FactionPanel
+	_faction_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	_faction_panel.grow_horizontal = Control.GROW_DIRECTION_END
+	_faction_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_faction_panel.position = Vector2(UIPalette.HUD_MARGIN, 0)
+	_faction_panel.visible = false
+	root.add_child(_faction_panel)
 
 
 # --- Builders ----------------------------------------------------------------
@@ -307,14 +332,32 @@ func set_sect_view(view: SectMembershipView) -> void:
 	_refresh()
 
 
-## Semantic `sect_panel` intent toggles the detail panel. Driven through InputService (gated
-## to GAMEPLAY context) — never a raw keycode (L-003). Read + handle locally, then mark the
-## input handled; no scene teardown happens here so this is a safe place to touch the viewport.
+## Push the read-only sect politics view (Phase 07). The owner (MapBase, fed by
+## WorldRuntime→FactionRuntime) rebuilds + pushes this on map arrival / politics change — NOT
+## per frame.
+func set_politics_view(view: SectPoliticsView) -> void:
+	_politics_view = view
+	if _faction_panel != null:
+		_faction_panel.set_view(view)
+
+
+## Semantic `sect_panel` / `faction_panel` intent toggles the matching panel. Driven through
+## InputService (gated to GAMEPLAY context) — never a raw keycode (L-003). Read + handle
+## locally, then mark the input handled; no scene teardown happens here so this is a safe
+## place to touch the viewport.
 func _unhandled_input(_event: InputEvent) -> void:
-	if _input == null or _sect_panel == null:
+	if _input == null:
 		return
-	if _input.call("is_gameplay_action_just_pressed", SECT_PANEL_ACTION):
+	var handled := false
+	if _sect_panel != null \
+			and _input.call("is_gameplay_action_just_pressed", SECT_PANEL_ACTION):
 		_sect_panel.visible = not _sect_panel.visible
+		handled = true
+	if _faction_panel != null \
+			and _input.call("is_gameplay_action_just_pressed", FACTION_PANEL_ACTION):
+		_faction_panel.visible = not _faction_panel.visible
+		handled = true
+	if handled:
 		var vp := get_viewport()
 		if vp != null:
 			vp.set_input_as_handled()
@@ -323,6 +366,11 @@ func _unhandled_input(_event: InputEvent) -> void:
 ## Is the Sect detail panel currently shown? (for tests)
 func is_sect_panel_open() -> bool:
 	return _sect_panel != null and _sect_panel.visible
+
+
+## Is the Sect Politics panel currently shown? (for tests)
+func is_faction_panel_open() -> bool:
+	return _faction_panel != null and _faction_panel.visible
 
 
 # --- Rendering ---------------------------------------------------------------
@@ -383,6 +431,11 @@ func _refresh_prompts() -> void:
 	if _sect_row != null:
 		var sect_key := _display_label(SECT_PANEL_ACTION)
 		_sect_row.set_prompt(sect_key, _text("UI_SECT_PANEL_TOGGLE"))
+	# Politics prompt: also always available. The player can read a sect's internal argument
+	# without belonging to a faction — that is how they decide whether to take a side at all.
+	if _faction_row != null:
+		var faction_key := _display_label(FACTION_PANEL_ACTION)
+		_faction_row.set_prompt(faction_key, _text("UI_FACTION_PANEL_TOGGLE"))
 
 
 func _display_label(action: StringName) -> String:

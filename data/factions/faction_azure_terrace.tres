@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="FactionTemplateData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/data/factions/faction_template_data.gd" id="1_tmpl"]
+[ext_resource type="Script" path="res://src/data/factions/faction_goal_data.gd" id="2_goal"]
+
+[sub_resource type="Resource" id="goal_keep_covenant"]
+script = ExtResource("2_goal")
+goal_id = &"goal_keep_covenant"
+name_key = &"FACTION_GOAL_KEEP_COVENANT"
+kind = 1
+priority = 3
+
+[sub_resource type="Resource" id="goal_hold_examination"]
+script = ExtResource("2_goal")
+goal_id = &"goal_hold_examination"
+name_key = &"FACTION_GOAL_HOLD_EXAMINATION"
+kind = 0
+priority = 2
+
+[resource]
+script = ExtResource("1_tmpl")
+id = &"faction_azure_terrace"
+parent_sect_id = &"sect_azure_cloud"
+name_key = &"FACTION_AZURE_TERRACE_NAME"
+doctrine_key = &"FACTION_AZURE_TERRACE_DOCTRINE"
+emblem_ref = ""
+stance = 0
+goals = [SubResource("goal_keep_covenant"), SubResource("goal_hold_examination")]
+influence_seed = 45
+starting_resources = {
+"spirit_stones": 260,
+"manpower": 90
+}
+default_allied_faction_ids = []
+default_rival_faction_ids = [&"faction_azure_open_road", &"faction_azure_frontier"]

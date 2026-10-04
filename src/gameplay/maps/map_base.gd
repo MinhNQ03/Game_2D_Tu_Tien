@@ -40,6 +40,7 @@ var _active_exit: MapExit = null       # the exit (data) the player currently st
 var _active_zone: MapExitZone = null   # which zone set _active_exit (for exit tracking)
 var _hud: GameplayHUD = null           # presentation overlay (name/map/hints); owned here
 var _sect_view: SectMembershipView = null  # cached read-only sect view (Phase 06); pushed in
+var _politics_view: SectPoliticsView = null  # cached read-only politics view (Phase 07)
 var _camera: Camera2D = null           # this map's camera; follows the player (D-036)
 var _follow_target: Node2D = null      # the player node the camera tracks (resolved lazily)
 
@@ -107,6 +108,16 @@ func set_sect_view(view: SectMembershipView) -> void:
 	_sect_view = view
 	if _hud != null:
 		_hud.set_sect_view(view)
+
+
+## Push the politics view of the player's sect into the HUD (Phase 07). Same contract as the
+## sect view above: MapBase caches it and forwards it, and stays agnostic about where it came
+## from. Cached so `refresh_hud()` can re-apply it to a FRESH HUD on the next map — without
+## the cache, walking to another map would silently empty the politics panel.
+func set_politics_view(view: SectPoliticsView) -> void:
+	_politics_view = view
+	if _hud != null:
+		_hud.set_politics_view(view)
 
 
 # --- Camera (data-driven limits from MapData.bounds; shared zoom baseline) ---
@@ -334,6 +345,9 @@ func _refresh_hud() -> void:
 	# Re-apply the cached sect view so a fresh HUD (new map) still shows the player's sect.
 	if _sect_view != null:
 		_hud.set_sect_view(_sect_view)
+	# Same for the politics view (Phase 07).
+	if _politics_view != null:
+		_hud.set_politics_view(_politics_view)
 
 
 ## Read the authoritative player CharacterState from the player realized in this map (or null

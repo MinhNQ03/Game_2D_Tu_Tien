@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="FactionTemplateData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/data/factions/faction_template_data.gd" id="1_tmpl"]
+[ext_resource type="Script" path="res://src/data/factions/faction_goal_data.gd" id="2_goal"]
+
+[sub_resource type="Resource" id="goal_widen_allocation"]
+script = ExtResource("2_goal")
+goal_id = &"goal_widen_allocation"
+name_key = &"FACTION_GOAL_WIDEN_ALLOCATION"
+kind = 2
+priority = 3
+
+[sub_resource type="Resource" id="goal_reread_covenant"]
+script = ExtResource("2_goal")
+goal_id = &"goal_reread_covenant"
+name_key = &"FACTION_GOAL_REREAD_COVENANT"
+kind = 1
+priority = 2
+
+[resource]
+script = ExtResource("1_tmpl")
+id = &"faction_azure_open_road"
+parent_sect_id = &"sect_azure_cloud"
+name_key = &"FACTION_AZURE_OPEN_ROAD_NAME"
+doctrine_key = &"FACTION_AZURE_OPEN_ROAD_DOCTRINE"
+emblem_ref = ""
+stance = 1
+goals = [SubResource("goal_widen_allocation"), SubResource("goal_reread_covenant")]
+influence_seed = 38
+starting_resources = {
+"spirit_stones": 140,
+"manpower": 150
+}
+default_allied_faction_ids = []
+default_rival_faction_ids = [&"faction_azure_terrace"]

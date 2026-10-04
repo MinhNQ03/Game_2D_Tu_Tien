@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="FactionCatalog" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/data/factions/faction_catalog.gd" id="1_cat"]
+[ext_resource type="Resource" path="res://data/factions/faction_azure_terrace.tres" id="2_terrace"]
+[ext_resource type="Resource" path="res://data/factions/faction_azure_open_road.tres" id="3_open_road"]
+[ext_resource type="Resource" path="res://data/factions/faction_azure_frontier.tres" id="4_frontier"]
+
+[resource]
+script = ExtResource("1_cat")
+factions = [ExtResource("2_terrace"), ExtResource("3_open_road"), ExtResource("4_frontier")]

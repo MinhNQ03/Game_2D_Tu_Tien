@@ -8,10 +8,14 @@
 > §8 contract (SectTemplateData/SectRankData/SectCatalog + SectState/SectStore/SectService +
 > SectRuntime, roster-authoritative membership D-015, resources/territory/reputation/influence,
 > alliance/enemy mirror to the relationship graph, serialization seam) plus a localized Sect UI
-> (HUD chip + detail panel + hub banner). **Factions & internal politics (§7) are NOT yet
-> implemented — that is Phase 07.** The §4 fields `factions`/`technique_ids`/`rules`/`secrets`/
-> `event_hooks`/`story_flags` remain design contract only (not modeled on `SectTemplateData`/
-> `SectState` yet; added when their phase needs them — anti-over-engineering).
+> (HUD chip + detail panel + hub banner).
+>
+> **Factions & internal politics (§7) are IMPLEMENTED as of Phase 07 (D-042)** — in their OWN
+> domain (`FactionState`/`FactionStore`/`FactionService` + `FactionRuntime`), not as a field on
+> `SectState`. A faction names its parent sect; the sect does not own a list of factions. That
+> keeps `SectState` unchanged and lets faction content be added without touching the sect domain.
+> The §4 fields `technique_ids`/`rules`/`secrets`/`event_hooks`/`story_flags` remain design
+> contract only (not modeled yet; added when their phase needs them — anti-over-engineering).
 
 ## 1. Why Sect is core
 
@@ -54,7 +58,11 @@ locations). No engine change — the extensibility invariant (`docs/GAME_FLOW.md
   carries `sect_id`/`sect_rank` on their `CharacterState`.
 - **Ranks:** `rank_ladder` (ordered Array of `{ rank_id, name_key, authority }`) —
   e.g. Outer Disciple → Inner Disciple → Core Disciple → Elder → Sect Master.
-- **Factions:** `factions` (Array[FactionState]) — internal politics (see §7).
+- **Factions:** internal politics (see §7). **As built (D-042) this is NOT a field on
+  `SectState`:** a `FactionState` names its `parent_sect_id` and lives in its own
+  `FactionStore`, keyed by faction id and indexed by parent sect. The sect does not own a list
+  of factions. That inversion keeps `SectState` unchanged by Phase 07, lets faction content be
+  authored without touching the sect domain, and means a sect with no factions costs nothing.
 - **Internal politics:** emergent from faction states + relationships (see §7).
 - **Resources:** `resources` (Dictionary: spirit stones, pills, materials, manpower).
 - **Territory:** `territory` (Array of region/map `id`s controlled).
@@ -99,40 +107,75 @@ Sect
 └── Faction C
 ```
 
-Each `FactionState` is data (no hard-coded faction):
+Each `FactionState` is data (no hard-coded faction). **IMPLEMENTED in Phase 07 (D-042)** —
+this is the shipped shape, not a sketch:
 
 ```
 FactionState:
   id: StringName
-  name_key: StringName
-  leader_ref: instance_id            # a character (often an elder)
-  member_refs: Array[instance_id]
-  goals: Array                       # structured goals (power, doctrine, secession, …)
-  influence: int                     # weight within the sect
-  resources: Dictionary              # faction-controlled assets
-  attitude_toward_player: int        # scalar, data (not hard-coded)
-  attitudes_toward_factions: Dictionary  # { other_faction_id -> scalar }
-  stance: StringName                 # LOYALIST / REFORMIST / RADICAL / NEUTRAL / ...
+  template_id: StringName            # the FactionTemplateData it was built from
+  parent_sect_id: StringName         # the sect it is internal to (required)
+  leader_ref: instance_id            # must be one of member_refs; &"" = leaderless
+  member_refs: Array[instance_id]    # a SUBSET of the parent sect's roster
+  goals: Array[StringName]           # authored goal ids (structured; see FactionGoalData)
+  influence: int                     # weight within the sect, bounded [0, 100]
+  resources: Dictionary              # faction-controlled assets (int >= 0)
+  stance: int                        # FactionTemplateData.Stance ordinal
+  allied_faction_ids / rival_faction_ids   # DECLARED politics, mirrored to graph edges
 ```
 
 **Internal politics are emergent, not scripted:** faction `influence`, `goals`, and the
-`attitudes_*` scalars (plus the Relationship graph among their leaders/members) drive
-outcomes like succession, schism, purge, or coup. These resolve as **rules over data**
-on world-simulation ticks (`docs/WORLD_SIMULATION.md`) and story events — never as a pile
-of per-sect booleans. Attitudes toward the player and toward other factions are explicit
-serializable scalars so the player can navigate (or exploit) sect politics.
+Relationship graph among the factions (and among their leaders/members) drive outcomes like
+succession, schism, purge, or coup. These resolve as **rules over data** on world-simulation
+ticks (`docs/WORLD_SIMULATION.md`) and story events — never as a pile of per-sect booleans.
+The Phase-07 rules shipped are `influence_share`, `dominant_faction_of` and `is_contested`,
+all deterministic with explicit tie-breaks and **no RNG** (the seeded seam is Phase 08, D-040).
 
-Faction↔Faction and Faction↔Player standings reuse the Relationship model
-(`docs/RELATIONSHIP_SYSTEM.md`) where a richer edge is useful; simple scalars live inline
-on the `FactionState` as above. (Which representation wins where is a detail to pin when
-the Faction phase is built; both are serializable.)
+### Standings are EDGES, not inline scalars (pinned, D-042)
+
+This section used to list `attitude_toward_player: int` and
+`attitudes_toward_factions: Dictionary` as inline `FactionState` fields, and left the choice of
+representation open ("a detail to pin when the Faction phase is built"). **That question is now
+closed: both are DROPPED and neither is implemented.** `FactionState` has no attitude storage.
+
+Faction↔Faction and Faction↔Player standings are **relationship edges**
+(`docs/RELATIONSHIP_SYSTEM.md`), with both endpoints typed `RelationshipEndpoint.Kind.FACTION`
+(or one `CHARACTER` for the player). The reason is not tidiness: `affinity` and `rivalry` are
+two of the **six frozen dimensions** (CL-12), already clamped by `RelationshipConfigData` and
+already carrying a bounded history log. An inline copy would answer "how does A feel about B" a
+second time, with no mechanism keeping the two in step — the exact defect **D-015** had to undo
+for sect membership.
+
+What `FactionState` *does* carry is the **declared** relation (`allied_faction_ids` /
+`rival_faction_ids`): a political fact the sect has announced, not a measured standing. Same
+split `SectState` already uses for declared ally/enemy, and `FactionService` keeps the
+declaration and the mirrored edge transactionally in step (relationship side first, checked;
+an existing edge of the wrong type is **retyped in place**, never destroyed — L-023).
+
+### Membership and the player (D-042)
+
+A faction seat requires **existing parent-sect membership** — the sect roster remains the single
+membership authority (D-015) — and a character may hold **one seat per sect**, which is what
+makes `CharacterState.faction_id` a valid single value. Phase 07 is that field's only writer.
+
+Phase 07 **enrols nobody**. The authored start sect is a scaffold (C-003); making it an authored
+*faction* allegiance would hand the player a political identity they never chose. Factions ship
+leaderless and memberless, `FactionRuntime.start_session` asserts that as a post-condition, and
+taking a side becomes a gameplay act from P-17 onward.
 
 ## 8. Serialization
 
-`SectState` (incl. all `FactionState`s) is persistent domain state, written to the save's
+`SectState` is persistent domain state, written to the save's
 `sects` section (`docs/SAVE_FORMAT.md`), keyed by sect `id`, referencing character
 `instance_id`s and other sect `id`s. No presentation data. Alliances/enmities are mirrored
 as Sect↔Sect relationship edges so there is one consistent graph.
+
+`FactionState` serializes **alongside** it, not inside it: `FactionStore.to_dict()` emits a
+`factions` list (sorted by id, so the snapshot is byte-stable), each entry carrying its own
+`parent_sect_id`. Declared faction politics is likewise mirrored as Faction↔Faction edges in the
+same graph, under the `faction_rel:` edge-id namespace so it can never collide with the
+`sect_rel:` mirror. Standings themselves are NOT serialized here — they are dimensions on those
+edges (D-042, see §7).
 
 ## 9. Performance (ties to World Simulation)
 
@@ -174,8 +217,30 @@ See `docs/TEST_PLAN.md`.
   read-only `SectMembershipView`. No raw ids reach the screen; resource ids resolve through
   `SECT_RESOURCE_*` keys with a localized generic fallback.
 
-**STILL A CONTRACT ONLY (not implemented):** internal factions and the politics engine,
-sect techniques/rules/secrets, sect events + event resolution, succession rules, recruitment,
-missions/contribution, and sect persistence through `SaveService`. Those belong to Phase 07
-(Faction/Politics) and later content phases (`docs/ROADMAP.md`). Nothing above may be
+**IMPLEMENTED — Phase 07 (D-042):**
+- Data: `FactionGoalData` · `FactionTemplateData` · `FactionCatalog` (`src/data/factions/`,
+  authored in `data/factions/*.tres`). A template validates itself; the catalog validates what
+  only exists BETWEEN templates (unique ids, declared politics resolving to real factions, those
+  factions **sharing a parent sect**, and pair symmetry). A dangling or one-sided declaration
+  makes the catalog invalid.
+- Domain: `FactionState` (authoritative, serializable, strictly-typed fail-closed `from_dict`) ·
+  `FactionStore` (with a `sect_id -> [faction_id]` index, so the politics queries the UI makes on
+  every refresh are not full scans) · `FactionService` (the single mutation path; it READS the
+  sect roster as the membership authority and the relationship graph as the standings authority,
+  and duplicates neither).
+- Runtime: `FactionRuntime` (a node under `Main/Systems`, NOT an autoload) starts LAST because it
+  reads both the sect store and the relationship graph, and is ended FIRST on an unwind.
+  `start_session()` is FAIL-CLOSED and commits nothing until the catalog, every template, every
+  registration, the cross-store parent-sect check, the politics mirror and the post-conditions
+  have all succeeded.
+- Rules (deterministic, no RNG): `influence_share` · `dominant_faction_of` (ties broken by
+  lexicographically smaller id) · `is_contested`.
+- UI: the `faction_panel` toggle rendering a read-only `SectPoliticsView` in the D-041 visual
+  language. No raw id or enum ordinal reaches the screen; status is carried by words, not colour.
+- Content: three Thanh Vân Tông factions (`WORLD_BIBLE` §8), a real disagreement with no villain.
+
+**STILL A CONTRACT ONLY (not implemented):** sect techniques/rules/secrets, sect events + event
+resolution, succession rules, recruitment, missions/contribution, faction-driven schism/purge/coup
+outcomes (those need the world-simulation tick, P-08) and sect/faction persistence through
+`SaveService` (P-23). Those belong to later phases (`docs/ROADMAP.md`). Nothing above may be
 anticipated with speculative fields (`.kiro/steering/03-architecture.md`).

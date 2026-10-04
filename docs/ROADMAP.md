@@ -18,7 +18,9 @@
 > early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
 > all 9 gates green). Phase 06 (Sect) is **CLOSED** (D-032, CI-verified 2026-10-03 on
 > `b3c98cc`, all 9 gates green at the time; **final hardening D-037**, see below).
-> **Phase 07 (Faction/Politics) is NOT STARTED.**
+> **Phase 07 (Faction/Politics) is IMPLEMENTED (D-042)** — faction domain + deterministic politics
+> rules + the first usable Faction UI; the §7 standings-representation question is pinned to
+> relationship edges. **Phase 08 (World Simulation) is NOT STARTED.**
 >
 > **Phase 06 final hardening (2026-10-03, D-037 — not a phase, no new scope):** the sect core
 > was audited for failure modes that a green CI cannot see, and six were closed: the Sect↔Sect
@@ -231,11 +233,37 @@ in steering while nothing had actually been authored (C-001). **No gameplay code
 behaviour change, no new autoload, no networking, no phase renumbering** — the engineering
 sequence below was audited (Audit W) and required no correction.
 
-## Phase 07 — Faction / Sect Politics *(NOT STARTED)*
-Internal factions + emergent politics (`docs/SECT_SYSTEM.md` §7): `FactionState`,
-influence, attitudes toward player/other factions, resolved as rules over data.
-**Exit:** multi-faction sect authored via data; a faction influence/attitude change
-produces documented, deterministic outcomes; round-trips; tests pass.
+## Phase 07 — Faction / Sect Politics *(IMPLEMENTED — D-042)*
+Internal factions + emergent politics (`docs/SECT_SYSTEM.md` §7) in their OWN domain:
+`FactionGoalData`/`FactionTemplateData`/`FactionCatalog` (data); `FactionState`/`FactionStore`/
+`FactionService` (domain); `FactionRuntime` (a node under `Main/Systems`, started LAST because it
+reads the sect store + the relationship graph, ended FIRST on an unwind); `SectPoliticsView` +
+`FactionPanel` (presentation, semantic `faction_panel` action, in the D-041 visual language).
+
+**The §7 representation question is PINNED (D-042):** Faction↔Faction and Faction↔Player
+standings are **relationship edges** (`RelationshipEndpoint.Kind.FACTION`), NOT inline scalars.
+The §7 sketch's `attitude_toward_player`/`attitudes_toward_factions` are dropped — `affinity` and
+`rivalry` are two of the six frozen dimensions (CL-12), so a faction-side copy would be a second
+source of truth for the same question (the defect D-015 undid for membership). `FactionState`
+carries only the DECLARED relation, mirrored transactionally and non-destructively (L-023).
+
+Rules shipped (deterministic, explicit tie-breaks, **no RNG** — that seam is Phase 08's, D-040):
+`influence_share`, `dominant_faction_of`, `is_contested`. Membership defers to the sect roster
+(D-015) with one seat per sect, which is what makes `CharacterState.faction_id` a valid single
+value with exactly one writer. Content: three Thanh Vân Tông factions from `WORLD_BIBLE` §8 — a
+real disagreement with no villain (C-005).
+
+Scope guard honored: **Phase 07 enrols nobody** (the C-003 guard — the start sect is a scaffold,
+not an authored political identity); NO WorldSim (Phase 08), Combat, NPC, Save or networking; no
+new autoload (D-017 budget still 5); `SectState` unchanged.
+
+**Exit (MET):** a multi-faction sect is authored via data only (new `.tres` + catalog entry);
+influence changes produce documented, deterministic outcomes asserted by exact value;
+`FactionState` round-trips byte-stably and `from_dict` is strictly-typed fail-closed; tests cover
+the membership authority, the non-destructive mirror (object identity + surviving dimensions and
+history), the determinism, and a no-duplication guard on the serialized shape.
+**NOT verified:** no runtime screenshot of the faction panel exists (Godot is not runnable
+locally, D-009) — its composition is asserted structurally and by CI only.
 
 ## Phase 08 — World Simulation *(+ the deterministic RNG seam)*
 LOD simulation (`docs/WORLD_SIMULATION.md`): Near real-time / Far abstract; schedule/tick/

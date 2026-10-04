@@ -4,23 +4,28 @@ class_name RelationshipEndpoint
 ##
 ## A TYPED reference to a party in the relationship graph (`docs/RELATIONSHIP_SYSTEM.md` §4):
 ## a `{ kind, id }` pair, never a bare String. `kind` distinguishes a Character instance from
-## a Sect, so the character instance "player" and a sect id "player" (hypothetically) can
-## never collide. This keeps the graph referentially unambiguous and the save format explicit.
+## a Sect from a Faction, so the character instance "player", a sect id "player" and a faction
+## id "player" (hypothetically) can never collide. This keeps the graph referentially
+## unambiguous and the save format explicit.
 ##
 ## Pure domain: a `RefCounted` with NO Node / scene / presentation dependency
 ## (`03-architecture.md`: domain must not import presentation). Serializes to plain data
 ## (`{ "kind": "character", "id": "player" }`).
 
 ## What a relationship endpoint can be. CHARACTER = a `CharacterState.instance_id`;
-## SECT = a `SectState.id` (structural support only in Phase 05 — the real SectState arrives
-## in Phase 06, `docs/RELATIONSHIP_SYSTEM.md` §10).
-enum Kind { CHARACTER, SECT }
+## SECT = a `SectState.id` (Phase 06); FACTION = a `FactionState.id`, an internal political
+## group inside a sect (Phase 07, D-042).
+##
+## FACTION is appended, never inserted, and the enum int is never serialized (the tokens
+## below are), so adding it cannot shift the meaning of an existing save.
+enum Kind { CHARACTER, SECT, FACTION }
 
 ## Stable string tokens used in serialization (JSON-friendly, order-independent, never an
 ## enum int that could drift if the enum is reordered). The single source of truth for the
 ## kind <-> token mapping.
 const KIND_CHARACTER := "character"
 const KIND_SECT := "sect"
+const KIND_FACTION := "faction"
 
 var kind: int = Kind.CHARACTER
 var id: StringName = &""
@@ -41,11 +46,19 @@ static func for_sect(sect_id: StringName) -> RelationshipEndpoint:
 	return RelationshipEndpoint.new(Kind.SECT, sect_id)
 
 
+## A faction (an internal political group within a sect, Phase 07). Typed separately from
+## SECT so a faction id can never be mistaken for the sect that contains it — the two live in
+## different id namespaces and a collision would silently merge a faction's politics into its
+## parent sect's diplomacy.
+static func for_faction(faction_id: StringName) -> RelationshipEndpoint:
+	return RelationshipEndpoint.new(Kind.FACTION, faction_id)
+
+
 # --- Validity ----------------------------------------------------------------
 
 ## True when the endpoint is well-formed: a known kind and a non-empty id.
 func is_valid() -> bool:
-	return (kind == Kind.CHARACTER or kind == Kind.SECT) and id != &""
+	return kind >= 0 and kind < Kind.size() and id != &""
 
 
 # --- Identity / comparison ---------------------------------------------------
@@ -75,8 +88,18 @@ func compare_to(other: RelationshipEndpoint) -> int:
 
 # --- Serialization (plain data) ----------------------------------------------
 
+## The serialized token for this endpoint's kind. A `match`, not a chain of ternaries: with
+## three kinds a ternary chain would silently fall through to "character" for any kind it did
+## not name, which is how an unhandled kind becomes a plausible-looking wrong endpoint rather
+## than a loud bug.
 func kind_token() -> String:
-	return KIND_SECT if kind == Kind.SECT else KIND_CHARACTER
+	match kind:
+		Kind.SECT:
+			return KIND_SECT
+		Kind.FACTION:
+			return KIND_FACTION
+		_:
+			return KIND_CHARACTER
 
 
 func to_dict() -> Dictionary:
@@ -108,5 +131,7 @@ static func kind_from_token(token: String) -> int:
 			return Kind.CHARACTER
 		KIND_SECT:
 			return Kind.SECT
+		KIND_FACTION:
+			return Kind.FACTION
 		_:
 			return -1

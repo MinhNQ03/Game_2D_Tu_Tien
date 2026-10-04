@@ -182,6 +182,33 @@ presentation-independent · **no global `rand*()` in domain code**. Not an autol
 subsystem's extra random call must never shift another subsystem's future sequence. Shape:
 `SYSTEM_DEPENDENCY_MATRIX.md` §4c; save requirement: `SAVE_FORMAT.md` §3b.
 
+## CL-17 — Thanh Vân Tông's three factions, and how faction standing is represented
+
+**The landscape (shipped, D-042).** Thanh Vân Tông (CL-11) holds three internal factions, each a
+defensible answer to a different question — none is the villain (C-005):
+**Vân Đài** (`faction_azure_terrace`, LOYALIST) the ceiling is the price of not repeating the
+catastrophe · **Khai Lộ** (`faction_azure_open_road`, REFORMIST) institutionalists who have buried
+disciples that died of waiting, and want the allocation re-argued, not broken · **Biên Vân**
+(`faction_azure_frontier`, RADICAL) who work a gap in the covenant rather than break it, since the
+Hoang Vực was never allocated. Biên Vân is rival to Vân Đài and declares **nothing** toward
+Khai Lộ: they share a grievance and reject each other's method, which makes Biên Vân the sect's
+swing vote. The sect is **contested**, not settled.
+
+**The player belongs to no faction.** The start sect is a scaffold (C-003); a faction allegiance
+is a gameplay act, never authored. Phase 07 enrols nobody.
+
+**Xích Diễm Tông's split** (those who pay the price from their own bodies vs those who extract it
+from others) is equally canon and binding, but deliberately **not yet authored as factions** —
+the sect is unreachable, and politics for a place the player cannot visit has no consumer.
+
+**Representation (frozen).** A faction is NOT a field on `SectState`: it names its
+`parent_sect_id` and lives in its own store. Faction↔Faction and Faction↔Player **standings are
+relationship EDGES** (`RelationshipEndpoint.Kind.FACTION`), never inline scalars — `affinity` and
+`rivalry` are two of the six frozen dimensions (CL-12), so a faction-side copy would be a second
+source of truth for one question. `FactionState` carries only the DECLARED relation. Membership
+defers to the sect roster (D-015), one seat per sect. Politics rules are deterministic with
+explicit tie-breaks and use **no RNG** (that seam is CL-16 / P-08).
+
 ## CL-15 — Unresolved mysteries (deliberately open)
 
 These are canon *questions*, reserved so no phase accidentally answers them early:

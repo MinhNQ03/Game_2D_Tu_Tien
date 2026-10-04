@@ -181,18 +181,55 @@ disagreement.** No sect may be authored as simply good or simply evil (C-005).
 ### Thanh Vân Tông — `sect_azure_cloud` · orthodox · tier 3 · Thiên Nguyên Vực
 Doctrine (shipped): *"Ride the clouds; temper the heart before the blade."* Allocation-compliant,
 examination-based, genuinely cares about its disciples' survival — and genuinely enforces a
-ceiling on them. **Internal disagreement (Phase 07):** those who believe the ceiling is the price
-of not repeating the catastrophe, versus those who have watched talented disciples age out of
-their potential waiting for an allocation.
+ceiling on them. **Internal disagreement (authored in Phase 07, D-042):** those who believe the
+ceiling is the price of not repeating the catastrophe, versus those who have watched talented
+disciples age out of their potential waiting for an allocation.
+
+Three factions now carry that argument (`data/factions/`). None is the villain (C-005) — each is
+the correct answer to a different question:
+
+- **Vân Đài — the Cloud Terrace** · `faction_azure_terrace` · LOYALIST · influence 45.
+  The elders who administer the examination. The ceiling is the price of not repeating the
+  catastrophe; the allocation is not a cage, it is the reason there is still a sect to belong to.
+  They are neither fools nor hypocrites: they know exactly what the allocation costs the young
+  and have decided it is the lesser cost. *Goals:* keep the covenant reading · keep the
+  examination with the elders.
+- **Khai Lộ — Open the Road** · `faction_azure_open_road` · REFORMIST · influence 38.
+  They have buried disciples who died of waiting, not of danger. Crucially they are
+  **institutionalists**: they want the allocation re-argued through petition and re-examination,
+  not broken — which is what makes this a quarrel between two defensible readings of one covenant
+  rather than a rebellion against it. *Goals:* widen the sect's allocation · re-read the covenant
+  as a floor, not a ceiling.
+- **Biên Vân — the Frontier Cloud** · `faction_azure_frontier` · RADICAL · influence 31.
+  The third position the disagreement implies but never states: both other sides argue about how
+  the *allocated* veins should be divided, and the Hoang Vực was never allocated. They do not
+  break the covenant; they work a gap in it. The Cloud Terrace calls that evasion in spirit, and
+  Khai Lộ calls it a distraction from the fight that actually matters. *Goals:* seek the
+  unallocated veins · fund the frontier expeditions.
+
+**The shape of the fight.** Biên Vân declares a rivalry with the Cloud Terrace and **nothing**
+toward Khai Lộ: the two share a grievance and reject each other's method, so their relation is
+left as an open question for gameplay to settle rather than authored content. That makes Biên Vân
+the sect's genuine swing vote, and it means the player's choice of side actually moves something.
+At the shipped influences the sect reads **contested** (45 vs 38) with the Cloud Terrace holding
+sway — so the first thing the politics panel tells a new player is that this is a live fight, not
+a settled hierarchy.
+
+The player starts in this sect (C-003) but belongs to **no faction**: taking a side is a gameplay
+act, never an authored identity (D-042).
 
 ### Xích Diễm Tông — `sect_crimson_flame` · heterodox · tier 3 · Huyết Mạc Vực
 Doctrine (canon; shipped text is a Phase-06 placeholder — C-005): *the covenant rations
 cultivation to preserve the institutions that administer it, and a sect that accepts rationing
 accepts a ceiling on its disciples' lives.* Their methods genuinely cost the body — that is Cấm
-Pháp, a price they argue is worth paying. **Internal disagreement (Phase 07):** those who pay the
-price from their own bodies, and those who extract it from others. The orthodox record describes
-the second group as if it were the whole sect, and inside Xích Diễm that accusation is a live
-political wound.
+Pháp, a price they argue is worth paying. **Internal disagreement (canon, NOT yet authored as
+factions):** those who pay the price from their own bodies, and those who extract it from others.
+The orthodox record describes the second group as if it were the whole sect, and inside Xích Diễm
+that accusation is a live political wound.
+
+This split is real canon and binding on whoever authors it, but D-042 deliberately did **not**
+ship it as faction content: the player cannot reach Xích Diễm yet, and politics for a sect nobody
+can visit is content with no consumer. It is authored in the phase that makes the sect reachable.
 
 ### Mutual enmity
 Shipped as symmetric `ENEMY` in both templates, and validated as a mutual pair (D-038). It is a

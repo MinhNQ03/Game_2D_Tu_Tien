@@ -1569,3 +1569,153 @@ for were NOT produced: Godot is not invocable on this machine (D-009), so no fra
 rendered or captured here.** The visual result is therefore asserted structurally and by CI, not
 observed. Someone with the editor must eyeball the Main Menu, the HUD in both maps, and the open
 Sect panel in `vi` and `en` before this is called visually confirmed.
+
+---
+
+## D-042 — Phase 07: Faction / Sect Politics, and the §7 representation pin — **Accepted** (2026-10-02)
+
+**Context:** `docs/SECT_SYSTEM.md` §7 declared internal factions a CORE requirement and sketched
+a `FactionState` shape, but deliberately left one question open: *"Faction↔Faction and
+Faction↔Player standings reuse the Relationship model where a richer edge is useful; simple
+scalars live inline on the `FactionState` as above. (Which representation wins where is a detail
+to pin when the Faction phase is built; both are serializable.)"* This is that phase, so this
+entry pins it — and the pin contradicts part of the §7 sketch, which is why it is recorded here
+rather than silently chosen (`08-ai-review-protocol.md`: a doc that contradicts another goes to
+DECISIONS, you do not quietly pick one).
+
+### The pin: standings are EDGES, not inline scalars
+
+§7 listed `attitude_toward_player: int` and `attitudes_toward_factions: Dictionary` as fields on
+`FactionState`. **Both are dropped.** They are not implemented, and `FactionState` has no
+attitude storage of any kind.
+
+The reason is not tidiness, it is that the alternative is a second source of truth.
+`affinity` and `rivalry` are two of the **six frozen relationship dimensions** (CL-12), already
+owned by `RelationshipStore`, already clamped by `RelationshipConfigData`, already carrying a
+bounded history log. An `attitudes_toward_factions` dictionary would answer "how does A feel
+about B" a second time, with its own clamp, its own (absent) history, and no mechanism keeping
+the two in step — which is **exactly** the defect D-015 had to undo for sect membership, where
+`CharacterState.sect_id` and the sect roster had both looked like the authority.
+
+So: `FactionService` **reads and writes the shared graph** and stores no dimension itself.
+- Faction↔Faction standing is a **symmetric relationship edge**, created through
+  `RelationshipService.create_edge` with both endpoints typed `Kind.FACTION`.
+- Faction↔Player standing is the same thing with a `CHARACTER` endpoint, available the moment a
+  producer needs it — no faction-side scalar is reserved for it in advance (L-005).
+- What `FactionState` *does* carry is the **declared political relation** (`allied_faction_ids` /
+  `rival_faction_ids`) — a political *fact* the sect has announced, not a measured standing. That
+  is the same split `SectState` already uses for declared ally/enemy, and the two are kept
+  transactionally in step by the service.
+- A test asserts the absence directly on the **serialized shape**, because that is what a save
+  would carry and therefore what a future refactor would have to change to reintroduce the
+  duplication.
+
+`RelationshipEndpoint` gained `Kind.FACTION` + `KIND_FACTION` + `for_faction()`. Appended, never
+inserted, and the enum int is never serialized (the string tokens are), so no existing save
+shifts meaning. A faction endpoint is typed separately from `SECT` on purpose: reusing `SECT`
+would put faction ids and sect ids in one namespace, where a collision would silently merge a
+faction's politics into its parent sect's diplomacy. `FactionService.validate_against_sects()`
+rejects such a collision outright.
+
+### Membership: the sect roster stays the single authority
+
+A faction is a group **inside** a sect, so `FactionService.join_member` refuses anyone who is not
+already on the parent sect's roster, and refuses a second seat in another faction of the same
+sect. The one-seat-per-sect rule is what makes `CharacterState.faction_id` a valid single value
+rather than a list; that field already existed as an unowned, serialized cache slot, and this
+phase becomes its **only** writer, with `sync_character_cache()` rebuilding it FROM the rosters
+and `verify_character_cache()` reporting drift instead of papering over it. Roster wins — D-015
+extended verbatim from sects to factions.
+
+### The C-003 guard: Phase 07 enrols NOBODY
+
+The authored start sect is a scaffold (C-003). Turning it into an authored **faction**
+allegiance would hand the player a political identity they never chose — the "chosen one" shape
+`01-product.md` explicitly forbids. So the shipped factions are leaderless and memberless, and
+`FactionRuntime.start_session` **asserts** that as a post-condition (step 6) rather than trusting
+it. Taking a side is a gameplay act from P-17 onward. No NPC leaders were invented either:
+inventing them would fabricate characters no `CharacterState` backs (§10).
+
+### Deterministic rules, and NO RNG
+
+The politics outcomes are pure functions of stored integers with explicit tie-breaks:
+`influence_share` (integer percent, never a float — a float's last bit is platform-dependent and
+these numbers are both asserted exactly and shown to the player), `dominant_faction_of`
+(argmax, **ties broken by lexicographically smaller faction id**), and `is_contested` (top two
+within `CONTESTED_MARGIN`). The tie-break is the load-bearing part: without a fixed rule, two
+factions on equal influence would resolve to whichever the store happened to iterate first, so
+"who leads the sect" could differ between runs on identical data and a reloaded save could
+disagree with the save it came from. There is **no `rand*()` anywhere in the faction domain**, and
+none may be added: the deterministic stream-scoped RNG seam belongs to Phase 08 (D-040), and
+Phase 07 must not anticipate it.
+
+### Layering (unchanged shape, one more subsystem)
+
+`src/data/factions/` (3 Resources) → `src/domain/faction/` (state / store / service, pure
+`RefCounted`) → `src/gameplay/world/faction_runtime.gd` (a Node under `Main/Systems`) →
+`src/presentation/faction/` (a read-only view DTO + the panel). **No new autoload** — the D-017
+budget stays at 5. `FactionRuntime` starts **last** (it reads the sect store and the relationship
+graph) and is ended **first** on an unwind; `Main._unwind_failed_session` is now
+Faction → Sect → Relationship → World → GameState → MENU, and a faction failure is **FATAL** for
+New Game for the same reason the sect one is: a running game whose internal politics no system
+owns is the orphaned-state class L-025 is about.
+
+`FactionStore` carries a `sect_id -> [faction_id]` index because every political question is
+"which factions belong to this sect?", and the panel asks it on every refresh — a full scan on a
+path the player triggers repeatedly is the kind of thing `05-performance-testing.md` exists to
+prevent.
+
+### Content: a real disagreement, not a villain
+
+Three factions inside Thanh Vân Tông, drawn straight from the internal disagreement
+`docs/WORLD_BIBLE.md` §8 already fixed as canon:
+- **Vân Đài (Cloud Terrace)**, LOYALIST, influence 45 — the ceiling is the price of not repeating
+  the catastrophe; the allocation is the reason there is still a sect to belong to.
+- **Khai Lộ (Open the Road)**, REFORMIST, influence 38 — they have buried disciples who died of
+  waiting, not of danger; re-argue the allocation *through* petition and re-examination. They are
+  institutionalists, which is what makes this an argument between two defensible readings of one
+  covenant rather than a rebellion.
+- **Biên Vân (Frontier Cloud)**, RADICAL, influence 31 — both other sides argue about how the
+  *allocated* veins are divided, and the Hoang Vực was never allocated. They do not break the
+  covenant; they work a gap in it.
+
+Nobody is evil (C-005). Biên Vân declares a rivalry with the Cloud Terrace and **nothing** toward
+Khai Lộ: the two share a grievance and reject each other's method, so their relation is left as
+an open question for gameplay rather than authored content, and that makes Biên Vân the sect's
+genuine swing vote. At the shipped influences the sect reads **contested** (45 vs 38, inside the
+margin) with the Cloud Terrace holding sway — so the first thing the panel tells the player is
+that this is a live fight.
+
+Declared starting politics is RIVAL-only, deliberately: shipped content records what is **true**
+in the world, not what exercises the most code paths. The ALLIED mirror is covered by test
+fixtures. Xích Diễm Tông's own split (those who pay the price from their own bodies vs those who
+extract it from others) is real canon and is authored in the phase that makes that sect
+reachable — shipping politics for a sect the player cannot visit is content with no consumer.
+
+### UI
+
+The first usable Faction UI, built directly in the D-041 visual language (`UI_UX_BIBLE.md` §3a):
+the shared panel plate, the ornamental rule under the section title, aligned caption/value rows.
+A new semantic `faction_panel` action (Y) toggles it; it is anchored opposite the sect panel so
+membership and politics can be read side by side rather than one covering the other. Both the
+sect's direction and a faction's status are carried by **words** ("Contested", "Holds sway"), never
+by colour alone. Truncation past `MAX_ROWS` is **reported** (`+2`) rather than silent, so a content
+author who adds a seventh faction can see that it stopped being shown.
+
+### A process note that unblocked this phase
+
+Package A (D-041) had to reject extracting shared UI components because this agent could not
+generate the `.uid` sibling Godot requires for a new script (L-008/L-015). That constraint turned
+out to be false, and it was blocking an entire phase. Godot's UID text encoding is **base-34**:
+`('z'-'a') = 25` letter values `a..y` carry 0–24 and `('9'-'0') = 9` digit values `0..8` carry
+25–33, most-significant digit first. Verified, not guessed — a decoder round-tripped **all 96
+existing `.uid` files** in the repo to identical text before a single new one was minted. New
+UIDs are random 63-bit values encoded that way and collision-checked against the existing set.
+Recorded as **L-027**.
+
+**Verification:** `get_diagnostics` clean on every touched file; `gdscript_lint` clean (108
+files); new tests across the 16 required categories in `tests/unit/faction/` +
+`tests/unit/presentation/test_faction_panel.gd` + two localization drift guards. **Godot is not
+runnable locally (D-009), so CI is the authoritative gate** — and as with D-041, no runtime
+screenshot of the new panel could be captured here. Its composition is asserted structurally;
+nobody has looked at it.

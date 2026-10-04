@@ -49,6 +49,13 @@ const RELATIONSHIP_RUNTIME_SCRIPT := "res://src/gameplay/world/relationship_runt
 ## world + relationship sessions. Same no-God-object discipline.
 const SECT_RUNTIME_SCRIPT := "res://src/gameplay/world/sect_runtime.gd"
 
+## PHASE 07 (Faction/Politics): the per-session faction domain lives in a `FactionRuntime`
+## node under `Main/Systems` — another SIBLING, also NOT an autoload. It is started LAST
+## because it reads BOTH of the subsystems before it: the sect store (the single membership
+## authority every faction defers to, D-015) and the relationship graph (where Faction↔Faction
+## standing actually lives). It is therefore ended FIRST on an unwind.
+const FACTION_RUNTIME_SCRIPT := "res://src/gameplay/world/faction_runtime.gd"
+
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
 ## are therefore always present when Main actually runs (real app, the runtime boot smoke,
@@ -69,6 +76,8 @@ var _world: Node = null   # WorldRuntime (per-session world/map coordinator), un
 var _relationship: Node = null
 # SectRuntime (per-session sect domain), under Systems (Phase 06).
 var _sect: Node = null
+# FactionRuntime (per-session faction domain), under Systems (Phase 07).
+var _faction: Node = null
 
 
 func _ready() -> void:
@@ -127,6 +136,9 @@ func _boot() -> void:
 	# Create the SectRuntime subsystem under Systems too (sibling, node not autoload —
 	# Phase 06). Idle until New Game.
 	_create_sect_runtime()
+
+	# And the FactionRuntime (Phase 07), the last subsystem in the dependency chain.
+	_create_faction_runtime()
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -202,6 +214,21 @@ func _create_sect_runtime() -> void:
 	_sect.name = "SectRuntime"
 	_sect.set_script(sect_script)
 	get_node(CONTAINER_SYSTEMS).add_child(_sect)
+
+
+## Instantiate the FactionRuntime subsystem under Systems (Phase 07). Same shape as the other
+## three: a script-created node, not an autoload (the D-017 budget stays at 5), not a scene.
+func _create_faction_runtime() -> void:
+	if _faction != null and is_instance_valid(_faction):
+		return
+	var faction_script: Script = load(FACTION_RUNTIME_SCRIPT)
+	if faction_script == null:
+		push_error("[boot] failed to load FactionRuntime script: %s" % FACTION_RUNTIME_SCRIPT)
+		return
+	_faction = Node.new()
+	_faction.name = "FactionRuntime"
+	_faction.set_script(faction_script)
+	get_node(CONTAINER_SYSTEMS).add_child(_faction)
 
 
 ## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
@@ -292,6 +319,17 @@ func _on_new_game_pressed() -> void:
 		_unwind_failed_session()
 		return
 
+	# Start the faction session (Phase 07) LAST: it reads the sect store (its membership
+	# authority) and the relationship graph (where faction standing lives), so both must
+	# already be live. Also FATAL — the player's CharacterState carries a DERIVED
+	# `faction_id` cache, so letting a failed faction session through could leave a running
+	# game whose internal politics no system owns, the same class of orphaned state the sect
+	# session guards against.
+	if not _start_faction_session():
+		push_error("[main] faction session failed to start; returning to menu")
+		_unwind_failed_session()
+		return
+
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
@@ -302,17 +340,20 @@ func _on_new_game_pressed() -> void:
 
 ## Unwind a partially-started New Game back to a usable menu.
 ##
-## Order is REVERSE DEPENDENCY order — Sect → Relationship → World → GameState → menu —
-## because the sect session holds the relationship graph (its diplomacy mirror) and the
-## player's CharacterState (its derived membership cache), both of which are owned by the
-## subsystems ended after it. Ending a dependency first would drop state the dependent is
-## still unwinding through.
+## Order is REVERSE DEPENDENCY order — Faction → Sect → Relationship → World → GameState →
+## menu — because each session holds state owned by the subsystems ended after it: the faction
+## session reads the sect store and the relationship graph, and the sect session holds the
+## relationship graph (its diplomacy mirror) and the player's CharacterState (its derived
+## membership cache). Ending a dependency first would drop state the dependent is still
+## unwinding through.
 ##
 ## Every step is null-safe and idempotent (`end_session` on all three runtimes is safe to
 ## call when no session is active), so this is callable from any failure point in
 ## `_on_new_game_pressed`. After it runs there is no session anywhere: no player, no map, no
 ## graph, no sect store, and the lifecycle is back at MENU with the menu shown.
 func _unwind_failed_session() -> void:
+	if _faction != null and is_instance_valid(_faction):
+		_faction.call("end_session")
 	if _sect != null and is_instance_valid(_sect):
 		_sect.call("end_session")
 	if _relationship != null and is_instance_valid(_relationship):
@@ -372,6 +413,65 @@ func _start_sect_session() -> bool:
 	return true
 
 
+## Start the FactionRuntime session (Phase 07).
+##
+## Hands over the two things the faction domain READS and never duplicates — the sect store
+## (the single membership authority, D-015) and the shared RelationshipService (where
+## Faction↔Faction standing lives, D-042) — plus the same character-resolver seam the sect
+## session uses, so the service can maintain the derived `CharacterState.faction_id` cache
+## without touching `/root` (§11).
+##
+## The player id is passed for the VIEW only: the faction session deliberately enrols nobody,
+## because the authored start SECT is a scaffold (C-003) and turning it into an authored
+## faction allegiance would hand the player a political identity they never chose. Taking a
+## side is a gameplay act from P-17 onward.
+##
+## Returns TRUE only when the faction session is actually live. Every prerequisite the caller
+## cannot see from outside is reported here rather than quietly skipped, because New Game
+## treats a faction failure as fatal and must not proceed on a half-wired session.
+func _start_faction_session() -> bool:
+	if _faction == null or not is_instance_valid(_faction):
+		push_error("[main] cannot start faction session: FactionRuntime missing")
+		return false
+	if _sect == null or not is_instance_valid(_sect):
+		push_error("[main] cannot start faction session: SectRuntime missing")
+		return false
+	var sect_store: SectStore = _sect.call("get_store")
+	if sect_store == null:
+		push_error("[main] cannot start faction session: no SectStore (sect session not "
+			+ "running), so no faction's parent sect or membership could be verified")
+		return false
+	if _relationship == null or not is_instance_valid(_relationship):
+		push_error("[main] cannot start faction session: RelationshipRuntime missing")
+		return false
+	var rel_service: RelationshipService = _relationship.call("get_service")
+	if rel_service == null:
+		push_error("[main] cannot start faction session: no RelationshipService (graph "
+			+ "session not running) to mirror Faction↔Faction standing into")
+		return false
+	var player_character: CharacterState = null
+	if _world != null and is_instance_valid(_world):
+		player_character = _world.call("get_player_character")
+	if player_character == null:
+		push_error("[main] cannot start faction session: WorldRuntime has no player "
+			+ "CharacterState")
+		return false
+	var player_id: StringName = player_character.instance_id
+	var resolver := func(cid: StringName) -> CharacterState:
+		if cid == player_id:
+			return player_character
+		return null
+	if not bool(_faction.call(
+			"start_session", sect_store, rel_service, resolver, player_id)):
+		return false
+	# Same reason as the sect refresh above: the hub map was already loaded before this
+	# session existed, so push the now-available politics view into its HUD.
+	if _world != null and is_instance_valid(_world) \
+			and _world.has_method("refresh_active_map_politics_view"):
+		_world.call("refresh_active_map_politics_view")
+	return true
+
+
 func _on_return_to_menu() -> void:
 	# End the world session (frees the persistent player + clears the active map) before the
 	# lifecycle returns to MENU.
@@ -380,6 +480,9 @@ func _on_return_to_menu() -> void:
 	# End the relationship session too (drops the per-session graph).
 	if _relationship != null and is_instance_valid(_relationship):
 		_relationship.call("end_session")
+	# End the faction session FIRST (it reads the sect + relationship state below).
+	if _faction != null and is_instance_valid(_faction):
+		_faction.call("end_session")
 	# End the sect session (drops the per-session sect store/service).
 	if _sect != null and is_instance_valid(_sect):
 		_sect.call("end_session")

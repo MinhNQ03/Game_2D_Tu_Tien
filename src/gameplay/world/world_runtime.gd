@@ -265,6 +265,9 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# SectRuntime sibling (optional, null-safe) so a fresh HUD on each map still shows the
 	# player's sect. WorldRuntime stays sect-agnostic beyond forwarding a read-only view.
 	_push_sect_view_to_active_map()
+	# And the politics of that sect (Phase 07), read from the FactionRuntime sibling — same
+	# optional, null-safe, forward-a-read-only-view contract.
+	_push_politics_view_to_active_map()
 	# The old scene was freed by the router's _free_current_scene(); nothing to do here.
 	return true
 
@@ -275,6 +278,50 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 ## no-op; Main calls this right after _start_sect_session() to populate the hub HUD.
 func refresh_active_map_sect_view() -> void:
 	_push_sect_view_to_active_map()
+
+
+## Push the politics view of the player's sect into the CURRENT map's HUD (Phase 07). Public
+## for the same reason as the sect refresh above: the hub map is already loaded by the time
+## Main starts the faction session, so the in-transition push was a no-op and Main calls this
+## once immediately afterwards.
+func refresh_active_map_politics_view() -> void:
+	_push_politics_view_to_active_map()
+
+
+## Find the optional FactionRuntime sibling and push the read-only politics view of the
+## PLAYER'S sect into the active map's HUD.
+##
+## Which sect's politics to show is decided here, by asking SectRuntime which sect the player
+## belongs to — the faction subsystem is deliberately not given a notion of "the current
+## sect", because a faction landscape exists per sect and inventing a default inside
+## FactionRuntime would make the panel's subject implicit. Null-safe at every hop: no
+## FactionRuntime, no session, or no player sect simply means no politics is pushed and the
+## panel shows its localized empty state.
+func _push_politics_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_politics_view"):
+		return
+	var faction_runtime := _find_faction_runtime()
+	if faction_runtime == null or not faction_runtime.call("is_session_active"):
+		return
+	var sect_runtime := _find_sect_runtime()
+	if sect_runtime == null or not sect_runtime.call("is_session_active"):
+		return
+	var sect_id: StringName = sect_runtime.call("get_player_sect_id")
+	if sect_id == &"":
+		return
+	_active_map.call("set_politics_view", faction_runtime.call("get_politics_view", sect_id))
+
+
+## Locate the FactionRuntime among this node's siblings under Main/Systems (or null). Same
+## direct-sibling lookup as the sect one: no /root, no deep walk, resolved per transition.
+func _find_faction_runtime() -> Node:
+	var parent := get_parent()
+	if parent == null:
+		return null
+	for sibling in parent.get_children():
+		if sibling is FactionRuntime:
+			return sibling
+	return null
 
 
 ## Find the optional SectRuntime sibling (under the same Systems parent) and push the player's

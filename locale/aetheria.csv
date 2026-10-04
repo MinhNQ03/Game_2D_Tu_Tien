@@ -61,3 +61,35 @@ UI_SETTINGS_LANGUAGE_HINT,Choose the language used across the game.,Chọn ngôn
 UI_SETTINGS_BACK,Back,Quay lại
 UI_LANGUAGE_VI,Tiếng Việt,Tiếng Việt
 UI_LANGUAGE_EN,English,English
+FACTION_AZURE_TERRACE_NAME,Cloud Terrace,Vân Đài
+FACTION_AZURE_TERRACE_DOCTRINE,"The ceiling is the price of not repeating the catastrophe. The allocation is not a cage; it is the reason there is still a sect to belong to.","Cái trần là giá phải trả để thảm họa không lặp lại. Định phần không phải lồng giam; nó là lý do tông môn này còn tồn tại để mà gia nhập."
+FACTION_AZURE_OPEN_ROAD_NAME,Open the Road,Khai Lộ
+FACTION_AZURE_OPEN_ROAD_DOCTRINE,"We have buried disciples who died of waiting, not of danger. Re-argue the allocation through petition and re-examination — the covenant is a floor, not a ceiling.","Chúng ta đã chôn những đệ tử chết vì chờ đợi, không phải vì hiểm nguy. Hãy tranh biện lại định phần bằng thỉnh nguyện và khảo hạch — khế ước là sàn, không phải trần."
+FACTION_AZURE_FRONTIER_NAME,Frontier Cloud,Biên Vân
+FACTION_AZURE_FRONTIER_DOCTRINE,"Argue about the allocated veins all you like. The Hoang Vực was never allocated. Seek what the covenant never counted.","Cứ tranh luận về những mạch linh đã được định phần. Hoang Vực chưa từng được định phần. Hãy tìm thứ mà khế ước chưa từng tính đến."
+FACTION_GOAL_KEEP_COVENANT,Keep the covenant reading,Giữ nguyên cách hiểu khế ước
+FACTION_GOAL_HOLD_EXAMINATION,Keep the examination with the elders,Giữ khảo hạch trong tay trưởng lão
+FACTION_GOAL_WIDEN_ALLOCATION,Widen the sect's allocation,Mở rộng định phần của tông môn
+FACTION_GOAL_REREAD_COVENANT,Re-read the covenant as a floor,Đọc lại khế ước như một cái sàn
+FACTION_GOAL_SEEK_UNALLOCATED,Seek the unallocated veins,Tìm những mạch linh ngoài định phần
+FACTION_GOAL_FUND_EXPEDITIONS,Fund the frontier expeditions,Cấp phí cho các chuyến viễn chinh biên cương
+FACTION_STANCE_LOYALIST,Loyalist,Thủ Cựu
+FACTION_STANCE_REFORMIST,Reformist,Cải Cách
+FACTION_STANCE_RADICAL,Radical,Cấp Tiến
+FACTION_STANCE_NEUTRAL,Neutral,Trung Lập
+UI_FACTION_PANEL_TITLE,Sect Politics,Chính Sự Tông Môn
+UI_FACTION_PANEL_TOGGLE,Politics,Chính Sự
+UI_FACTION_PANEL_UNAVAILABLE,No political information available.,Chưa có thông tin chính sự.
+UI_FACTION_PANEL_NONE,This sect has no internal factions.,Tông môn này không có phe phái nội bộ.
+UI_FACTION_PANEL_STANCE,Stance,Lập Trường
+UI_FACTION_PANEL_INFLUENCE,Influence,Thế Lực
+UI_FACTION_PANEL_SHARE,Share,Tỷ Trọng
+UI_FACTION_PANEL_GOALS,Goals,Mục Tiêu
+UI_FACTION_PANEL_DOMINANT,Holds sway,Đang nắm thế
+UI_FACTION_PANEL_CONTESTED,Contested,Đang giằng co
+UI_FACTION_PANEL_SETTLED,Settled,Đã an định
+UI_FACTION_PANEL_DIRECTION,Sect direction,Hướng đi tông môn
+UI_FACTION_PANEL_YOUR_SIDE,Your side,Phe của bạn
+UI_FACTION_PANEL_NO_SIDE,You have taken no side.,Bạn chưa chọn phe nào.
+UI_FACTION_PANEL_RELATION_ALLIED,Allied with your side,Đồng minh với phe bạn
+UI_FACTION_PANEL_RELATION_RIVAL,Rival of your side,Đối đầu với phe bạn

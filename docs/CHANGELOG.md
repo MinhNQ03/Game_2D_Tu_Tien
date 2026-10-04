@@ -8,6 +8,70 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Phase 07: Faction / Sect Politics (D-042)
+Internal sect factions become a real core system: authoritative domain state, deterministic
+politics rules, declared politics mirrored into the shared relationship graph, and the first
+usable Faction UI. **No new autoload** (the D-017 budget stays at 5), no networking, no RNG.
+- **New layering, mirroring the Sect system exactly:** `src/data/factions/` (`FactionGoalData`,
+  `FactionTemplateData`, `FactionCatalog`) → `src/domain/faction/` (`FactionState`,
+  `FactionStore`, `FactionService`) → `src/gameplay/world/faction_runtime.gd` (a Node under
+  `Main/Systems`) → `src/presentation/faction/` (`SectPoliticsView`, `FactionPanel`).
+- **§7's open question is PINNED: standings are relationship EDGES, not inline scalars.** The
+  §7 sketch's `attitude_toward_player` / `attitudes_toward_factions` are **dropped and not
+  implemented**. `affinity` and `rivalry` are two of the six frozen dimensions (CL-12), so a
+  faction-side copy would be a second answer to "how does A feel about B" — the defect D-015 had
+  to undo for membership. `RelationshipEndpoint` gained `Kind.FACTION` (appended; the enum int is
+  never serialized, so no save shifts meaning). A test asserts the absence on the **serialized
+  shape**, which is what a refactor would have to change to reintroduce the duplication.
+- **The sect roster stays the single membership authority (D-015, extended verbatim).** A faction
+  seat requires existing sect membership, and a character may hold **one seat per sect** — which
+  is what makes `CharacterState.faction_id` a valid single value. That pre-existing, unowned
+  cache slot now has exactly one writer; `verify_character_cache()` reports drift rather than
+  papering over it, and `sync_character_cache()` rebuilds it FROM the rosters.
+- **The C-003 guard: Phase 07 enrols NOBODY.** The authored start sect is a scaffold; making it
+  an authored *faction* allegiance would hand the player a political identity they never chose.
+  Factions ship leaderless and memberless and `start_session` **asserts** that as a
+  post-condition. No NPC leaders were invented either (§10).
+- **Deterministic rules, no RNG.** `influence_share` (integer percent, never a float),
+  `dominant_faction_of` (**ties broken by lexicographically smaller id**) and `is_contested`
+  (top two within `CONTESTED_MARGIN`). The tie-break is load-bearing: without it, "who leads the
+  sect" could differ between runs on identical data. The seeded RNG seam remains Phase 08's
+  (D-040) and was not anticipated.
+- **Transactional mirror, non-destructive by contract (L-023).** Declaring politics writes the
+  relationship side FIRST and checks it; an existing edge of the wrong type is **retyped in
+  place**, never removed and recreated, so a rejected mutation leaves the previous edge fully
+  intact — id, endpoints, flags, every dimension value and the whole history. Tests pin object
+  **identity** plus the surviving dimension and history, because asserting the type alone passes
+  for a replacement. `clear_politics` refuses to destroy an edge carrying a type this mirror does
+  not own.
+- **Fails closed everywhere:** a dangling declaration, a declaration with no graph to mirror into,
+  a faction naming an unknown parent sect, a faction id colliding with a sect id, or a cross-sect
+  "internal" declaration each abort rather than degrade. `FactionRuntime` builds into locals and
+  commits last, so no half-session is observable (L-025). `Main` treats a faction failure as
+  **FATAL** for New Game and unwinds Faction → Sect → Relationship → World → GameState → MENU.
+- **Content — a real disagreement, no villain (C-005).** Three Thanh Vân Tông factions taken
+  straight from the `WORLD_BIBLE` §8 canon: **Vân Đài** (LOYALIST, 45) the ceiling is the price of
+  not repeating the catastrophe; **Khai Lộ** (REFORMIST, 38) institutionalists who have buried
+  disciples that died of waiting; **Biên Vân** (RADICAL, 31) who work a gap in the covenant rather
+  than break it. Biên Vân declares a rivalry with Vân Đài and **nothing** toward Khai Lộ — they
+  share a grievance and reject each other's method, which makes them the sect's swing vote. The
+  sect reads **contested** at the shipped influences.
+- **First usable Faction UI, in the D-041 language** (`UI_UX_BIBLE` §3a): shared panel plate,
+  ornamental rule, aligned caption/value rows. New semantic `faction_panel` action (Y), anchored
+  opposite the sect panel so both can be read at once. Status is carried by **words**
+  ("Contested", "Holds sway"), never colour alone. Overflow past `MAX_ROWS` is **reported**, not
+  silent.
+- **Process (L-027):** D-041 had rejected extracting shared UI components believing a new script
+  could not get its generated `.uid` — which was blocking a whole phase and turned out to be
+  false. Godot's UID text encoding is **base-34** (letters `a..y` = 0–24, digits `0..8` = 25–33,
+  MSB first); a decoder **round-tripped all 96 existing `.uid` files** before a single new one was
+  minted, so this was verified rather than guessed.
+- **Known gap, same as D-041:** Godot is not runnable here (D-009), so **no screenshot of the new
+  panel exists**. Its composition is asserted structurally and by CI; nobody has looked at it.
+- **Updated:** `relationship_endpoint`, `input_service`, `project.godot` (one new input action),
+  `main`, `world_runtime`, `map_base`, `gameplay_hud`, `locale/aetheria.csv`, `SECT_SYSTEM`
+  (§7/§12), `WORLD_BIBLE` (§8), `ROADMAP`, `DECISIONS` (D-042), `09-lessons-learned` (L-027).
+
 ### 2026-10-02 — Production-foundation visual direction integrated into the runtime UI (D-041) — presentation only
 The UI was legible (D-034 fixed that) but **undesigned**: a plaque floating on flat near-black,
 four buttons of identical weight, and an identity block where "who I am" and "who I belong to"

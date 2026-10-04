@@ -500,3 +500,33 @@
   `test_sect_runtime.gd` (plus `_ladder()`/`_ids()`/`_catalog_of()`/`_rel_config()` typed
   builders), reason-pinned negative assertions, and the `SCRIPT ERROR:` check added to the
   EXISTING headless gate (still 10 gates).
+
+## L-027 — A self-imposed "I cannot create a new script" belief blocked a whole phase (the `.uid` encoding is knowable, and verifiable)
+- **Symptom (D-041 → D-042):** Package A rejected the cleaner factoring — extracting shared
+  `UISectionTitle` / `UIValueRow` components — on the grounds that this agent cannot produce the
+  `.uid` sibling Godot generates for a new `.gd`, and L-008/L-015 require that sibling to be
+  committed. The whole UI pass was therefore done by editing existing files only. One task later,
+  Phase 07 needed **twelve** new scripts (domain + data + runtime + presentation + tests) and the
+  same belief would have blocked the entire phase. The belief was false, and nobody had checked:
+  the constraint was inherited as an assumption, not measured.
+- **What was actually true:** Godot's `ResourceUID` text form is `uid://` + an integer in
+  **base-34**, because the engine computes its base as `('z' - 'a') + ('9' - '0') = 25 + 9 = 34`.
+  Letter values come FIRST — `a`..`y` carry 0–24 — and digits follow: `0`..`8` carry 25–33.
+  Most-significant digit first. Note both off-by-ones: there is no `z` and no `9` in the alphabet.
+  Two related facts worth knowing: `.tres` resources in this repo carry **no** `.uid` sibling at
+  all (16 of them, zero uid files), and nothing in the project references a script by `uid://` —
+  every reference is `preload("res://...")`, so only `main.tscn` depends on uid stability.
+- **Rule:** **Before accepting a capability limit that changes your design, test it.** A limit
+  that makes you reject the better structure deserves a 10-minute experiment, not deference —
+  especially when it is inherited from your own earlier reasoning rather than from a tool error
+  you actually saw. And when the limit involves an encoding, **verify by round-tripping the
+  REAL existing data before producing any new data**: a decoder was run against **all 96 `.uid`
+  files in the repo** and had to re-encode each one to the identical string before a single new
+  UID was minted. That caught a wrong first guess immediately (base 36 with digits-first decoded
+  `main.gd.uid` to a value above 2^63, which is impossible for an engine id) — a guess that
+  "looked fine" would have shipped 12 subtly invalid files. Mint new ids as random 63-bit values
+  and collision-check them against the existing set.
+- **Also:** when a constraint forces a documented design compromise, say so in the DECISIONS
+  entry (D-041 did) — that is what made the compromise easy to find and reverse the moment the
+  constraint turned out to be imaginary. A silent workaround would have quietly become permanent.
+- **Fixed:** D-042. Twelve new scripts shipped with correct, verified `.uid` siblings.
