@@ -185,23 +185,49 @@ func test_menu_buttons_carry_semantic_role_hierarchy() -> void:
 
 ## Hover/focus must visibly change the button, on every role — keyboard focus included,
 ## because this project is keyboard-first (`UI_UX_BIBLE.md` §4).
+##
+## It is driven on SETTINGS, not on New Game: `_ready()` deliberately grabs focus for the
+## primary action so a keyboard player lands on it, which means New Game is ALREADY in its
+## lifted focus state at build time. Reading an "at rest" baseline off it captures the lifted
+## tint and every later comparison comes out backwards — the first version of this test did
+## exactly that and failed in CI. Settings is live, focusable and unfocused, so it is the
+## honest subject; the primary button's lifted-on-entry state is pinned separately below.
 func test_menu_button_hover_and_focus_change_appearance() -> void:
+	var menu := _menu()
+	var buttons := _collect_buttons(menu)
+	if buttons.size() < 4:
+		free_node(menu)
+		return
+	var settings: Button = buttons[2]
+	assert_false(settings.has_focus(), "the subject starts unfocused (test precondition)")
+	var at_rest := settings.self_modulate
+	settings.mouse_entered.emit()
+	assert_ne(settings.self_modulate, at_rest, "hover lifts the button")
+	settings.mouse_exited.emit()
+	assert_eq(settings.self_modulate, at_rest, "leaving restores it")
+	settings.focus_entered.emit()
+	assert_ne(settings.self_modulate, at_rest,
+		"KEYBOARD focus is as visible as mouse hover")
+	settings.focus_exited.emit()
+	assert_eq(settings.self_modulate, at_rest, "losing focus restores it")
+	free_node(menu)
+
+
+## The primary action must be VISIBLY the focused one the moment the menu opens, because a
+## keyboard player gets no mouse cursor to tell them where they are. `_ready()` grabs focus
+## for New Game, and the role tint must reflect that rather than leaving the button looking
+## identical to the two secondary actions it sits above.
+func test_primary_action_opens_already_focused_and_looks_it() -> void:
 	var menu := _menu()
 	var buttons := _collect_buttons(menu)
 	if buttons.is_empty():
 		free_node(menu)
 		return
 	var primary: Button = buttons[0]
-	var at_rest := primary.self_modulate
-	primary.mouse_entered.emit()
-	assert_ne(primary.self_modulate, at_rest, "hover lifts the primary button")
-	primary.mouse_exited.emit()
-	assert_eq(primary.self_modulate, at_rest, "leaving restores it")
-	primary.focus_entered.emit()
-	assert_ne(primary.self_modulate, at_rest,
-		"KEYBOARD focus is as visible as mouse hover")
-	primary.focus_exited.emit()
-	assert_eq(primary.self_modulate, at_rest, "losing focus restores it")
+	assert_eq(primary.self_modulate, UITheme.role_modulate(UITheme.ROLE_PRIMARY, true),
+		"New Game wears its FOCUSED role tint on entry, not the at-rest one")
+	assert_ne(primary.self_modulate, UITheme.role_modulate(UITheme.ROLE_PRIMARY, false),
+		"the focused tint is actually distinguishable from the at-rest tint")
 	free_node(menu)
 
 

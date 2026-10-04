@@ -308,7 +308,15 @@ func test_hud_dividers_stretch_with_their_plaque() -> void:
 
 
 ## A15 — screen-edge spacing comes from ONE token, so the HUD is not authored around a single
-## screenshot size. Every anchored plaque sits exactly `HUD_MARGIN` from its edges.
+## screenshot size. Every anchored plaque is inset by exactly `HUD_MARGIN` from the edges it
+## hangs off (or 0 on an axis where it is centred).
+##
+## It asserts the authored OFFSETS, not `position`. `Control.position` is DERIVED — anchors ×
+## parent size + offsets — so for a right- or bottom-anchored plaque it reads back as an
+## absolute screen coordinate once the real viewport size propagates (the first version of
+## this test read 914/1086/552 on a 1152x648 CI viewport and failed). Asserting `position`
+## would mean asserting the viewport size, which is precisely what A15 forbids; the offset is
+## the value the code writes and the only one that encodes "18px from the edge".
 func test_hud_plaques_share_one_screen_edge_margin() -> void:
 	var hud := _hud()
 	var root := _hud_root(hud)
@@ -322,14 +330,21 @@ func test_hud_plaques_share_one_screen_edge_margin() -> void:
 		if control == null or not (control is PanelContainer):
 			continue
 		anchored += 1
-		for axis_value in [control.position.x, control.position.y]:
-			assert_true(absf(axis_value) == float(UIPalette.HUD_MARGIN)
-					or absf(axis_value) == 0.0,
-				"a plaque offsets by HUD_MARGIN (%d) or centres, never a literal (got %s)"
-					% [UIPalette.HUD_MARGIN, str(axis_value)])
+		assert_true(_is_margin_inset(control.offset_left),
+			"a plaque's horizontal inset is HUD_MARGIN (%d) or centred, never a literal (got %s)"
+				% [UIPalette.HUD_MARGIN, str(control.offset_left)])
+		assert_true(_is_margin_inset(control.offset_top),
+			"a plaque's vertical inset is HUD_MARGIN (%d) or centred, never a literal (got %s)"
+				% [UIPalette.HUD_MARGIN, str(control.offset_top)])
 	assert_true(anchored >= 3,
 		"identity / map / prompt plaques are all anchored panels (got %d)" % anchored)
 	free_node(hud)
+
+
+## True when an authored inset is the shared screen-edge margin (either sign, since a
+## right/bottom-anchored plaque insets negatively) or zero (centred on that axis).
+func _is_margin_inset(inset: float) -> bool:
+	return absf(inset) == float(UIPalette.HUD_MARGIN) or absf(inset) == 0.0
 
 
 ## A8/A17 — the visual pass must NOT invent stats the domain cannot back yet. A gold HP bar
