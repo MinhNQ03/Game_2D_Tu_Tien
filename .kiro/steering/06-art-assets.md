@@ -20,10 +20,23 @@
 
 - **Base tile size: `16px`** (`Vector2i(16, 16)`). Keep it consistent; don't mix
   incompatible pixel densities without a strong technical reason logged in `DECISIONS.md`.
-- Character baseline is `16×24` (`player_proto.png` single frame + the `*_proto_idle.png`
-  64×24 four-direction sheets). **The character sprite is still PROTOTYPE art** — none of the
-  licence-cleared packs ships a 16×24 four-direction tu-tiên figure, so replacing it needs art
-  authored to that spec (D-045).
+- **Character baseline is `32×48`** (D-046) — exactly 2× the old 16×24, so the 16px grid math
+  and integer scaling are unchanged (the figure is 2 tiles wide, 3 tall). A character sheet is
+  a **GRID**: one ROW per cardinal direction (DOWN, UP, LEFT, RIGHT) × N animation COLUMNS, so
+  `width = 32 * frames` and `height = 48 * 4`. The frame count is **derived from the texture
+  width**, never authored separately. Current sheets: `*_proto_idle.png` 128×192 (4-frame
+  breath) and `*_proto_walk.png` 192×192 (6-frame stride); `player_proto.png` (32×48) is the
+  single static DOWN frame used only as `player.tscn`'s harness fallback.
+- The character is a **white-haired cultivator in a pale layered floor-length robe holding a qi
+  orb**, derived by SAMPLING the two painted references in
+  `assets/sprites/characters/portraits/` (D-046) — still self-made/project-owned, still subject
+  to later upgrade. **No licence-cleared pack ships a top-down four-direction tu-tiên figure**;
+  a name scan across all nine supplied asset folders returned zero direction tokens, and the
+  Xianxia character set is side-view platformer art (its terrain is `platform_top` + slopes).
+  Do NOT import side-view character art into the top-down world.
+- **Animation speed is DATA** (`CharacterVisualProfileData.frame_duration`), per archetype. A
+  single-frame sheet must leave the component's `_process` switched off — a static character
+  costs nothing per frame.
 - **The map floor is the Verdant 00 East Asian Village 16px set** (`assets/tiles/verdant/`,
   `data/maps/east_asian_tileset.tres`, D-045): 4 moss (`koke`) fills + 4 flooded rice-paddy
   (`ta` = 田, measured `rgb(43,100,109)` — **water, not stone**) fills

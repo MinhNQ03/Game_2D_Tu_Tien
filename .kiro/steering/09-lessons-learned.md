@@ -565,3 +565,45 @@
 - **Fixed:** D-043. `main_menu.gd` + `settings_menu.gd` use the and_offsets variant; both HUD
   side panels are bounded boxes with scrolling content; regression tests pin the OFFSETS, the
   bounded-box contract and the reserved prompt strip.
+
+## L-029 — An OPTIONAL field that nobody authored made a whole pipeline a no-op, and every gate stayed green
+- **Symptom (D-046):** the owner kept saying the character looked like dead placeholder art. The
+  character visual pipeline was *correct*: `CharacterVisualProfileData` validated, the four
+  archetype profiles loaded, `CharacterVisualComponent` rendered a nearest-filtered feet-anchored
+  sprite, facing followed the movement vector, `player_default.tres` wired `sprite_set_ref`,
+  `WorldRuntime` applied it, and a dedicated test file covered all of it. 378 tests green. And
+  the character **never animated once**, because the sheet layout carried exactly ONE frame per
+  direction and all four profiles left the OPTIONAL `walk_sheet` field `null`. The documented
+  "falls back to idle if absent" behaviour was doing its job perfectly — it just meant the
+  fallback was the only path that ever ran, in every profile, forever.
+- **Rule:** **an optional field that no shipped data authors is not a feature, it is a no-op with
+  documentation.** When you add an optional capability, either author it in at least one real
+  piece of content in the SAME change, or write down the date it becomes required. Then assert
+  the *observable effect*, not the plumbing: "the component picks the walk sheet when moving" is
+  satisfied by a null walk sheet, whereas "the frame index CHANGES over time while moving" is
+  not. A test that exercises a configuration no shipped data uses is testing a hypothetical.
+  Concretely, for anything time-varying: assert that the output **differs between two moments**,
+  and that a full cycle **returns to the start** — a pipeline that renders frame 0 forever
+  passes every single-sample assertion.
+- **Also (two related traps this change walked into):**
+  - **Derive a count, never author it beside the data it counts.** The frame count comes from
+    the texture width, so art and data cannot disagree (extends L-014). And reject a ragged
+    width loudly instead of flooring it — a floor renders half a character and reports nothing.
+  - **Check your own earlier claims before building on them.** Two statements I had made to the
+    owner were wrong and both were cheap to verify: that `player.tscn` ignored the directional
+    art (it did not — the template wires it and the static sprite is only the harness fallback),
+    and that a specific external pack's hero sheets could be imported (they are side-view
+    platformer art — the pack's own terrain folder is `platform_top` + slopes, the animation set
+    is `jump`/`fall`/`dash`, and a direction-token scan across all nine supplied asset folders
+    returned zero hits; the frames were also 111×81, not the 79×78 I had recorded, with the
+    height changing per animation). An inherited assumption deserves the same scepticism as a
+    new one — see L-027, which is the same failure in the opposite direction.
+- **Also (art process):** generated pixel art must be **looked at magnified** before it ships.
+  Inspecting the sheets at 8× caught two defects no assertion would have: the draw order put
+  SKIN over the hair on every UP frame (a bare face on the back of the character's head), and
+  the walk deltas were ±1px, i.e. indistinguishable from idle — a "walk animation" that
+  animated nothing a player could see, which is the very defect this change existed to fix.
+- **Fixed:** D-046. Grid sheet layout (direction rows × animation columns), derived frame count,
+  required `walk_sheet` in all four profiles, an animation clock with a public `advance(delta)`
+  for deterministic tests, and assertions that the frame index advances, wraps, stays in its row
+  and resets across an idle↔walk switch.

@@ -376,6 +376,12 @@ Relationships are authored/tuned as DATA (`docs/RELATIONSHIP_SYSTEM.md`):
 - **`CharacterVisualProfileData`** (`src/data/characters/character_visual_profile_data.gd`,
   `data/characters/visual/*.tres`) — presentation definition referenced by
   `CharacterTemplateData.sprite_set_ref`: `id`, `idle_sheet` (required), `walk_sheet`
-  (optional), `frame_size: Vector2i` (16×24 baseline), `anchor_offset`. One row of 4 cardinal
-  frames. Validated at the boundary (sheet dimensions = 4 frames × 1 row). It is PRESENTATION
+  (optional — falls back to idle while moving), `frame_size: Vector2i` (**32×48** baseline,
+  D-046), `frame_duration: float` (seconds per animation frame, must be > 0), `anchor_offset`.
+  A sheet is a **GRID**: one ROW per cardinal direction (`Direction` order DOWN, UP, LEFT,
+  RIGHT) × N animation COLUMNS, so `width = frame_size.x * frames` and
+  `height = frame_size.y * 4`. The frame count is **derived** via `frame_count_of(sheet)` from
+  the texture width — never authored, so it cannot drift from the art. Validated at the
+  boundary: a width that is not a whole multiple of the frame width is REJECTED (and
+  `frame_count_of` returns 0) rather than floored to a half-frame slice. It is PRESENTATION
   data — never copied into `CharacterState` (`docs/CHARACTER_SYSTEM.md` §3).

@@ -21,9 +21,12 @@ const PROFILE_PATHS := [
 	"res://data/characters/visual/merchant_visual.tres",
 ]
 
-const SPACING_X := 48
+## Gap BETWEEN two previewed figures. The step is this plus the profile's own frame width, so
+## the layout follows the art instead of a hard-coded stride that silently tightens every time
+## the character baseline grows (it did: 16px -> 32px wide in D-046).
+const SPACING_GAP := 24
 const BASE_X := 48
-const BASE_Y := 96
+const BASE_Y := 112
 
 
 func _ready() -> void:
@@ -42,7 +45,7 @@ func _build_preview() -> int:
 	for path in PROFILE_PATHS:
 		if not ResourceLoader.exists(path):
 			push_error("[preview] visual profile missing: %s" % path)
-			x += SPACING_X
+			x += SPACING_GAP
 			continue
 		var profile := load(path) as CharacterVisualProfileData
 		var visual := VisualComponentScript.new() as CharacterVisualComponent
@@ -50,5 +53,8 @@ func _build_preview() -> int:
 		add_child(visual)
 		if visual.setup(profile):
 			built += 1
-		x += SPACING_X
+		var width := SPACING_GAP
+		if profile != null:
+			width += profile.frame_size.x
+		x += width
 	return built

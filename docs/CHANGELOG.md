@@ -8,6 +8,56 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — The character actually animates: 32×48 four-direction cultivator (D-046)
+The owner asked why the character was still proto art after everything else got real graphics.
+Reading the pipeline corrected **two of my own earlier claims**, and found the real defect.
+- **The sheet carried ONE frame per direction and all four profiles left `walk_sheet` null**, so
+  the character slid across the floor without ever animating. That — not the pixel count — is
+  what read as lifeless, and no gate could see it: the profiles were valid, the component
+  rendered, 378 tests were green.
+- **Correction 1:** I had said `player.tscn` ignores the 4-direction art. Half wrong —
+  `player_default.tres` sets `sprite_set_ref` and `WorldRuntime` applies it, so a real run was
+  already using the directional sheet; the static `Sprite2D` is only the harness fallback.
+- **Correction 2:** I had promised to import `xf_hero_swordsman_{idle,walk}`. **Measuring killed
+  that plan.** The Xianxia `terrain/` is `platform_top` + `slope26/45/63_up/down`, the animation
+  set is `jump`/`fall`/`dash`/`block`, and a direction-token scan across **all nine** supplied
+  folders returned **zero** hits — it is a side-scrolling platformer pack. Frames are **111×81**
+  (not the 79×78 I had recorded) with per-animation height changes (81 vs 86). It would have put
+  a side-view, ~7-tile-wide figure into a top-down 16px game. **No top-down character exists in
+  any of the nine folders.**
+- **Sheet layout is now a GRID:** one row per direction × N animation columns, with the frame
+  count **derived from the texture width** rather than authored twice (L-014). Idle and walk may
+  differ (4-frame breath, 6-frame stride).
+- **Baseline 16×24 → 32×48**, exactly 2× so the 16px grid math and integer scaling are unchanged
+  (2 tiles wide, 3 tall). Reason: the measured signature of the reference art is waist-length
+  white hair + a pale layered floor-length robe + a saturated qi orb, and none of those three
+  survive a 6px-wide torso.
+- **Palette sampled from the owner's two painted references, not invented** (L-021): male orb
+  `51,153,240` / hair `208,192,192` / robe `192,192,208`→`80,96,128`; female orb `145,92,234` /
+  hair `240,224,224` / robe `160,160,224`→`96,96,160`. One documented departure: the male
+  reference's hair tone is nearly the same VALUE as its skin, so it became the hairline shadow
+  (`hair_dk`) and the lit hair is a cooler silver — pixel art needs value separation a painted
+  render gets from line work.
+- **Animation clock in `CharacterVisualComponent`** at the profile's `frame_duration` (elder
+  shuffles at 0.26s, player strides at 0.14s — data, not code). `_process` switches **off** for
+  a single-frame sheet. `advance(delta)` is public so tests drive it deterministically.
+  Switching idle↔walk resets the column, or a 6-frame index would overrun the 4-frame sheet.
+- **A ragged sheet width is rejected, not floored** — `frame_count_of` returns 0 and the error
+  names the reason, instead of rendering half a character.
+- **The outline is traced from the pixels**, so it stays correct for every pose; the orb halo is
+  drawn after the pass (which only considers fully-opaque neighbours) so a glow is never outlined.
+- **`player.tscn` now agrees with the component:** feet-anchored fallback sprite and the
+  collision footprint moved to the feet (18×12 at y=−6) instead of a 24×24 box straddling a
+  feet-origin, which had put half the collision underground. A test pins that both visual paths
+  place the feet at the same point.
+- **Camera deliberately unchanged** — the derived zoom already satisfies both constraints
+  (L-022: do not fiddle a camera value without evidence).
+- **NOT done, with a reason:** the 30 CC0 `xf_npc_*` portraits are usable and cleared, but
+  nothing renders a portrait yet; 30 textures with no consumer is what L-005 forbids.
+- Art iterated **twice** after inspecting the sheets at 8× magnification: the first pass drew
+  skin over the hair on every UP frame (a bare face on the character's back) and had walk deltas
+  too small to tell from idle.
+
 ### 2026-10-02 — The map floor is real art now: Verdant East Asian 16px tileset (D-045)
 The owner's complaint was that only the menu got real art while the **map, scenery and layout**
 stayed placeholder. That was correct, and my previous claim that "the pack cannot fix the map"

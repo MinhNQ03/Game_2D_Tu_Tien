@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Generate Aetheria prototype pixel-art PNG assets (project-owned, self-made).
+"""Generate Aetheria pixel-art PNG assets (project-owned, self-made).
 
 This is a BUILD-TIME TOOL only. The game runtime never imports or depends on it; it
-exists so the committed prototype textures are reproducible and provably self-made
-(no external/licensed asset enters the project — `.kiro/steering/06-art-assets.md`).
+exists so the committed textures are reproducible and provably self-made (no external
+or licensed asset enters the project — `.kiro/steering/06-art-assets.md`).
 
 It writes true RGBA PNGs using only the Python standard library (zlib + struct), so no
 third-party image library is required.
 
 Outputs (16px base tile, nearest/no-mipmap pixel art — `06-art-assets.md`):
-  assets/sprites/characters/player_proto.png   16x24 top-down character
-  assets/tiles/prototype/prototype_tileset.png 48x16 strip of 3x 16x16 tiles
-                                                (grass, path, wall/edge)
+  assets/sprites/characters/player_proto.png        32x48 static fallback frame
+  assets/sprites/characters/<name>_idle.png         128x192 (4 frames x 4 directions)
+  assets/sprites/characters/<name>_walk.png         192x192 (6 frames x 4 directions)
+  assets/tiles/prototype/prototype_tileset.png      48x16 strip of 3x 16x16 tiles
+  assets/sprites/props/prop_*.png                   garden-courtyard props
+  assets/sprites/sects/emblem_*.png                 16x16 sect insignia
 
 Run:  python tools/gen_prototype_assets.py
 """
@@ -67,34 +70,6 @@ def _shade(color, factor):
         a,
     )
 
-
-# --- Player: 16x24 top-down figure (production-foundation, D-029) -----------
-# The player.tscn `Visual` Sprite2D uses this single 16x24 frame directly, so it must match
-# the richer, shaded look of the 4-direction archetype sheets (`_draw_character_frame`). We
-# reuse that exact drawing (DOWN facing, player jade-blue palette) instead of a second, flatter
-# copy — one source of truth for the character silhouette/shading (04-coding-standards: no
-# duplicated drawing logic). The companion idle sheet is produced by gen_character_sheets().
-_PLAYER_PALETTE = {
-    "skin": (235, 200, 165, 255), "hair": (70, 50, 40, 255),
-    "robe": (60, 130, 200, 255), "robe_dk": (40, 95, 150, 255),
-    "boots": (55, 45, 40, 255), "accent": (120, 210, 190, 255),
-}
-
-
-def gen_player():
-    w, h = 16, 24
-    px = _blank(w, h)
-    _draw_character_frame(px, 0, 0, _PLAYER_PALETTE)   # DOWN-facing, same style as the sheets
-    _png(os.path.join(ROOT, "assets/sprites/characters/player_proto.png"), w, h, px)
-
-
-# --- Tileset: 48x16 = three 16x16 tiles -------------------------------------
-# --- Tileset tiles (production-foundation top-down pixel art, D-029) ----------
-# Richer than the first prototype: layered shading, a soft ordered-dither between tones and
-# scattered detail so a tiled field does not read as one flat colour. Still 16px, nearest,
-# wuxia garden-courtyard palette (mossy jade grass, warm flagstone path, blue-grey roof-tile
-# wall). The three columns + atlas coords are UNCHANGED (0=grass,1=path,2=wall) so the TileSet
-# resource, `prototype_ground.gd` and every map scene keep working with no edit.
 
 # A 4x4 ordered-dither (Bayer) threshold matrix, values 0..15, for a soft two-tone speckle.
 _BAYER4 = [
@@ -183,115 +158,424 @@ def gen_tileset():
     _png(os.path.join(ROOT, "assets/tiles/prototype/prototype_tileset.png"), w, h, px)
 
 
-# --- Character directional idle sheets (Phase 05 art pipeline, D-026) --------
-# A sheet is one row of 4 frames (DOWN, UP, LEFT, RIGHT) at 16x24 each (64x24 total), matching
-# CharacterVisualProfileData. All archetypes share the same silhouette/anchor baseline (feet at
-# the bottom row) and differ only by palette + a couple accent pixels, so the whole cast reads
-# as one game (docs/CHARACTER_ART_BIBLE.md), not a mix of packs. Self-made/CC0.
+# --- Cultivator characters: 32x48 ANIMATED 4-direction sprites (D-046) -------
+#
+# This REPLACES the flat 16x24 single-pose proto figure. Two things were wrong with it:
+#
+#   1. It carried ONE frame per direction, and every visual profile left `walk_sheet` null,
+#      so the character slid across the floor without ever animating. That — not the pixel
+#      count — is what read as lifeless.
+#   2. 16x24 cannot carry the look this game is actually going for. The art direction is
+#      taken from the two painted reference portraits in
+#      `assets/sprites/characters/portraits/` (project-owned, self-generated), whose
+#      MEASURED signature is: waist-length white/silver hair, a pale layered floor-length
+#      robe, and one saturated qi orb held in the hand. At a 6px-wide torso none of those
+#      three reads survive.
+#
+# 32x48 is exactly 2x the documented 16x24 baseline, so the 16px tile grid math is unchanged
+# (the figure is 2 tiles wide, 3 tall) and every scale factor stays an integer.
+#
+# MEASURED reference palettes (sampled from the PNGs, not invented — L-021). Per-band
+# dominant colours plus the most-saturated / brightest pixel of each file:
+#   cultivator_male.png   (310x560): hair 208,192,192 | robe 192,192,208 -> 160,160,192
+#                                    -> 80,96,128 | deep aura 32,64,112
+#                                    | orb 51,153,240 | core 233,254,255
+#   cultivator_female.png (300x560): hair 240,224,224 | robe 160,160,224 -> 128,128,192
+#                                    -> 96,96,160 | deep aura 48,48,112
+#                                    | orb 145,92,234 | core 255,252,252
+# The gold filigree visible in the references is 1px-scale detail at this size, so it is
+# translated honestly into a single accent line rather than faked as texture. The elder and
+# merchant palettes are DERIVED in the same family (no reference was measured for them).
 
-FRAME_W, FRAME_H = 16, 24
-OUTLINE = (20, 20, 28, 255)
+CHAR_W, CHAR_H = 32, 48
+CHAR_CX = CHAR_W // 2
+DIRECTION_COUNT = 4
+IDLE_FRAMES = 4
+WALK_FRAMES = 6
+OUTLINE = (18, 18, 26, 255)
 
 
-def _draw_character_frame(px, ox, direction, pal):
-    """Draw one 16x24 figure at x-offset `ox` facing `direction` (0=down,1=up,2=left,3=right).
+class Dir:
+    """Sheet ROW order. MUST match `CharacterVisualProfileData.Direction`."""
+    DOWN = 0
+    UP = 1
+    LEFT = 2
+    RIGHT = 3
 
-    The silhouette is identical across directions (consistent footprint); only the
-    face/accent details change with facing.
+
+# Robe silhouette: half-width per row band, shoulders down to the hem sweep. The cinched
+# waist then flaring A-line is the shape every reference shares.
+# Shoulders must be WIDER than the head+hair or the figure reads as a bowling pin instead of
+# a person; the hem then sweeps out to roughly twice the waist for the A-line.
+_ROBE_BANDS = (
+    (15, 18, 7),    # shoulders   14px
+    (18, 27, 6),    # chest       12px
+    (27, 30, 5),    # sash cinch  10px
+    (30, 35, 6),
+    (35, 40, 7),
+    (40, 44, 8),
+    (44, 47, 9),    # hem sweep   18px
+)
+
+
+def _robe_half(y):
+    for (y0, y1, half) in _ROBE_BANDS:
+        if y0 <= y < y1:
+            return half
+    return 0
+
+
+# Per-frame animation deltas. Idle is a slow breath; walk is a hem/sleeve stride with a bob.
+# A floor-length robe hides the legs, so the stride has to read from the HEM sway, the body
+# bob and the sleeve swing — plus a hint of the forward foot under the hem.
+_IDLE_BOB = (0, 0, 1, 0)
+_IDLE_SWAY = (0, 1, 0, -1)
+_IDLE_ORB = (0, -1, -1, 0)
+# The walk deltas are deliberately BIG. A first pass used +/-1px and was indistinguishable
+# from idle at 1x on screen, which defeats the whole point of adding a walk sheet.
+_WALK_BOB = (0, -1, -1, 0, -1, -1)
+_WALK_SWAY = (-2, -1, 1, 2, 1, -1)
+_WALK_ORB = (0, -1, 0, 1, 0, -1)
+_WALK_FOOT = (-3, -1, 2, 3, 1, -2)
+
+
+def _anim_deltas(anim, frame):
+    """(body bob, hem/sleeve sway, orb bob, forward-foot offset) for this animation frame."""
+    if anim == "walk":
+        i = frame % WALK_FRAMES
+        return _WALK_BOB[i], _WALK_SWAY[i], _WALK_ORB[i], _WALK_FOOT[i]
+    i = frame % IDLE_FRAMES
+    return _IDLE_BOB[i], _IDLE_SWAY[i], _IDLE_ORB[i], 0
+
+
+def _glow(px, cx, cy, radius, color, peak=255):
+    """Soft radial halo. Blends over whatever is already there; leaves partial alpha at the
+    rim so the outline pass (which only outlines FULLY opaque pixels) never traces a glow."""
+    r2 = float(radius * radius) or 1.0
+    for y in range(max(0, cy - radius), min(len(px), cy + radius + 1)):
+        for x in range(max(0, cx - radius), min(len(px[0]), cx + radius + 1)):
+            d2 = (x - cx) ** 2 + (y - cy) ** 2
+            if d2 > r2:
+                continue
+            t = 1.0 - (d2 / r2) ** 0.5
+            a = int(peak * (t ** 1.5))
+            if a <= 4:
+                continue
+            dr, dg, db, da = px[y][x]
+            if da == 0:
+                px[y][x] = (color[0], color[1], color[2], a)
+            else:
+                k = a / 255.0
+                px[y][x] = (
+                    int(color[0] * k + dr * (1 - k)),
+                    int(color[1] * k + dg * (1 - k)),
+                    int(color[2] * k + db * (1 - k)),
+                    max(da, a),
+                )
+
+
+def _outline_pass(px):
+    """Trace a 1px dark outline around the opaque silhouette.
+
+    Derived from the pixels rather than hand-drawn, so the outline stays correct for every
+    pose/frame instead of drifting when a limb moves. Only FULLY opaque neighbours count, so
+    the soft qi-orb halo is never outlined.
     """
-    skin = pal["skin"]
-    skin_sh = _shade(skin, 0.82)
-    hair = pal["hair"]
-    hair_hi = _shade(hair, 1.35)
-    robe = pal["robe"]
-    robe_dk = pal["robe_dk"]
-    robe_hi = _shade(robe, 1.22)
-    boots = pal["boots"]
-    accent = pal["accent"]
-
-    # Full-body dark outline first (silhouette read), then fill inside it.
-    _rect(px, ox + 4, 1, ox + 12, 24, OUTLINE)      # torso/head column outline block
-    _rect(px, ox + 2, 9, ox + 14, 16, OUTLINE)      # arms span outline
-
-    # Head (inside the outline): skin face + a shaded jaw, hair cap over the top.
-    _rect(px, ox + 5, 2, ox + 11, 8, skin)
-    _rect(px, ox + 5, 7, ox + 11, 8, skin_sh)        # jaw shadow
-    _rect(px, ox + 5, 1, ox + 11, 3, hair)           # hair cap
-    _rect(px, ox + 5, 1, ox + 11, 2, hair_hi)        # hair sheen (top-lit)
-    _rect(px, ox + 4, 2, ox + 5, 7, hair)            # side hair
-    _rect(px, ox + 11, 2, ox + 12, 7, hair)
-
-    # Body / robe: lit upper, shaded lower hem, a center sash accent, a highlight shoulder.
-    _rect(px, ox + 5, 8, ox + 12, 17, robe)
-    _rect(px, ox + 5, 8, ox + 12, 10, robe_hi)       # top-lit shoulders
-    _rect(px, ox + 5, 14, ox + 12, 17, robe_dk)      # lower hem shadow
-    _rect(px, ox + 7, 8, ox + 10, 17, accent)        # center sash (archetype colour)
-    _rect(px, ox + 8, 8, ox + 9, 17, _shade(accent, 1.2))  # sash highlight line
-
-    # Arms (skin), with a shaded underside.
-    _rect(px, ox + 3, 9, ox + 5, 15, skin)
-    _rect(px, ox + 11, 9, ox + 13, 15, skin)
-    _rect(px, ox + 3, 13, ox + 5, 15, skin_sh)
-    _rect(px, ox + 11, 13, ox + 13, 15, skin_sh)
-
-    # Legs / boots (feet on the bottom row = anchor line).
-    _rect(px, ox + 5, 17, ox + 8, 23, boots)
-    _rect(px, ox + 9, 17, ox + 12, 23, boots)
-    _rect(px, ox + 5, 22, ox + 12, 23, _shade(boots, 0.7))  # foot contact shadow
-
-    # Facing-specific face details (eyes drawn as dark pixels on the lit face).
-    if direction == 0:        # DOWN: both eyes, facing camera
-        px[5][ox + 6] = OUTLINE
-        px[5][ox + 9] = OUTLINE
-    elif direction == 1:      # UP: back of head — hair covers the face, no eyes
-        _rect(px, ox + 5, 2, ox + 11, 6, hair)
-        _rect(px, ox + 5, 2, ox + 11, 3, hair_hi)
-    elif direction == 2:      # LEFT: profile — one eye left, hair swept left
-        px[5][ox + 6] = OUTLINE
-        _rect(px, ox + 4, 2, ox + 6, 7, hair)
-    elif direction == 3:      # RIGHT: profile — one eye right, hair swept right
-        px[5][ox + 9] = OUTLINE
-        _rect(px, ox + 10, 2, ox + 12, 7, hair)
+    h = len(px)
+    w = len(px[0])
+    edge = []
+    for y in range(h):
+        for x in range(w):
+            if px[y][x][3] != 0:
+                continue
+            for (dx, dy) in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx = x + dx
+                ny = y + dy
+                if 0 <= nx < w and 0 <= ny < h and px[ny][nx][3] == 255:
+                    edge.append((x, y))
+                    break
+    for (x, y) in edge:
+        px[y][x] = OUTLINE
 
 
-def _gen_character_sheet(name, pal):
-    w, h = FRAME_W * 4, FRAME_H
+def _draw_robe(px, pal, bob, sway):
+    """The layered floor-length robe: lit shoulders, shaded hem, a cinched sash, a centre
+    lapel line standing in for the references' gold filigree, and a swaying hem."""
+    cx = CHAR_CX
+    for y in range(15, 47):
+        half = _robe_half(y)
+        if half == 0:
+            continue
+        # The sway only affects the loose lower robe; the shoulders stay put.
+        drift = 0
+        if y >= 35:
+            drift = sway
+        elif y >= 30:
+            drift = sway // 2
+        yy = y + bob if y < 30 else y
+        tone = pal["robe"]
+        if y < 20:
+            tone = pal["robe_hi"]          # top-lit shoulders
+        elif y >= 40:
+            tone = pal["robe_dk"]          # hem in shadow
+        elif y >= 30:
+            tone = pal["robe"]
+        _rect(px, cx - half + drift, yy, cx + half + drift, yy + 1, tone)
+        # Inner shadow along the left edge gives the robe a round volume.
+        _rect(px, cx - half + drift, yy, cx - half + drift + 1, yy + 1,
+              _shade(tone, 0.78))
+    # A single contact row grounds the figure. It is ONE row on purpose: a thicker band reads
+    # as a dark slab bolted to the bottom of the robe rather than a shadow under a hem.
+    _rect(px, cx - 8 + sway, 46, cx + 8 + sway, 47, pal["robe_deep"])
+    # Sash: the cinched waist every reference shares.
+    _rect(px, cx - 6, 27 + bob, cx + 6, 30 + bob, pal["trim"])
+    _rect(px, cx - 6, 27 + bob, cx + 6, 28 + bob, _shade(pal["trim"], 1.25))
+    # Centre lapel line (the honest pixel translation of the gold filigree).
+    _rect(px, cx - 1, 16 + bob, cx + 1, 27 + bob, pal["trim"])
+
+
+def _draw_sleeves(px, pal, bob, sway, swap):
+    """Wide flowing sleeves. `swap` swings them in opposite phase for the walk stride."""
+    cx = CHAR_CX
+    for (side, phase) in ((-1, 1), (1, -1)):
+        drift = (sway * phase) if swap else 0
+        x0 = (cx - 9) if side < 0 else (cx + 6)
+        x0 += drift
+        _rect(px, x0, 18 + bob, x0 + 3, 30 + bob, pal["robe"])
+        _rect(px, x0, 18 + bob, x0 + 3, 21 + bob, pal["robe_hi"])
+        _rect(px, x0, 27 + bob, x0 + 3, 30 + bob, pal["robe_dk"])
+        # A seam against the torso, or the sleeve dissolves into the robe and the figure
+        # loses its arms entirely.
+        seam_x = (x0 + 3) if side < 0 else (x0 - 1)
+        _rect(px, seam_x, 18 + bob, seam_x + 1, 30 + bob, pal["robe_deep"])
+        # The hand at the cuff.
+        _rect(px, x0 + 1, 30 + bob, x0 + 3, 32 + bob, pal["skin"])
+
+
+def _draw_head(px, pal, bob):
+    """The face only. Narrow (8px) on purpose: with the hair adding a pixel each side the head
+    lands at ~10px against 14px shoulders, which is what gives the figure a shoulder line."""
+    cx = CHAR_CX
+    _rect(px, cx - 4, 5 + bob, cx + 4, 15 + bob, pal["skin"])
+    _rect(px, cx - 4, 12 + bob, cx + 4, 15 + bob, _shade(pal["skin"], 0.84))  # jaw shadow
+    _rect(px, cx - 2, 15 + bob, cx + 2, 16 + bob, _shade(pal["skin"], 0.72))  # neck
+
+
+def _draw_hair_down(px, pal, bob, sway):
+    """Front view: a crown plus the two long white locks that frame the chest.
+
+    `hair_dk` under the crown is what stops the hair and the face merging into one pale
+    blob — at this size a hairline SHADOW does more for the read than extra hair pixels.
+    """
+    cx = CHAR_CX
+    _rect(px, cx - 5, 2 + bob, cx + 5, 7 + bob, pal["hair"])
+    _rect(px, cx - 5, 2 + bob, cx + 5, 4 + bob, pal["hair_hi"])    # top-lit crown
+    _rect(px, cx - 5, 6 + bob, cx + 5, 7 + bob, pal["hair_dk"])    # hairline shadow
+    _rect(px, cx - 5, 6 + bob, cx - 4, 14 + bob, pal["hair"])      # temples
+    _rect(px, cx + 4, 6 + bob, cx + 5, 14 + bob, pal["hair"])
+    # The long locks, drifting with the sway at their tips.
+    for (x0, phase) in ((cx - 6, 1), (cx + 5, -1)):
+        _rect(px, x0, 13 + bob, x0 + 2, 23 + bob, pal["hair"])
+        _rect(px, x0 + (sway * phase), 23 + bob, x0 + 2 + (sway * phase), 29 + bob,
+              pal["hair_dk"])
+    # A topknot crown pin — the one warm accent on an otherwise cool figure.
+    _rect(px, cx - 2, 1 + bob, cx + 2, 3 + bob, pal["trim"])
+
+
+def _draw_hair_up(px, pal, bob, sway):
+    """Back view: a full curtain of hair. Drawn AFTER the head so no skin shows through —
+    the back of a head is hair, and a first pass that drew this first put a bare face on
+    the character's back in every UP frame."""
+    cx = CHAR_CX
+    _rect(px, cx - 5, 2 + bob, cx + 5, 16 + bob, pal["hair"])
+    _rect(px, cx - 5, 2 + bob, cx + 5, 5 + bob, pal["hair_hi"])
+    _rect(px, cx - 6, 16 + bob, cx + 6, 27 + bob, pal["hair"])
+    _rect(px, cx - 5 + sway, 27 + bob, cx + 5 + sway, 32 + bob, pal["hair_dk"])
+    # A centre parting plus shaded outer edges. Without them this is one flat white block
+    # that reads as a cloak or a sheet rather than a head of long hair.
+    _rect(px, cx, 4 + bob, cx + 1, 30 + bob, pal["hair_dk"])
+    _rect(px, cx - 6, 16 + bob, cx - 5, 27 + bob, pal["hair_dk"])
+    _rect(px, cx + 5, 16 + bob, cx + 6, 27 + bob, pal["hair_dk"])
+    _rect(px, cx - 2, 1 + bob, cx + 2, 3 + bob, pal["trim"])
+
+
+def _draw_hair_left(px, pal, bob, sway):
+    """Profile: hair swept back off the face, mass behind the head."""
+    cx = CHAR_CX
+    _rect(px, cx - 4, 2 + bob, cx + 5, 7 + bob, pal["hair"])
+    _rect(px, cx - 4, 2 + bob, cx + 5, 4 + bob, pal["hair_hi"])
+    _rect(px, cx - 4, 6 + bob, cx + 1, 7 + bob, pal["hair_dk"])    # hairline over the brow
+    _rect(px, cx + 1, 4 + bob, cx + 5, 16 + bob, pal["hair"])      # swept-back mass
+    _rect(px, cx + 2 + sway, 16 + bob, cx + 5 + sway, 27 + bob, pal["hair"])
+    _rect(px, cx + 2 + sway, 24 + bob, cx + 5 + sway, 27 + bob, pal["hair_dk"])
+    _rect(px, cx - 2, 1 + bob, cx + 2, 3 + bob, pal["trim"])
+
+
+def _draw_face(px, pal, direction, bob):
+    """Eyes only; at this scale a mouth reads as dirt. UP draws nothing (back of the head)."""
+    cx = CHAR_CX
+    eye = OUTLINE
+    y = 9 + bob
+    if not (0 <= y < CHAR_H):
+        return
+    if direction == Dir.DOWN:
+        px[y][cx - 3] = eye
+        px[y][cx + 2] = eye
+    elif direction == Dir.LEFT:
+        px[y][cx - 3] = eye
+        px[y][cx - 5] = _shade(pal["skin"], 0.7)   # nose/brow edge in profile
+
+
+def _draw_orb(px, pal, direction, orb_bob, sway):
+    """The qi orb — the single saturated element on a pale figure, and the whole reason the
+    character reads as a cultivator rather than a villager in a dress."""
+    cx = CHAR_CX
+    if direction == Dir.DOWN:
+        ox, oy = cx - 10, 25
+    elif direction == Dir.UP:
+        ox, oy = cx + 10, 25
+    else:                      # LEFT (RIGHT is this frame mirrored)
+        ox, oy = cx - 11, 24
+    oy += orb_bob
+    ox += sway
+    _glow(px, ox, oy, 5, pal["orb"], 120)
+    _glow(px, ox, oy, 3, pal["orb"], 225)
+    _rect(px, ox, oy, ox + 1, oy + 1, pal["orb_core"])
+
+
+def _render_cultivator(direction, pal, anim, frame):
+    """Render ONE 32x48 frame and return it. RIGHT is LEFT mirrored, so the two profiles can
+    never drift apart (04-coding-standards: no duplicated drawing logic)."""
+    if direction == Dir.RIGHT:
+        src = _render_cultivator(Dir.LEFT, pal, anim, frame)
+        return [list(reversed(row)) for row in src]
+
+    px = _blank(CHAR_W, CHAR_H)
+    bob, sway, orb_bob, foot = _anim_deltas(anim, frame)
+
+    # A hint of the forward foot under the hem sells the stride (walk only).
+    if anim == "walk" and foot != 0:
+        _rect(px, CHAR_CX + foot - 2, 45, CHAR_CX + foot + 2, 47, pal["robe_hi"])
+
+    _draw_robe(px, pal, bob, sway)
+    _draw_sleeves(px, pal, bob, sway, anim == "walk")
+    _draw_head(px, pal, bob)
+
+    # Hair goes on LAST, over the head, for every facing. For UP that is what makes the back
+    # of the head read as hair instead of a face.
+    if direction == Dir.UP:
+        _draw_hair_up(px, pal, bob, sway)
+    elif direction == Dir.LEFT:
+        _draw_hair_left(px, pal, bob, sway)
+    else:
+        _draw_hair_down(px, pal, bob, sway)
+
+    _draw_face(px, pal, direction, bob)
+    _outline_pass(px)
+    _draw_orb(px, pal, direction, orb_bob, sway)   # after the outline: a halo is not a body
+    return px
+
+
+def _blit(px, src, ox, oy):
+    for y in range(len(src)):
+        ty = oy + y
+        if ty < 0 or ty >= len(px):
+            continue
+        for x in range(len(src[0])):
+            c = src[y][x]
+            if c[3] == 0:
+                continue
+            tx = ox + x
+            if 0 <= tx < len(px[0]):
+                px[ty][tx] = c
+
+
+def _draw_cultivator(px, ox, oy, direction, pal, anim, frame):
+    _blit(px, _render_cultivator(direction, pal, anim, frame), ox, oy)
+
+
+# Palettes. The player and female cultivator come from the MEASURED references (see the
+# module comment); the elder and merchant are derived in the same family.
+#
+# ONE deliberate translation: the male reference's measured hair tone (208,192,192) is almost
+# the same VALUE as its skin, so using it as the main hair colour merged the head into a
+# single pale blob at this size. It is kept as `hair_dk` (the hairline/underside shadow) and
+# the lit hair is a cooler, lighter silver. Pixel art needs value separation that a soft
+# painted render gets from line work.
+CULTIVATORS = {
+    # Young cultivator (the player) — the male reference: silver hair, pale blue-white robe,
+    # azure qi orb.
+    "player_proto": {
+        "hair": (230, 232, 242, 255), "hair_hi": (250, 252, 255, 255),
+        "hair_dk": (208, 192, 192, 255),
+        "skin": (236, 206, 178, 255),
+        "robe_hi": (206, 208, 224, 255), "robe": (168, 172, 202, 255),
+        "robe_dk": (124, 134, 170, 255), "robe_deep": (56, 72, 110, 255),
+        "trim": (214, 186, 120, 255),
+        "orb": (51, 153, 240, 255), "orb_core": (233, 254, 255, 255),
+    },
+    # Female cultivator — the female reference: white hair, violet layered robe, amethyst orb.
+    "cultivator_f_proto": {
+        "hair": (240, 224, 224, 255), "hair_hi": (255, 252, 252, 255),
+        "hair_dk": (206, 192, 200, 255),
+        "skin": (240, 212, 192, 255),
+        "robe_hi": (186, 186, 230, 255), "robe": (144, 144, 206, 255),
+        "robe_dk": (112, 112, 176, 255), "robe_deep": (56, 56, 120, 255),
+        "trim": (222, 196, 136, 255),
+        "orb": (145, 92, 234, 255), "orb_core": (255, 252, 252, 255),
+    },
+    # Elder — white hair, grey-jade robe, pale jade orb.
+    "elder_proto": {
+        "hair": (236, 238, 240, 255), "hair_hi": (255, 255, 255, 255),
+        "hair_dk": (196, 200, 204, 255),
+        "skin": (222, 192, 166, 255),
+        "robe_hi": (176, 182, 184, 255), "robe": (130, 138, 142, 255),
+        "robe_dk": (96, 104, 110, 255), "robe_deep": (46, 54, 60, 255),
+        "trim": (186, 166, 104, 255),
+        "orb": (120, 206, 178, 255), "orb_core": (238, 255, 250, 255),
+    },
+    # Wandering cultivator / merchant — dark hair, earthy robe, warm amber orb.
+    "merchant_proto": {
+        "hair": (86, 64, 50, 255), "hair_hi": (124, 96, 72, 255),
+        "hair_dk": (52, 38, 30, 255),
+        "skin": (232, 196, 160, 255),
+        "robe_hi": (188, 154, 104, 255), "robe": (154, 120, 76, 255),
+        "robe_dk": (118, 90, 56, 255), "robe_deep": (58, 42, 26, 255),
+        "trim": (214, 186, 120, 255),
+        "orb": (240, 178, 74, 255), "orb_core": (255, 246, 214, 255),
+    },
+}
+
+
+def _gen_cultivator_sheet(name, pal, anim, frames):
+    """One sheet: `frames` columns (animation) x 4 rows (DOWN, UP, LEFT, RIGHT)."""
+    w = CHAR_W * frames
+    h = CHAR_H * DIRECTION_COUNT
     px = _blank(w, h)
-    for direction in range(4):
-        _draw_character_frame(px, direction * FRAME_W, direction, pal)
-    _png(os.path.join(ROOT, "assets/sprites/characters/%s_idle.png" % name), w, h, px)
+    for direction in range(DIRECTION_COUNT):
+        for frame in range(frames):
+            _draw_cultivator(px, frame * CHAR_W, direction * CHAR_H,
+                             direction, pal, anim, frame)
+    _png(os.path.join(ROOT, "assets/sprites/characters/%s_%s.png" % (name, anim)), w, h, px)
 
 
 def gen_character_sheets():
-    # Four initial archetypes, one consistent style, distinct palettes (06-art / art bible).
-    archetypes = {
-        # Player / young cultivator — jade-blue robe.
-        "player_proto": {
-            "skin": (235, 200, 165, 255), "hair": (70, 50, 40, 255),
-            "robe": (60, 130, 200, 255), "robe_dk": (40, 95, 150, 255),
-            "boots": (55, 45, 40, 255), "accent": (120, 210, 190, 255),
-        },
-        # Female cultivator — rose robe.
-        "cultivator_f_proto": {
-            "skin": (240, 208, 176, 255), "hair": (40, 30, 46, 255),
-            "robe": (196, 92, 128, 255), "robe_dk": (150, 64, 96, 255),
-            "boots": (70, 48, 60, 255), "accent": (236, 196, 150, 255),
-        },
-        # Elder — grey robe, white hair.
-        "elder_proto": {
-            "skin": (224, 196, 168, 255), "hair": (220, 220, 224, 255),
-            "robe": (110, 112, 120, 255), "robe_dk": (78, 80, 88, 255),
-            "boots": (50, 50, 56, 255), "accent": (170, 150, 90, 255),
-        },
-        # Wandering cultivator / merchant — earthy brown robe.
-        "merchant_proto": {
-            "skin": (232, 196, 160, 255), "hair": (56, 40, 30, 255),
-            "robe": (150, 112, 68, 255), "robe_dk": (112, 82, 48, 255),
-            "boots": (60, 46, 34, 255), "accent": (210, 180, 90, 255),
-        },
-    }
-    for name in archetypes:
-        _gen_character_sheet(name, archetypes[name])
+    for name in CULTIVATORS:
+        pal = CULTIVATORS[name]
+        _gen_cultivator_sheet(name, pal, "idle", IDLE_FRAMES)
+        _gen_cultivator_sheet(name, pal, "walk", WALK_FRAMES)
+
+
+def gen_player():
+    """The single static DOWN frame used as `player.tscn`'s fallback `Sprite2D`.
+
+    It is the SAME drawing as column 0 / row DOWN of the idle sheet (one source of truth for
+    the silhouette), so the fallback and the real animated visual read as the same character.
+    """
+    px = _blank(CHAR_W, CHAR_H)
+    _draw_cultivator(px, 0, 0, Dir.DOWN, CULTIVATORS["player_proto"], "idle", 0)
+    _png(os.path.join(ROOT, "assets/sprites/characters/player_proto.png"),
+         CHAR_W, CHAR_H, px)
 
 
 # --- Decorative props (top-down, production-foundation, D-029) ----------------
@@ -363,7 +647,6 @@ def gen_prop_rock():
 
 
 def gen_prop_planter():
-    # A stone planter with a small shrub, 16x16, base at bottom.
     w, h = 16, 16
     px = _blank(w, h)
     pot = (150, 120, 96, 255)

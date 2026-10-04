@@ -2,7 +2,16 @@
 .godot/
 /android/
 
-# Agent/CI scratch files (never commit)
+# Python bytecode. `tools/gen_prototype_assets.py` is importable (the art preview harness
+# imports it), so CPython writes a __pycache__ next to it on every run.
+__pycache__/
+*.pyc
+
+# Agent/CI scratch files (never commit). The `_` prefix is the agreed scratch convention
+# (L-009): naming a helper `_probe.ps1` / `_out_x.log` makes it ignored by construction
+# instead of relying on remembering to delete it.
+_*.ps1
+_*.log
 *_tmp.txt
 alive_probe.txt
 commit_result.txt

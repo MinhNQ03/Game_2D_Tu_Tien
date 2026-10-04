@@ -20,16 +20,31 @@
 
 - **World grid: 16px** (`.kiro/steering/06-art-assets.md`, D-022). All character art is
   authored on this grid.
-- **Character baseline: `16 × 24`** (one frame). Width matches the tile; height is 1.5 tiles
-  so a standing figure reads above the ground without dominating a 16px world. This is the
-  Phase-05 chosen baseline (the alternative 16×32 is reserved for later "tall" archetypes —
-  bosses/elders in a dramatic pass — and must be logged in `DECISIONS.md` if adopted).
+- **Character baseline: `32 × 48`** (one frame) — exactly 2× the original 16×24, so the figure
+  is 2 tiles wide and 3 tall and every scale factor stays an integer (D-046). It grew for a
+  specific reason, not for detail's sake: the cast's defining features are waist-length hair, a
+  layered floor-length robe and a held qi orb, and none of those three survive a 6px-wide
+  torso. A further size change must be logged in `DECISIONS.md`.
 - **Nearest filtering, no mipmaps, integer scaling only.** No fractional/bilinear scaling
   that blurs edges. The project default texture filter is nearest; sprite nodes also set
   `texture_filter = nearest` locally. Import `compress/mode = lossless (0)`, `mipmaps = off`.
-- **Sheet layout:** one row of 4 directional frames (DOWN, UP, LEFT, RIGHT), left→right, cell
-  = `frame_size`. Idle and walk are separate sheets of the same layout. (`idle` is required;
-  `walk` is optional in Phase 05 and falls back to idle — no fake animation.)
+- **Sheet layout: a GRID** (D-046) — one ROW per direction (DOWN, UP, LEFT, RIGHT, top→bottom)
+  × N animation COLUMNS (left→right), cell = `frame_size`. So `width = frame_size.x * frames`
+  and `height = frame_size.y * 4`. **The frame count is derived from the texture width**, never
+  authored, so art and data cannot drift apart. A width that is not a whole multiple of the
+  frame width is rejected, not floored.
+  Idle and walk are separate sheets and MAY have different frame counts (currently a 4-frame
+  idle breath and a 6-frame walk stride). `idle` is required; `walk` is optional and falls back
+  to idle — no fake animation. The previous layout was one row of 4 frames, i.e. a single pose
+  per direction; combined with every profile leaving `walk_sheet` null it meant the cast never
+  animated at all.
+- **Animation speed is DATA**, not code: `CharacterVisualProfileData.frame_duration` seconds
+  per frame, authored per archetype (an elder shuffles, a youth strides). A single-frame sheet
+  must leave the component's `_process` off so a static character costs nothing per frame.
+- **RIGHT is LEFT mirrored** in the generator, so the two profiles can never drift apart.
+- **The outline is traced from the pixels**, not hand-drawn, so it stays correct for every pose
+  and frame. A soft glow (qi orb) is drawn AFTER the outline pass and the pass only considers
+  fully-opaque neighbours, so a halo is never outlined.
 
 ## 3. Anchor & collision (the alignment rule)
 
@@ -81,7 +96,7 @@
 ## 7. Modular layering (future)
 
 The pipeline is designed so a later art pass can composite a character from layers (body →
-clothing → hair → accessory) that all share the 16×24 cell + 4-direction layout. Phase 05
+clothing → hair → accessory) that all share the 32×48 cell + direction-row grid layout. Phase 05
 ships flat per-archetype sheets, but the cell/layout contract is the seam a layered system
 plugs into without changing `CharacterVisualComponent` or the profile contract.
 

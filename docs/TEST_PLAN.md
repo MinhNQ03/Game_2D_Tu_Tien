@@ -340,7 +340,13 @@ is CI.
   `Main/Systems`, is session-active after New Game, is NOT an autoload, is the SAME instance
   across all 20 hub↔field round trips, and ends its session on return to menu.
 - `tests/unit/presentation/test_character_visual.gd` — the four archetype
-  `CharacterVisualProfileData` load + validate at the 16×24 baseline; the
+  `CharacterVisualProfileData` load + validate at the **32×48** baseline with the D-046 GRID
+  sheet (direction rows × animation columns, frame count derived from width, walk sheet
+  REQUIRED); the authored frame counts (4 idle / 6 walk) are pinned as an art↔data drift guard;
+  a ragged sheet width is rejected with the reason named; the ANIMATION clock advances, wraps,
+  stays inside its direction row, resets on an idle↔walk switch, and leaves `_process` off for
+  a single-frame sheet; `player.tscn`'s fallback sprite and collision footprint agree with the
+  component's feet anchor; the
   `CharacterVisualComponent` builds a nearest-filtered, feet-anchored, 4-frame Sprite2D; facing
   selects the direction frame (diagonal→cardinal, zero keeps last facing); a missing/invalid
   profile fails clearly; the preview builds all four; and a `CharacterState` serializes NO

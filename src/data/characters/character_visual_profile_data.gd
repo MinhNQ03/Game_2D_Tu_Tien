@@ -9,11 +9,21 @@ class_name CharacterVisualProfileData
 ## presentation tier is never serialized). Swapping a character's look is editing this data,
 ## not code.
 ##
-## The prototype pipeline uses a horizontal sprite SHEET of directional frames at a fixed
-## cell size (`docs/CHARACTER_ART_BIBLE.md`): one row, N columns, cell = `frame_size`. The
-## component picks a column by facing direction. Idle vs. walk sheets are separate textures
-## (both optional beyond idle in Phase 05 — walk falls back to idle if absent). Attack/other
-## states are deferred to the combat phase.
+## SHEET LAYOUT (D-046 — changed from the Phase-05 single-pose layout). A sheet is a GRID:
+##   * one ROW per cardinal direction, in `Direction` order (DOWN, UP, LEFT, RIGHT),
+##   * `frame_count` COLUMNS of animation frames,
+##   * cell = `frame_size`.
+## So `width = frame_size.x * frames` and `height = frame_size.y * DIRECTION_COUNT`, and the
+## frame count is DERIVED from the texture width rather than authored twice (one less field
+## that can drift out of sync with the art — L-014).
+##
+## The old layout was one row of 4 directional frames, i.e. exactly ONE frame per direction.
+## Every profile also left `walk_sheet` null, so a character slid across the floor without
+## ever animating. The grid exists so walking actually looks like walking.
+##
+## Idle vs. walk are separate textures and may have DIFFERENT frame counts (an idle breath
+## needs fewer frames than a stride). `walk_sheet` stays optional: when absent the component
+## shows the idle animation while moving — a documented fallback, not a fake.
 
 ## Frames are laid out left→right in this cardinal order within each sheet.
 enum Direction { DOWN, UP, LEFT, RIGHT }
@@ -30,9 +40,13 @@ const DIRECTION_COUNT := 4
 ## shows the idle frame while moving (documented fallback — no fake animation).
 @export var walk_sheet: Texture2D = null
 
-## The pixel size of ONE directional frame (the art baseline, e.g. 16x24). Collision footprint
-## is independent of this (anchored at the feet) — see `docs/CHARACTER_ART_BIBLE.md`.
-@export var frame_size: Vector2i = Vector2i(16, 24)
+## The pixel size of ONE animation frame (the art baseline, 32x48 since D-046). Collision
+## footprint is independent of this (anchored at the feet) — see `docs/CHARACTER_ART_BIBLE.md`.
+@export var frame_size: Vector2i = Vector2i(32, 48)
+
+## Seconds per animation frame. Authored per profile so an elder can shuffle and a youth can
+## stride without a code change. Must be > 0; a single-frame sheet ignores it.
+@export var frame_duration: float = 0.16
 
 ## Y offset (px) from the node origin to the sprite's TOP so the character's FEET sit on the
 ## origin (anchor-at-feet). Default places a `frame_size.y` tall sprite with its bottom at the
@@ -46,14 +60,15 @@ func is_valid() -> bool:
 
 ## Validate at the boundary (content from disk):
 ##   - id non-empty
+##   - frame_size positive, frame_duration positive
 ##   - idle_sheet present
-##   - frame_size positive
-##   - idle_sheet width is DIRECTION_COUNT whole frames wide + exactly frame_size tall
-##   - walk_sheet (if present) matches the same layout
+##   - every sheet is a whole number of frames wide and exactly DIRECTION_COUNT rows tall
 func validation_errors() -> Array[String]:
 	var errors: Array[String] = []
 	if id == &"":
 		errors.append("id must be non-empty")
+	if frame_duration <= 0.0:
+		errors.append("frame_duration must be > 0 (got %f)" % frame_duration)
 	if frame_size.x <= 0 or frame_size.y <= 0:
 		errors.append("frame_size must be positive (got %s)" % str(frame_size))
 		return errors  # further sheet checks need a valid frame size
@@ -66,17 +81,32 @@ func validation_errors() -> Array[String]:
 	return errors
 
 
-## A sheet must be exactly `DIRECTION_COUNT` frames wide and one frame tall.
+## A sheet must be a whole number of frames wide and exactly DIRECTION_COUNT frames tall.
 func _sheet_errors(label: String, sheet: Texture2D) -> Array[String]:
 	var out: Array[String] = []
-	var expected_w := frame_size.x * DIRECTION_COUNT
-	if sheet.get_width() != expected_w:
-		out.append("%s width %d != %d (%d frames of %dpx)" % [
-			label, sheet.get_width(), expected_w, DIRECTION_COUNT, frame_size.x])
-	if sheet.get_height() != frame_size.y:
-		out.append("%s height %d != frame height %d" % [
-			label, sheet.get_height(), frame_size.y])
+	var w := sheet.get_width()
+	var h := sheet.get_height()
+	if w <= 0 or w % frame_size.x != 0:
+		out.append("%s width %d is not a whole multiple of frame width %d" % [
+			label, w, frame_size.x])
+	var expected_h := frame_size.y * DIRECTION_COUNT
+	if h != expected_h:
+		out.append("%s height %d != %d (%d direction rows of %dpx)" % [
+			label, h, expected_h, DIRECTION_COUNT, frame_size.y])
 	return out
+
+
+## How many animation frames `sheet` holds, derived from its width. 0 for a null/unusable
+## sheet so a caller can never divide by it or index past the art.
+func frame_count_of(sheet: Texture2D) -> int:
+	if sheet == null or frame_size.x <= 0:
+		return 0
+	var w := sheet.get_width()
+	if w <= 0 or w % frame_size.x != 0:
+		return 0
+	# Float divide then cast: the modulo above already proved the division is exact, and this
+	# avoids the integer-division warning that this project treats as an error.
+	return int(float(w) / float(frame_size.x))
 
 
 ## Map an input/velocity vector to a facing Direction (8-way movement collapses to the nearest

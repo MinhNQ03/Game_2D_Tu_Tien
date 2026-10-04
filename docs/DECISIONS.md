@@ -2012,3 +2012,109 @@ change.
 `410702d` before this entry's tests were added. **Nothing here has been seen on screen** (D-009);
 if the courtyard edges land wrong, the failure mode is a mask index and is precisely correctable
 from a screenshot.
+---
+
+## D-046 — The character becomes animated: a 32×48 four-direction cultivator, and the sheet becomes a grid
+
+**Status:** Accepted · **Phase:** post-07 visual integration · **Supersedes:** the Phase-05
+single-pose sheet layout (D-026) and the 16×24 character baseline (D-029 / `06-art-assets.md`)
+
+### The diagnosis that mattered
+
+The owner's complaint was "the character is still plastic proto art". Before changing anything
+I read the pipeline, and **two of my own earlier claims turned out to be wrong**:
+
+1. I had said `player.tscn` uses a static `Sprite2D` and therefore ignores the 4-direction art.
+   Half wrong: `data/characters/player_default.tres` *does* set `sprite_set_ref`, and
+   `WorldRuntime` *does* call `set_visual_profile_from_ref`, so in a real run the player
+   already attached a `CharacterVisualComponent` and hid the static sprite. The static sprite is
+   only the isolated-harness fallback.
+2. I had promised to import `xf_hero_swordsman_{idle,walk}` from the Xianxia pack. **That art is
+   unusable here**, and measuring proved it: the pack's `terrain/` is full of `platform_top`,
+   `slope26/45/63_up/down`; its animation set is `jump`/`fall`/`dash`/`block`; a name scan for
+   any direction token across all nine supplied asset folders returned **zero** hits. It is a
+   side-scrolling platformer pack, so its characters are side-view. The frames are also
+   **111×81** (idle 222÷2), not the 79×78 I had recorded, and the height changes per animation
+   (81 vs 86) so a uniform slice would make the figure bob. Importing it would have put a
+   side-view, ~7-tile-wide figure into a top-down 16px game.
+
+**No top-down character exists in any of the nine folders.** `verdant-00` has zero character
+files (16 ground materials + autotiles only); the Aetheria pack's `03_generated_characters` is
+two 300×560 / 310×560 painted portraits, already in use as HUD portraits.
+
+### The real defect
+
+The sheet layout carried **one frame per direction**, and all four profiles left `walk_sheet`
+null. So the character slid across the floor without ever animating. **That, not the pixel
+count, is what read as lifeless** — and it is invisible to every gate: the profiles were valid,
+the component rendered, 378 tests were green.
+
+### Decisions
+
+- **Sheet layout is now a GRID**: one ROW per cardinal direction (`Direction` order), N COLUMNS
+  of animation frames. `width = frame_size.x * frames`, `height = frame_size.y * 4`.
+  The frame count is **DERIVED from the texture width**, not authored — one less field that can
+  drift out of sync with the art (L-014). Idle and walk may have different counts (4-frame
+  breath, 6-frame stride); `walk_sheet` stays optional with the documented idle fallback.
+- **Frame baseline 16×24 → 32×48.** Exactly 2×, so the 16px tile grid math is unchanged (the
+  figure is 2 tiles wide, 3 tall) and every scale factor stays an integer. The reason is not
+  "bigger is better": the measured signature of the reference art is waist-length white hair, a
+  pale layered floor-length robe, and a saturated qi orb, and at a 6px-wide torso none of those
+  three reads survive.
+- **Art direction derived from the owner's two painted references**, by sampling the PNGs rather
+  than eyeballing them (L-021). Per-band dominant colours plus the most-saturated and brightest
+  pixel of each file: male hair `208,192,192`, robe `192,192,208`→`160,160,192`→`80,96,128`,
+  aura `32,64,112`, orb **`51,153,240`**, core `233,254,255`; female hair `240,224,224`, robe
+  `160,160,224`→`128,128,192`→`96,96,160`, aura `48,48,112`, orb **`145,92,234`**, core
+  `255,252,252`.
+- **ONE deliberate translation, recorded because it departs from the measurement:** the male
+  reference's measured hair tone is nearly the same VALUE as its skin. Used as the lit hair
+  colour it merged the head into a single pale blob at 32px. It is kept as `hair_dk` (the
+  hairline shadow) and the lit hair is a cooler, lighter silver. Pixel art needs value
+  separation that a soft painted render gets from line work. The gold filigree is 1px-scale
+  detail at this size and is translated into a single accent line, not faked as texture.
+- **The animation clock lives in `CharacterVisualComponent`**, advancing at the profile's
+  authored `frame_duration` (per-archetype: the elder shuffles at 0.26s, the player strides at
+  0.14s — data, not code). `_process` is switched **OFF** whenever the active sheet has a single
+  frame, so a static character costs nothing per frame. `advance(delta)` is public so tests
+  drive the clock deterministically instead of reaching for `_process` (which would be a
+  cross-file private access, GD002).
+- **Switching idle↔walk resets the column**, because the sheets have different frame counts and
+  a column carried over from the 6-frame walk would index past the 4-frame idle sheet.
+- **A ragged sheet width is REJECTED, not floored.** `frame_count_of` returns 0 and validation
+  names the reason, so a mis-sliced sheet fails loudly instead of rendering half a character.
+- **The outline is traced from the pixels**, not hand-drawn, so it stays correct for every pose
+  instead of drifting when a limb moves. The qi-orb halo is drawn *after* the outline pass and
+  the pass only considers fully-opaque neighbours, so a glow is never outlined.
+- **`player.tscn` now agrees with the component**: the fallback sprite is feet-anchored
+  (`centered = false`, `offset = (-16, -48)`) and the collision footprint moved to the feet
+  (18×12 at y=−6) instead of a 24×24 box straddling the origin, which with a feet-origin put
+  half the player's collision underground. A test pins that the two visual paths place the feet
+  at the same point.
+- **The camera is deliberately UNCHANGED.** The derived zoom (floor 2.0) already satisfies both
+  constraints; the character now occupies ~13% of screen height instead of ~6.7%, which is
+  normal top-down proportion. Changing a camera value without evidence is exactly the trap
+  L-022 records.
+
+### Rejected
+
+- **Importing the Xianxia hero sheets** — side-view, wrong scale, per-animation frame heights
+  (see above). Shipping it would have broken the top-down rule in `06-art-assets.md`.
+- **Importing the 30 CC0 `xf_npc_*` portraits now** — they are genuinely usable and licence-
+  cleared, but **nothing renders a portrait yet**. Adding 30 textures with no consumer is dead
+  weight in the repo and exactly what L-005 forbids. They belong in the phase that draws them.
+- **Authoring the frame count as a field** — it would be a second source of truth beside the
+  texture width.
+
+### Consequence
+
+The player now has a real idle breath and a real 6-frame stride in four directions, the whole
+cast shares it, and animation speed is per-archetype data. The pipeline supports N frames per
+direction, so a future attack/cast animation is a new sheet plus a `.tres` line, not a code
+change. `CharacterState` still carries no presentation data.
+
+**Verification:** `get_diagnostics` clean on every touched file, `gdscript_lint` clean (108
+files), the generated sheets inspected at 8× magnification and iterated on twice — the first
+pass drew skin over the hair on every UP frame (a bare face on the character's back) and had
+walk deltas so small they were indistinguishable from idle. **The on-screen result has not been
+seen** (D-009); only a screenshot from the owner can confirm it.
