@@ -51,6 +51,8 @@ is a bug (L-014).
 | Realm hierarchy semantics, 9 layers, level≠realm, knowledge, paths | `docs/PROGRESSION_CULTIVATION_DESIGN.md` | reference |
 | Weapon identity, technique model, combat verbs, boss/telegraph language | `docs/COMBAT_DESIGN.md` | reference |
 | Resource sources/sinks, crafting, grind lanes, anti-inflation | `docs/ECONOMY_CRAFTING_DESIGN.md` | reference |
+| **Knowledge Core ownership + phase** | `docs/PROGRESSION_CULTIVATION_DESIGN.md` §7a | reference |
+| **Deterministic RNG seam + dependency topology** | `docs/SYSTEM_DEPENDENCY_MATRIX.md` §4b/§4c | reference |
 | Character bible, relationship consequences, sect/faction design, world-sim content | `docs/SOCIAL_DESIGN.md` | reference |
 | Map grammar, **access gating**, dungeon grammar, boss placement, revisit | `docs/MAP_DUNGEON_DESIGN.md` | reference |
 | Quest taxonomy + quality rules | `docs/MAP_DUNGEON_DESIGN.md` §7 | reference |
@@ -147,7 +149,27 @@ Each is a real, named consequence of resolving a contradiction — recorded here
 | Xích Diễm Tông doctrine text → a defensible charter | 24 / first Xích Diễm content phase | C-005 |
 | `UI_MAP_HUB_NAME` / `UI_MAP_FIELD_NAME` → canonical place names | first frontier content phase | C-008 |
 | `OriginData` content resources + character-creation flow | 20/27 | C-011 |
-| Seeded RNG seam introduced by the first system that needs randomness | 09 (likely) | C-010 |
+| Deterministic, stream-scoped RNG seam introduced with World Simulation | **08** | C-010 |
+| **Knowledge Core** (`KnowledgeStore`/`KnowledgeService`) substrate | **12** | **C-012** |
+
+## 7b. Dependency hardening (D-040)
+
+An independent review of this freeze found **two dependency defects** that audits A–W could not
+see, because each audit examined one *domain* while these were **edges between phases**:
+
+- **C-012 — Knowledge's owner and order were impossible.** Knowledge was listed as owned by
+  Story/Quest at P-19/20, while Cultivation (P-12) and Technique (P-15) already read it — a
+  backwards dependency. Fixed: **Knowledge Core lands in P-12 with its own owner**
+  (`KnowledgeStore`/`KnowledgeService`, no autoload); Cultivation/Technique/Crafting **read**;
+  Dialogue/Quest/Story **grant through the service**; **nothing else may mutate the collection**.
+- **C-010 — the RNG first consumer was named wrong.** The seam was to be introduced by "the first
+  phase that needs randomness", guessed as Combat (P-09) — but World Simulation is **P-08** and
+  its determinism requirement is explicit. Fixed: **the seam is introduced in P-08**, is
+  **stream-scoped** (one world seed → per-subsystem streams), and P-09 reuses it.
+
+A new permanent audit was added — **Audit X, dependency topology** — with the rule it enforces:
+**no earlier phase may require authoritative state owned by a later phase.** Full edge-by-edge
+check: `SYSTEM_DEPENDENCY_MATRIX.md` §4b.
 
 ## 8. Acceptance
 

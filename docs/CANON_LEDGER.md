@@ -165,6 +165,23 @@ Not XP and not a realm: a serializable record of what the player has LEARNED, wh
 hidden techniques, world gates, dialogue options, alternate quest solutions, crafting methods and
 forbidden paths (`PROGRESSION_CULTIVATION_DESIGN.md` §7).
 
+**Ownership + phase (frozen, D-040 / C-012):** the **Knowledge Core** lands in **Phase 12** with
+its own authoritative domain owner — `KnowledgeStore` + `KnowledgeService`, no autoload. Only that
+service may mutate the authoritative collection. Cultivation, Technique and Crafting **read**;
+Dialogue, Quest and Story **grant through the service**; NPC/content **expose opportunities**.
+**Story does not own knowledge, Quest does not own knowledge, and knowledge is never a private
+story flag.** Full model: `PROGRESSION_CULTIVATION_DESIGN.md` §7a.
+
+## CL-16 — Deterministic RNG is seeded, stream-scoped, and introduced in Phase 08
+
+One run/world seed fanning out into per-subsystem streams (world sim · combat · enemy AI · loot ·
+future instances). Introduced with **World Simulation (P-08)**, the first genuine consumer;
+**Combat (P-09) reuses it** rather than introducing its own. Frozen properties: deterministic ·
+seeded · injectable · subsystem/stream-scoped · serializable where required ·
+presentation-independent · **no global `rand*()` in domain code**. Not an autoload. One
+subsystem's extra random call must never shift another subsystem's future sequence. Shape:
+`SYSTEM_DEPENDENCY_MATRIX.md` §4c; save requirement: `SAVE_FORMAT.md` §3b.
+
 ## CL-15 — Unresolved mysteries (deliberately open)
 
 These are canon *questions*, reserved so no phase accidentally answers them early:
@@ -182,8 +199,8 @@ Changing anything above requires a `docs/DECISIONS.md` entry recording:
 
 Critical canon (always requires an entry): protagonist identity · the Origin model · world law ·
 Thiên Khế · the realm hierarchy (CL-02/03) · the world hierarchy (CL-04/05) · any major sect or
-faction · the historical Tà Đế · core progression (CL-13/14) · economy architecture · multiplayer
-narrative semantics.
+faction · the historical Tà Đế · core progression (CL-13/14) · **state ownership and phase of a
+core substrate (CL-14, CL-16)** · economy architecture · multiplayer narrative semantics.
 
 **Tunable without an entry** (balance, not canon): XP curves, damage numbers, HP, drop rates,
 currency amounts, cultivation speed, cooldowns, spawn rates, grind duration, threat ratings.

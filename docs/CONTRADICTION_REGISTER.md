@@ -209,15 +209,26 @@
 - **Why it matters:** determinism is not something that can be retrofitted after three systems
   have each called `randi()` directly. The first system that needs randomness establishes the
   pattern for all of them.
-- **Resolution — WATCH, with a binding rule.** No autoload is added now (the D-017 budget stays
-  at **5**). The rule frozen here: **the FIRST phase that needs randomness must introduce the
-  seeded RNG seam in the same phase, and no domain code may ever call a global `rand*()`
-  directly** — randomness arrives as an injected, seeded source, exactly as
-  `RelationshipService` takes its config. Whether that seam is an autoload or an injected
-  `RefCounted` is a `DECISIONS.md` entry owned by that phase (Combat, Phase 09, is the likely
-  first caller).
-- **Authoritative owner:** `docs/SYSTEM_DEPENDENCY_MATRIX.md` (RNG row) ·
-  `.kiro/steering/03-architecture.md` (autoload budget).
+- **Resolution — RESOLVED (phase corrected in D-040; was WATCH).** The original resolution said
+  "the first phase that needs randomness must introduce the seam" and then guessed that Combat
+  (P-09) would be the first caller. That guess was **wrong and self-contradictory**: World
+  Simulation is **P-08** and its determinism requirement is explicit, so the first consumer is
+  P-08, one phase earlier. Frozen now:
+  - **The deterministic RNG seam is introduced in PHASE 08, with World Simulation.**
+  - **Phase 09 Combat consumes the seam P-08 established** — it does not introduce its own.
+  - The seam is **stream-scoped**: one run/world seed fanning out into per-subsystem streams
+    (world sim, combat, enemy AI, loot, future instances), so one subsystem's extra random call
+    can never shift another subsystem's future sequence. Shape frozen in
+    `docs/SYSTEM_DEPENDENCY_MATRIX.md` §4c.
+  - Properties: deterministic · seeded · injectable · subsystem/stream-scoped · serializable
+    where required · presentation-independent · **no global `rand*()` in domain code, ever**.
+  - **No autoload** (D-017 budget stays at 5) — it is injected, like `RelationshipService`'s
+    config. Class names, stream-id vocabulary, algorithm and serialized shape belong to P-08.
+  - Save implication recorded in `docs/SAVE_FORMAT.md`: the world seed plus whatever stream state
+    is needed to resume world evolution **exactly** must be restorable (P-23).
+- **Authoritative owner:** `docs/SYSTEM_DEPENDENCY_MATRIX.md` §4c (the seam) ·
+  `.kiro/steering/03-architecture.md` (autoload budget) · `docs/SAVE_FORMAT.md` (resume
+  requirement).
 
 ## C-011 — `CHARACTER_PLAYER_ORIGIN` ships one fixed origin, but the design needs 3–5
 - **Side A (shipped):** `locale/aetheria.csv` — `CHARACTER_PLAYER_ORIGIN` = "*Born in a remote
@@ -238,6 +249,45 @@
   "a mortal seeking the path".
 - **Authoritative owner:** `docs/NARRATIVE_MASTER_PLAN.md` §6 (the five Origins) ·
   `docs/CONTENT_BIBLE.md` (the `OriginData` authoring template).
+
+## C-012 — Knowledge's dependency owner and order were impossible
+- **Side A (D-039, `SYSTEM_DEPENDENCY_MATRIX.md`):** the Knowledge row read
+  `| Knowledge | P-19/20 | the story/quest state owner | …`, i.e. knowledge state owned by Story
+  and Quest and arriving in Phases 19–20.
+- **Side B (same freeze, two other documents):** `PROGRESSION_CULTIVATION_DESIGN.md` §10 lists
+  **Cultivation (P-12)** as reading knowledge for breakthrough prerequisites, and **Technique
+  (P-15)** as needing "Knowledge (14) for knowledge prerequisites"; the matrix's own Cultivation
+  and Technique rows both list `Knowledge` under *Reads*.
+- **Affected:** Cultivation (12), Technique (15), Crafting/Economy (13+), Dialogue (18),
+  Quest (19), Story (20), every access gate that reads knowledge, and the save layout.
+- **Why it matters:** this is a **backwards dependency** — P-12 cannot read authoritative state
+  that only comes into existence at P-19. Left alone it would resolve itself in the worst
+  available way: Phase 12 would invent a private "known things" dictionary to unblock itself,
+  Phase 15 would add a second one, and Phase 20's Story engine would arrive to find two parallel
+  sources of truth it has to reconcile — the exact failure D-015 had to be written to undo for
+  sect membership. It would also have quietly demoted knowledge from "a third progression axis"
+  to "a bag of story flags", losing the one mechanism that lets the Thiên Khế mystery be solved
+  by understanding rather than by force.
+- **Resolution — RESOLVED.**
+  - **Knowledge Core is introduced in PHASE 12**, with its **own authoritative domain owner**:
+    `KnowledgeStore` (collection) + `KnowledgeService` (single mutation path). No autoload, no
+    global manager, no god object. Persistent domain state.
+  - Core responsibilities only: named knowledge ids · acquired state · a deterministic grant
+    path · query · persistence boundary · an observable `knowledge_gained` event.
+  - **Ownership direction:** Cultivation **reads** · Technique **reads** · Crafting **reads** ·
+    Dialogue/Quest/Story **grant and read through the service** · NPC/content **expose
+    opportunities**. **No system but the service may mutate the collection.** Story does not own
+    knowledge; Quest does not own knowledge; knowledge is never a private story flag.
+  - **Phase model:** P-12 core substrate → P-15 Technique consumes prerequisites → P-17 content
+    exposes opportunities → P-18 Dialogue grants → P-19 Quest grants → P-20 Story/history grants
+    → later phases expand the catalogue. **The core exists before its producers** — the same
+    shape as Phase 05, where the relationship graph shipped as a substrate with no producer and
+    Phases 06+ became its producers (D-026).
+  - **Phase 12 does not grow a story or quest engine to support this.** A store, a service, a
+    grant path and an event is the whole core.
+- **Authoritative owner:** `docs/PROGRESSION_CULTIVATION_DESIGN.md` §7a (the model) ·
+  `docs/SYSTEM_DEPENDENCY_MATRIX.md` (the rows + §4b topology audit) · `docs/CANON_LEDGER.md`
+  CL-14 (the frozen fact).
 
 ---
 
@@ -271,3 +321,11 @@ means the audit was performed and produced no new contradiction beyond those abo
 | U Content extensibility | Clean — the §82 simulation passes as data + content scenes. |
 | V Documentation contradiction | **C-004, C-006, C-008, C-011.** |
 | W Roadmap dependency | **C-009** — no correction needed to the engineering order. |
+| **X Dependency topology** (added D-040) | **C-010 (RNG phase), C-012 (Knowledge owner/order).** Both were backwards or inconsistent phase edges that the per-system matrix could not reveal; the full edge-by-edge check is `SYSTEM_DEPENDENCY_MATRIX.md` §4b. |
+
+> **Why audit X was added.** Audits A–W each examined one *domain* (narrative, economy, maps, …)
+> and all passed. The two defects found afterwards were not inside any one domain — they were
+> **edges between phases**, visible only when the whole graph is read as a graph. A per-system
+> matrix invites exactly this blind spot: every row can be locally correct while the ordering
+> between rows is impossible. Audit X is now a permanent gate, and §4b states its rule: **no
+> earlier phase may require authoritative state owned by a later phase.**

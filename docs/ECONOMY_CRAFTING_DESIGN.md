@@ -57,6 +57,12 @@ Professions are **data-driven recipes**, not classes. A recipe may require: inpu
 level · a **knowledge** id · a realm · a location/facility · a tool. That last set is what lets a
 recipe be a *discovery* rather than a menu item.
 
+**Knowledge-gated recipes READ the Knowledge Core; crafting never owns knowledge state** (D-040 /
+C-012). The Knowledge Core (`KnowledgeStore`/`KnowledgeService`) lands in **Phase 12**, so by the
+time a knowledge-gated recipe exists its owner already does — crafting queries it and must not
+keep a private "recipes the player has learned about" set alongside it.
+See `PROGRESSION_CULTIVATION_DESIGN.md` §7a.
+
 ## 5. Sinks
 
 | Sink | Consumes | Why it is a good sink |
@@ -135,8 +141,11 @@ A quest may require *a* rare material; it may not require fifty of a common one.
 ## 10. Dependencies
 
 - Needs: Item (13) for inventory, Equipment (14), Combat (09) for drops, Cultivation (12) for the
-  primary sink, Map (03) for regional identity, NPC (17) for shops, Quest (19) for targeted
-  rewards, World Simulation (08) for market movement and event-bound resources.
+  primary sink, **Knowledge Core (12) for knowledge-gated recipes (read-only)**, Map (03) for
+  regional identity, NPC (17) for shops, Quest (19) for targeted rewards, World Simulation (08)
+  for market movement and event-bound resources.
+- Any randomness (drops, market movement) uses the **deterministic stream-scoped RNG seam
+  introduced in Phase 08** — never a global `rand*()` (C-010).
 - Needed by: Equipment, Crafting, Sect contribution (07+), Dungeon rewards (21), Boss rewards (22).
 - `SectState.resources` already exists and is sect-scoped. **Player currency is a separate
   concern** and must not be modelled by extending the sect resource dictionary.

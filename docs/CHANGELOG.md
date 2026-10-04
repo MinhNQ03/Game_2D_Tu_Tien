@@ -8,6 +8,39 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-04 — Design dependency hardening (D-040) — documentation only
+An independent review of the D-039 freeze found **two dependency defects**. Both lived in the
+*edges between phases*, which is the blind spot a per-system matrix creates: every row can be
+locally correct while the ordering between rows is impossible. **No gameplay code, no scenes, no
+`.tres`, no locale, no runtime change, no new autoload, no phase renumbering.**
+- **Knowledge Core now has a valid owner and phase (C-012).** It was listed as owned by
+  Story/Quest at P-19/20 while Cultivation (P-12) and Technique (P-15) already read it — a
+  backwards dependency. Fixed: **Knowledge Core lands in Phase 12** with its own owner
+  (`KnowledgeStore` + `KnowledgeService`, no autoload). Cultivation/Technique/Crafting **read**;
+  Dialogue/Quest/Story **grant through the service**; **nothing else may mutate the collection**.
+  Story does not own knowledge and must not shadow it with flags. Phase 12 does *not* grow a story
+  engine to support this — the core is a store, a service, a grant path and an event.
+- **The RNG seam moved to its real first consumer (C-010).** D-039 guessed Combat (P-09) would
+  introduce it, but World Simulation is **P-08** and its determinism requirement is explicit.
+  Fixed: **introduced in P-08**, **stream-scoped** (one run/world seed → per-subsystem streams),
+  and P-09 reuses it. Streams rather than one generator because a shared generator means an extra
+  random call in combat silently shifts every later world-sim roll, and "same seed → same world"
+  stops being true.
+- **`SAVE_FORMAT.md` §3b (new, requirement only):** a single `rng: { seed }` is **not
+  sufficient** — a save taken 40 hours in must restore how far each stream has advanced, or the
+  post-load world diverges. Also: knowledge serializes as its own block, never inside `story`.
+- **Audit X — dependency topology — added as a permanent gate**, with the rule *no earlier phase
+  may require authoritative state owned by a later phase*. Full edge-by-edge check in
+  `SYSTEM_DEPENDENCY_MATRIX.md` §4b.
+- **Fixed in passing:** the World Simulation row in the dependency matrix had 14 cells in a
+  15-column table (missing UI) — a D-039 table defect; a new explicit **Deterministic RNG** row
+  was added alongside it.
+- **Updated:** `SYSTEM_DEPENDENCY_MATRIX` (7 rows + §4b/§4c), `PROGRESSION_CULTIVATION_DESIGN`
+  (+§7a), `CONTRADICTION_REGISTER` (C-010 rewritten, C-012 added, Audit X),
+  `CANON_LEDGER` (CL-14 extended, CL-16 added), `SAVE_FORMAT` (+§3b), `ROADMAP`
+  (Phases 08/09/12/15/17/18/19/20), `GAME_DESIGN_FREEZE` (+§7b, ownership table, debts),
+  `ECONOMY_CRAFTING_DESIGN`, `GAME_FLOW`, `DECISIONS` (D-040).
+
 ### 2026-10-04 — MASTER GAME DESIGN FREEZE v2.1 (D-039) — documentation only
 The world, narrative and systems design is frozen **before** the content-bearing phases begin.
 **No gameplay code, no runtime behaviour change, no content/locale change, no new autoload, no

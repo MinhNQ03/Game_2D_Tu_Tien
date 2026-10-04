@@ -34,25 +34,26 @@
 | **Relationship** | DONE | `RelationshipService` / `RelationshipStore` | edge graph incl. bounded history (persistent) | domain events, authored rules | `relationship_changed` | config, rules | own | Character ids | Sect diplomacy, Dialogue, Quest, Story, Economy | `RelationshipConfigData`, `RelationshipRuleData` | yes | relationship screen (P-17+) | server owns the social graph | **High** |
 | **Sect** | DONE | `SectService` / `SectStore` | roster/resources/territory/reputation/diplomacy (persistent) | membership + economy intents, catalog | `member_*`, `diplomacy_changed`, … | templates, Relationship store | own + `CharacterState` sect cache (derived, D-015) | Relationship (**hard**, D-037), Character | Faction, Quest, Story, Economy, Map access | `SectTemplateData`, `SectRankData`, `SectCatalog` | yes (P-23) | HUD chip, sect panel | server owns sects | **High** |
 | **Faction / politics** | P-07 | `FactionState` + a faction service | influence/attitudes/goals/members (persistent) | sect state, relationships, sim ticks | `faction_shift` | Sect, Relationship | own | Sect, Relationship | World Sim, Quest, Story, Map access | faction data on sect templates | yes | faction UI (P-07) | server resolves politics | **High** |
-| **World Simulation** | P-08 | a world-sim service | clock, per-actor sim state, pending transitions (persistent) | clock ticks, schedules, events | `world_tick`, `world_event_triggered` | Character, Sect, Faction, Relationship | their state via owners | all social systems + **seeded RNG (C-010)** | Quest, Story, Economy, Map | schedules, event data | yes | server advances the world | **High** |
+| **World Simulation** | P-08 | a world-sim service | clock, per-actor sim state, pending transitions, **RNG stream state** (persistent) | clock ticks, schedules, events | `world_tick`, `world_event_triggered` | Character, Sect, Faction, Relationship | their state via owners | all social systems + **it INTRODUCES the deterministic RNG seam (C-010, first consumer)** | Quest, Story, Economy, Map, **Combat (reuses the seam)** | schedules, event data | yes | world-event surface (P-20) | server advances the world | **High** |
+| **Deterministic RNG** | **P-08** (introduced with World Sim) | the run/world seed + per-subsystem streams | world seed + each stream's position (persistent) | a seed, a stream id | deterministic values | — | own stream state | — | **World Sim (P-08)**, Combat (P-09), Enemy AI (P-10), Economy drops, Dungeon | — | yes (seed + stream state) | never | server owns the seed | **High** |
 | **Map / World** | DONE | `WorldRuntime` + `MapCatalog` | active map, player instance (runtime); location (persistent) | map data, exits, transitions | `map_entered/exited` | `MapData` | `GameState` location | SceneRouter, Character | Dungeon, Quest, Economy, Combat | `MapData`, `MapExit`, `MapCatalog` | location | map/atlas UI | server owns world placement | Med |
-| **Combat** | P-09 | a pure-domain damage resolver | combatant runtime state; **no persistent state of its own** | **combat command (intent)**, stats, technique/equipment mods | `hit`, `damaged`, `enemy_died`, `xp_gained` | Character, Equipment, Technique, `DATA_SCHEMA` formula | nothing directly | Character, Data, **seeded RNG** | Progression, Quest, Economy, Boss | `SkillData`, `EnemyData` | no (derived) | combat HUD (P-09) | **command intent + server resolves** | **High** |
+| **Combat** | P-09 | a pure-domain damage resolver | combatant runtime state; **no persistent state of its own** | **combat command (intent)**, stats, technique/equipment mods | `hit`, `damaged`, `enemy_died`, `xp_gained` | Character, Equipment, Technique, `DATA_SCHEMA` formula | nothing directly | Character, Data, **the RNG seam established in P-08** (own stream) | Progression, Quest, Economy, Boss | `SkillData`, `EnemyData` | no (derived) | combat HUD (P-09) | **command intent + server resolves** | **High** |
 | **Enemy AI** | P-10 | `AIComponent` | AI runtime only | perception, spawn tables | movement/attack intents | Map, Character | own runtime | Combat, Map | Dungeon, Boss | `EnemyData`, spawn tables | no | no | server-authoritative AI | Med |
 | **Level / XP** | P-11 | a progression domain service | xp, level (persistent) | `xp_gained` | `level_changed` | curve data | own | Combat | Combat stats, Quest | XP curve data | yes | progression UI (P-11) | server owns power | Med |
-| **Cultivation** | P-12 | a cultivation domain service | realm, layer, progress (persistent) | tu luyện actions, breakthrough attempts | `realm_changed` | realm data, Knowledge | own | Character, Level (parallel) | **Map/Dungeon/World access**, Sect rank, Technique, Quest, Story | realm + breakthrough data | yes | cultivation UI (P-12) | server owns realm | **High** |
-| **Knowledge** | P-19/20 | the story/quest state owner | discovered knowledge ids (persistent) | exploration, dialogue, records, purchase | `knowledge_gained` | — | own | Quest/Story | access gates, Technique, Crafting, Dialogue | knowledge ids on content | yes | journal/chronicle UI | server owns per-player knowledge | Med |
+| **Cultivation** | P-12 | a cultivation domain service | realm, layer, progress (persistent) | tu luyện actions, breakthrough attempts | `realm_changed` | realm data, **Knowledge Core (P-12, read-only)** | own | Character, Level (parallel), **Knowledge Core (same phase)** | **Map/Dungeon/World access**, Sect rank, Technique, Quest, Story | realm + breakthrough data | yes | cultivation UI (P-12) | server owns realm | **High** |
+| **Knowledge Core** | **P-12** | **`KnowledgeService` / `KnowledgeStore`** (its own domain owner — NOT Story/Quest) | acquired knowledge ids (persistent) | grant intents from content producers | `knowledge_gained` | `KnowledgeData` ids | **own only** | Character (for the owning run) | **Cultivation, Technique**, Crafting, Dialogue, Quest, Story, access gates | `KnowledgeData` ids on content | yes | journal/chronicle UI (P-20) | per-player personal state | **High** |
 | **Item / Inventory** | P-13 | `InventoryComponent` | items (persistent) | pickup/use/drop | `item_*` | `ItemData` | own | Character | Equipment, Economy, Crafting, Quest | `ItemData` | yes | inventory UI (P-13) | server validates inventory | Med |
 | **Equipment** | P-14 | an equipment component | equipped set (persistent) | equip/unequip | `equipment_changed` | `EquipmentData` | own | Item, Character | Combat (via formula) | `EquipmentData` | yes | equipment UI (P-14) | server owns loadout | Med |
 | **Skill** | P-15 | `SkillComponent` | known skills, cooldowns (runtime) + unlocks (persistent) | skill intents | `skill_used` | `SkillData`, Technique gates | own | Combat, Cultivation | Combat, Pet, Boss | `SkillData` | unlocks only | skill UI (P-15) | intent + server resolve | Med |
-| **Technique (công pháp)** | P-15 | a technique domain service | known techniques, compatibility (persistent) | learning, cultivation | `technique_learned` | `TechniqueData`, Knowledge | own | Cultivation, Knowledge | Skill, Combat, Economy, Story | `TechniqueData` | yes | technique UI (P-15) | server owns techniques | **High** |
+| **Technique (công pháp)** | P-15 | a technique domain service | known techniques, compatibility (persistent) | learning, cultivation | `technique_learned` | `TechniqueData`, **Knowledge Core (read-only)** | own | Cultivation (P-12), **Knowledge Core (P-12)** | Skill, Combat, Economy, Story | `TechniqueData` | yes | technique UI (P-15) | server owns techniques | **High** |
 | **Pet** | P-16 | a pet entity + ally AI | pet state (persistent) | taming/commands | pet events | `PetData` | own | Combat, AI | Combat | `PetData` | yes | pet UI (P-16) | server owns pets | Low |
-| **NPC** | P-17 | reuses Character + shop service | shop stock (persistent) | interaction | `npc_interacted` | Character, Relationship, Sect | shop state | Character, Relationship, Sect | Dialogue, Quest, Economy | NPC content + shop data | yes | shop/NPC UI (P-17) | server owns stock | Med |
-| **Dialogue** | P-18 | a dialogue runner | current node (runtime); choices → others' state | `npc_interacted`, player choice | `dialogue_chosen` | Relationship, Sect, Faction, Knowledge, flags | **via owners only** | NPC, Localization, all social | Quest, Story | `DialogueData` (keys) | no (choices land in owners) | dialogue UI (P-18) | client-local; outcomes authoritative | Med |
-| **Quest** | P-19 | a quest FSM domain service | quest states + objective progress (persistent) | EventBus gameplay events | `quest_state_changed`, `reward_granted` | everything | own + grants via owners | Character, Relationship, Sect, Faction, World Sim, Map, Combat | Story, Economy | `QuestData` | yes | journal UI (P-19) | per-player personal state | **High** |
-| **Story** | P-20 | a story/flag engine | chapter, flags, choices, **origin_id** (persistent) | quest/world outcomes, choices | `story_beat`, `chapter_entered` | all social + world + cultivation + knowledge | own flags | Quest + all social | World state changes | chapter/`OriginData` | yes | chronicle UI (P-20) | **personal story state — never shared** | **High** |
+| **NPC** | P-17 | reuses Character + shop service | shop stock (persistent) | interaction | `npc_interacted` | Character, Relationship, Sect | shop state | Character, Relationship, Sect | Dialogue, Quest, Economy | NPC content + shop data (**may expose knowledge opportunities**) | yes | shop/NPC UI (P-17) | server owns stock | Med |
+| **Dialogue** | P-18 | a dialogue runner | current node (runtime); choices → others' state | `npc_interacted`, player choice | `dialogue_chosen` | Relationship, Sect, Faction, **Knowledge Core**, flags | **via owners only** (**knowledge via `KnowledgeService`**) | NPC, Localization, all social, **Knowledge Core** | Quest, Story | `DialogueData` (keys) | no (choices land in owners) | dialogue UI (P-18) | client-local; outcomes authoritative | Med |
+| **Quest** | P-19 | a quest FSM domain service | quest states + objective progress (persistent) | EventBus gameplay events | `quest_state_changed`, `reward_granted` | everything | own + grants via owners (**knowledge via `KnowledgeService`**) | Character, Relationship, Sect, Faction, World Sim, Map, Combat, **Knowledge Core** | Story, Economy | `QuestData` | yes | journal UI (P-19) | per-player personal state | **High** |
+| **Story** | P-20 | a story/flag engine | chapter, flags, choices, **origin_id** (persistent) — **NOT knowledge** | quest/world outcomes, choices | `story_beat`, `chapter_entered` | all social + world + cultivation + knowledge | own flags only (**knowledge via `KnowledgeService`**) | Quest + all social, **Knowledge Core** | World state changes | chapter/`OriginData` | yes | chronicle UI (P-20) | **personal story state — never shared** | **High** |
 | **Dungeon** | P-21 | dungeon instance coordinator | run progress (runtime) | enter/clear | `dungeon_*` | `DungeonData`, Map, Combat | instance only | Map, Combat, Loot | Boss | `DungeonData` | checkpoint only | dungeon UI (P-21) | **party/instance state** | Med |
 | **Boss** | P-22 | boss entity + phase logic | phase (runtime); defeat flag (persistent) | combat events | `boss_defeated` | `BossData` | defeat flag | Combat, AI, Dungeon | Story gating | `BossData` | defeat flag | boss presentation (P-22) | party/instance | Med |
-| **Economy / Crafting** | P-13+ | a crafting/market domain service | player currency + recipes known (persistent) | gather/craft/trade intents | economy events | Item, Knowledge, Relationship, Sect | own | Item, Map, NPC, World Sim | Equipment, Sect contribution | recipes, resources, price data | yes | crafting/shop UI | server validates trades | Med |
+| **Economy / Crafting** | P-13+ | a crafting/market domain service | player currency + recipes known (persistent) | gather/craft/trade intents | economy events | Item, **Knowledge Core (read-only, when a recipe is knowledge-gated)**, Relationship, Sect | own | Item, Map, NPC, World Sim, **Knowledge Core (P-12) for gated recipes** | Equipment, Sect contribution | recipes, resources, price data | yes | crafting/shop UI | server validates trades | Med |
 | **Save / Load** | P-23 | `SaveService` | the snapshot itself | all persistent tiers | save/load events | every system's `to_dict` | every system's `from_dict` | all | all | migration data | **owns the format** | save/load UI (P-23) | same snapshots feed server storage | **High** |
 | **UI** | DONE (foundation) | `UITheme` / `UIPalette` + screens | presentation only | views + intents | intents | views | **nothing gameplay** | Localization, Input | — | theme/asset paths | no | itself | client-local, never authoritative | Med |
 | **Audio / VFX** | P-26 | audio/VFX services | presentation only | events | — | events | nothing | EventBus | — | asset refs | no | settings | client-local | Low |
@@ -85,6 +86,66 @@ and cultivation gates content that does not exist until there is gameplay to gat
 to the engineering sequence was required.** (The poster's phase bands are not a planning source —
 C-009.)
 
+## 4b. Dependency topology audit (D-040)
+
+A matrix can list dependencies that are individually sensible and collectively impossible. This
+audit checks the one property the matrix cannot show at a glance: **does any phase depend on
+authoritative state that only arrives in a LATER phase?** Two such defects were found and fixed
+in D-040 (`CONTRADICTION_REGISTER.md` C-012, C-010).
+
+| Edge | Direction | Verdict |
+|---|---|---|
+| P-07 Faction → P-08 World Sim | sim consumes faction state | OK |
+| P-08 World Sim → P-09 Combat | combat reuses the RNG seam P-08 established | OK (fixed, C-010) |
+| P-11 Level → P-12 Cultivation | parallel axes; neither blocks the other | OK |
+| **P-12 Knowledge Core → P-12 Cultivation** | same phase; core lands first *within* the phase | **OK (fixed, C-012)** |
+| **P-12 Knowledge Core → P-15 Technique** | technique reads a core that already exists | **OK (fixed, C-012)** |
+| P-12 Cultivation → P-15 Technique | technique gates on realm | OK |
+| P-15 Technique → P-16 Pet | pet skills reuse the technique/skill model | OK |
+| P-17 NPC → P-18 Dialogue | dialogue needs someone to talk to | OK |
+| P-18 Dialogue → P-19 Quest | quest choices surface through dialogue | OK |
+| P-19 Quest → P-20 Story | story reads quest outcomes | OK |
+| P-20 Story → P-21 Dungeon | dungeon content is story-placed | OK |
+| P-12 Knowledge Core ← P-18/19/20 producers | **producers are later; that is correct** | OK — the core does not depend on them |
+
+**The two defects that were real:**
+1. **Knowledge was listed as owned by Story/Quest at P-19/20 while Cultivation (P-12) and
+   Technique (P-15) already read it.** That is a backwards edge: P-12 cannot depend on P-19. Fixed
+   by giving Knowledge its **own** owner (`KnowledgeService`/`KnowledgeStore`) landing in **P-12**.
+   The content *producers* stay in P-18/19/20 — a core existing before its producers is the normal
+   direction, and the inverse is what was broken.
+2. **The RNG first consumer was named as Combat (P-09) while World Simulation (P-08) already
+   required determinism.** Fixed: the seam is introduced in **P-08**, and P-09 reuses it.
+
+**The rule this audit enforces from now on:** an earlier phase may never require authoritative
+state owned by a later phase. If a design wants that, either the owner moves earlier (what
+happened to Knowledge) or the dependency is not real.
+
+## 4c. The deterministic RNG seam (frozen shape, D-040)
+
+Introduced in **P-08**, consumed by P-09 onward. Not implemented by this document.
+
+```
+RUN / WORLD SEED
+   ├── World Simulation stream
+   ├── Combat stream
+   ├── Enemy AI stream
+   ├── Loot / Economy stream
+   └── future subsystem / instance streams
+```
+
+Frozen properties: **deterministic · seeded · injectable · subsystem/stream-scoped · serializable
+where required · presentation-independent · no global `rand*()` anywhere in domain code.**
+
+**Why streams and not one generator.** With a single shared generator, adding one extra random
+call in combat silently shifts every subsequent world-simulation roll — so a bug fix in one
+subsystem changes unrelated outcomes, and "same seed → same world" stops being true. Per-stream
+state makes each subsystem's sequence reproducible **independently**, which is what makes a
+seeded replay, a regression test and (later) a server-advanced world all possible.
+
+Deliberately NOT frozen: class names, the stream-id vocabulary, the generator algorithm, and the
+serialized shape of stream state — those belong to the implementing phase.
+
 ## 5. Cross-cutting invariants
 
 - **One owner per state.** If two systems can write the same field, that is a defect (D-015 is the
@@ -92,5 +153,12 @@ C-009.)
 - **Emitters never import listeners.** Everything crosses via `EventBus` or a domain signal.
 - **Presentation never writes gameplay state.** UI reads views and sends intents.
 - **Persistent tier only is saved.** Runtime/presentation are rebuilt (L-001).
-- **No new autoload** without a `DECISIONS.md` entry. Budget: **5**.
-- **No domain code calls a global `rand*()`.** Randomness is injected and seeded (C-010).
+- **No new autoload** without a `DECISIONS.md` entry. Budget: **5**. Neither the Knowledge Core
+  nor the RNG seam is an autoload — both are injected domain objects, like `RelationshipService`.
+- **No domain code calls a global `rand*()`.** Randomness is injected, seeded and stream-scoped
+  (§4c, C-010).
+- **No system mutates another system's authoritative collection.** Knowledge is the newest case:
+  Dialogue/Quest/Story *grant* knowledge by calling `KnowledgeService`, and none of them keeps a
+  private copy or a parallel flag (C-012). This is the same rule D-015 established for the sect
+  roster vs. the character's derived cache.
+- **No earlier phase may require state owned by a later phase** (§4b).

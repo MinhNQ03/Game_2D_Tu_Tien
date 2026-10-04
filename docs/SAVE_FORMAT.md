@@ -4,7 +4,9 @@
 > the on-disk format; each system exposes `to_dict()` / `from_dict()` and SaveService
 > orchestrates (`.kiro/steering/03-architecture.md`).
 >
-> Status: **design only.** No save code exists yet.
+> Status: **design only.** No save code exists yet. The on-disk shape below is a sketch; two
+> binding REQUIREMENTS were added in D-040 (§3b: deterministic resume, and knowledge as its own
+> serialized block) which the Phase-23 implementation must satisfy.
 
 ## 1. Non-negotiables
 
@@ -91,6 +93,33 @@ SaveFile:
 All content references are **ids** (see `docs/DATA_SCHEMA.md`), so a save stays valid as
 long as the referenced ids still exist. Removing a shipped id is a breaking content
 change requiring a migration.
+
+## 3b. Deterministic resume requirement (D-040 — requirement only, not a shape)
+
+The sketch above shows a single `rng: { seed }` block. That is **not sufficient**, and the gap is
+recorded here now rather than discovered in Phase 23.
+
+**The requirement (frozen):** a load must be able to resume world evolution **exactly** — the same
+seed and the same simulation state must produce the same future world. Concretely, the save must
+restore the **world seed** *plus* whatever per-stream state is needed to continue each
+deterministic sequence where it left off (`SYSTEM_DEPENDENCY_MATRIX.md` §4c: one run/world seed
+fanning out into per-subsystem streams — world sim, combat, enemy AI, loot, …).
+
+**Why a single seed is not enough.** A seed alone only reproduces a run *from the beginning*. A
+save taken 40 hours in must also record **how far each stream has advanced**, or the post-load
+world diverges from the pre-load world — which breaks `WORLD_SIMULATION.md` §5's save-resumable
+guarantee, breaks reproducible bug reports, and breaks any future server-advanced world
+(`MULTIPLAYER_PLAN.md` §7 lists non-determinism as a corner-painting risk).
+
+**What is deliberately NOT frozen:** whether stream state is a counter, an algorithm state blob,
+or a re-derivable `(seed, stream_id, draw_count)` triple; the field names; and where the block
+sits in the file. Those are decided by the phase that implements the RNG seam (**P-08**) and the
+phase that implements persistence (**P-23**) — this section only guarantees they will not be
+*forgotten*.
+
+Also in scope of the same requirement: the **Knowledge Core**'s acquired-id set is persistent
+domain state owned by `KnowledgeService`/`KnowledgeStore` (CL-14), so it serializes like any other
+core system — through its own `to_dict`/`from_dict`, **not** inside the `story` block (C-012).
 
 > **Session block (GameState) — D-018.** The run's lifecycle state is produced by
 > `GameState.to_dict()` and holds **only run identity + location**:

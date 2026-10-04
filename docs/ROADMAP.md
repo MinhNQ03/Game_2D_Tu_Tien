@@ -237,15 +237,20 @@ influence, attitudes toward player/other factions, resolved as rules over data.
 **Exit:** multi-faction sect authored via data; a faction influence/attitude change
 produces documented, deterministic outcomes; round-trips; tests pass.
 
-## Phase 08 — World Simulation
+## Phase 08 — World Simulation *(+ the deterministic RNG seam)*
 LOD simulation (`docs/WORLD_SIMULATION.md`): Near real-time / Far abstract; schedule/tick/
 event/state-transition drivers; promotion/demotion; seeded determinism; save-resumable.
+**This phase INTRODUCES the deterministic RNG seam** (D-040 / C-010): one run/world seed fanning
+out into per-subsystem streams, injectable, no autoload, no global `rand*()`
+(`docs/SYSTEM_DEPENDENCY_MATRIX.md` §4c). It is the first genuine consumer, so it owns the
+introduction; later phases reuse it.
 **Exit:** seeded K-tick run reproduces identical state; promotion/demotion loses no
 persistent state; save mid-sim + load resumes; catch-up within budget; perf test passes.
 
 ## Phase 09 — Combat
-Single documented damage formula (domain, pure), Hitbox/Hurtbox, basic attack, seeded RNG.
-Combat emits events only. Timing model decided here (D-007).
+Single documented damage formula (domain, pure), Hitbox/Hurtbox, basic attack. **Consumes the
+deterministic RNG seam established in Phase 08** on its own stream — it does not introduce a
+second RNG (D-040 / C-010). Combat emits events only. Timing model decided here (D-007).
 **Exit:** deterministic damage from data; damage/combat unit + integration tests pass.
 
 ## Phase 10 — Enemy AI
@@ -256,10 +261,22 @@ EnemyData-driven enemies, AIComponent with controlled tick rate, spawn tables.
 XP curve, level. Reacts to combat events.
 **Exit:** XP → level works; serializable; tests pass.
 
-## Phase 12 — Cultivation
+## Phase 12 — Cultivation *(+ Knowledge Core substrate)*
 Cảnh giới / tu luyện breakthrough rules (the second progression axis, distinct from level).
-Gates content/capability, not just numbers (`.kiro/steering/02-game-design.md`).
-**Exit:** cultivation → realm unlocks work; serializable; breakthrough rules tested.
+Gates content/capability, not just numbers (`.kiro/steering/02-game-design.md`). The frozen
+hierarchy is `docs/PROGRESSION_CULTIVATION_DESIGN.md` §2 (CL-02).
+
+**Also lands here: the KNOWLEDGE CORE substrate** (D-040 / C-012) — `KnowledgeStore` +
+`KnowledgeService` with its own authoritative ownership: named ids, acquired state, a
+deterministic grant path, query, the persistence boundary, and a `knowledge_gained` event. No
+autoload. It lands here because Cultivation (this phase) and Technique (P-15) **read** it, so an
+owner arriving at P-19/20 would be a backwards dependency. **Scope guard: this does NOT mean
+building a story or quest engine in Phase 12** — the core is a store, a service, a grant path and
+an event; its content producers arrive in P-18/19/20.
+
+**Exit:** cultivation → realm unlocks work; serializable; breakthrough rules tested. Knowledge
+Core: grant/query/persist round-trips, only the service mutates the collection, and a
+cultivation prerequisite reads it — all tested.
 
 ## Phase 13 — Item
 InventoryComponent (serializable), item pickup/use, ItemData.
@@ -269,32 +286,45 @@ InventoryComponent (serializable), item pickup/use, ItemData.
 EquipmentData, equip/unequip applying stat modifiers through the damage formula.
 **Exit:** equipment changes damage deterministically; covered by tests.
 
-## Phase 15 — Skill
+## Phase 15 — Skill / Technique
 SkillComponent, SkillData (active/passive), cooldowns, mana/linh khí cost, công pháp
-gating of usable skills.
-**Exit:** add a skill via data; cooldown/cost/gating tested.
+gating of usable skills. **Technique/Skill CONSUMES Knowledge prerequisites** through the
+Knowledge Core established in Phase 12 — read-only; it never keeps its own copy (D-040 / C-012).
+Technique compatibility **and incompatibility** are authored data
+(`docs/COMBAT_DESIGN.md` §5).
+**Exit:** add a skill via data; cooldown/cost/gating tested; a knowledge-gated technique is
+correctly withheld and then granted when the knowledge is acquired.
 
 ## Phase 16 — Pet
 PetData, pet as an Entity with ally AIComponent; follows/assists in combat.
 **Exit:** add a pet via data; pet state serializes; combat assist tested.
 
 ## Phase 17 — NPC
-NPC interaction & services (shops) built **on** the Character/Sect/Relationship systems.
+NPC interaction & services (shops) built **on** the Character/Sect/Relationship systems. NPCs and
+their content may **expose knowledge opportunities** (a record to read, someone who will explain
+something) — exposing an opportunity, not owning knowledge state (D-040 / C-012).
 **Exit:** interact + trade; shop state serializes; standing uses the relationship graph.
 
 ## Phase 18 — Dialogue
 DialogueData (localization keys), dialogue runner, choices feeding story + relationship +
-sect state.
-**Exit:** branching dialogue in `vi` + `en`; choices set flags/relationship deltas; tested.
+sect state. **PRODUCES knowledge** — a dialogue may grant knowledge, always by calling
+`KnowledgeService`, never by writing a private flag (D-040 / C-012). It may also **read**
+knowledge to gate lines.
+**Exit:** branching dialogue in `vi` + `en`; choices set flags/relationship deltas; a dialogue
+grant is visible through the Knowledge Core, not a local copy; tested.
 
 ## Phase 19 — Quest
 Quest FSM (domain), QuestData, objectives driven by EventBus; quests arise from and affect
-characters/sects/politics.
-**Exit:** add a quest via data; full lifecycle incl. serialize mid-quest; tested.
+characters/sects/politics. **PRODUCES and READS knowledge** through `KnowledgeService`, which is
+what enables alternate knowledge-based quest solutions (D-040 / C-012).
+**Exit:** add a quest via data; full lifecycle incl. serialize mid-quest; a knowledge-gated
+alternate solution works; tested.
 
 ## Phase 20 — Story
 Story/flag engine; branches read character/sect/faction state + flags; chapter loop +
-world-state-change feedback (`docs/GAME_FLOW.md` §1b).
+world-state-change feedback (`docs/GAME_FLOW.md` §1b). **PRODUCES and READS knowledge** through
+`KnowledgeService` — **Story does NOT own knowledge** and must not shadow it with story flags
+(D-040 / C-012). Historical/record content is the main late-game knowledge producer.
 **Exit:** a branch diverges on a prior choice/relationship/faction state; chapter
 transition works; tested.
 

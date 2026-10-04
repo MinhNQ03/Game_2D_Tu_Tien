@@ -1378,3 +1378,99 @@ world law, Thiên Khế, realm/world hierarchy, major sects/factions, the histor
 progression, economy architecture, multiplayer narrative semantics) requires a DECISIONS entry
 recording OLD · NEW · WHY · IMPACT · AFFECTED CONTENT · AFFECTED SYSTEMS · MIGRATION. That friction
 is the point: it is what stops Act VIII from quietly contradicting Act I.
+
+---
+
+## D-040 — Knowledge Core and the deterministic RNG seam get valid owners and phases — **Accepted** (2026-10-04, documentation only)
+
+**Context:** an independent review of the D-039 freeze found **two dependency defects**. Both are
+worth recording precisely, because neither was a careless typo — they are the specific blind spot
+a per-system dependency matrix creates: **every row can be locally correct while the ordering
+between rows is impossible.** Audits A–W each examined one *domain* (narrative, economy, maps, …)
+and all passed; these two defects live in the *edges between phases*, which no single-domain audit
+looks at.
+
+### Defect 1 — Knowledge's owner and order were impossible (C-012)
+
+The matrix said `Knowledge | P-19/20 | the story/quest state owner`. But the same freeze had
+Cultivation (**P-12**) reading knowledge for breakthrough prerequisites and Technique (**P-15**)
+reading it for technique prerequisites. P-12 cannot depend on authoritative state that first
+exists at P-19.
+
+Left alone, this would have resolved itself in the worst available way: Phase 12 would invent a
+private "known things" dictionary to unblock itself, Phase 15 would add a second one, and Phase
+20's Story engine would arrive to find two parallel sources of truth to reconcile — **exactly the
+failure D-015 had to be written to undo for sect membership.** It would also have quietly demoted
+knowledge from "the third progression axis" to "a bag of story flags", losing the one mechanism
+that lets the Thiên Khế mystery be solved by understanding rather than by force.
+
+**Decisions:**
+- **Knowledge Core lands in PHASE 12** with its **own authoritative domain owner**:
+  `KnowledgeStore` (the collection) + `KnowledgeService` (the single mutation path). **No
+  autoload** (D-017 budget stays at 5), no global manager, no god object. Persistent domain state,
+  injected like `RelationshipService`.
+- Core responsibilities only: named knowledge **ids** · acquired state · a **deterministic grant
+  path** · query · the persistence boundary · an observable `knowledge_gained` event.
+- **Ownership direction:** Cultivation **reads** · Technique **reads** · Crafting **reads** ·
+  Dialogue/Quest/Story **grant and read through the service** · NPC/content **expose
+  opportunities**. **No system but the service may mutate the collection.** Story does not own
+  knowledge; Quest does not own knowledge; knowledge is never a private story flag.
+- **Phase model:** P-12 core → P-15 technique prerequisites → P-17 content exposes opportunities →
+  P-18 dialogue grants → P-19 quest grants → P-20 story/history grants → later phases expand the
+  catalogue. **The core precedes its producers**, which is the same shape as Phase 05: the
+  relationship graph shipped as a substrate with no gameplay producer, and Phases 06+ became its
+  producers (D-026). A substrate belongs with its first *consumer*, not with its first *producer*.
+- **Scope guard:** Phase 12 does **not** grow a story or quest engine to support this. A store, a
+  service, a grant path and an event is the entire core. Until P-18+, the authored catalogue is
+  small — just the cultivation/technique prerequisites — which is exactly enough to make the core
+  testable without inventing its consumers.
+
+### Defect 2 — the RNG first consumer was named one phase too late (C-010)
+
+D-039 resolved C-010 as WATCH with the rule "the first phase that needs randomness introduces the
+seam", then guessed the first caller would be **Combat (P-09)**. That guess contradicted the same
+freeze: **World Simulation is P-08** and its determinism requirement is explicit and
+non-negotiable (`WORLD_SIMULATION.md` §5).
+
+**Decisions:**
+- **The deterministic RNG seam is introduced in PHASE 08, with World Simulation.** Phase 09 Combat
+  **consumes the established seam** on its own stream; it does not introduce a second source.
+- The seam is **stream-scoped**: one run/world seed fanning out into per-subsystem streams
+  (world sim · combat · enemy AI · loot/economy · future instances).
+- **Why streams rather than one shared generator:** with a single generator, adding one extra
+  random call in combat silently shifts every subsequent world-simulation roll. A bug fix in one
+  subsystem would change unrelated outcomes, and "same seed → same world" would stop being true.
+  Per-stream state makes each subsystem's sequence reproducible **independently**, which is what
+  makes a seeded replay, a regression test, and a future server-advanced world all possible at
+  once.
+- Frozen properties: deterministic · seeded · injectable · subsystem/stream-scoped · serializable
+  where required · presentation-independent · **no global `rand*()` in domain code, ever**. **Not
+  an autoload.** Class names, stream-id vocabulary, algorithm and serialized shape belong to P-08.
+- **Save implication (requirement only, `SAVE_FORMAT.md` §3b):** the sketch's single
+  `rng: { seed }` is **not sufficient**. A seed alone reproduces a run only *from the beginning*;
+  a save taken 40 hours in must also restore **how far each stream has advanced**, or the
+  post-load world diverges from the pre-load world — breaking the save-resumable guarantee,
+  reproducible bug reports, and any future server-advanced world. Whether that is a counter, a
+  state blob or a re-derivable `(seed, stream_id, draw_count)` triple is left to P-08/P-23; this
+  freeze only guarantees it will not be forgotten.
+
+### Process change
+
+**Audit X — dependency topology** is added as a permanent gate, with the rule it enforces: **no
+earlier phase may require authoritative state owned by a later phase.** The full edge-by-edge
+check (P-07→08, P-08→09, P-11→12, P-12 Knowledge→P-15, P-17→18→19→20→21, …) is
+`SYSTEM_DEPENDENCY_MATRIX.md` §4b. Audits A–W remain domain audits; X is the graph audit they
+structurally could not be.
+
+**Also fixed in passing:** the World Simulation row in the dependency matrix was missing its UI
+column (14 cells in a 15-column table) — a table defect introduced in D-039, corrected here along
+with a new explicit **Deterministic RNG** row.
+
+**Scope guard honored:** documentation only. **No gameplay code, no scenes, no `.tres`, no
+`project.godot`, no locale change, no runtime behaviour change, no new autoload, no networking.**
+No phase renumbering: Phase 12 and Phase 08 gained explicit substrate scope, nothing moved.
+
+**Consequences:** Phase 12 is now a two-part phase (cultivation + the Knowledge Core substrate)
+and Phase 08 is now responsible for a seam three later phases depend on. Both are larger than they
+read in D-039 — that is the honest cost of fixing a backwards dependency before it is built, and
+it is far cheaper than the parallel-source-of-truth reconciliation it replaces.

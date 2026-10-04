@@ -147,6 +147,43 @@ Knowledge is **not** XP and **not** a realm. It is a serializable record of what
 LEARNED: a discovered text, an understood mechanism, a translated record, a witnessed event, a
 technique's true cost.
 
+### 7a. Ownership and phase (FROZEN, D-040 — resolves C-012)
+
+**KNOWLEDGE CORE lands in PHASE 12**, alongside cultivation, with its **own authoritative domain
+owner**: conceptually `KnowledgeStore` (the collection) + `KnowledgeService` (the single mutation
+path). Not an autoload, not a global manager, not a field on another system.
+
+Minimum core responsibilities: named knowledge **ids** · acquired/known state · a **deterministic
+grant path** · query · the persistence boundary (`to_dict`/`from_dict`) · an observable
+acquisition event (`knowledge_gained`).
+
+| System | Relationship to knowledge |
+|---|---|
+| **`KnowledgeService` / `KnowledgeStore`** | **OWNS** the authoritative collection |
+| Cultivation (P-12) | **reads** (breakthrough prerequisites) |
+| Technique (P-15) | **reads** (technique prerequisites) |
+| Crafting / Economy (P-13+) | **reads** (knowledge-gated recipes) |
+| Dialogue (P-18) | grants + reads, **through the service** |
+| Quest (P-19) | grants + reads, **through the service** |
+| Story (P-20) | grants + reads, **through the service** |
+| NPC / content (P-17+) | may **expose opportunities** to acquire knowledge |
+
+**No system except `KnowledgeService`/`KnowledgeStore` may mutate the authoritative collection.
+Story does not own knowledge. Quest does not own knowledge. Knowledge is never a private story
+flag.**
+
+**Why the core must precede its producers.** Cultivation (P-12) and Technique (P-15) *read*
+knowledge, so an owner arriving at P-19/20 would be a backwards dependency — P-12 cannot depend on
+P-19. The fix is not to move cultivation later; it is to recognise that a substrate belongs with
+its first *consumer*, while its content *producers* arrive whenever their own phase does. That is
+the same shape as Phase 05: the relationship graph shipped as a substrate with no gameplay
+producer, and Phases 06+ became its producers (D-026).
+
+**Phase 12 does NOT grow a story or quest engine to support knowledge.** The core is a store, a
+service, a grant path and an event. Content that *produces* knowledge arrives in P-17–P-20. Until
+then the catalogue is small and authored for cultivation/technique prerequisites only — which is
+exactly enough to make the core testable without inventing its consumers.
+
 **Why it is a separate concept.** Without it, every lock in the game has to be opened with power,
 and the game can only reward the player with bigger numbers. With it, Aetheria can deliver the
 line the brief asks for — *"I learned something"* — as a real progression event. It is also what
@@ -203,14 +240,16 @@ Columns per the brief. Lower realms are specified; upper realms are deliberately
 
 - **Level/XP (11)** needs: Combat (09) for XP events. Blocks nothing content-wise *by design*.
 - **Cultivation (12)** needs: Character (04, done) for persistent state; Level (11) alongside;
-  and it **unblocks** map/dungeon/world access conditions, sect rank eligibility, technique
-  availability.
-- **Knowledge** has no engine of its own before Quest/Story (19/20); until then it is specified
-  here and authored as data when its first consumer exists (anti-over-engineering).
-- **Techniques (15, alongside Skill)** need: Cultivation (12) for gating, Combat (09) for
-  behaviour, Weapon families (CL-10) for compatibility.
-- Nothing in this document requires a new autoload, and nothing requires randomness — but the
-  first system that *does* need randomness must introduce the seeded RNG seam (C-010).
+  **Knowledge Core (12, same phase)** for breakthrough prerequisites; and it **unblocks**
+  map/dungeon/world access conditions, sect rank eligibility, technique availability.
+- **Knowledge Core (12)** needs: Character (04) only — it is a substrate with no upstream
+  gameplay dependency, which is why it can land early (§7a). Its content producers are P-17–P-20.
+- **Techniques (15, alongside Skill)** need: Cultivation (12) for realm gating, **Knowledge Core
+  (12)** for knowledge prerequisites, Combat (09) for behaviour, Weapon families (CL-10) for
+  compatibility.
+- Nothing in this document requires a new autoload. Nothing here requires randomness either; the
+  deterministic RNG seam is introduced by **World Simulation (08)**, the first system that
+  genuinely needs it (`SYSTEM_DEPENDENCY_MATRIX.md` §4c, C-010).
 
 ## 11. Explicitly NOT frozen
 

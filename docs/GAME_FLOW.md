@@ -240,6 +240,11 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Processing:** apply XP curve → level ups (fine power); accumulate cultivation →
   breakthrough rules gate realm advances (content/capability unlocks). All in domain,
   pure and testable.
+- **Design (D-039/D-040):** the frozen realm hierarchy is `docs/PROGRESSION_CULTIVATION_DESIGN.md`
+  §2 (CL-02), and **level is never an access gate** (C-002). Phase 12 also lands the
+  **Knowledge Core** (`KnowledgeStore`/`KnowledgeService`, its own owner, no autoload) because
+  cultivation breakthroughs and techniques READ knowledge — Story/Quest *produce* it later but
+  never own it (§7a, C-012).
 - **Output:** new stats, newly unlocked skills/zones/công pháp, breakthrough events.
 - **Dependencies:** domain (XP curve, breakthrough rules), data (curves/realm defs),
   reacts to combat events.
@@ -376,8 +381,11 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Localization** — every string shown in any box resolves through here (`vi`/`en`).
 - **SceneRouter** — all map/scene transitions go through one place (testable, no leaks).
 - **SaveService** — snapshot/restore across the flow.
-- **Config / RNG** — tunables and *seeded* randomness (seeding makes combat testable and
-  is a prerequisite for deterministic multiplayer later).
+- **Config / RNG** — tunables and *seeded* randomness. The deterministic RNG seam is
+  **stream-scoped** (one run/world seed → per-subsystem streams) and is **introduced in Phase 08
+  with World Simulation**, the first genuine consumer; Combat (09) reuses it rather than adding a
+  second source (D-040 / C-010, `docs/SYSTEM_DEPENDENCY_MATRIX.md` §4c). No domain code calls a
+  global `rand*()`.
 
 ## 5. Where multiplayer plugs in later (no code now)
 
