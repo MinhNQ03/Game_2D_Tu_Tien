@@ -67,13 +67,17 @@ const AUTOTILE_BY_MASK := {
 ## The rectangle of tile cells to paint (in TileMapLayer cell coordinates). Set per map.
 @export var fill_rect: Rect2i = Rect2i(0, 0, 30, 20)
 
-## Width of the stone avenue running east-west across the map, in cells. The avenue is what
-## gives the courtyard a readable axis instead of an undifferentiated field.
-@export var avenue_half_height: int = 2
+## Half-height of the clear moss walkway down the middle of the map, in cells. The paddies sit
+## OUTSIDE it, so the walkway is what the player actually travels along.
+@export var walkway_half_height: int = 3
 
-## Half-extent of the stone plaza at the map centre, in cells. 0 disables it.
-@export var plaza_half_width: int = 7
-@export var plaza_half_height: int = 5
+## Size of each terraced paddy block, in cells, and the gap of moss between blocks.
+@export var paddy_block_width: int = 7
+@export var paddy_block_height: int = 5
+@export var paddy_gap: int = 3
+
+## Inset from the map edge before the paddy terraces begin.
+@export var paddy_margin: int = 3
 
 
 func _ready() -> void:
@@ -89,8 +93,8 @@ func _paint() -> void:
 	for y in range(y0, y1):
 		for x in range(x0, x1):
 			var cell := Vector2i(x, y)
-			if _is_stone(cell):
-				_paint_stone(cell)
+			if _is_paddy(cell):
+				_paint_paddy(cell)
 			else:
 				_paint_moss(cell)
 
@@ -102,18 +106,18 @@ func _paint_moss(cell: Vector2i) -> void:
 	set_cell(cell, SOURCE_GROUND, Vector2i(column, 0))
 
 
-## Stone. The INTERIOR gets a solid `ta` variant; a cell with any moss neighbour gets the
-## autotile tile for that exact neighbour pattern, so the courtyard edge is drawn art rather
-## than a hard rectangular cut.
-func _paint_stone(cell: Vector2i) -> void:
+## A flooded paddy cell. The INTERIOR gets a solid `ta` water variant; a cell with any moss
+## neighbour gets the autotile tile for that exact neighbour pattern, so the paddy's bund
+## (the raised earth edge) is drawn art rather than a hard rectangular cut.
+func _paint_paddy(cell: Vector2i) -> void:
 	var mask := 0
-	if _is_stone(cell + Vector2i(0, -1)):
+	if _is_paddy(cell + Vector2i(0, -1)):
 		mask |= MASK_N
-	if _is_stone(cell + Vector2i(1, 0)):
+	if _is_paddy(cell + Vector2i(1, 0)):
 		mask |= MASK_E
-	if _is_stone(cell + Vector2i(0, 1)):
+	if _is_paddy(cell + Vector2i(0, 1)):
 		mask |= MASK_S
-	if _is_stone(cell + Vector2i(-1, 0)):
+	if _is_paddy(cell + Vector2i(-1, 0)):
 		mask |= MASK_W
 	var fully_enclosed := mask == (MASK_N | MASK_E | MASK_S | MASK_W)
 	if fully_enclosed:
@@ -124,18 +128,38 @@ func _paint_stone(cell: Vector2i) -> void:
 	set_cell(cell, SOURCE_AUTOTILE, coord)
 
 
-## Is this cell part of the stone courtyard? Pure function of the authored layout, so it can
-## be asked about a NEIGHBOUR cell (including one outside `fill_rect`) while computing a mask.
-func _is_stone(cell: Vector2i) -> bool:
-	var centre_x := fill_rect.position.x + int(fill_rect.size.x * 0.5)
+## Is this cell a flooded paddy? Pure function of the authored layout, so it can be asked
+## about a NEIGHBOUR cell (including one outside `fill_rect`) while computing a mask.
+##
+## LAYOUT, and why it changed: the first version ran a wide band of this material straight
+## across the middle of the map and called it a stone courtyard. It is not stone — `ta` is
+## **田, a flooded rice paddy**, measured at rgb(43,100,109), and the shipped map rendered as a
+## cross of open water through the village. The name was read instead of the pixels, which is
+## exactly what L-021 exists to prevent.
+##
+## So the material is now used for what it IS: discrete terraced paddy BLOCKS set back from the
+## map edge, in rows above and below a clear moss walkway, with moss gaps between them for the
+## bunds to read. The player always has dry ground to travel on, and flooded terraces either
+## side is what an East Asian village floor actually looks like.
+func _is_paddy(cell: Vector2i) -> bool:
+	if paddy_block_width <= 0 or paddy_block_height <= 0:
+		return false
 	var centre_y := fill_rect.position.y + int(fill_rect.size.y * 0.5)
-	if absi(cell.y - centre_y) <= avenue_half_height:
-		return true
-	if plaza_half_width > 0 and plaza_half_height > 0:
-		if absi(cell.x - centre_x) <= plaza_half_width \
-				and absi(cell.y - centre_y) <= plaza_half_height:
-			return true
-	return false
+	# The central walkway is never flooded.
+	if absi(cell.y - centre_y) <= walkway_half_height:
+		return false
+	# Stay inside the authored extent, inset by the margin, so a paddy never touches the wall.
+	var x0 := fill_rect.position.x + paddy_margin
+	var y0 := fill_rect.position.y + paddy_margin
+	var x1 := fill_rect.position.x + fill_rect.size.x - paddy_margin
+	var y1 := fill_rect.position.y + fill_rect.size.y - paddy_margin
+	if cell.x < x0 or cell.x >= x1 or cell.y < y0 or cell.y >= y1:
+		return false
+	# Tile the region with block+gap cells; a cell is flooded only inside a block.
+	var period_x := paddy_block_width + paddy_gap
+	var period_y := paddy_block_height + paddy_gap
+	return posmod(cell.x - x0, period_x) < paddy_block_width \
+		and posmod(cell.y - y0, period_y) < paddy_block_height
 
 
 ## A stable per-cell variant index in [0, count).

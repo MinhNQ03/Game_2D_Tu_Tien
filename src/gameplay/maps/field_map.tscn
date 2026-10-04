@@ -28,9 +28,9 @@ texture_filter = 1
 tile_set = ExtResource("3_tileset")
 script = ExtResource("4_ground")
 fill_rect = Rect2i(1, 1, 60, 36)
-avenue_half_height = 1
-plaza_half_width = 0
-plaza_half_height = 0
+walkway_half_height = 2
+paddy_block_width = 9
+paddy_block_height = 6
 
 [node name="Decor" type="Node2D" parent="Visual"]
 
