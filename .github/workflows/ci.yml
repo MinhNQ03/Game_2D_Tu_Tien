@@ -88,9 +88,27 @@ jobs:
 
       - name: GDScript parse check (whole project)
         run: |
-          set -euo pipefail
-          # Loads every .gd under src/ tests/ tools/; exits non-zero on any parse error.
-          ./${GODOT_BIN} --headless --path . -s res://tools/parse_check.gd
+          set -uo pipefail
+          # Compile-checks every .gd under src/ tests/ tools/ (load + can_instantiate +
+          # class_name registration, D-033). Like the lint gate, it SURFACES which file and
+          # which check failed instead of only setting an exit code: Actions logs need auth
+          # to read (D-009), so a bare "exit code 1" costs a whole round-trip to diagnose.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tools/parse_check.gd 2>&1 | tee _parse.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### Parse/compile check (rc=$rc)"
+            echo '```'
+            tail -n 120 _parse.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            grep -E 'FAIL|ERROR|NOTE' _parse.log | tail -n 40 | while IFS= read -r line; do
+              echo "::error::[parse_check] ${line}"
+            done
+            exit "$rc"
+          fi
 
       - name: Runtime boot smoke
         run: |
