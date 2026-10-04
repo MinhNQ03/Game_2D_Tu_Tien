@@ -86,6 +86,16 @@ godot --headless --path . -s res://tests/run_tests.gd
 Then the three dedicated E2E processes (app / player sandbox / world-map), one gate each —
 10 gates in total.
 
+> **The headless-suite gate also fails on any `SCRIPT ERROR:`, even when the runner exits 0**
+> (D-038). GDScript has no try/catch (D-004), so a VM error (a bad typed-array assignment, a
+> call on null, a missing property) ABORTS the running test method rather than failing it: the
+> method ends with zero recorded assertion failures and `run_tests.gd` prints `[PASS]` for a
+> test that never ran. `push_error()` prints `USER ERROR:`, not `SCRIPT ERROR:`, so deliberate
+> fail-closed negative tests do not trip this. The gate also emits the runner's own
+> "ran N test(s)" line as a `::notice::` annotation — annotations are readable on the public
+> check-run API while the log and the step summary are not (D-009), so the test count recorded
+> in this document is quoted from CI rather than counted by hand.
+
 Expected (suite) on success: per-test `[PASS]` lines, a summary, `RESULT: PASS`, exit
 code **0**. On any failure: `[FAIL]` lines, `RESULT: FAIL`, exit code **1**. The linter
 prints `[gdlint] PASS/FAIL` (findings as `path:line:col: CODE message`) and exits 0/1; the
@@ -398,3 +408,26 @@ is CI.
   mirrored into the graph the `RelationshipRuntime` owns (proving ONE shared graph), and the
   **forbidden state** is asserted unreachable: reaching `RUNNING` implies a live sect session,
   so "RUNNING + world live + `character.sect_id` set + sect session inactive" cannot occur.
+
+**Phase 06 follow-up (D-038) — residual consistency + test integrity:**
+- `tests/unit/sect/test_sect_domain.gd` (extended) — **`clear_diplomacy()` is transactional**:
+  a clean clear removes the mirrored edge AND both declarations and emits exactly one
+  `diplomacy_changed(..., NONE)` (a second clear is an idempotent no-op that emits nothing); a
+  REJECTED edge removal leaves the edge, its type, and both sect declarations exactly as they
+  were; a declared relation whose mirrored edge has vanished — or which has no relationship
+  service at all — fails closed WITHOUT clearing the sect side; and an edge carrying a type the
+  sect mirror does not own (`MASTER_DISCIPLE`) is never deleted, while a successful clear leaves
+  bystander edges untouched. Plus **cross-sect diplomacy symmetry**: mutual ally and mutual
+  enemy are valid, one-sided ally/enemy and an ally-vs-enemy conflict are rejected with the
+  reason named, and the verdict is identical with the sect list reversed (order-independence).
+- `tests/unit/sect/test_sect_runtime.gd` (extended) — the runtime refuses to start when the
+  catalog names a player start sect but the character resolver is invalid, or is valid yet does
+  not resolve the player id; afterwards no session is observable and the player's
+  `sect_id`/`sect_rank` are untouched.
+- `tests/unit/relationship/test_relationship_config.gd`,
+  `test_relationship_rules.gd`, `test_relationship_graph.gd` — **fixtures repaired.** These
+  assigned untyped arrays to typed `@export`s, which raises a VM error that ABORTED the test
+  method; seven methods were reported PASS while executing nothing. Fixtures now build typed
+  locals with concrete receiver types, assert that the fixture actually carries its data, and
+  pin the reported validation REASON so a silently-empty fixture can no longer satisfy a
+  negative assertion.

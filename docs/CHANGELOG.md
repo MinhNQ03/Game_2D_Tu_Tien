@@ -8,6 +8,36 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-04 — Phase 06 follow-up: the reverse transaction + test integrity (D-038)
+Four residual issues D-037's green CI could not reveal. No new scope, no new autoload, **CI
+still 10 gates** (the existing suite gate was hardened, not duplicated).
+- **`clear_diplomacy()` is transactional.** D-037 fixed the create/retype leg but left the
+  REMOVE leg inverted: both `SectState`s were cleared first and `remove_edge()`'s boolean was
+  discarded, so a rejected removal left the sect state saying "no relation" while the mirrored
+  edge survived (L-023's divergence, reversed). The relationship side now runs first and is
+  checked. Also: a pair with nothing declared is a true no-op that never touches the graph and
+  emits nothing; the two sects disagreeing fails closed; and an edge carrying a type this
+  mirror does not own is **left alone** rather than destroyed.
+- **Authored default diplomacy must be SYMMETRIC and non-conflicting.** `A ALLY B` with B
+  silent would mirror an edge only one sect records, and `A ALLY B` + `B ENEMY A` would let
+  catalog ordering pick the relationship type. Both are now catalog errors, keyed on the two
+  ids **sorted** so the verdict is order-independent (asserted with the list reversed). Shipped
+  Azure Cloud ↔ Crimson Flame content unaffected.
+- **`SectRuntime.start_session()` requires a WORKING character resolver** when the catalog names
+  a player start sect. The `SectService` "null resolver = checks disabled" contract is unchanged
+  (roster-only unit tests need it); the gap was at the runtime boundary, where it silently
+  skipped the existence check and the derived-cache write.
+- **Test integrity: a test method that ABORTS was reported as PASS.** CI said `275 passed /
+  0 failed` while the log held real `SCRIPT ERROR:` lines — seven methods had never run an
+  assertion. A typed `@export` array rejects an untyped one, and that VM error aborts the
+  running function, so the fixture returned `null`, the caller faulted, and `TestCase` (which
+  records only *assertion* failures) reported success. Fixtures now build typed locals with
+  concrete receiver types, assert themselves before asserting behaviour, and pin the reported
+  REASON in every negative case. **The existing headless gate now fails on any `SCRIPT ERROR:`**
+  even when the runner exits 0 (`push_error()` prints `USER ERROR:`, so deliberate fail-closed
+  tests do not trip it) and emits the runner's own tally as a `::notice::` annotation so the
+  documented test count can be quoted from CI instead of counted by hand (D-009). See L-026.
+
 ### 2026-10-03 — Phase 06 final hardening: fail-closed sect core (D-037)
 Six failure modes a green CI cannot see, closed. No new scope, no new autoload, **CI still
 10 gates**; the existing test files were expanded in place and no assertion was weakened.

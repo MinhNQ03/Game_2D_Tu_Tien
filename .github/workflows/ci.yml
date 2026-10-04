@@ -11,6 +11,8 @@ name: CI
 #      + class_name registration, D-033)
 #   6. runtime boot smoke (boot application/run/main_scene headless, run _ready, exit)
 #   7. headless test suite (custom runner — unit + integration + gameplay; excludes tests/e2e/)
+#      ALSO fails on any `SCRIPT ERROR:` even when the runner exits 0: a VM error aborts a
+#      test method, which the runner cannot distinguish from a passing one (D-037 follow-up)
 #   8. real-application E2E flow (dedicated isolated process — D-019)
 #   9. player sandbox E2E flow (dedicated isolated process — Phase 02)
 #  10. world/map E2E flow (dedicated isolated process — Phase 03)
@@ -119,12 +121,60 @@ jobs:
 
       - name: Headless test suite
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Custom runner: exits non-zero on any failing assertion / missing smoke test.
           # Unit + integration tests only; it EXCLUDES tests/e2e/ and never boots Main, so
           # it cannot contaminate the shared /root autoloads (D-019). It also fails if any
           # test mutates the shared GameState (isolation guard).
-          ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd
+          #
+          # TEST-INTEGRITY CHECK (D-037 follow-up): the runner can only see RECORDED ASSERTION
+          # failures. A hard GDScript VM error (bad typed-array assignment, a call on null, a
+          # missing property) ABORTS the running test method instead of failing it, so the
+          # method ends with zero recorded failures and is reported as [PASS] while having
+          # executed nothing. That is how six relationship-config tests and one rule-catalog
+          # test sat green for two phases without ever running their logic. So this gate now
+          # also fails when the output contains `SCRIPT ERROR:`, even if the runner exits 0.
+          #
+          # `push_error()` from a deliberate negative test prints `ERROR:`/`USER ERROR:`, NOT
+          # `SCRIPT ERROR:` — that prefix is specifically the GDScript VM reporting a runtime
+          # fault, so intentional fail-closed tests do not trip this.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/run_tests.gd 2>&1 | tee _suite.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          script_errors=$(grep -c 'SCRIPT ERROR:' _suite.log || true)
+          {
+            echo "### Headless test suite (rc=$rc, SCRIPT ERROR lines=$script_errors)"
+            echo '```'
+            grep -E '^\[tests\]|RESULT:' _suite.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Surface the runner's own tally as an ANNOTATION. The step summary and the raw log
+          # both need authenticated access to read (D-009), while annotations are available
+          # on the public check-run API — so this is the only way the real
+          # "ran N test(s): X passed, Y failed" number can be quoted in the docs instead of
+          # being counted by hand. A notice never affects the gate's verdict.
+          grep -E '^\[tests\] ran ' _suite.log | while IFS= read -r line; do
+            echo "::notice::[tests] ${line}"
+          done
+          if [ "$rc" -ne 0 ]; then
+            grep -E '\[FAIL\]|RESULT:' _suite.log | tail -n 40 \
+              | while IFS= read -r line; do echo "::error::[tests] ${line}"; done
+            exit "$rc"
+          fi
+          if [ "$script_errors" -ne 0 ]; then
+            {
+              echo '```'
+              grep -A2 'SCRIPT ERROR:' _suite.log | head -n 60
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            grep 'SCRIPT ERROR:' _suite.log | head -n 20 \
+              | while IFS= read -r line; do echo "::error::[test-integrity] ${line}"; done
+            echo "::error::[test-integrity] ${script_errors} SCRIPT ERROR line(s): a test" \
+              "method aborted instead of running. The runner reported PASS because it only" \
+              "counts assertion failures. Fix the fixture."
+            exit 1
+          fi
 
       - name: Real-application E2E flow
         run: |

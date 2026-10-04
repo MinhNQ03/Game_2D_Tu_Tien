@@ -460,3 +460,43 @@
   `_unwind_failed_session()`; `tests/unit/sect/test_sect_runtime.gd` asserts no observable
   half-session after a rejected start, and `tests/e2e/world_flow_case.gd` asserts the forbidden
   combination is unreachable.
+
+## L-026 — A test method that ABORTS is reported as PASS (the runner only counts assertion failures)
+- **Symptom (Phase 06 final-hardening follow-up, D-038):** CI reported `275 passed / 0 failed`
+  while the headless log contained real `SCRIPT ERROR:` lines. Seven test methods had never
+  executed a single assertion. Root cause: a typed `@export` will not accept an untyped array.
+  `RelationshipConfigData.dimensions` is `Array[Dictionary]` and
+  `RelationshipRuleCatalog.rules` is `Array[RelationshipRuleData]`, but the fixtures pushed a
+  plain `Array` at them (`_config(dims: Array)` passing its untyped parameter;
+  `cat.rules = [_rule(...), ...]` where `_rule()` was declared `-> Resource`). That raises
+  `Invalid assignment of property 'dimensions' with value of type 'Array'`, which is a GDScript
+  **VM** error: it ABORTS the running function. So the fixture helper returned `null`, the
+  caller hit `Invalid call ... on a null value`, the test method died — and because
+  `TestCase` records only *assertion* failures, `get_failures()` came back empty and
+  `run_tests.gd` printed `[PASS]`. Six config tests and one rule-catalog test sat green for two
+  phases testing nothing. `get_diagnostics`, the linter and the parse/compile gate cannot see
+  it: the code is syntactically fine and compiles; the fault only exists at runtime.
+- **Rule:** **"the runner said PASS" is not "the test ran".** A custom runner that cannot catch
+  exceptions (GDScript has no try/catch — D-004) cannot distinguish a passing method from one
+  that aborted on the first line, so the SUITE must be checked for `SCRIPT ERROR:` separately —
+  that prefix is the VM reporting a runtime fault and is distinct from the `USER ERROR:` that
+  `push_error()` prints, so deliberate fail-closed tests do not trip it. The headless CI gate
+  now fails on any `SCRIPT ERROR:` even when the runner exits 0. Concretely, when writing
+  fixtures:
+  - **A typed `@export` array needs a typed value.** Build a typed LOCAL first
+    (`var dims: Array[Dictionary] = [...]`) and assign THAT; a literal assigned to a typed
+    local is always safe, while `obj.typed_prop = [literal]` depends on the compiler knowing
+    the property's type — which it does not when the receiver is declared as a loose base
+    (`var cfg: Resource = ...`). Type fixture receivers and helper returns as the CONCRETE
+    class, never `Resource`/`Node`/`Object`.
+  - **Assert the fixture before asserting the behaviour.** `assert_eq(cfg.dimensions.size(), 1)`
+    turns a silently-empty fixture into a visible failure.
+  - **Pin the REASON in a negative test.** `assert_false(x.is_valid())` passes for a fixture
+    that failed to build (it is invalid for the wrong reason); also asserting the reported error
+    message makes that impossible. Every negative case should differ from a KNOWN-GOOD fixture
+    in exactly one field and would otherwise be accepted (ties to L-024).
+- **Fixed:** D-038. Typed fixtures in `test_relationship_config.gd`,
+  `test_relationship_rules.gd`, `test_relationship_graph.gd`, `test_sect_domain.gd`,
+  `test_sect_runtime.gd` (plus `_ladder()`/`_ids()`/`_catalog_of()`/`_rel_config()` typed
+  builders), reason-pinned negative assertions, and the `SCRIPT ERROR:` check added to the
+  EXISTING headless gate (still 10 gates).

@@ -153,9 +153,16 @@ func test_debt_not_flipped_on_directed_edge() -> void:
 
 # N/O — history appends on real change; capacity bounds it -------------------
 func test_history_append_and_capacity() -> void:
-	var cfg := ConfigScript.new()
-	cfg.dimensions = [{"id": &"trust", "default": 0, "min": 0, "max": 1000}]
+	# `dimensions` is Array[Dictionary]: build the typed array explicitly rather than relying
+	# on the compiler inferring the receiver's class well enough to type an array literal. An
+	# untyped array here raises a GDScript VM error that ABORTS this method, which the runner
+	# would record as a PASS (it only counts assertion failures) — see the D-037 follow-up.
+	var dims: Array[Dictionary] = [{"id": &"trust", "default": 0, "min": 0, "max": 1000}]
+	var cfg: RelationshipConfigData = ConfigScript.new()
+	cfg.dimensions = dims
 	cfg.history_capacity = 3
+	assert_eq(cfg.dimensions.size(), 1, "the fixture config actually carries its dimension")
+	assert_eq(cfg.history_capacity, 3, "the fixture config actually carries its capacity")
 	var svc := _service(cfg)
 	svc.create_edge(&"e1", _char(&"a"), _char(&"b"))
 	for i in range(5):

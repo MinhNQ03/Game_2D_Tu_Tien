@@ -213,6 +213,12 @@ New Game path, strict `typeof()` validation at the `from_dict` boundary, a stric
 rank ladder, catalog referential integrity for declared diplomacy, and localized resource names
 in the Sect panel. Tests expanded in place; **CI still 10 gates**; no new scope.
 
+**Follow-up (D-038):** four residual issues — `clear_diplomacy()` made transactional (the
+REMOVE leg was still inverted), authored default diplomacy required to be symmetric and
+non-conflicting across the pair, a working character resolver required at the runtime boundary,
+and **test integrity**: a test method that aborts on a VM error was being reported as PASS, so
+the existing headless gate now fails on any `SCRIPT ERROR:`. Still 10 gates, no new scope.
+
 ## Phase 07 — Faction / Sect Politics *(NOT STARTED)*
 Internal factions + emergent politics (`docs/SECT_SYSTEM.md` §7): `FactionState`,
 influence, attitudes toward player/other factions, resolved as rules over data.

@@ -36,9 +36,14 @@ func _player_state() -> CharacterState:
 
 ## A real (in-memory) relationship service for the Sect↔Sect mirror — the same shape
 ## RelationshipRuntime provides in a live session, without touching disk.
+## `dimensions` is `Array[Dictionary]`: build the typed array as a LOCAL first. A typed
+## property will not accept an untyped array, and the resulting VM error would abort this
+## helper — which the runner records as a PASS (it only counts assertion failures). See the
+## D-037 follow-up / the headless gate's `SCRIPT ERROR:` check.
 func _rel_service() -> RelationshipService:
+	var dims: Array[Dictionary] = [{"id": &"affinity", "default": 0, "min": -100, "max": 100}]
 	var cfg: RelationshipConfigData = RelConfigScript.new()
-	cfg.dimensions = [{"id": &"affinity", "default": 0, "min": -100, "max": 100}]
+	cfg.dimensions = dims
 	var store: RelationshipStore = RelStoreScript.new(cfg)
 	return RelServiceScript.new(store, cfg)
 
@@ -140,6 +145,36 @@ func test_start_fails_closed_without_a_player_to_enroll() -> void:
 		"a catalog naming a start sect cannot start with no player instance id")
 	_assert_no_session(runtime, "after a start with no player")
 	free_node(runtime)
+
+
+## FAIL-CLOSED at the RUNTIME boundary: a real session enrolling a real player needs a
+## WORKING character resolver. Without one, `SectService` treats character checks as disabled
+## (its documented contract for roster-only unit tests), so the enrolment would skip both the
+## existence check and the derived-cache write — leaving a roster that names a player no
+## `CharacterState` is bound to. The service contract is unchanged; the runtime refuses.
+func test_start_fails_closed_without_a_working_character_resolver() -> void:
+	# (a) An INVALID resolver (never set) with a real player id.
+	var runtime: Node = SectRuntimeScript.new()
+	add_to_tree(runtime)
+	assert_false(bool(runtime.call("start_session", _rel_service(), Callable(), PLAYER)),
+		"a non-empty player id with an invalid resolver is rejected")
+	_assert_no_session(runtime, "after a start with an invalid resolver")
+	free_node(runtime)
+
+	# (b) A VALID resolver that does not resolve the player id. The player's own cache must
+	#     be left exactly as it was — the aborted session may not write to it.
+	var runtime_b: Node = SectRuntimeScript.new()
+	add_to_tree(runtime_b)
+	var player := _player_state()
+	assert_eq(player.sect_id, &"", "the player starts with no cached sect")
+	var blind := func(_cid: StringName) -> CharacterState:
+		return null
+	assert_false(bool(runtime_b.call("start_session", _rel_service(), blind, PLAYER)),
+		"a resolver that cannot resolve the player id is rejected")
+	_assert_no_session(runtime_b, "after a start with a non-resolving resolver")
+	assert_eq(player.sect_id, &"", "the aborted start left sect_id untouched")
+	assert_eq(player.sect_rank, &"", "the aborted start left sect_rank untouched")
+	free_node(runtime_b)
 
 
 func test_membership_view_is_populated_and_localizable() -> void:

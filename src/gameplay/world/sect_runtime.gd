@@ -44,7 +44,8 @@ var _player_instance_id: StringName = &""
 ##   4. a `SectState` was built for every template,
 ##   5. every `register_sect` succeeded,
 ##   6. the default diplomacy mirror succeeded for every declared pair,
-##   7. the authored player start sect resolves in the store,
+##   7. the authored player start sect resolves in the store, with a non-empty player id AND
+##      a valid character resolver that actually resolves that id,
 ##   8. the player's enrollment through the service succeeded,
 ##   9. the player's derived `CharacterState` cache agrees with the authoritative roster.
 ##
@@ -107,6 +108,20 @@ func start_session(
 		if player_instance_id == &"":
 			return _fail_start("catalog names a player start sect but no player instance id "
 				+ "was provided to enroll")
+		# A WORKING resolver is required here. `SectService` deliberately treats an absent
+		# resolver as "character checks disabled" so pure roster unit tests can exercise
+		# membership logic without characters — that service-level contract is unchanged. But
+		# at THIS boundary a real session is enrolling a real player, so an absent or
+		# non-resolving resolver would silently skip both the existence check (§10: never
+		# invent a character) and the derived-cache write, producing a sect whose roster
+		# names a player that no CharacterState is bound to.
+		if not character_resolver.is_valid():
+			return _fail_start("catalog names a player start sect but no valid character "
+				+ "resolver was provided, so membership could not be verified or cached")
+		var player_state: CharacterState = character_resolver.call(player_instance_id)
+		if player_state == null:
+			return _fail_start("the character resolver does not resolve the player id '%s'"
+				% player_instance_id)
 		if not service.join_member(
 				catalog.player_start_sect_id, player_instance_id,
 				catalog.player_start_rank_id):
@@ -117,7 +132,8 @@ func start_session(
 	# 9. Derived-cache sync + verification (D-015: the roster is authority, the
 	#    CharacterState fields are a cache that MUST agree with it).
 	service.sync_character_cache()
-	if resolved_sect_id != &"" and character_resolver.is_valid():
+	if resolved_sect_id != &"":
+		# The resolver was proven valid + resolving in step 7, so this is a real comparison.
 		var cs: CharacterState = character_resolver.call(player_instance_id)
 		var sect := store.get_sect(resolved_sect_id)
 		if cs == null or cs.sect_id != resolved_sect_id \

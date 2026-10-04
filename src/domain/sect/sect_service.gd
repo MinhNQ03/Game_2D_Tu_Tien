@@ -367,17 +367,81 @@ func add_enemy(sect_id: StringName, other_sect_id: StringName) -> bool:
 
 
 ## Remove any declared alliance/enmity between the pair and drop the mirrored edge.
+## TRANSACTIONAL in the same direction as `_set_diplomacy` (§14): the RELATIONSHIP side runs
+## FIRST and its result is CHECKED; the sect declarations are cleared only after the mirrored
+## edge is actually gone. The previous order (clear both sects, then fire `remove_edge` and
+## ignore its bool) could leave the sect state saying "no relation" while the edge survived —
+## the same divergence in the opposite direction from the retype bug (D-037 / L-023).
+##
+## Outcomes:
+##   * NO declared relation on either side -> idempotent no-op, returns true. Nothing is read
+##     from or written to the relationship graph, so an unrelated edge between the two sects
+##     (authored by some other system) is never touched. No signal: nothing changed, and a
+##     `NONE` event for a pair that already had no relation is a fake change (the economy
+##     mutators follow the same no-emit-on-no-change rule).
+##   * A declared relation, cleanly mirrored -> edge removed first, then both declarations
+##     cleared, then `diplomacy_changed(..., NONE)`.
+##   * A declared relation that CANNOT be cleanly unmirrored -> false, with NOTHING mutated
+##     and no signal. That covers: no relationship service installed, the expected mirrored
+##     edge missing, the edge carrying a type this mirror does not own, the two sects
+##     disagreeing about the relation, and `remove_edge` rejecting.
+##
+## An edge of an UNRELATED type is deliberately left alone rather than deleted: the sect
+## mirror only owns the ALLY/ENEMY edges it creates, and destroying someone else's graph data
+## to satisfy a sect-side clear would be worse than refusing.
 func clear_diplomacy(sect_id: StringName, other_sect_id: StringName) -> bool:
 	var a := _require_sect(sect_id, "clear_diplomacy")
 	var b := _require_sect(other_sect_id, "clear_diplomacy")
 	if a == null or b == null:
 		return false
+
+	var a_ally := a.is_ally(other_sect_id)
+	var a_enemy := a.is_enemy(other_sect_id)
+	var b_ally := b.is_ally(sect_id)
+	var b_enemy := b.is_enemy(sect_id)
+	if not (a_ally or a_enemy or b_ally or b_enemy):
+		return true  # nothing declared: idempotent no-op, graph untouched
+
+	# The declared relation must be the SAME on both sides. A disagreement means the roster
+	# was hydrated from a corrupt snapshot; clearing half of it would hide that.
+	if a_ally != b_ally or a_enemy != b_enemy:
+		push_error("[sect] clear_diplomacy '%s'<->'%s': the two sects disagree about the "
+			% [sect_id, other_sect_id]
+			+ "declared relation (ally %s/%s, enemy %s/%s); refusing to clear"
+			% [a_ally, b_ally, a_enemy, b_enemy])
+		return false
+
+	var declared: StringName = REL_TYPE_ALLY if a_ally else REL_TYPE_ENEMY
+
+	# RELATIONSHIP FIRST, and its result is checked.
+	if _relationship == null:
+		push_error("[sect] clear_diplomacy '%s'<->'%s': '%s' is declared but no "
+			% [sect_id, other_sect_id, declared]
+			+ "RelationshipService is installed to unmirror it; refusing to clear")
+		return false
+	var eid := edge_id(sect_id, other_sect_id)
+	var store := _relationship.get_store()
+	var existing: RelationshipEdge = store.get_edge(eid) if store != null else null
+	if existing == null:
+		push_error("[sect] clear_diplomacy '%s'<->'%s': '%s' is declared but the mirrored "
+			% [sect_id, other_sect_id, declared]
+			+ "edge '%s' is missing; refusing to clear" % eid)
+		return false
+	if existing.relationship_type != declared:
+		push_error("[sect] clear_diplomacy '%s'<->'%s': edge '%s' carries type '%s', not the "
+			% [sect_id, other_sect_id, eid, existing.relationship_type]
+			+ "declared '%s'; refusing to destroy unrelated graph state" % declared)
+		return false
+	if not _relationship.remove_edge(eid):
+		push_error("[sect] clear_diplomacy '%s'<->'%s': removing the mirrored edge '%s' was "
+			% [sect_id, other_sect_id, eid] + "rejected; sect state left unchanged")
+		return false
+
+	# Sect side second: the mirror is already gone, so the two can no longer diverge.
 	a.erase_ally(other_sect_id)
 	a.erase_enemy(other_sect_id)
 	b.erase_ally(sect_id)
 	b.erase_enemy(sect_id)
-	if _relationship != null:
-		_relationship.remove_edge(edge_id(sect_id, other_sect_id))
 	diplomacy_changed.emit(sect_id, other_sect_id, &"NONE")
 	return true
 

@@ -43,6 +43,48 @@ func _rank(id: StringName, key: StringName, authority: int) -> SectRankData:
 	return r
 
 
+# --- typed-fixture builders --------------------------------------------------
+#
+# Every `@export` below is a TYPED array (`Array[SectRankData]`, `Array[StringName]`,
+# `Array[SectTemplateData]`, `Array[Dictionary]`), and a typed property will not accept an
+# untyped one. The resulting GDScript VM error ABORTS the running function, and because the
+# runner only counts recorded assertion failures, the test method would be reported as PASS
+# while having executed nothing (the test-integrity bug fixed in the D-037 follow-up). A
+# typed LOCAL assigned from an array literal is always safe — the declared type is known at
+# compile time — so every fixture builds a typed local first and assigns THAT.
+
+func _ladder(ranks: Array) -> Array[SectRankData]:
+	var out: Array[SectRankData] = []
+	for r in ranks:
+		out.append(r)
+	return out
+
+
+func _ids(ids: Array) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for item in ids:
+		out.append(StringName(item))
+	return out
+
+
+func _catalog_of(templates: Array) -> SectCatalog:
+	var listed: Array[SectTemplateData] = []
+	for t in templates:
+		listed.append(t)
+	var cat: SectCatalog = CatalogScript.new()
+	cat.sects = listed
+	return cat
+
+
+## A minimal relationship config for the Sect↔Sect mirror (one dimension is enough to prove
+## dimensions/history survive a retype).
+func _rel_config() -> RelationshipConfigData:
+	var dims: Array[Dictionary] = [{"id": &"affinity", "default": 0, "min": -100, "max": 100}]
+	var cfg: RelationshipConfigData = RelConfigScript.new()
+	cfg.dimensions = dims
+	return cfg
+
+
 func _template(sid: StringName) -> SectTemplateData:
 	var t: SectTemplateData = TemplateScript.new()
 	t.id = sid
@@ -50,13 +92,13 @@ func _template(sid: StringName) -> SectTemplateData:
 	t.doctrine_key = &"SECT_DOCTRINE"
 	t.sect_type = TemplateScript.SectType.ORTHODOX
 	t.tier = 2
-	t.rank_ladder = [
+	t.rank_ladder = _ladder([
 		_rank(&"rank_outer", &"R_OUTER", 10),
 		_rank(&"rank_inner", &"R_INNER", 20),
 		_rank(&"rank_elder", &"R_ELDER", 40),
-	]
+	])
 	t.starting_resources = {"spirit_stones": 100}
-	t.starting_territory = [&"region_a"]
+	t.starting_territory = _ids([&"region_a"])
 	t.reputation_seed = {"world": 10}
 	t.influence_seed = 5
 	return t
@@ -69,8 +111,7 @@ func _service(with_rel: bool, existing_characters: Array) -> SectService:
 	var svc: SectService = ServiceScript.new(store)
 	_rel_service = null
 	if with_rel:
-		var cfg: RelationshipConfigData = RelConfigScript.new()
-		cfg.dimensions = [{"id": &"affinity", "default": 0, "min": -100, "max": 100}]
+		var cfg := _rel_config()
 		var rel_store: RelationshipStore = RelStoreScript.new(cfg)
 		var rel_svc: RelationshipService = RelServiceScript.new(rel_store, cfg)
 		_rel_service = rel_svc
@@ -117,15 +158,15 @@ func test_2_malformed_template_rejected() -> void:
 	t.tier = 0
 	assert_false(t.is_valid(), "tier < 1 invalidates")
 	t.tier = 2
-	t.default_enemy_sect_ids = [&"sect_a"]  # self in enemy list
+	t.default_enemy_sect_ids = _ids([&"sect_a"])  # self in enemy list
 	assert_false(t.is_valid(), "self in enemy list invalidates")
 
 
 func test_3_rank_ladder_validation() -> void:
 	var t := _template(&"sect_a")
-	t.rank_ladder = [_rank(&"r1", &"K1", 10), _rank(&"r1", &"K2", 20)]
+	t.rank_ladder = _ladder([_rank(&"r1", &"K1", 10), _rank(&"r1", &"K2", 20)])
 	assert_false(t.is_valid(), "duplicate rank_id invalidates ladder")
-	t.rank_ladder = []
+	t.rank_ladder = _ladder([])
 	assert_false(t.is_valid(), "empty rank ladder invalidates")
 	var t2 := _template(&"sect_b")
 	assert_eq(t2.lowest_rank().rank_id, &"rank_outer", "lowest authority rank is outer")
@@ -460,8 +501,7 @@ func test_29_diplomacy_flip_retypes_the_edge_in_place() -> void:
 ## and the sect side must not change either. This is the regression the destructive
 ## remove-then-create shape could not satisfy: it deleted the edge before it could fail.
 func test_30_failed_retype_leaves_the_old_edge_fully_intact() -> void:
-	var cfg: RelationshipConfigData = RelConfigScript.new()
-	cfg.dimensions = [{"id": &"affinity", "default": 0, "min": -100, "max": 100}]
+	var cfg := _rel_config()
 	var rel_store: RelationshipStore = RelStoreScript.new(cfg)
 	var rel_svc := _NoRetypeRelService.new(rel_store, cfg)
 	var store: SectStore = StoreScript.new()
@@ -495,8 +535,7 @@ func test_30_failed_retype_leaves_the_old_edge_fully_intact() -> void:
 
 
 func test_31_set_relationship_type_rejects_bad_input() -> void:
-	var cfg: RelationshipConfigData = RelConfigScript.new()
-	cfg.dimensions = [{"id": &"affinity", "default": 0, "min": -100, "max": 100}]
+	var cfg := _rel_config()
 	var rel_store: RelationshipStore = RelStoreScript.new(cfg)
 	var rel_svc: RelationshipService = RelServiceScript.new(rel_store, cfg)
 	assert_false(rel_svc.set_relationship_type(&"sect_rel:nope", &"ENEMY"),
@@ -520,7 +559,7 @@ func test_32_default_diplomacy_fails_closed() -> void:
 	# (a) a dangling declaration is an error, not something to skip.
 	var svc := _service(true, [])
 	var t := _template(&"sect_a")
-	t.default_enemy_sect_ids = [&"sect_ghost"]
+	t.default_enemy_sect_ids = _ids([&"sect_ghost"])
 	svc.register_sect(SectState.create_from_template(t), t)
 	assert_false(svc.apply_default_diplomacy(),
 		"a declared enemy that is not in the store fails the mirror instead of being skipped")
@@ -529,7 +568,7 @@ func test_32_default_diplomacy_fails_closed() -> void:
 	var store: SectStore = StoreScript.new()
 	var no_mirror: SectService = ServiceScript.new(store)
 	var t2 := _template(&"sect_a")
-	t2.default_enemy_sect_ids = [&"sect_b"]
+	t2.default_enemy_sect_ids = _ids([&"sect_b"])
 	no_mirror.register_sect(SectState.create_from_template(t2), t2)
 	_reg(no_mirror, &"sect_b")
 	assert_false(no_mirror.apply_default_diplomacy(),
@@ -544,7 +583,7 @@ func test_32_default_diplomacy_fails_closed() -> void:
 	# (d) the happy path still mirrors both ends of a declared pair.
 	var ok := _service(true, [])
 	var ta := _template(&"sect_a")
-	ta.default_enemy_sect_ids = [&"sect_b"]
+	ta.default_enemy_sect_ids = _ids([&"sect_b"])
 	ok.register_sect(SectState.create_from_template(ta), ta)
 	_reg(ok, &"sect_b")
 	assert_true(ok.apply_default_diplomacy(), "a resolvable declaration mirrors successfully")
@@ -680,26 +719,29 @@ func test_43_malformed_id_or_template_id_rejected() -> void:
 ## contradict each other (and silently disagrees with lowest_rank()/highest_rank()).
 func test_44_rank_ladder_authority_must_strictly_increase() -> void:
 	var t := _template(&"sect_a")
-	t.rank_ladder = [
+	t.rank_ladder = _ladder([
 		_rank(&"r1", &"K1", 10), _rank(&"r2", &"K2", 20), _rank(&"r3", &"K3", 30),
-	]
+	])
+	assert_eq(t.rank_ladder.size(), 3, "the fixture ladder actually carries its three ranks")
 	assert_true(t.is_valid(), "a strictly increasing ladder (10, 20, 30) is valid")
 	assert_eq(t.lowest_rank().rank_id, &"r1", "lowest_rank is the FIRST authored entry")
 	assert_eq(t.highest_rank().rank_id, &"r3", "highest_rank is the LAST authored entry")
 
-	t.rank_ladder = [
+	t.rank_ladder = _ladder([
 		_rank(&"r1", &"K1", 10), _rank(&"r2", &"K2", 20), _rank(&"r3", &"K3", 20),
-	]
+	])
 	assert_false(t.is_valid(), "a FLAT step (10, 20, 20) is rejected - promotion grants nothing")
+	assert_true(_errors(t).contains("STRICTLY greater"),
+		"the reason is the authority ordering, not something else: %s" % _errors(t))
 
-	t.rank_ladder = [
+	t.rank_ladder = _ladder([
 		_rank(&"r1", &"K1", 20), _rank(&"r2", &"K2", 10), _rank(&"r3", &"K3", 30),
-	]
+	])
 	assert_false(t.is_valid(), "a dip (20, 10, 30) is rejected")
 
-	t.rank_ladder = [
+	t.rank_ladder = _ladder([
 		_rank(&"r1", &"K1", 30), _rank(&"r2", &"K2", 20), _rank(&"r3", &"K3", 10),
-	]
+	])
 	assert_false(t.is_valid(), "a fully descending ladder (30, 20, 10) is rejected")
 
 
@@ -711,33 +753,120 @@ func test_44_rank_ladder_authority_must_strictly_increase() -> void:
 func test_45_catalog_rejects_dangling_or_contradictory_diplomacy() -> void:
 	var azure := _template(&"sect_azure")
 	var crimson := _template(&"sect_crimson")
-	var cat: SectCatalog = CatalogScript.new()
-	cat.sects = [azure, crimson]
+	var cat := _catalog_of([azure, crimson])
+	assert_eq(cat.sects.size(), 2, "the fixture catalog actually lists both sects")
 	assert_true(cat.is_valid(), "two plain sects with no declared diplomacy validate")
 
-	azure.default_enemy_sect_ids = [&"sect_crimson"]
-	crimson.default_enemy_sect_ids = [&"sect_azure"]
+	azure.default_enemy_sect_ids = _ids([&"sect_crimson"])
+	crimson.default_enemy_sect_ids = _ids([&"sect_azure"])
 	assert_true(cat.is_valid(), "a mutual enmity between two LISTED sects validates")
 
 	# The §6 example: a declared enemy that does not exist in the catalog.
-	azure.default_enemy_sect_ids = [&"sect_ghost"]
+	azure.default_enemy_sect_ids = _ids([&"sect_ghost"])
 	assert_false(cat.is_valid(),
 		"a declared enemy 'sect_ghost' absent from the catalog invalidates it")
-	var reported := str(cat.validation_errors())
-	assert_true(reported.contains("sect_ghost"), "the error names the dangling id")
+	assert_true(_cat_errors(cat).contains("sect_ghost"), "the error names the dangling id")
 
-	azure.default_enemy_sect_ids = []
-	azure.default_ally_sect_ids = [&"sect_ghost"]
+	azure.default_enemy_sect_ids = _ids([])
+	azure.default_ally_sect_ids = _ids([&"sect_ghost"])
 	assert_false(cat.is_valid(), "a dangling ALLY reference invalidates the catalog too")
 
 	# Self-reference, duplicates and ally/enemy overlap are all rejected.
-	azure.default_ally_sect_ids = [&"sect_azure"]
+	azure.default_ally_sect_ids = _ids([&"sect_azure"])
 	assert_false(cat.is_valid(), "a sect declaring ITSELF an ally invalidates the catalog")
-	azure.default_ally_sect_ids = [&"sect_crimson", &"sect_crimson"]
+	azure.default_ally_sect_ids = _ids([&"sect_crimson", &"sect_crimson"])
 	assert_false(cat.is_valid(), "a duplicated declared ally invalidates the catalog")
-	azure.default_ally_sect_ids = [&"sect_crimson"]
-	azure.default_enemy_sect_ids = [&"sect_crimson"]
+	azure.default_ally_sect_ids = _ids([&"sect_crimson"])
+	azure.default_enemy_sect_ids = _ids([&"sect_crimson"])
 	assert_false(cat.is_valid(), "the same sect as BOTH ally and enemy invalidates the catalog")
+
+
+# --- 47-48: default diplomacy must be SYMMETRIC and non-conflicting ---------
+
+## A default declaration describes a MUTUAL standing, and the service mirrors it as ONE
+## symmetric Sect↔Sect edge per pair. A one-sided declaration therefore produces an edge that
+## only one sect's state records, and a contradictory pair has no correct answer at all — the
+## "winner" would be whichever sect the catalog happens to list last. Both are content bugs.
+func test_47_default_diplomacy_must_be_declared_on_both_sects() -> void:
+	var a := _template(&"sect_a")
+	var b := _template(&"sect_b")
+	var cat := _catalog_of([a, b])
+
+	# Mutual declarations are accepted.
+	a.default_ally_sect_ids = _ids([&"sect_b"])
+	b.default_ally_sect_ids = _ids([&"sect_a"])
+	assert_true(cat.is_valid(), "a MUTUAL alliance validates: %s" % _cat_errors(cat))
+	a.default_ally_sect_ids = _ids([])
+	b.default_ally_sect_ids = _ids([])
+	a.default_enemy_sect_ids = _ids([&"sect_b"])
+	b.default_enemy_sect_ids = _ids([&"sect_a"])
+	assert_true(cat.is_valid(), "a MUTUAL enmity validates: %s" % _cat_errors(cat))
+
+	# One-sided ally.
+	a.default_enemy_sect_ids = _ids([])
+	b.default_enemy_sect_ids = _ids([])
+	a.default_ally_sect_ids = _ids([&"sect_b"])
+	assert_false(cat.is_valid(), "a ONE-SIDED alliance is rejected")
+	assert_true(_cat_errors(cat).contains("BOTH sects"),
+		"the reason is the missing counterpart declaration: %s" % _cat_errors(cat))
+
+	# One-sided enemy.
+	a.default_ally_sect_ids = _ids([])
+	a.default_enemy_sect_ids = _ids([&"sect_b"])
+	assert_false(cat.is_valid(), "a ONE-SIDED enmity is rejected")
+
+	# Conflict across the pair: A says ally, B says enemy.
+	a.default_enemy_sect_ids = _ids([])
+	a.default_ally_sect_ids = _ids([&"sect_b"])
+	b.default_enemy_sect_ids = _ids([&"sect_a"])
+	assert_false(cat.is_valid(), "ALLY on one side and ENEMY on the other is rejected")
+	assert_true(_cat_errors(cat).contains("CONFLICTING"),
+		"the reason is the conflict: %s" % _cat_errors(cat))
+
+	# And the mirror image (B ally, A enemy) is rejected the same way.
+	a.default_ally_sect_ids = _ids([])
+	a.default_enemy_sect_ids = _ids([&"sect_b"])
+	b.default_enemy_sect_ids = _ids([])
+	b.default_ally_sect_ids = _ids([&"sect_a"])
+	assert_false(cat.is_valid(), "ENEMY on one side and ALLY on the other is rejected")
+
+
+## The verdict must not depend on authoring order. The validation keys every pair on the two
+## ids SORTED, so listing the sects (or their declarations) the other way round can never
+## change the result — otherwise iteration order would silently pick the relationship type.
+func test_48_pair_validation_is_order_independent() -> void:
+	# Same content, both list orders: a one-sided declaration stays invalid either way.
+	for reversed in [false, true]:
+		var a := _template(&"sect_a")
+		var b := _template(&"sect_b")
+		a.default_enemy_sect_ids = _ids([&"sect_b"])  # only A declares
+		var cat := _catalog_of([b, a] if reversed else [a, b])
+		assert_false(cat.is_valid(),
+			"one-sided enmity invalid with reversed=%s: %s" % [reversed, _cat_errors(cat)])
+		assert_true(_cat_errors(cat).contains("BOTH sects"),
+			"same reason with reversed=%s: %s" % [reversed, _cat_errors(cat)])
+
+	# And a conflicting pair stays invalid in either list order.
+	for reversed in [false, true]:
+		var a2 := _template(&"sect_a")
+		var b2 := _template(&"sect_b")
+		a2.default_ally_sect_ids = _ids([&"sect_b"])
+		b2.default_enemy_sect_ids = _ids([&"sect_a"])
+		var cat2 := _catalog_of([b2, a2] if reversed else [a2, b2])
+		assert_false(cat2.is_valid(),
+			"conflicting pair invalid with reversed=%s" % reversed)
+		assert_true(_cat_errors(cat2).contains("CONFLICTING"),
+			"same reason with reversed=%s: %s" % [reversed, _cat_errors(cat2)])
+
+	# A mutual pair is valid in either order.
+	for reversed in [false, true]:
+		var a3 := _template(&"sect_a")
+		var b3 := _template(&"sect_b")
+		a3.default_ally_sect_ids = _ids([&"sect_b"])
+		b3.default_ally_sect_ids = _ids([&"sect_a"])
+		var cat3 := _catalog_of([b3, a3] if reversed else [a3, b3])
+		assert_true(cat3.is_valid(),
+			"mutual alliance valid with reversed=%s: %s" % [reversed, _cat_errors(cat3)])
 
 
 ## Drift guard (L-014): the catalog the game actually ships must satisfy the rules above, so
@@ -757,6 +886,137 @@ func test_46_authored_catalog_is_referentially_sound() -> void:
 		for e in tmpl.default_enemy_sect_ids:
 			assert_not_null(cat.find_sect(e),
 				"authored enemy '%s' of '%s' resolves" % [e, tmpl.id])
+
+
+# --- 49-52: clear_diplomacy is transactional (§1 follow-up) -----------------
+
+## The happy path: the mirrored edge goes FIRST, then both declarations, then the signal.
+func test_49_clear_diplomacy_removes_edge_and_both_declarations() -> void:
+	var svc := _service(true, [])
+	_reg(svc, &"sect_a")
+	_reg(svc, &"sect_b")
+	assert_true(svc.add_alliance(&"sect_a", &"sect_b"), "alliance declared")
+	var eid := SectService.edge_id(&"sect_a", &"sect_b")
+	var store := svc.get_relationship_store()
+	assert_true(store.has_edge(eid), "mirrored edge exists before the clear")
+
+	var events: Array = []
+	svc.diplomacy_changed.connect(
+		func(sid: StringName, other: StringName, relation: StringName) -> void:
+			events.append([sid, other, relation]))
+
+	assert_true(svc.clear_diplomacy(&"sect_a", &"sect_b"), "clear succeeds")
+	assert_false(store.has_edge(eid), "the mirrored edge is gone")
+	var a := svc.get_store().get_sect(&"sect_a")
+	var b := svc.get_store().get_sect(&"sect_b")
+	assert_false(a.is_ally(&"sect_b"), "sect A declaration cleared")
+	assert_false(b.is_ally(&"sect_a"), "sect B declaration cleared")
+	assert_eq(events.size(), 1, "exactly one diplomacy_changed emitted")
+	if events.size() == 1:
+		assert_eq(events[0][2], &"NONE", "emitted with relation NONE")
+
+	# Idempotent: clearing again is a no-op that succeeds and emits nothing further.
+	assert_true(svc.clear_diplomacy(&"sect_a", &"sect_b"), "clearing again is an idempotent ok")
+	assert_eq(events.size(), 1, "a no-op clear emits no fake change event")
+
+
+## If removing the mirrored edge is REJECTED, nothing may change: not the edge, not either
+## sect. Previously both sects were cleared first and `remove_edge`'s bool was discarded, so
+## this scenario left the sect state saying "no relation" while the edge survived.
+func test_50_failed_edge_removal_preserves_sect_state_and_edge() -> void:
+	var cfg := _rel_config()
+	var rel_store: RelationshipStore = RelStoreScript.new(cfg)
+	var rel_svc := _NoRemoveRelService.new(rel_store, cfg)
+	var store: SectStore = StoreScript.new()
+	var svc: SectService = ServiceScript.new(store)
+	svc.set_relationship_service(rel_svc)
+	_reg(svc, &"sect_a")
+	_reg(svc, &"sect_b")
+	assert_true(svc.add_alliance(&"sect_a", &"sect_b"), "alliance declared")
+	var eid := SectService.edge_id(&"sect_a", &"sect_b")
+
+	assert_false(svc.clear_diplomacy(&"sect_a", &"sect_b"),
+		"clear fails when the relationship removal is rejected")
+	assert_true(rel_store.has_edge(eid), "the mirrored edge still exists")
+	assert_eq(rel_store.get_edge(eid).relationship_type, &"ALLY", "and keeps its type")
+	var a := store.get_sect(&"sect_a")
+	var b := store.get_sect(&"sect_b")
+	assert_true(a.is_ally(&"sect_b"), "sect A still declares the alliance")
+	assert_true(b.is_ally(&"sect_a"), "sect B still declares the alliance")
+
+
+## A declared relation whose mirrored edge has vanished is a DIVERGENCE, not something to
+## paper over by clearing the sect side: fail closed and leave the roster for inspection.
+func test_51_missing_mirror_edge_fails_closed_without_clearing() -> void:
+	var svc := _service(true, [])
+	_reg(svc, &"sect_a")
+	_reg(svc, &"sect_b")
+	assert_true(svc.add_enemy(&"sect_a", &"sect_b"), "enmity declared")
+	var eid := SectService.edge_id(&"sect_a", &"sect_b")
+	# Drop the edge behind the service's back to simulate a diverged graph.
+	assert_true(svc.get_relationship_store().remove_edge(eid), "edge removed out-of-band")
+
+	assert_false(svc.clear_diplomacy(&"sect_a", &"sect_b"),
+		"clear fails closed when the expected mirrored edge is missing")
+	var a := svc.get_store().get_sect(&"sect_a")
+	var b := svc.get_store().get_sect(&"sect_b")
+	assert_true(a.is_enemy(&"sect_b"), "sect A declaration preserved exactly")
+	assert_true(b.is_enemy(&"sect_a"), "sect B declaration preserved exactly")
+
+	# Likewise with NO relationship service at all: a declared relation cannot be unmirrored.
+	var no_mirror: SectService = ServiceScript.new(StoreScript.new())
+	_reg(no_mirror, &"sect_a")
+	_reg(no_mirror, &"sect_b")
+	no_mirror.get_store().get_sect(&"sect_a").insert_ally(&"sect_b")
+	no_mirror.get_store().get_sect(&"sect_b").insert_ally(&"sect_a")
+	assert_false(no_mirror.clear_diplomacy(&"sect_a", &"sect_b"),
+		"clear fails closed with no RelationshipService to unmirror into")
+	assert_true(no_mirror.get_store().get_sect(&"sect_a").is_ally(&"sect_b"),
+		"declaration preserved when there is no mirror to remove")
+
+
+## The sect mirror owns only the ALLY/ENEMY edges it creates. It must never delete an edge of
+## an unrelated type between the same pair, and a clear must not disturb other edges.
+func test_52_clear_never_corrupts_unrelated_relationship_state() -> void:
+	var svc := _service(true, [])
+	_reg(svc, &"sect_a")
+	_reg(svc, &"sect_b")
+	var store := svc.get_relationship_store()
+	var eid := SectService.edge_id(&"sect_a", &"sect_b")
+
+	# (a) No declared relation + an unrelated edge on the pair: the no-op must not touch it.
+	var unrelated := _rel_service.create_edge(
+		eid, RelationshipEndpoint.for_sect(&"sect_a"), RelationshipEndpoint.for_sect(&"sect_b"),
+		&"MASTER_DISCIPLE", true, true)
+	assert_not_null(unrelated, "an unrelated edge exists on the pair")
+	assert_true(svc.clear_diplomacy(&"sect_a", &"sect_b"),
+		"clearing a pair with nothing declared is an idempotent ok")
+	assert_true(store.has_edge(eid), "the unrelated edge survived the no-op clear")
+	assert_eq(store.get_edge(eid).relationship_type, &"MASTER_DISCIPLE", "with its own type")
+
+	# (b) A declared relation whose edge carries an unrelated type: fail closed, keep the edge.
+	svc.get_store().get_sect(&"sect_a").insert_ally(&"sect_b")
+	svc.get_store().get_sect(&"sect_b").insert_ally(&"sect_a")
+	assert_false(svc.clear_diplomacy(&"sect_a", &"sect_b"),
+		"clear refuses to delete an edge whose type this mirror does not own")
+	assert_true(store.has_edge(eid), "the unrelated edge is NOT destroyed")
+	assert_eq(store.get_edge(eid).relationship_type, &"MASTER_DISCIPLE", "type untouched")
+	assert_true(svc.get_store().get_sect(&"sect_a").is_ally(&"sect_b"),
+		"and the sect declaration is left exactly as it was")
+
+	# (c) A successful clear leaves OTHER edges in the graph alone.
+	var bystander := _rel_service.create_edge(
+		&"rel_bystander", RelationshipEndpoint.for_character(&"x"),
+		RelationshipEndpoint.for_character(&"y"), &"RIVAL", true, true)
+	assert_not_null(bystander, "a bystander edge exists")
+	assert_true(_rel_service.remove_edge(eid), "clear the unrelated pair edge out-of-band")
+	svc.get_store().get_sect(&"sect_a").erase_ally(&"sect_b")
+	svc.get_store().get_sect(&"sect_b").erase_ally(&"sect_a")
+	assert_true(svc.add_alliance(&"sect_a", &"sect_b"), "declare a clean alliance")
+	assert_true(svc.clear_diplomacy(&"sect_a", &"sect_b"), "and clear it cleanly")
+	assert_true(store.has_edge(&"rel_bystander"), "the bystander edge is untouched")
+	assert_eq(store.get_edge(&"rel_bystander").relationship_type, &"RIVAL",
+		"with its own type intact")
 
 
 # --- strict-type fixtures ----------------------------------------------------
@@ -788,6 +1048,15 @@ func _assert_rejected(payload: Dictionary, what: String) -> void:
 	var before := state.to_dict()
 	assert_false(state.from_dict(payload), "%s is rejected" % what)
 	assert_eq(state.to_dict(), before, "%s left the existing state unchanged" % what)
+
+
+## All validation errors of a template / catalog joined, for asserting WHICH invariant fired.
+func _errors(tmpl: SectTemplateData) -> String:
+	return " | ".join(tmpl.validation_errors())
+
+
+func _cat_errors(cat: SectCatalog) -> String:
+	return " | ".join(cat.validation_errors())
 
 
 ## A sect with a member, a leader, resources, territory and reputation — something to lose.
@@ -824,4 +1093,13 @@ class _NoRetypeRelService extends RelationshipService:
 	func _init(store: RelationshipStore, config: RelationshipConfigData) -> void:
 		super(store, config)
 	func set_relationship_type(_edge_id: StringName, _relationship_type: StringName) -> bool:
+		return false
+
+
+## A RelationshipService whose edge REMOVAL always fails (the edge stays in the real store),
+## to prove `clear_diplomacy` checks that result instead of discarding it.
+class _NoRemoveRelService extends RelationshipService:
+	func _init(store: RelationshipStore, config: RelationshipConfigData) -> void:
+		super(store, config)
+	func remove_edge(_edge_id: StringName) -> bool:
 		return false

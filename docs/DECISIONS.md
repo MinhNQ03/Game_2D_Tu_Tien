@@ -1209,3 +1209,81 @@ a loud error instead of starting a quietly-wrong session — which is the intend
 content errors impossible to miss during authoring. `SaveService` (D-005, still Open) inherits a
 `from_dict` that rejects type-drift, so a future save-format migration must convert types
 explicitly rather than leaning on coercion.
+
+---
+
+## D-038 — Residual Phase 06 consistency: the reverse transaction, symmetric authored diplomacy, a required resolver, and test integrity — **Accepted** (2026-10-04, Phase 06 final-hardening follow-up)
+
+**Context:** D-037 hardened the sect core and CI went green 10/10. A deeper review then found
+four residual issues that the green run could not reveal — three of them in code paths that
+only execute when something goes wrong, and one in the test harness itself, which is the worst
+place for a defect to hide.
+
+**Decisions:**
+
+- **`clear_diplomacy()` is transactional in the same direction as `_set_diplomacy()`.** D-037
+  fixed the *create/retype* leg but left the *remove* leg inverted: `clear_diplomacy` mutated
+  BOTH `SectState`s first and then called `RelationshipService.remove_edge()` **discarding its
+  boolean**. So a rejected removal left the sect state saying "no relation" while the mirrored
+  edge survived — L-023's divergence, in the opposite direction. Now the relationship side runs
+  FIRST and is checked; the declarations are cleared only after the edge is actually gone. Three
+  further guards: a pair with nothing declared is an idempotent no-op that never reads or writes
+  the graph (and emits no `diplomacy_changed`, matching the no-emit-on-no-change rule the
+  economy mutators already follow — there is no consumer of that signal yet, so this is not a
+  breaking change); the two sects disagreeing about the declared relation fails closed rather
+  than clearing half of a corrupt hydrate; and an edge carrying a type this mirror does not own
+  (`MASTER_DISCIPLE`, `RIVAL`, …) is **left alone** — the sect mirror owns only the ALLY/ENEMY
+  edges it creates, and destroying another system's graph data to satisfy a sect-side clear is
+  worse than refusing.
+
+- **Authored default diplomacy must be SYMMETRIC and non-conflicting.** The per-template checks
+  (self-reference, duplicates, ally/enemy overlap) and the D-037 catalog check (the id resolves)
+  are all *one-sided*. But a default declaration describes a MUTUAL standing and the service
+  mirrors it as ONE symmetric edge per pair, so `A ALLY B` with B silent produces an edge only
+  one sect's state records, and `A ALLY B` + `B ENEMY A` has no correct answer at all — the
+  surviving type would be decided by whichever sect the catalog happens to list last. Both are
+  now catalog errors. The check keys every pair on the two ids **sorted**, so the verdict is
+  order-independent by construction; a test asserts the same result with the sect list reversed.
+  Shipped content (Azure Cloud ↔ Crimson Flame, mutual ENEMY) is unaffected. Implemented as ~40
+  lines inside the existing validator — deliberately NOT a relationship registry or a new
+  abstraction (`03-architecture.md`). `SectCatalog` keeps its own two local `ALLY`/`ENEMY`
+  marker constants rather than importing `SectService`'s: the catalog is DATA and must not
+  depend on the domain layer.
+
+- **`SectRuntime.start_session()` requires a WORKING character resolver when the catalog names a
+  player start sect.** `SectService` intentionally treats an absent resolver as "character
+  checks disabled" so pure roster unit tests can exercise membership without characters — that
+  service-level contract is UNCHANGED. The hole was at the runtime boundary: a real session
+  enrolling a real player with an invalid (or non-resolving) resolver silently skipped both the
+  existence check (§10: never invent a character) and the derived-cache write, producing a sect
+  whose roster named a player no `CharacterState` was bound to. The runtime now demands a valid
+  Callable that actually resolves `player_instance_id`, and fails closed otherwise — leaving no
+  session, no store, no service, and the player's `sect_id`/`sect_rank` untouched.
+
+- **A test method that ABORTS was being reported as PASS.** CI said `275 passed / 0 failed`
+  while the log contained real `SCRIPT ERROR:` lines: seven methods had never executed an
+  assertion. A typed `@export` array (`Array[Dictionary]`, `Array[RelationshipRuleData]`)
+  rejects an untyped one, and that raises a GDScript **VM** error, which aborts the running
+  function — so the fixture helper returned `null`, the caller faulted on it, the method died,
+  and `TestCase` (which records only *assertion* failures) reported success. Fixes:
+  - every fixture builds a **typed local** and assigns that, and fixture receivers/helper
+    returns are typed as the CONCRETE class instead of `Resource`;
+  - fixtures are asserted before behaviour (`assert_eq(cfg.dimensions.size(), 1)`), and the
+    negative tests now pin the reported REASON — a config that failed to build is "invalid"
+    for the wrong reason, which is exactly how these passed while testing nothing;
+  - **the EXISTING "Headless test suite" gate now fails on any `SCRIPT ERROR:`** even when the
+    runner exits 0. `push_error()` prints `USER ERROR:`, not `SCRIPT ERROR:`, so the deliberate
+    fail-closed negative tests do not trip it. The same gate emits the runner's own
+    "ran N test(s)" tally as a `::notice::` annotation, because annotations are readable on the
+    public check-run API while the log and the step summary are not (D-009) — so the documented
+    test count is quoted from CI rather than counted by hand.
+  See L-026.
+
+**Scope guard honored:** no new CI gate (**still 10** — the existing suite gate was hardened),
+no new autoload (still 5), no Faction/Politics, World Simulation, Combat, Inventory, SaveService
+or networking, no new global manager and no new generic framework. No gameplay scope change.
+
+**Consequences:** the sect↔relationship mirror is now transactional in BOTH directions, and
+authored diplomacy is verified to be a coherent mutual relation before a session starts. The
+test suite's reported pass count is trustworthy for the first time; if the fixture fixes
+revealed previously-hidden failures, they are real failures that were always there.
