@@ -12,8 +12,9 @@
 > data-driven camera bounds + follow, persistent player across 20 round trips), the
 > Character core, the Relationship core, the **Sect** core, and the UI/theme asset
 > contracts — plus three dedicated real-application E2E processes (app-flow, player-flow,
-> world-flow). **CI runs 10 gates** (see §5) and the in-runner suite holds **275 test
-> methods across 33 files** (CI-green on `5f7d0c9`). Gameplay beyond world/map traversal +
+> world-flow). **CI runs 10 gates** (see §5) and the in-runner suite reports
+> **`ran 282 test(s): 282 passed, 0 failed`** with zero `SCRIPT ERROR:` lines — quoted from
+> the CI annotation on `1dabdba`, not counted by hand. Gameplay beyond world/map traversal +
 > sect membership is added phase by phase.
 
 ## 1. Test layers
@@ -116,18 +117,18 @@ prints `[boot] Aetheria main scene ready...` and exits 0 if boot didn't crash.
 ```
 tests/
   framework/
-    test_case.gd   # TestCase base + assert_* API + SceneTree helpers (D-004)
+	test_case.gd   # TestCase base + assert_* API + SceneTree helpers (D-004)
   unit/
-    framework/
-      test_nested_discovery.gd  # proves recursive discovery + harness fail-detection
+	framework/
+	  test_nested_discovery.gd  # proves recursive discovery + harness fail-detection
   integration/     # components together (fresh instances; never the live autoloads)
   e2e/             # real-application flow — OWN process (D-019), excluded from run_tests.gd
-                   #   run_world_flow.gd + world_flow_case.gd (Phase 03 — world/map)
-    run_app_flow.gd    # dedicated SceneTree entrypoint (adapter)
-    app_flow_case.gd   # the E2E TestCase (reuses the shared assert_* API)
+				   #   run_world_flow.gd + world_flow_case.gd (Phase 03 — world/map)
+	run_app_flow.gd    # dedicated SceneTree entrypoint (adapter)
+	app_flow_case.gd   # the E2E TestCase (reuses the shared assert_* API)
   gameplay/        # scripted scenarios
   smoke/
-    test_boot.gd   # STRUCTURAL smoke: validates main.tscn shell WITHOUT booting Main (D-019)
+	test_boot.gd   # STRUCTURAL smoke: validates main.tscn shell WITHOUT booting Main (D-019)
   performance/     # budget assertions
   README.md        # how to run, how to add a test
   run_tests.gd     # custom runner — RECURSIVE discovery, isolation guard, non-zero on fail
@@ -349,42 +350,42 @@ is CI.
 - `tests/unit/sect/test_sect_domain.gd` — the whole sect domain in one pure-RefCounted file:
   - **Data validation:** `SectTemplateData`/`SectRankData` well-formed vs. malformed (missing
     name_key, tier < 1, self in the enemy list, duplicate/empty rank ladder) and the rank
-    ladder's `authority` **strictly increasing along the array** (10/20/30 valid; 10/20/20,
-    20/10/30 and 30/20/10 rejected), with `lowest_rank()`/`highest_rank()` matching the first
-    and last authored entries.
+	ladder's `authority` **strictly increasing along the array** (10/20/30 valid; 10/20/20,
+	20/10/30 and 30/20/10 rejected), with `lowest_rank()`/`highest_rank()` matching the first
+	and last authored entries.
   - **`SectCatalog` referential integrity:** a declared ally/enemy that is not in the catalog
-    (the `sect_ghost` case), a self-reference, a duplicate, and an ally/enemy overlap each
-    invalidate the catalog — plus a drift guard that the SHIPPED `data/sects/sect_catalog.tres`
-    is referentially sound, so authoring a dangling reference fails the suite, not the player's
+	(the `sect_ghost` case), a self-reference, a duplicate, and an ally/enemy overlap each
+	invalidate the catalog — plus a drift guard that the SHIPPED `data/sects/sect_catalog.tres`
+	is referentially sound, so authoring a dangling reference fails the suite, not the player's
     boot.
   - **State + serialization:** creation from a template, a byte-stable `to_dict`/`from_dict`
     round trip, and fail-closed hydration (leader/elder not on the roster, negative resource,
     out-of-range reputation, missing id).
   - **STRICT TYPES at the hydrate boundary:** a known-good payload is proven ACCEPTED first,
     then each case mutates exactly ONE field to a wrong type and asserts both halves of the
-    contract — `from_dict` returns false AND the receiving state's snapshot is unchanged:
-    resource quantity as `"100"` / `100.0`, resource id as an int, influence as `"5"` / `5.0`,
-    reputation value as `"10"` / `10.0` / `true` and its scope as an int, a rank id or member id
-    as an int, `leader_ref` as an int or `null`, an elder ref as an int, a territory/ally/enemy
-    id as an int or bool, and `template_id`/`id` as an int or `null`. The int cases deliberately
-    use payloads that would otherwise VALIDATE, so they fail only because of the type check.
+	contract — `from_dict` returns false AND the receiving state's snapshot is unchanged:
+	resource quantity as `"100"` / `100.0`, resource id as an int, influence as `"5"` / `5.0`,
+	reputation value as `"10"` / `10.0` / `true` and its scope as an int, a rank id or member id
+	as an int, `leader_ref` as an int or `null`, an elder ref as an int, a territory/ally/enemy
+	id as an int or bool, and `template_id`/`id` as an int or `null`. The int cases deliberately
+	use payloads that would otherwise VALIDATE, so they fail only because of the type check.
   - **Store:** add, duplicate-id rejection, count.
   - **Membership (roster is authority, D-015):** join/duplicate-join, leave/non-member leave,
-    rank change, unknown rank, the single-leader and leader∌elder invariants, a sect cannot
-    join itself, disciples = roster − leader − elders, and the `CharacterState` derived cache
-    being written on join/rank/leave and REBUILT from the roster by `sync_character_cache()`.
+	rank change, unknown rank, the single-leader and leader∌elder invariants, a sect cannot
+	join itself, disciples = roster − leader − elders, and the `CharacterState` derived cache
+	being written on join/rank/leave and REBUILT from the roster by `sync_character_cache()`.
   - **Economy:** resource clamp at 0, reputation clamp to ±100, influence clamp at 0, territory
-    uniqueness.
+	uniqueness.
   - **Diplomacy mirror (§14):** ally/enemy mirrored to a symmetric Sect↔Sect edge, one
-    order-independent edge id per pair, duplicate declaration rejected, and the rollback when
-    the relationship side fails. **Non-destructive retype:** an ally→enemy flip keeps the SAME
-    edge object (asserted by instance id) with its endpoints, flags, dimension values and
-    history intact; a REJECTED flip leaves the old edge fully intact and the sect side
-    unchanged; `set_relationship_type` rejects an unknown edge (without creating one) and an
-    empty type.
+	order-independent edge id per pair, duplicate declaration rejected, and the rollback when
+	the relationship side fails. **Non-destructive retype:** an ally→enemy flip keeps the SAME
+	edge object (asserted by instance id) with its endpoints, flags, dimension values and
+	history intact; a REJECTED flip leaves the old edge fully intact and the sect side
+	unchanged; `set_relationship_type` rejects an unknown edge (without creating one) and an
+	empty type.
   - **`apply_default_diplomacy()` fails closed:** a dangling declaration and a declaration with
-    no relationship service to mirror into are errors (not silent skips), while a roster-only
-    service that declares nothing needs no mirror and the resolvable case still mirrors.
+	no relationship service to mirror into are errors (not silent skips), while a roster-only
+	service that declares nothing needs no mirror and the resolvable case still mirrors.
 - `tests/unit/sect/test_sect_runtime.gd` — the per-session owner: it is a Node and NOT an
   autoload; a session loads the authored catalog, enrols the player at the authored start rank
   with the derived cache matching the roster, and MIRRORS the authored enmity into the shared

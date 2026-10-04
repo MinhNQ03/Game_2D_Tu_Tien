@@ -10,7 +10,10 @@ Dates are ISO (YYYY-MM-DD).
 
 ### 2026-10-04 — Phase 06 follow-up: the reverse transaction + test integrity (D-038)
 Four residual issues D-037's green CI could not reveal. No new scope, no new autoload, **CI
-still 10 gates** (the existing suite gate was hardened, not duplicated).
+still 10 gates** (the existing suite gate was hardened, not duplicated). CI-verified green on
+`1dabdba`: **`ran 282 test(s): 282 passed, 0 failed`** with **zero `SCRIPT ERROR:` lines** —
+the first run where that count is trustworthy, and the number is quoted from the CI annotation
+rather than counted by hand.
 - **`clear_diplomacy()` is transactional.** D-037 fixed the create/retype leg but left the
   REMOVE leg inverted: both `SectState`s were cleared first and `remove_edge()`'s boolean was
   discarded, so a rejected removal left the sect state saying "no relation" while the mirrored

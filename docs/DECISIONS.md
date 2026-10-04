@@ -1267,13 +1267,13 @@ place for a defect to hide.
   function — so the fixture helper returned `null`, the caller faulted on it, the method died,
   and `TestCase` (which records only *assertion* failures) reported success. Fixes:
   - every fixture builds a **typed local** and assigns that, and fixture receivers/helper
-    returns are typed as the CONCRETE class instead of `Resource`;
+	returns are typed as the CONCRETE class instead of `Resource`;
   - fixtures are asserted before behaviour (`assert_eq(cfg.dimensions.size(), 1)`), and the
-    negative tests now pin the reported REASON — a config that failed to build is "invalid"
-    for the wrong reason, which is exactly how these passed while testing nothing;
+	negative tests now pin the reported REASON — a config that failed to build is "invalid"
+	for the wrong reason, which is exactly how these passed while testing nothing;
   - **the EXISTING "Headless test suite" gate now fails on any `SCRIPT ERROR:`** even when the
-    runner exits 0. `push_error()` prints `USER ERROR:`, not `SCRIPT ERROR:`, so the deliberate
-    fail-closed negative tests do not trip it. The same gate emits the runner's own
+	runner exits 0. `push_error()` prints `USER ERROR:`, not `SCRIPT ERROR:`, so the deliberate
+	fail-closed negative tests do not trip it. The same gate emits the runner's own
     "ran N test(s)" tally as a `::notice::` annotation, because annotations are readable on the
     public check-run API while the log and the step summary are not (D-009) — so the documented
     test count is quoted from CI rather than counted by hand.
@@ -1285,5 +1285,10 @@ or networking, no new global manager and no new generic framework. No gameplay s
 
 **Consequences:** the sect↔relationship mirror is now transactional in BOTH directions, and
 authored diplomacy is verified to be a coherent mutual relation before a session starts. The
-test suite's reported pass count is trustworthy for the first time; if the fixture fixes
-revealed previously-hidden failures, they are real failures that were always there.
+test suite's reported pass count is trustworthy for the first time.
+
+**Verified:** CI green, all 10 gates, on `1dabdba` — `ran 282 test(s): 282 passed, 0 failed`
+with **zero `SCRIPT ERROR:` lines**, which is the proof that the repaired fixtures now actually
+execute (the seven previously-aborting methods were already being counted as passes, so the
+total moved 275 → 282 purely from the seven NEW tests added here). The count is quoted from the
+gate's `::notice::` annotation.
