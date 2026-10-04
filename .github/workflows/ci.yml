@@ -42,9 +42,32 @@ jobs:
       # first: a linter whose rules silently stopped matching is worse than no linter.
       - name: GDScript static lint (no engine required)
         run: |
-          set -euo pipefail
-          python3 tools/gdscript_lint.py --selftest
-          python3 tools/gdscript_lint.py
+          set -uo pipefail
+          # The findings ARE the point of this gate, so it surfaces them as GitHub
+          # annotations and in the step summary rather than only setting an exit code.
+          # Actions logs need auth to read (D-009), so a bare "exit code 1" would cost a
+          # whole round-trip just to learn which rule fired - the exact failure mode
+          # steering 10 exists to prevent. This is a permanent part of the gate, not
+          # temporary diagnostic scaffolding.
+          set +e
+          python3 -V 2>&1 | tee _lint.log
+          python3 tools/gdscript_lint.py --selftest 2>&1 | tee -a _lint.log
+          selftest_rc=${PIPESTATUS[0]}
+          python3 tools/gdscript_lint.py 2>&1 | tee -a _lint.log
+          scan_rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### GDScript lint (selftest rc=$selftest_rc, scan rc=$scan_rc)"
+            echo '```'
+            cat _lint.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$selftest_rc" -ne 0 ] || [ "$scan_rc" -ne 0 ]; then
+            while IFS= read -r line; do
+              echo "::error::[gdlint] ${line}"
+            done < _lint.log
+            exit 1
+          fi
 
       - name: Download Godot ${{ env.GODOT_VERSION }}
         run: |
