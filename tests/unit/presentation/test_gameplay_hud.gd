@@ -330,21 +330,111 @@ func test_hud_plaques_share_one_screen_edge_margin() -> void:
 		if control == null or not (control is PanelContainer):
 			continue
 		anchored += 1
-		assert_true(_is_margin_inset(control.offset_left),
-			"a plaque's horizontal inset is HUD_MARGIN (%d) or centred, never a literal (got %s)"
-				% [UIPalette.HUD_MARGIN, str(control.offset_left)])
-		assert_true(_is_margin_inset(control.offset_top),
-			"a plaque's vertical inset is HUD_MARGIN (%d) or centred, never a literal (got %s)"
-				% [UIPalette.HUD_MARGIN, str(control.offset_top)])
+		assert_true(_is_token_inset(control.offset_top),
+			"a plaque's top inset is built from layout tokens, never a literal (got %s)"
+				% str(control.offset_top))
+		assert_true(_is_token_inset(control.offset_left),
+			"a plaque's left inset is built from layout tokens, never a literal (got %s)"
+				% str(control.offset_left))
 	assert_true(anchored >= 3,
 		"identity / map / prompt plaques are all anchored panels (got %d)" % anchored)
 	free_node(hud)
 
 
-## True when an authored inset is the shared screen-edge margin (either sign, since a
-## right/bottom-anchored plaque insets negatively) or zero (centred on that axis).
-func _is_margin_inset(inset: float) -> bool:
-	return absf(inset) == float(UIPalette.HUD_MARGIN) or absf(inset) == 0.0
+## True when an authored inset is composed from the shared layout tokens (either sign, since a
+## right/bottom-anchored plaque insets negatively) rather than being a hand-typed number.
+##
+## A side panel is inset by `HUD_MARGIN + SIDE_PANEL_WIDTH` on the axis it is bounded along,
+## so the token set is wider than the plain margin — but it is still a CLOSED set, which is
+## the property worth guarding: any value outside it means somebody typed a literal.
+func _is_token_inset(inset: float) -> bool:
+	var allowed := [
+		0.0,
+		float(UIPalette.HUD_MARGIN),
+		float(UIPalette.HUD_MARGIN + UIPalette.SIDE_PANEL_WIDTH),
+		float(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE),
+	]
+	return allowed.has(absf(inset))
+
+
+## The layout contract that replaced the overflowing panel: a side panel is a BOUNDED BOX
+## defined by screen anchors, not a content-sized control.
+##
+## The old version anchored from the vertical centre and took its content's minimum size, so
+## three factions of detail grew past both the top and the bottom of the viewport — and since
+## a 9-slice frame is drawn at the control's edges, those edges were off-screen and the panel
+## rendered with no visible plate at all. Pinning all four sides makes that unreachable.
+func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
+	var hud := _hud()
+	var root := _hud_root(hud)
+	if root == null:
+		free_node(hud)
+		return
+	var side_panels := 0
+	for child in root.get_children():
+		var panel := child as Control
+		if panel == null or not (panel is PanelContainer):
+			continue
+		# A bounded side panel is the one stretched between the top and bottom anchors.
+		if panel.anchor_top != 0.0 or panel.anchor_bottom != 1.0:
+			continue
+		side_panels += 1
+		assert_eq(int(panel.offset_top), UIPalette.HUD_MARGIN,
+			"a side panel starts one margin below the top edge")
+		# It must STOP SHORT of the bottom, leaving the reserved prompt strip clear.
+		assert_eq(int(panel.offset_bottom),
+			-(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE),
+			"and stops short of the bottom so the control prompts are never covered")
+		# Its width is fixed by the anchors, so content can never widen it either.
+		assert_eq(int(absf(panel.offset_right - panel.offset_left)),
+			UIPalette.SIDE_PANEL_WIDTH,
+			"its width comes from SIDE_PANEL_WIDTH, not from its content")
+	assert_eq(side_panels, 2,
+		"both toggleable side panels (sect + politics) are bounded boxes (got %d)"
+			% side_panels)
+	free_node(hud)
+
+
+## Content longer than the bounded box must SCROLL inside it. Without a scroll container the
+## only two outcomes are a clipped panel the player cannot read or a frame pushed off-screen —
+## which is the defect this replaced.
+func test_side_panels_scroll_their_content() -> void:
+	var hud := _hud()
+	var root := _hud_root(hud)
+	if root == null:
+		free_node(hud)
+		return
+	var scrollers := 0
+	for child in root.get_children():
+		var panel := child as Control
+		if panel == null or not (panel is PanelContainer):
+			continue
+		if panel.anchor_top != 0.0 or panel.anchor_bottom != 1.0:
+			continue
+		var scroll := _first_scroll(panel)
+		assert_true(scroll != null, "a bounded side panel holds a ScrollContainer")
+		if scroll == null:
+			continue
+		scrollers += 1
+		assert_eq(int(scroll.horizontal_scroll_mode),
+			int(ScrollContainer.SCROLL_MODE_DISABLED),
+			"it scrolls vertically only — a horizontal bar on a fixed-width panel is a bug")
+		assert_eq(int(scroll.mouse_filter), int(Control.MOUSE_FILTER_STOP),
+			"and it accepts mouse input, or the wheel passes through and clipped content "
+				+ "becomes unreachable (every other node in the panel is IGNORE)")
+	assert_eq(scrollers, 2, "both side panels scroll (got %d)" % scrollers)
+	free_node(hud)
+
+
+func _first_scroll(node: Node) -> ScrollContainer:
+	for child in node.get_children():
+		var found := child as ScrollContainer
+		if found != null:
+			return found
+		var deeper := _first_scroll(child)
+		if deeper != null:
+			return deeper
+	return null
 
 
 ## A8/A17 — the visual pass must NOT invent stats the domain cannot back yet. A gold HP bar

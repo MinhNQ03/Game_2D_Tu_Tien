@@ -8,6 +8,48 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Layout defects fixed: 0×0 menu, overflowing side panels, no design resolution (D-043)
+Reported from running-build screenshots. Two of the three causes were real defects, and in each
+case the thing that *looked* wrong was not the cause. **Presentation + display config only** — no
+domain, gameplay, data, locale or autoload change, and no new asset.
+- **The main menu was rendering 0×0 in the top-left corner.** `set_anchors_preset(p,
+  keep_offsets = false)` does **not** zero the offsets — it recomputes them to PRESERVE the
+  control's current rect. `main_menu.tscn`'s root Control has no authored size, so the rect was
+  0×0 and the call kept it 0×0 while setting full-rect anchors; the `CenterContainer` then
+  centred the plaque in a 0×0 box at the origin and the four screen-corner ornaments collapsed
+  onto it. The HUD was fine only because it calls the preset *before* `add_child`, where the
+  parent range is 0. Fixed with `set_anchors_and_offsets_preset` in `main_menu` + `settings_menu`
+  (same latent defect) and on every full-screen backdrop layer. **L-028.**
+- **A side panel could outgrow the screen, lose its frame and bury the prompts.** The politics
+  panel was content-sized and anchored from the centre, so three factions grew past the top AND
+  bottom of the viewport — and since a 9-slice frame draws at the control's edges, those edges
+  were off-screen, which is why it rendered with *no visible plate*. Side panels are now
+  **bounded boxes** pinned to screen anchors on all four sides with a `ScrollContainer` inside,
+  so their height is `screen − margins − reserved prompt strip` at any resolution and overflow is
+  structurally impossible. `UIPalette.PROMPT_STRIP_RESERVE` makes "no panel covers the prompts"
+  arithmetic rather than eyeballing. The `ScrollContainer` is explicitly `MOUSE_FILTER_STOP`
+  because every other node in these panels is `IGNORE` for click-through.
+- **The politics panel's information density was wrong.** It printed every faction's full
+  doctrine, turning a comparison list into three paragraphs. Doctrine now shows only for the
+  player's own side and whoever holds sway. A density decision, not a capacity one — scrolling
+  had already fixed the overflow.
+- **The project had no design resolution.** `[display]` had the right stretch mode but no
+  `viewport_width/height`, so the base was Godot's implicit default and nobody had decided it.
+  Set an explicit **1280×720** base and `handheld/orientation=4` (sensor landscape).
+- **Mobile safe areas.** The HUD is inset by `DisplayServer.get_display_safe_area()`, re-applied
+  on every viewport change, converted through the viewport/window ratio (the safe area is in
+  native screen pixels while the HUD lives in the stretched canvas — without the conversion the
+  inset is wrong by exactly the stretch factor on any device with a notch). No-op on desktop.
+- **Measured and deliberately NOT fixed: the buttons break this project's own legibility rule.**
+  `button_normal.png` centre brightness **202**, `button_hover.png` **217**, against a measured
+  `SURFACE_LIGHT_BRIGHTNESS_LIMIT` of **120**. D-034 fixed exactly this for panels but left the
+  buttons on the light plate, where only the text outline holds legibility together — that, plus
+  the shipped art being red silk rather than jade, is the real source of the "plastic" look. The
+  correct fix is swapping the button art, which is an asset change and therefore gated on
+  provenance (`06-art-assets.md`). Recorded so it is not lost.
+- **Still not verified visually:** Godot is not runnable here (D-009), so all of the above is
+  asserted structurally and by CI. Nobody has seen the fixed build on screen.
+
 ### 2026-10-02 — Phase 07: Faction / Sect Politics (D-042)
 Internal sect factions become a real core system: authoritative domain state, deterministic
 politics rules, declared politics mirrored into the shared relationship graph, and the first

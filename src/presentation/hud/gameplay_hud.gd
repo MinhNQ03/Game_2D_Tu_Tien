@@ -70,6 +70,9 @@ var _sect_panel: SectPanel
 # having one cover the other.
 var _faction_panel: FactionPanel
 var _politics_view: SectPoliticsView = null  # read-only politics view; may be null
+# The full-rect Control every HUD element hangs off. Held so the safe-area inset can be
+# re-applied on a viewport change without rebuilding the HUD.
+var _root: Control = null
 
 
 func _ready() -> void:
@@ -85,17 +88,30 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if _bus != null and _bus.is_connected("language_changed", _on_language_changed):
 		_bus.disconnect("language_changed", _on_language_changed)
+	var vp := get_viewport()
+	if vp != null and vp.size_changed.is_connected(_on_viewport_resized):
+		vp.size_changed.disconnect(_on_viewport_resized)
 
 
 func _build_ui() -> void:
 	var root := Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.name = "HudRoot"
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root = root
 	# The HUD must wear the shared theme like the menu does (D-034). A CanvasLayer cannot
 	# hold a Theme, so it goes on this root Control and every panel/label below inherits the
 	# asset-backed styles AND the text outline that keeps light text readable over map art.
 	root.theme = UITheme.build()
 	add_child(root)
+	# Keep the whole HUD inside the device's usable area (notch / rounded corners / camera
+	# cutout) and re-apply it whenever the viewport changes — a rotation or a window resize
+	# changes the safe area, and a HUD that only reads it once would leave content under the
+	# notch for the rest of the session.
+	_apply_safe_area()
+	var vp := get_viewport()
+	if vp != null and not vp.size_changed.is_connected(_on_viewport_resized):
+		vp.size_changed.connect(_on_viewport_resized)
 
 	# --- Top-left: the identity plaque -------------------------------------------
 	# One plaque, two tiers: WHO I AM (portrait + name + title) above an ornamental divider,
@@ -241,10 +257,7 @@ func _build_ui() -> void:
 	# the right edge and ~95% of it sat outside the viewport — only a sliver of its jade frame
 	# was visible, which read as "pressing T does nothing" (D-034).
 	_sect_panel = SectPanelScript.new() as SectPanel
-	_sect_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	_sect_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_sect_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_sect_panel.position = Vector2(-UIPalette.HUD_MARGIN, 0)
+	_bound_side_panel(_sect_panel, false)
 	_sect_panel.visible = false
 	root.add_child(_sect_panel)
 
@@ -255,12 +268,75 @@ func _build_ui() -> void:
 	# (D-034). Both panels may be open at once by design — membership and politics are two
 	# halves of one question.
 	_faction_panel = FactionPanelScript.new() as FactionPanel
-	_faction_panel.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-	_faction_panel.grow_horizontal = Control.GROW_DIRECTION_END
-	_faction_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_faction_panel.position = Vector2(UIPalette.HUD_MARGIN, 0)
+	_bound_side_panel(_faction_panel, true)
 	_faction_panel.visible = false
 	root.add_child(_faction_panel)
+
+
+## Anchor a toggleable side panel as a BOUNDED BOX defined by the screen, not by its content.
+##
+## This is the fix for the panel that rendered without a frame and buried the control prompts.
+## The old version anchored from the vertical centre with `grow_vertical = BOTH` and let the
+## panel take its content's minimum size, so a long list grew past the top AND bottom of the
+## viewport: the 9-slice frame is drawn at the panel's edges, and those edges were off-screen.
+##
+## Now all four sides are pinned to screen anchors, so the panel's height is
+## `screen - margins - reserved prompt strip` at EVERY resolution and it is structurally
+## incapable of overflowing or of entering the bottom strip the prompts own. Content longer
+## than the box scrolls inside it (each panel owns a ScrollContainer) instead of escaping it.
+func _bound_side_panel(panel: Control, on_left: bool) -> void:
+	# LEFT_WIDE / RIGHT_WIDE pin top+bottom to the screen and give a full-height column; the
+	# explicit offsets below then inset it. Using the and_offsets variant for the same reason
+	# the menu needed it: the plain preset would preserve the current (minimum) rect.
+	panel.set_anchors_and_offsets_preset(
+		Control.PRESET_LEFT_WIDE if on_left else Control.PRESET_RIGHT_WIDE)
+	if on_left:
+		panel.offset_left = UIPalette.HUD_MARGIN
+		panel.offset_right = UIPalette.HUD_MARGIN + UIPalette.SIDE_PANEL_WIDTH
+	else:
+		panel.offset_left = -(UIPalette.HUD_MARGIN + UIPalette.SIDE_PANEL_WIDTH)
+		panel.offset_right = -UIPalette.HUD_MARGIN
+	panel.offset_top = UIPalette.HUD_MARGIN
+	# Stop short of the bottom so the control prompts are never covered (the reserved strip).
+	panel.offset_bottom = -(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE)
+	# A bounded box must not be re-expanded by its own minimum size.
+	panel.grow_horizontal = Control.GROW_DIRECTION_END if on_left \
+		else Control.GROW_DIRECTION_BEGIN
+	panel.grow_vertical = Control.GROW_DIRECTION_END
+
+
+## Inset the whole HUD by the device's safe area (notch, rounded corners, camera cutout).
+##
+## `DisplayServer.get_display_safe_area()` is in native SCREEN pixels while the HUD lives in
+## the stretched canvas, so the inset is converted through the viewport/window ratio — without
+## that conversion the inset would be wrong by exactly the stretch factor on every device that
+## actually has a notch. On desktop the safe area equals the screen, so every inset is 0 and
+## this is a no-op.
+func _apply_safe_area() -> void:
+	if _root == null:
+		return
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var window_size := DisplayServer.window_get_size()
+	if window_size.x <= 0 or window_size.y <= 0:
+		return
+	var safe := DisplayServer.get_display_safe_area()
+	var screen := DisplayServer.screen_get_size()
+	if screen.x <= 0 or screen.y <= 0 or safe.size.x <= 0 or safe.size.y <= 0:
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var canvas := vp.get_visible_rect().size
+	var sx := canvas.x / float(window_size.x)
+	var sy := canvas.y / float(window_size.y)
+	_root.offset_left = maxf(0.0, float(safe.position.x) * sx)
+	_root.offset_top = maxf(0.0, float(safe.position.y) * sy)
+	_root.offset_right = -maxf(0.0, float(screen.x - safe.end.x) * sx)
+	_root.offset_bottom = -maxf(0.0, float(screen.y - safe.end.y) * sy)
+
+
+func _on_viewport_resized() -> void:
+	_apply_safe_area()
 
 
 # --- Builders ----------------------------------------------------------------

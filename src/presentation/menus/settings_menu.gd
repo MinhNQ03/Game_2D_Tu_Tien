@@ -40,7 +40,11 @@ var _language_buttons: Dictionary = {}
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# See the note in `main_menu.gd`: `set_anchors_preset` PRESERVES the current rect (0x0 for
+	# a `.tscn` root Control with no authored size) instead of zeroing the offsets, so this
+	# screen had the same crammed-into-the-corner defect. Always the and_offsets variant for a
+	# full-rect screen.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.build()
 	_loc = get_node_or_null("/root/Localization")
 	_bus = get_node_or_null("/root/EventBus")
@@ -67,12 +71,12 @@ func _build_ui() -> void:
 	var fill := ColorRect.new()
 	fill.name = "Background"
 	fill.color = UIPalette.COLOR_BACKGROUND
-	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(fill)
 
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 

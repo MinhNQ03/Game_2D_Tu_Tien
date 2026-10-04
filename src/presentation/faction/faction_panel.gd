@@ -58,9 +58,27 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	# The panel is a BOUNDED box on the screen edge (`GameplayHUD._bound_side_panel`), so its
+	# content must scroll rather than stretch the frame: three factions of detail is taller
+	# than a phone screen, and content that outgrows its frame pushes the 9-slice border
+	# off-screen, which is what made this panel render with no visible plate at all.
+	# `follow_focus` so keyboard navigation cannot select a row that is scrolled out of sight.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Explicit STOP: the panel itself and every label in it are MOUSE_FILTER_IGNORE, and this
+	# is the ONE node in the subtree that must actually receive input — otherwise the wheel
+	# passes straight through and the content can be clipped with no way to reach it.
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(scroll)
+
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	add_child(box)
+	# Fill the scroll viewport's width so the value rows and the divider span the panel
+	# instead of shrink-wrapping their text.
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(box)
 
 	_title = _make_label(UIPalette.FONT_SIZE_SUBTITLE, UIPalette.COLOR_TITLE)
 	box.add_child(_title)
@@ -124,7 +142,14 @@ func _build_block(parent: VBoxContainer) -> Dictionary:
 	goals.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	block.add_child(goals)
 
-	# LEVEL 5 — the argument itself: the quietest block, but the reason the panel exists.
+	# LEVEL 5 — the argument itself. Shown for the player's OWN side and for whoever holds
+	# sway, and withheld from the rest.
+	#
+	# The first version printed every faction's full doctrine, which turned a comparison list
+	# into three paragraphs of prose — the list's job is to let the player compare sides at a
+	# glance, and the detail belongs to the one or two that currently matter to them. This is a
+	# density decision, not a capacity one: the panel scrolls now, so the wall of text was no
+	# longer breaking the layout, it was just unreadable.
 	var doctrine := _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	doctrine.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	block.add_child(doctrine)
@@ -283,8 +308,9 @@ func _fill_block(block: Dictionary, row: SectPoliticsView.Row) -> void:
 	goals_label.visible = not goal_texts.is_empty()
 
 	var doctrine_label: Label = block["doctrine"]
-	doctrine_label.text = _t(String(row.doctrine_key))
-	doctrine_label.visible = row.doctrine_key != &""
+	var show_doctrine := row.doctrine_key != &"" and (row.is_player_faction or row.is_dominant)
+	doctrine_label.text = _t(String(row.doctrine_key)) if show_doctrine else ""
+	doctrine_label.visible = show_doctrine
 
 	var relation_label: Label = block["relation"]
 	match row.relation_to_player_faction:

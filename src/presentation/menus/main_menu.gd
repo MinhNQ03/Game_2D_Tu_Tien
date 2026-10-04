@@ -29,7 +29,18 @@ var _quit_button: Button
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# `set_anchors_and_offsets_preset`, NOT `set_anchors_preset` — and this is the whole reason
+	# the menu used to render crammed into the top-left corner at a few hundred px.
+	#
+	# `set_anchors_preset(p, keep_offsets = false)` does not zero the offsets. It RECOMPUTES
+	# them to PRESERVE the control's current on-screen rect (`offset_right += parent_width *
+	# (old_anchor - new_anchor)`). `main_menu.tscn` authors this root Control with no size at
+	# all, so the current rect was 0x0 — and the call faithfully kept it 0x0 while setting the
+	# anchors to full-rect. The `CenterContainer` then centred the plaque inside a 0x0 box at
+	# the origin, and the four screen-corner ornaments collapsed onto that box, which is
+	# exactly what the broken screenshot showed. The HUD never hit this because it calls the
+	# preset BEFORE `add_child`, where the parent range is 0 so the offsets stay 0.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.build()
 	_build_ui()
 	_refresh_text()
@@ -59,7 +70,7 @@ func _build_ui() -> void:
 	# --- Centered framed plaque ----------------------------------------------------
 	var center := CenterContainer.new()
 	center.name = "MenuCenter"
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 
@@ -148,7 +159,7 @@ func _build_backdrop() -> void:
 	var fill := ColorRect.new()
 	fill.name = "Background"
 	fill.color = UIPalette.COLOR_BACKGROUND_DEEP
-	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(fill)
 
@@ -159,7 +170,7 @@ func _build_backdrop() -> void:
 	# filtered: at 16x256 stretched full-screen, nearest would show visible banding steps.
 	sky.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	sky.stretch_mode = TextureRect.STRETCH_SCALE
-	sky.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sky)
 
@@ -168,7 +179,7 @@ func _build_backdrop() -> void:
 	vignette.texture = UITheme.vignette_gradient()
 	vignette.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	vignette.stretch_mode = TextureRect.STRETCH_SCALE
-	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(vignette)
 

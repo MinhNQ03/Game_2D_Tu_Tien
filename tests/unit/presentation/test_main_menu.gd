@@ -249,3 +249,58 @@ func test_menu_behaviour_survived_the_visual_pass() -> void:
 			assert_eq((button as Button).focus_mode, Control.FOCUS_ALL,
 				"every button is keyboard reachable")
 	free_node(menu)
+
+
+## The menu root must actually FILL the screen.
+##
+## This is the regression guard for the defect that made the whole menu render crammed into
+## the top-left corner at a few hundred pixels. `set_anchors_preset(p, keep_offsets = false)`
+## does NOT zero the offsets — it recomputes them to PRESERVE the control's current rect. The
+## menu is instantiated from `main_menu.tscn`, whose root Control has no authored size, so the
+## current rect was 0x0 and the call faithfully kept it 0x0 while setting full-rect anchors.
+## The `CenterContainer` then centred the plaque inside a 0x0 box at the origin and the four
+## screen-corner ornaments collapsed onto it.
+##
+## Asserting the ANCHORS alone would have passed on the broken build — they were already
+## full-rect. The offsets are what was wrong, so the offsets are what this pins.
+func test_menu_root_fills_the_screen() -> void:
+	var menu := _menu()
+	assert_eq(menu.anchor_left, 0.0, "the menu root is anchored to the left edge")
+	assert_eq(menu.anchor_top, 0.0, "and the top edge")
+	assert_eq(menu.anchor_right, 1.0, "and stretches to the right edge")
+	assert_eq(menu.anchor_bottom, 1.0, "and to the bottom edge")
+	# The offsets must be ZERO. A non-zero offset against full-rect anchors means the rect was
+	# preserved instead of reset — exactly the bug.
+	for pair in [
+		["left", menu.offset_left], ["top", menu.offset_top],
+		["right", menu.offset_right], ["bottom", menu.offset_bottom],
+	]:
+		assert_eq(float(pair[1]), 0.0,
+			("the menu root's %s offset is 0, so full-rect anchors actually produce a "
+				+ "full-rect box (got %s) — a preserved 0x0 rect is what crammed the whole "
+				+ "menu into the corner") % [str(pair[0]), str(pair[1])])
+	free_node(menu)
+
+
+## The backdrop layers must fill the menu too — a gradient that covers only part of the screen
+## leaves the rest flat black, which is what "a panel floating in a void" looked like.
+func test_menu_backdrop_layers_fill_the_menu() -> void:
+	var menu := _menu()
+	var covered := 0
+	for child in menu.get_children():
+		var control := child as Control
+		if control == null:
+			continue
+		if not (control is ColorRect or control is TextureRect):
+			continue
+		# Only the full-screen layers, not the corner ornaments (which are deliberately small).
+		if control.anchor_right != 1.0 or control.anchor_bottom != 1.0:
+			continue
+		covered += 1
+		assert_eq(float(control.offset_right), 0.0,
+			"backdrop layer '%s' reaches the right edge" % control.name)
+		assert_eq(float(control.offset_bottom), 0.0,
+			"backdrop layer '%s' reaches the bottom edge" % control.name)
+	assert_true(covered >= 2,
+		"the ground fill and the gradient both span the screen (got %d)" % covered)
+	free_node(menu)

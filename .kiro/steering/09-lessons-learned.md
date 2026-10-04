@@ -530,3 +530,38 @@
   entry (D-041 did) — that is what made the compromise easy to find and reverse the moment the
   constraint turned out to be imaginary. A silent workaround would have quietly become permanent.
 - **Fixed:** D-042. Twelve new scripts shipped with correct, verified `.uid` siblings.
+
+## L-028 — `set_anchors_preset` PRESERVES the current rect; it does not reset the offsets (a 0×0 `.tscn` root stayed 0×0)
+- **Symptom (D-043):** the whole main menu rendered crammed into the top-left corner at a few
+  hundred pixels, with the four "screen corner" ornaments collapsed into a tiny border around
+  it, on a 1904×914 window. `MainMenu._ready()` called
+  `set_anchors_preset(Control.PRESET_FULL_RECT)` as its first line, so the anchors WERE
+  `0,0,1,1` — which is why it looked like a mystery.
+- **Root cause:** `set_anchors_preset(preset, keep_offsets = false)` does not zero the offsets.
+  It RECOMPUTES them so the control's current on-screen rect is PRESERVED
+  (`offset[side] += parent_range * (old_anchor - new_anchor)`). `main_menu.tscn` authors its
+  root `Control` with no size properties at all, so the rect was `0×0` — and the call
+  faithfully kept it `0×0` while setting full-rect anchors. The `CenterContainer` then centred
+  the plaque inside a `0×0` box at the origin. The HUD never hit this because it calls the
+  preset **before** `add_child`, where `parent_range` is 0, so the offsets happen to stay 0 —
+  i.e. the two call sites looked identical and behaved completely differently.
+- **Rule:** **for a screen that must fill its parent, call
+  `set_anchors_and_offsets_preset(PRESET_FULL_RECT)`.** Reach for `set_anchors_preset` only
+  when you genuinely want to keep the existing rect. Corollary for tests: asserting the
+  ANCHORS proves nothing — the broken build had correct anchors. Assert the **offsets**, which
+  is where the fault actually lives.
+- **Also (the same class, different node):** a toggleable panel anchored from the centre with
+  `grow_vertical = BOTH` takes its CONTENT's minimum size, so a long list grew past the top and
+  bottom of the viewport. Because a 9-slice frame is drawn at the control's edges, those edges
+  were off-screen and the panel rendered **with no visible plate**, while also burying the
+  control prompts underneath it. **A panel that can hold unbounded content must be a BOUNDED
+  BOX pinned to screen anchors on all four sides, with a `ScrollContainer` inside** — then
+  overflow is structurally impossible instead of depending on content staying short. Reserve
+  the strip that another element owns (here the prompt row) in a named constant so "panels must
+  not cover the prompts" is enforced by arithmetic, not by eye.
+- **Also (input):** when every node in a panel is `MOUSE_FILTER_IGNORE` for click-through, the
+  `ScrollContainer` must be explicitly `MOUSE_FILTER_STOP`, or the wheel passes through and the
+  clipped content is unreachable.
+- **Fixed:** D-043. `main_menu.gd` + `settings_menu.gd` use the and_offsets variant; both HUD
+  side panels are bounded boxes with scrolling content; regression tests pin the OFFSETS, the
+  bounded-box contract and the reserved prompt strip.

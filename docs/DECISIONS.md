@@ -1719,3 +1719,100 @@ files); new tests across the 16 required categories in `tests/unit/faction/` +
 runnable locally (D-009), so CI is the authoritative gate** — and as with D-041, no runtime
 screenshot of the new panel could be captured here. Its composition is asserted structurally;
 nobody has looked at it.
+
+---
+
+## D-043 — The menu was 0×0, the side panels could outgrow the screen, and the project had no design resolution — **Accepted** (2026-10-02, presentation + display config)
+
+**Context:** the project owner reported the running build looking broken, with screenshots. They
+were right, and two of the three causes were real defects — not taste. This entry records what
+was actually wrong, because in each case the thing that *looked* like the problem was not it.
+
+### 1. The main menu rendered 0×0 in the top-left corner
+
+Every element of the menu — plaque, title, four buttons, the four "screen corner" ornaments —
+was crammed into a ~313×335 box at the top-left of a 1904×914 window.
+
+`MainMenu._ready()` called `set_anchors_preset(Control.PRESET_FULL_RECT)` as its FIRST line, so
+the anchors really were `0,0,1,1`. That is what made it look like a mystery. The defect is that
+**`set_anchors_preset(preset, keep_offsets = false)` does not zero the offsets** — it recomputes
+them so the control's current on-screen rect is PRESERVED
+(`offset[side] += parent_range * (old_anchor - new_anchor)`). `main_menu.tscn` authors its root
+`Control` with no size properties at all, so the current rect was **0×0**, and the call
+faithfully kept it 0×0 while setting full-rect anchors. The `CenterContainer` then centred the
+plaque inside a 0×0 box at the origin, and the ornaments — anchored to the four corners of their
+*parent* — collapsed onto that box.
+
+`GameplayHUD` never hit this because it calls the preset **before** `add_child`, where
+`parent_range` is 0 and the offsets therefore happen to stay 0. Two call sites that read
+identically behaved completely differently, which is exactly why the right-hand HUD panels sat
+correctly on the screen edge in the same build.
+
+**Fix:** `set_anchors_and_offsets_preset(PRESET_FULL_RECT)` in `main_menu.gd` and
+`settings_menu.gd` (which had the same latent defect), and for every full-screen backdrop layer
+so the call order stops mattering. Recorded as **L-028**.
+
+The regression test pins the **OFFSETS**, not the anchors: asserting anchors would have passed
+on the broken build.
+
+### 2. A side panel could outgrow the screen, lose its frame, and bury the prompts
+
+The Phase-07 politics panel was anchored from the vertical centre with
+`grow_vertical = BOTH` and took its CONTENT's minimum size. With three factions it grew past
+both the top and the bottom of the viewport. Because a 9-slice frame is drawn at the control's
+edges, those edges were off-screen — which is why the panel rendered **with no visible plate at
+all**, looking like unframed text floating on the map. It also covered the control-prompt row in
+the bottom-left corner.
+
+**Fix:** a side panel is now a **BOUNDED BOX** pinned to screen anchors on all four sides
+(`PRESET_LEFT_WIDE`/`RIGHT_WIDE` + explicit insets), with a `ScrollContainer` inside. Its height
+is `screen − margins − reserved prompt strip` at every resolution, so overflow is structurally
+impossible rather than dependent on content staying short. `UIPalette.PROMPT_STRIP_RESERVE`
+makes "no panel may cover the prompts" a matter of arithmetic instead of eye. Applied to the
+sect panel too, which would hit the same wall on a short screen.
+
+Two consequences worth noting: the `ScrollContainer` must be explicitly `MOUSE_FILTER_STOP`,
+because every other node in these panels is `IGNORE` for click-through and the wheel would
+otherwise pass straight through to unreachable clipped content. And the politics panel now shows
+a faction's doctrine only for the player's OWN side and whoever holds sway — printing all three
+turned a comparison list into three paragraphs of prose. That second change is a DENSITY
+decision, not a capacity one: with scrolling, the wall of text was no longer breaking the
+layout, it was just unreadable.
+
+### 3. The project had no design resolution, and no mobile story
+
+`project.godot [display]` carried `stretch/mode="canvas_items"` and `stretch/aspect="expand"` —
+the right choices — but **no `viewport_width`/`viewport_height`**, so the base resolution was
+Godot's implicit 1152×648 default and no one had ever decided it. Added an explicit **1280×720**
+base, and `handheld/orientation=4` (sensor landscape) since this is a landscape top-down game.
+
+The HUD is now also inset by `DisplayServer.get_display_safe_area()`, re-applied on every
+viewport change, so nothing sits under a notch, a rounded corner or a camera cutout. The safe
+area is reported in native screen pixels while the HUD lives in the stretched canvas, so the
+inset is converted through the viewport/window ratio — without that conversion it would be wrong
+by exactly the stretch factor on every device that actually has a notch. On desktop the safe
+area equals the screen, so every inset is 0 and the code is a no-op.
+
+### Measured, and NOT fixed here: the buttons break this project's own legibility rule
+
+`button_normal.png` has a **centre brightness of 202** and `button_hover.png` **217**.
+`UIPalette.SURFACE_LIGHT_BRIGHTNESS_LIMIT` is **120** — the measured threshold above which a
+surface must not carry this project's light-only text palette. D-034 found and fixed exactly
+this for panels (`panel.png` 231 → use the dark `panel_inset.png` at 15) but **left the buttons
+on the light plate**, where only the text outline is holding legibility together. That is the
+real source of the "plastic" look the owner described, together with the fact that the shipped
+xianxia button art is red silk while the agreed visual direction is jade.
+
+This is NOT fixed in this entry, deliberately: the correct fix is swapping the button art for a
+dark jade/cyan plate, which is an ASSET change and therefore gated on provenance
+(`06-art-assets.md`: no asset with an unclear licence enters the project). Tinting red silk dark
+with a modulate would muddy it rather than fix it. Logged here so it is not lost.
+
+**Scope guard honored:** presentation + display config only. No domain, gameplay, data, locale
+or autoload change; no new asset.
+
+**Verification:** `get_diagnostics` clean, `gdscript_lint` clean (108 files), new regression
+tests for the menu offsets, the backdrop span, the bounded-box contract, the reserved prompt
+strip and the scroll containers. **Godot is not runnable locally (D-009), so these fixes are
+asserted structurally and by CI — they have NOT been seen on screen.** The owner's screenshots
+are the only visual evidence so far, and they predate the fix.

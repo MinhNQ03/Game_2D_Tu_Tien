@@ -142,6 +142,21 @@ const PANEL_GUTTER := 10
 ## resolution (A15 — the UI must not be authored around one screenshot size).
 const HUD_MARGIN := 18
 
+## Width of a HUD side panel (sect / politics). A FIXED width, not a floor: these panels are
+## bounded boxes on the screen edges, and a content-driven width would make the two sides
+## disagree and jump as content changes.
+const SIDE_PANEL_WIDTH := 330
+
+## Height of the bottom strip RESERVED for the control prompts. No side panel may enter it.
+##
+## This is a layout CONTRACT, not padding. The faction panel used to be sized by its content
+## and anchored from the centre, so with three factions it grew taller than the screen, pushed
+## its own 9-slice frame off both edges (which is why it rendered with no visible plate) and
+## buried the prompt row in the bottom-left corner. A reserved strip plus screen-anchored
+## panel bounds (see `GameplayHUD`) makes that impossible by construction rather than by
+## hoping content stays short.
+const PROMPT_STRIP_RESERVE := 78
+
 ## Side of the decorative corner ornaments in the menu composition.
 const ORNAMENT_PX := 56
 
