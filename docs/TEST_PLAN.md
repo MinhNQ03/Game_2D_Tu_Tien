@@ -62,21 +62,36 @@ The CI pipeline (`.github/workflows/ci.yml`) runs these gates in order, each fai
 job on a non-zero exit (none are swallowed):
 
 ```
-# 1. project-wide GDScript parse check (src/ + tests/ + tools/)
+# 1. static GDScript lint — NO ENGINE NEEDED, so it runs first and is also the on-save
+#    gate a developer gets locally (D-033). Catches a local inferring Variant (a
+#    warning-as-error that stops a class compiling), cross-file private access, long lines.
+python3 tools/gdscript_lint.py --selftest   # the rules must still fire; checked first
+python3 tools/gdscript_lint.py              # or `--changed` for just your edits
+
+# 2. project-wide GDScript COMPILE check (src/ + tests/ + tools/): load + can_instantiate
+#    + a declared `class_name` must actually be registered globally (D-033)
 godot --headless --path . -s res://tools/parse_check.gd
 
-# 2. runtime boot smoke — actually boots application/run/main_scene, runs Main._ready(),
+# 3. runtime boot smoke — actually boots application/run/main_scene, runs Main._ready(),
 #    then quits after 2 frames (verified flag per Godot 4.7 CLI docs)
 godot --headless --path . --quit-after 2
 
-# 3. headless test suite (custom runner)
+# 4. headless test suite (custom runner)
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
+Then the three dedicated E2E processes (app / player sandbox / world-map), one gate each —
+10 gates in total.
+
 Expected (suite) on success: per-test `[PASS]` lines, a summary, `RESULT: PASS`, exit
-code **0**. On any failure: `[FAIL]` lines, `RESULT: FAIL`, exit code **1**. The parse
-check prints `[parse_check] RESULT: PASS/FAIL` and exits 0/1. The runtime boot prints
-`[boot] Aetheria main scene ready...` and exits 0 if boot didn't crash.
+code **0**. On any failure: `[FAIL]` lines, `RESULT: FAIL`, exit code **1**. The linter
+prints `[gdlint] PASS/FAIL` (findings as `path:line:col: CODE message`) and exits 0/1; the
+compile check prints `[parse_check] RESULT: PASS/FAIL` and exits 0/1. The runtime boot
+prints `[boot] Aetheria main scene ready...` and exits 0 if boot didn't crash.
+
+> The lint, compile-check and world-E2E gates also emit their findings as GitHub
+> annotations + step summary, because Actions logs need auth to read (D-009) — a bare
+> "exit code 1" would otherwise cost a round-trip just to learn which rule fired.
 
 > **Note (D-009):** the AI agent could not run any of these locally — no Godot binary was
 > reachable from its shell. All scripts were statically validated via the GDScript
@@ -231,7 +246,7 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
   prototype `TileMapLayer` (not a Polygon2D). Instantiated but NOT entered into the tree
   (no shared-InputService mutation).
 - `tests/e2e/run_world_flow.gd` + `tests/e2e/world_flow_case.gd` — **dedicated isolated
-  process** (9th CI gate): boots the real app, New Game → hub map, does a REAL semantic
+  process** (the last CI gate): boots the real app, New Game → hub map, does a REAL semantic
   movement step, then drives interact / open_menu through the REAL input pipeline
   (`Input.parse_input_event` key events — NEVER a direct `_unhandled_input` call) across
   **20 round trips**, asserting per round: map changed, the SAME persistent Player instance,

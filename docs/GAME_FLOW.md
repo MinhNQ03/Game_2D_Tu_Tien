@@ -14,7 +14,9 @@
 > **production-foundation** tier (D-029, presentation-only). The player sprite is data-driven via
 > `CharacterVisualProfileData` + `CharacterVisualComponent` (D-026), not a hard-coded sprite.
 > The runnable flow is unchanged (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
-> MENU); the start map is data-driven (`MapCatalog.start_map_id`). Below:
+> MENU); the start map is data-driven (`MapCatalog.start_map_id`). The menu now also offers
+> **MAIN MENU → SETTINGS → MAIN MENU** (language vi/en, D-035), and in-map the camera
+> FOLLOWS the player across maps authored larger than the screen (D-036). Below:
 >
 > Status (as of Phase 03): **early gameplay implemented.** `main.tscn` is the **bootstrap**
 > scene (`Main → Systems / World / UI`, script `src/bootstrap/main.gd`; D-010). The CURRENT
@@ -123,14 +125,19 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   `Config`/`RNG`/`SaveService` are still *planned* (added when first needed).
 - **Processing:** `Main._ready()` validates the shell, drives the lifecycle via `GameState`,
   gives `SceneRouter` its content host (`Main/World`) + registers Phase-1 scenes, emits
-  `game_booted`, then shows the Main Menu shell. Language defaults to `en` via
-  `Localization` (vi/en available).
+  `game_booted`, then shows the Main Menu shell. Language defaults to **`vi`** via
+  `Localization` (vi/en available, D-035); if the player previously chose a language in
+  Settings, `Main` applies that saved choice BEFORE any UI is built, so the first frame is
+  already in the right language.
 - **Output:** Main Menu scene active.
 - **Dependencies:** infrastructure layer only.
 - **Events:** `game_booted`.
 
 ### 3.2 MAIN MENU
-- **Input:** player selection (New Game, Load Game, Language, Quit).
+- **Input:** player selection (New Game, Load Game, **Settings**, Quit). Settings is LIVE
+  (D-035) and opens a language screen (vi/en) OVER the menu: the menu is hidden, not freed,
+  and closing Settings reveals it again, so the lifecycle never leaves the `MENU` phase.
+  Load Game stays disabled until SaveService (Phase 23).
 - **State:** menu selection; list of existing save slots (from SaveService).
 - **Processing:** on New Game → initialize a fresh run; on Load → ask SaveService to
   load a slot and hydrate GameState.
@@ -399,3 +406,28 @@ MENU). Phase 06 adds, underneath + on top of that flow:
   localized (vi + en), no raw ids, in the live Xianxia UI.
 
 No new first scene, no new autoload. Faction/internal-politics (SECT_SYSTEM §7) is Phase 07.
+
+## Phase 06 follow-up note (D-033…D-036) — one new flow branch, two in-map fixes
+
+The gameplay flow is UNCHANGED (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
+MENU). What changed around it:
+
+- **A new menu branch: MAIN MENU → SETTINGS → MAIN MENU** (D-035). Settings is UI under
+  `Main/UI`, NOT a routed scene — `SceneRouter` owns the content scene under `Main/World`
+  (the map), while menus/overlays are UI. Opening it HIDES the menu rather than freeing it,
+  so no `enter_menu` transition is re-requested and the lifecycle stays in `MENU`. It offers
+  one setting today (language vi/en), built from `Localization.available_languages()`; the
+  choice is written to `user://settings.cfg` and re-applied by `Main` at the next boot.
+  **Vietnamese is now the default** (per-phase beta builds are play-tested in Vietnamese).
+- **The in-map camera FOLLOWS the player** (D-036). Previously every map's `Camera2D` was a
+  static child parked at the map centre and nothing moved it — which looked correct only
+  while the whole map fitted on screen. `MapBase` now tracks the player each physics frame
+  (eased by `position_smoothing`), still clamped by the camera limits derived from
+  `MapData.bounds`, so following can never reveal anything past the map edge.
+- **The hub/field maps are authored 960×576** instead of 448×288, so the view fits inside the
+  map and the camera has room to travel on both axes at a comfortable zoom. Open ground for
+  now — that space is deliberate room for the NPC/encounter content of later phases.
+- **The HUD is legible** (D-034): text sits on the dark ink plate (the jade plate measured
+  near-white behind a light-only text palette), key prompts are solid chips, labels carry a
+  dark outline, and the Sect panel opens INSIDE the screen when `T` is pressed (it was
+  anchored off-screen, which read as "the key does nothing").

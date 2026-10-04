@@ -60,8 +60,13 @@
 > - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`;
 >   production-foundation pixel-art under `assets/` (self-made world/character, D-029) + the
 >   CC0 Xianxia UI set (`assets/ui/xianxia/`, D-028).
-> - Custom test runner + framework (`tests/`), parse checker (`tools/parse_check.gd`), CI
->   (9 gates incl. a dedicated world/map E2E process).
+> - Custom test runner + framework (`tests/`), an engine-free static linter
+>   (`tools/gdscript_lint.py`, runs on save + as the first CI gate — D-033), a compile checker
+>   (`tools/parse_check.gd`: load + `can_instantiate` + `class_name` registration), CI
+>   (10 gates incl. a dedicated world/map E2E process).
+> - Player preferences on disk: `SettingsStore` (`src/infrastructure/settings_store.gd`, a
+>   `RefCounted` over `user://settings.cfg` — NOT an autoload) + a `SettingsMenu` language
+>   screen; the game defaults to Vietnamese (D-035).
 >
 > **Not yet present (TARGET):** Faction/World-Sim domain systems, Combat,
 > Inventory/Equipment/Skill/Cultivation mechanics (Character holds cultivation fields as
@@ -186,6 +191,8 @@ res://
   src/
 	bootstrap/        main.gd                              # [exists]
 	infrastructure/   event_bus.gd  localization.gd  scene_router.gd   # [exists]
+					  input_service.gd  game_state.gd                  # [exists]
+					  settings_store.gd   # [exists, D-035] player prefs (NOT an autoload)
 					  config.gd  rng.gd  logger.gd                     # [TARGET]
 	persistence/      save_service.gd  save_migrations/
 	domain/           combat/damage_rules.gd  # [exists, Phase 02 slice]
