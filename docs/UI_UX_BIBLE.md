@@ -13,8 +13,8 @@
 
 The live UI is the CC0 **Xianxia Pixel Pack** set wired through `UIPalette` → `UITheme` (D-028),
 hardened for legibility from *measured* asset pixels (D-034), with Vietnamese as the default
-language (D-035). It is **production foundation**: real, shipped, tested — and explicitly not
-final.
+language (D-035), and **composed** to this document's visual direction in D-041. It is
+**production foundation**: real, shipped, tested — and explicitly not final.
 
 **Do not destroy it.** Phase 25 is consolidation and polish, not a rescue rewrite. Every new
 screen is built on this language; if a screen needs something the language lacks, the language
@@ -54,6 +54,43 @@ spacing, states, iconography and accessibility across screens that already work.
 brightness. A surface that carries text must contrast with the text palette;
 `content_margin >= texture_margin` on every 9-slice box; a frame belongs in a `NinePatchRect`; a
 `TextureRect` used as a fixed-size slot must set `expand_mode = EXPAND_IGNORE_SIZE`.
+
+## 3a. Composition rules (integrated in D-041 — binding on every new screen)
+
+§3 froze the *palette and materials*. These are the **composition** rules, added once the
+direction was actually built, because "correct tokens" turned out not to prevent an undesigned
+screen: the menu used every right colour and still read as a widget floating in a void.
+
+- **A full-screen surface is a scene, not a backdrop colour.** A screen that fills the viewport
+  needs a ground, a gradient that implies a horizon, a restrained vignette, and framing — not a
+  flat `ColorRect`. Build these from **code-generated `GradientTexture2D` + existing textures**
+  unless real art is authored: a generated gradient costs one rasterisation and adds no
+  provenance obligation (`06-art-assets.md`).
+- **Gradients are the one nearest-filter exception.** A small ramp stretched full-screen bands
+  under nearest, so backdrop/vignette layers use `TEXTURE_FILTER_LINEAR`. Everything else —
+  panels, buttons, frames, ornaments, world art — stays nearest. Never relax it for pixel art.
+- **Actions carry semantic WEIGHT, declared centrally.** A screen asks `UITheme` for
+  `ROLE_PRIMARY` / `ROLE_SECONDARY` / `ROLE_DANGER`; **no screen names a colour.** One primary
+  action per screen. Roles **modulate** the authored texture — never replace or distort it.
+- **Crimson is reserved.** It means *leaving or destroying*. Used for ordinary emphasis it stops
+  meaning anything, and the §4 rule still applies: colour is never the only carrier, so a
+  destructive action also reads as destructive in its localized word.
+- **A plaque with two kinds of information needs a visible tier boundary.** An ornamental rule +
+  a section gap, not two more lines in the same column. The HUD identity plaque is the worked
+  example: "who I am" above the rule, "who I belong to" below it.
+- **Panel sizes are FLOORS, never fixed widths** (`custom_minimum_size`), and dividers expand to
+  fill their parent. That is what keeps the +40% vi↔en string budget true instead of authoring
+  the layout around one screenshot.
+- **Never render a gauge for state no system owns yet.** No HP/mana/realm/XP bar may appear
+  before the phase that owns that value. A gauge that looks right in a mock and shows nothing
+  real in a build is worse than an absent one; assert its absence in a test until then.
+- **Spacing comes from named layout tokens** (`HUD_MARGIN`, `SECTION_GAP`, `ROW_GAP`,
+  `MENU_PANEL_WIDTH`, …), not literals. Screen-edge framing and inner padding are different
+  concerns and must not share a token.
+- **Composition is covered by STRUCTURAL tests.** Layout and surface pairing are invisible to
+  compile, lint and type checks (L-021), so each rule above that can regress has an assertion:
+  role distinctness, reserved-crimson, backdrop layering, divider stretch, margin uniformity,
+  tier ordering, and no-unbound-gauges.
 
 ## 4. Information hierarchy (frozen)
 
@@ -124,7 +161,8 @@ Each entry is the **first usable** treatment, in that feature's own phase.
 
 | Phase | UI deliverable |
 |---|---|
-| 07 Faction | faction/politics panel: influence, attitudes, stance |
+| 06 Sect *(done)* | menu composition + HUD identity/map plaques + sect detail panel, in the §3a language (D-041) |
+| 07 Faction | faction/politics panel: influence, attitudes, stance — **built in the §3a language, no placeholder pass** |
 | 09 Combat | combat HUD — target, health, resource, hit feedback, **telegraph language + VFX vocabulary** |
 | 10 Enemy AI | enemy identification/threat read |
 | 11 Progression | level/XP surface |

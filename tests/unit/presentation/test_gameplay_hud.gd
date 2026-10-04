@@ -202,3 +202,260 @@ func _collect_labels(node: Node, out: Array[Label]) -> void:
 		if child is Label:
 			out.append(child as Label)
 		_collect_labels(child, out)
+
+
+# --- D-041 visual pass (composition regression guards) -----------------------
+#
+# These assert the COMPOSITION the visual pass introduced, because the thing that broke in
+# Phase 06 was never logic — it was layout and surface pairing, which no compile/lint gate
+# can see (L-021). Each one names the specific reading failure it prevents.
+
+
+## A9 — the identity plaque must read as ONE unit with TWO tiers.
+##
+## Before D-041 the sect chip was nested in the SAME column as the character's title: two
+## muted hint-sized lines stacked under the name, so "Wanderer / Outer Disciple" and "Azure
+## Cloud Sect / Rank" were typographically identical and the player could not tell personal
+## identity from affiliation. The fix is structural: the portrait row and the sect chip are
+## SIBLINGS inside one plaque, with an ornamental divider between them.
+func test_identity_plaque_separates_personal_identity_from_affiliation() -> void:
+	var hud := _hud()
+	var panel := _identity_plaque(hud)
+	assert_true(panel != null, "the HUD builds an identity plaque holding the portrait slot")
+	if panel == null:
+		free_node(hud)
+		return
+
+	var body := _single_container_child(panel)
+	assert_true(body is VBoxContainer,
+		"the plaque stacks its tiers vertically (got %s)" % _class_of(body))
+	if not (body is VBoxContainer):
+		free_node(hud)
+		return
+
+	# Tier 1 = the portrait row, tier 2 = the sect chip, with the divider BETWEEN them. The
+	# order matters: a divider above both, or below both, separates nothing.
+	var kinds: Array[String] = []
+	for child in body.get_children():
+		kinds.append(_class_of(child))
+	assert_eq(kinds.size(), 3,
+		"the plaque has exactly three tiers: identity row, divider, sect chip (got %s)"
+			% str(kinds))
+	if kinds.size() == 3:
+		assert_eq(kinds[0], "HBoxContainer", "tier 1 is the portrait + name/title row")
+		assert_eq(kinds[1], "TextureRect", "an ornamental rule divides the two tiers")
+		assert_eq(kinds[2], "HBoxContainer", "tier 2 is the sect chip")
+
+	# And the sect chip is NOT a descendant of the name/title column any more — that nesting
+	# is exactly what made the two identities blur. The portrait is a NinePatchRect while the
+	# sect emblem is a TextureRect, so a TextureRect inside tier 1 means the chip crept back.
+	var identity_row := body.get_child(0)
+	assert_eq(_count_class(identity_row, "TextureRect"), 0,
+		"the sect emblem no longer sits inside the character's own name column")
+	free_node(hud)
+
+
+## A10 — the map plaque must be a stable framed plate, not a shrink-wrapped chip.
+##
+## A PanelContainer with no width floor hugs its label, so the plaque visibly resized every
+## time the player walked into a map with a shorter or longer name, and a two-word place name
+## read as a stray fragment rather than an authored sign.
+func test_map_plaque_is_a_stable_framed_plate_with_a_width_floor() -> void:
+	var hud := _hud()
+	_use_language("en")
+	hud.set_map_name(&"UI_MAP_HUB_NAME")
+	var expected := _localized("UI_MAP_HUB_NAME")
+	assert_ne(expected, "", "the hub map name key is authored (fixture precondition)")
+
+	var panel := _panel_containing_text(hud, expected)
+	assert_true(panel != null, "the map name renders inside a framed plaque")
+	if panel == null:
+		free_node(hud)
+		return
+
+	assert_eq(int(panel.custom_minimum_size.x), UIPalette.HUD_MAP_PANEL_WIDTH,
+		"the plaque has a width FLOOR so it stops resizing per map name")
+	# A floor, not a cage: a longer localized name must still be able to widen the plaque
+	# (the +40% vi/en string budget), so the height is left unconstrained and the label wraps
+	# nothing — asserting the floor is only on the X axis keeps that property explicit.
+	assert_eq(int(panel.custom_minimum_size.y), 0,
+		"the plaque constrains only its width, so a taller localized name still fits")
+
+	var label := _label_with_text(hud, expected)
+	assert_true(label != null, "the map label exists")
+	if label != null:
+		assert_eq(int(label.horizontal_alignment), int(HORIZONTAL_ALIGNMENT_CENTER),
+			"the place name is centred in its plaque, not left-ragged in a wide frame")
+	free_node(hud)
+
+
+## The dividers must stretch with their plaque. A fixed-width rule would either fall short of
+## the frame or overflow it the moment a longer localized string widened the panel.
+func test_hud_dividers_stretch_with_their_plaque() -> void:
+	var hud := _hud()
+	var strips := _divider_strips(hud)
+	assert_true(strips.size() >= 2,
+		"both the identity plaque and the map plaque carry an ornamental rule (got %d)"
+			% strips.size())
+	for strip in strips:
+		assert_eq(int(strip.custom_minimum_size.x), 0,
+			"a divider declares no fixed width, so it adopts the plaque's width")
+		assert_true((int(strip.size_flags_horizontal) & int(Control.SIZE_EXPAND)) != 0,
+			"a divider expands to fill the plaque")
+		assert_eq(int(strip.stretch_mode), int(TextureRect.STRETCH_SCALE),
+			"the rule scales along the plaque instead of tiling or cropping")
+	free_node(hud)
+
+
+## A15 — screen-edge spacing comes from ONE token, so the HUD is not authored around a single
+## screenshot size. Every anchored plaque sits exactly `HUD_MARGIN` from its edges.
+func test_hud_plaques_share_one_screen_edge_margin() -> void:
+	var hud := _hud()
+	var root := _hud_root(hud)
+	assert_true(root != null, "the HUD builds a full-rect root Control")
+	if root == null:
+		free_node(hud)
+		return
+	var anchored := 0
+	for child in root.get_children():
+		var control := child as Control
+		if control == null or not (control is PanelContainer):
+			continue
+		anchored += 1
+		for axis_value in [control.position.x, control.position.y]:
+			assert_true(absf(axis_value) == float(UIPalette.HUD_MARGIN)
+					or absf(axis_value) == 0.0,
+				"a plaque offsets by HUD_MARGIN (%d) or centres, never a literal (got %s)"
+					% [UIPalette.HUD_MARGIN, str(axis_value)])
+	assert_true(anchored >= 3,
+		"identity / map / prompt plaques are all anchored panels (got %d)" % anchored)
+	free_node(hud)
+
+
+## A8/A17 — the visual pass must NOT invent stats the domain cannot back yet. A gold HP bar
+## looks great in a mock and is a lie in a build: nothing in the running session owns health,
+## mana, realm progress or XP, so no bar may appear until the phase that does.
+func test_hud_visual_pass_invents_no_unbound_stats() -> void:
+	var hud := _hud()
+	assert_eq(_count_class(hud, "ProgressBar"), 0,
+		"the HUD draws no progress bar for a stat the session does not own yet")
+	assert_eq(_count_class(hud, "TextureProgressBar"), 0,
+		"the HUD draws no textured gauge for an unbound stat")
+	free_node(hud)
+
+
+## The visual pass must not have cost any behaviour: the character name, the map name, the
+## prompts and the closed-by-default sect panel all still work (a pure presentation change).
+func test_hud_behaviour_survived_the_visual_pass() -> void:
+	var hud := _hud()
+	_use_language("en")
+	hud.set_character(_player_state())
+	hud.set_map_name(&"UI_MAP_HUB_NAME")
+	hud.set_interact_available(true)
+
+	var all_text := _all_label_text(hud)
+	assert_true("Wanderer" in all_text, "the character name still renders")
+	assert_true(_localized("UI_MAP_HUB_NAME") in all_text, "the map name still renders")
+	assert_true("E" in all_text, "the interact key badge still renders")
+	assert_false(hud.call("is_sect_panel_open"),
+		"the sect detail panel is still closed until the player opens it")
+	free_node(hud)
+
+
+# --- helpers for the composition guards --------------------------------------
+
+func _use_language(code: String) -> void:
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	if loc != null:
+		loc.call("set_language", code)
+
+
+func _localized(key: String) -> String:
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	if loc == null:
+		return ""
+	return String(loc.call("t", key))
+
+
+func _class_of(node: Node) -> String:
+	return "<null>" if node == null else node.get_class()
+
+
+## The HUD's single full-rect root Control (it is a CanvasLayer, so the theme lives there).
+func _hud_root(hud: Node) -> Control:
+	for child in hud.get_children():
+		if child is Control:
+			return child as Control
+	return null
+
+
+## The identity plaque: the only HUD panel that holds the portrait NinePatchRect.
+func _identity_plaque(hud: Node) -> PanelContainer:
+	var root := _hud_root(hud)
+	if root == null:
+		return null
+	for child in root.get_children():
+		var panel := child as PanelContainer
+		if panel != null and _count_class(panel, "NinePatchRect") > 0:
+			return panel
+	return null
+
+
+## The top-level plaque whose subtree renders `text`.
+func _panel_containing_text(hud: Node, text: String) -> PanelContainer:
+	var root := _hud_root(hud)
+	if root == null or text == "":
+		return null
+	for child in root.get_children():
+		var panel := child as PanelContainer
+		if panel != null and _contains_text(panel, text):
+			return panel
+	return null
+
+
+func _contains_text(node: Node, text: String) -> bool:
+	if text == "":
+		return false
+	for t in _all_label_text(node):
+		if String(t) == text:
+			return true
+	return false
+
+
+func _label_with_text(node: Node, text: String) -> Label:
+	var labels: Array[Label] = []
+	_collect_labels(node, labels)
+	for label in labels:
+		if label.text == text:
+			return label
+	return null
+
+
+## A container's only child, or null when it has a different shape than expected.
+func _single_container_child(node: Node) -> Node:
+	return node.get_child(0) if node.get_child_count() == 1 else null
+
+
+## Every ornamental divider strip: a TextureRect wearing the title-divider art.
+func _divider_strips(node: Node) -> Array[TextureRect]:
+	var out: Array[TextureRect] = []
+	_collect_divider_strips(node, out)
+	return out
+
+
+func _collect_divider_strips(node: Node, out: Array[TextureRect]) -> void:
+	for child in node.get_children():
+		var rect := child as TextureRect
+		if rect != null and rect.texture != null \
+				and rect.texture.resource_path == UIPalette.TEX_TITLE_DIVIDER:
+			out.append(rect)
+		_collect_divider_strips(child, out)
+
+
+func _count_class(node: Node, class_label: String) -> int:
+	var n := 0
+	for child in node.get_children():
+		if child.get_class() == class_label:
+			n += 1
+		n += _count_class(child, class_label)
+	return n

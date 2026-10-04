@@ -80,9 +80,9 @@ attribution; credited here anyway.
 | U5 | `assets/ui/xianxia/buttons/button_pressed.png` | `ui_xianxia_button_01_jade_pressed.png` | UI button | CC0 | Button pressed state |
 | U6 | `assets/ui/xianxia/buttons/button_disabled.png` | `ui_xianxia_button_01_silk_normal.png` | UI button | CC0 | Button disabled (Load Game / Settings) |
 | U7 | `assets/ui/xianxia/buttons/button_focus.png` | `ui_xianxia_button_01_silk_hover.png` | UI button | CC0 | Button keyboard-focus ring |
-| U8 | `assets/ui/xianxia/frames/key_badge.png` (61×61, m18) | `ui_xianxia_01_corner.png` | UI frame | CC0 | **NOT USED at runtime (D-034)** — it is a hollow corner ornament (centre alpha 0), so it cannot back a key glyph; `UIKeyBadge` draws a flat chip instead. Kept for a future ornament slot. |
-| U9 | `assets/ui/xianxia/frames/portrait_frame.png` (218×118) | `ui_xianxia_panel_01_rosewood.png` | UI frame | CC0 | HUD character portrait slot, nine-patched down to 48×48 (D-034) |
-| U10 | `assets/ui/xianxia/frames/title_divider.png` (136×21) | `ui_xianxia_01_divider_jade.png` | UI ornament | CC0 | main-menu title divider |
+| U8 | `assets/ui/xianxia/frames/key_badge.png` (61×61, m18) | `ui_xianxia_01_corner.png` | UI ornament | CC0 | **Main-menu corner ornaments, ×4 flipped (D-041).** Its real job: D-034 measured centre alpha 0, i.e. a hollow *corner* piece, which is why Phase 06 using it as a keycap rendered glyphs as smudges. It does **not** back the key chip — `UIKeyBadge` still draws a flat `StyleBoxFlat` chip, and will until real keycap art exists. |
+| U9 | `assets/ui/xianxia/frames/portrait_frame.png` (218×118) | `ui_xianxia_panel_01_rosewood.png` | UI frame | CC0 | HUD identity portrait slot, nine-patched down to `IDENTITY_PORTRAIT_PX` (D-034 / D-041) |
+| U10 | `assets/ui/xianxia/frames/title_divider.png` (136×21) | `ui_xianxia_01_divider_jade.png` | UI ornament | CC0 | the shared ornamental rule: main-menu title divider, HUD identity + map plaque tier rules, sect panel header (D-041) |
 
 > **Retired (D-028):** the P4–P13 self-made `assets/ui/mana_soul/` prototype UI set and
 > `tools/gen_ui_assets.py` were removed and replaced by the CC0 Xianxia set above. The

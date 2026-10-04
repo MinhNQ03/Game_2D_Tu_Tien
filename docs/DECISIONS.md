@@ -1474,3 +1474,98 @@ No phase renumbering: Phase 12 and Phase 08 gained explicit substrate scope, not
 and Phase 08 is now responsible for a seam three later phases depend on. Both are larger than they
 read in D-039 — that is the honest cost of fixing a backwards dependency before it is built, and
 it is far cheaper than the parallel-source-of-truth reconciliation it replaces.
+
+---
+
+## D-041 — The production-foundation visual direction is integrated into the runtime UI — **Accepted** (2026-10-02, presentation only)
+
+**Context:** the Aetheria visual reference board (supplied by the project owner) and
+`docs/UI_UX_BIBLE.md` describe a composed, deliberate ink-and-jade tu-tiên interface. What
+actually shipped through Phase 06 was correct and legible (D-034 fixed the readability defects)
+but **undesigned**: the main menu was a small plaque on a flat near-black `ColorRect`, every
+action button carried identical weight, the HUD's identity block stacked the character's title
+and the player's sect membership as two indistinguishable muted lines, and screen-edge spacing
+came from the generic `SPACE_MD` token shared with inner padding. None of that is a bug a
+compile, lint or assertion gate can see — which is exactly the class of defect L-021 was written
+about. It is a **composition** gap, and it had to be closed before Phase 07 adds the first
+Faction UI, or the new screen would inherit the undesigned language and the cost would double.
+
+**Decision:** upgrade the runtime UI to the reference's visual direction as a **presentation-only**
+pass. Four changes, in the order they matter:
+
+### 1. The menu is composed as a scene, not a widget stack
+
+`main_menu.gd` now builds a backdrop: a deep ink ground (`COLOR_BACKGROUND_DEEP`), a vertical
+`GradientTexture2D` that gives the screen a **horizon** rather than a flat void, a restrained
+radial vignette that pulls the eye to the plaque, and four corner ornaments framing the viewport.
+
+It is built from **code-generated gradients plus one existing texture**. No new asset was
+imported, so there is no new provenance or license obligation (`06-art-assets.md`), and there is
+no per-frame cost: a `GradientTexture2D` rasterises once and is thereafter a static draw. The
+gradient layers are the **only** UI textures set to `TEXTURE_FILTER_LINEAR` — a 16×256 ramp
+stretched full-screen would show visible banding steps under the project-default nearest filter.
+Everything else in the UI stays nearest, as the pixel-art rule requires.
+
+**Rejected:** using the reference board itself as a background (it is a design document, not
+game art), and pulling panels/frames from the candidate CC0 packs (`06-art-assets.md` forbids
+splicing packs into a collage, and the live language is Xianxia).
+
+### 2. Button weight becomes semantic, and the roles live in one place
+
+`UITheme` gained `ROLE_PRIMARY` / `ROLE_SECONDARY` / `ROLE_DANGER` with `role_modulate()` and
+`role_font_color()`. The menu asks for a role; **it never names a colour**. Roles **modulate** the
+authored xianxia texture rather than replacing it, so the pixel art is never distorted — and
+`COLOR_CRIMSON` is declared **reserved**: it means "leaving or destroying", never ordinary
+emphasis, or it stops meaning anything. Per the UI bible, colour is never the only carrier: the
+primary action is also the focused action on entry, and every label is still a localized word.
+
+### 3. `key_badge.png` is finally used for what it is
+
+D-034 **measured** this asset: 61×61 with a **centre alpha of 0**. It is a hollow **corner
+ornament**, and Phase 06 had pressed it into service as a keycap — where, having no fill, it
+rendered glyphs as smudges. D-041 puts it in the four screen corners, which is its real job. The
+keycap stays the deliberate drawn `StyleBoxFlat` chip from D-034. The asset moved from
+"recorded but unused for its slot" to "used correctly", and `docs/ASSET_LICENSES.md` records that.
+
+### 4. The HUD plaques gain hierarchy; the sect panel gains a value column
+
+The identity plaque is now **one unit with two tiers** — portrait + name + title above an
+ornamental rule, sect chip below it — because the old flat stack made "who I am" and "who I
+belong to" typographically identical. The map-name plaque gained a width **floor** so it stops
+resizing every time the player walks into a map with a shorter name, and its place name is
+promoted to the title tone. The sect panel's four numeric facts became an aligned
+caption/value column the eye can scan instead of four sentences of differing length.
+Screen-edge spacing now comes from a dedicated `HUD_MARGIN` token, and the menu panel/button
+widths from `MENU_PANEL_WIDTH`/`MENU_BUTTON_WIDTH`/`BUTTON_HEIGHT`, replacing literals that had
+been duplicated across three files.
+
+### What was deliberately NOT done
+
+- **No HP / mana / realm / XP gauge was added.** The reference board shows them, and nothing in
+  the running session owns health, mana, realm progress or XP yet. A gold bar that looks right in
+  a mock and is a lie in a build is worse than an absent one; a test now asserts the HUD builds
+  no `ProgressBar`/`TextureProgressBar` so a later pass cannot add one before its domain owner
+  exists.
+- **No new `.gd` file.** Reusable `UISectionTitle` / `UIValueRow` components were the cleaner
+  factoring and were rejected for a mechanical reason: this agent cannot generate the `.uid`
+  sibling Godot requires for a new script (L-008/L-015), so a new file would ship broken resource
+  identity. The row builder lives as a private helper in `sect_panel.gd` instead; promote it to a
+  shared component the first time a second panel needs it (`03-architecture.md`
+  anti-over-engineering — a second use case, not a speculative one).
+- **No gameplay, domain, data or autoload change.** `git status` for this commit touches only
+  `src/presentation/**` and `tests/unit/presentation/**`.
+
+**Scope guard honored:** presentation only. No domain/gameplay file, no `.tres`, no
+`project.godot`, no locale key added or renamed, no new autoload, no networking. Every string on
+screen still resolves through `Localization`; the layout changes are width **floors** and
+expanding dividers, so the +40% vi↔en string budget still fits.
+
+**Verification — and one gap stated plainly:** `get_diagnostics` clean, `gdscript_lint` clean
+(96 files), and the composition itself is covered by new structural tests (role distinctness,
+reserved-crimson, backdrop layers, ornament identity, layout-token coherence, identity-plaque
+tiering, map-plaque floor, divider stretch, shared HUD margin, no-unbound-stats, plus
+behaviour-survival tests on both the menu and the HUD). **The runtime screenshots the task asked
+for were NOT produced: Godot is not invocable on this machine (D-009), so no frame can be
+rendered or captured here.** The visual result is therefore asserted structurally and by CI, not
+observed. Someone with the editor must eyeball the Main Menu, the HUD in both maps, and the open
+Sect panel in `vi` and `en` before this is called visually confirmed.

@@ -93,3 +93,133 @@ func _collect_buttons(node: Node) -> Array:
 	for child in node.get_children():
 		out += _collect_buttons(child)
 	return out
+
+
+# --- D-041 production-foundation visual pass ---------------------------------
+
+## The menu must no longer be a plaque floating on a flat fill (D-041 A2). It must compose a
+## real backdrop: a deep ground, a gradient that gives the screen a horizon, and a vignette.
+func test_menu_builds_a_composed_backdrop_not_a_flat_void() -> void:
+	var menu := _menu()
+	var fill := menu.get_node_or_null("Background") as ColorRect
+	assert_not_null(fill, "a deep ink ground exists")
+	if fill != null:
+		assert_eq(fill.color, UIPalette.COLOR_BACKGROUND_DEEP,
+			"the ground uses the deep night-blue token, not neutral black")
+	var sky := menu.get_node_or_null("BackdropGradient") as TextureRect
+	assert_not_null(sky, "the backdrop gradient layer exists (the horizon)")
+	if sky != null:
+		assert_not_null(sky.texture, "the gradient layer actually carries a texture")
+		# A smooth ramp stretched full-screen must be LINEAR-filtered or it bands.
+		assert_eq(sky.texture_filter, CanvasItem.TEXTURE_FILTER_LINEAR,
+			"the gradient is linear-filtered so it does not band")
+	var vignette := menu.get_node_or_null("Vignette") as TextureRect
+	assert_not_null(vignette, "the vignette layer exists")
+	# Backdrop layers must never eat input meant for the buttons.
+	for layer_name in ["Background", "BackdropGradient", "Vignette"]:
+		var layer := menu.get_node_or_null(layer_name) as Control
+		if layer != null:
+			assert_eq(layer.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+				"%s ignores mouse input" % layer_name)
+	free_node(menu)
+
+
+## Four corner ornaments frame the composition, each pointing outward.
+func test_menu_frames_the_screen_with_four_corner_ornaments() -> void:
+	var menu := _menu()
+	var expected := {
+		"OrnamentTL": [false, false], "OrnamentTR": [true, false],
+		"OrnamentBL": [false, true], "OrnamentBR": [true, true],
+	}
+	for ornament_name in expected:
+		var piece := menu.get_node_or_null(String(ornament_name)) as TextureRect
+		assert_not_null(piece, "%s exists" % ornament_name)
+		if piece == null:
+			continue
+		var flips: Array = expected[ornament_name]
+		assert_eq(piece.flip_h, bool(flips[0]), "%s horizontal flip" % ornament_name)
+		assert_eq(piece.flip_v, bool(flips[1]), "%s vertical flip" % ornament_name)
+		# Without EXPAND_IGNORE_SIZE the 61x61 texture becomes the minimum size and
+		# `custom_minimum_size` silently does nothing (D-034 / L-021).
+		assert_eq(piece.expand_mode, TextureRect.EXPAND_IGNORE_SIZE,
+			"%s can actually be sized" % ornament_name)
+		assert_eq(piece.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+			"%s stays crisp pixel art" % ornament_name)
+		assert_true(piece.modulate.a < 1.0,
+			"%s is a restrained accent, not a solid graphic" % ornament_name)
+	free_node(menu)
+
+
+## Button hierarchy must be real at runtime, not just available in the theme (A4): the
+## primary action and the exit action must not look like the two ordinary ones.
+func test_menu_buttons_carry_semantic_role_hierarchy() -> void:
+	var menu := _menu()
+	var buttons := _collect_buttons(menu)
+	assert_eq(buttons.size(), 4, "four action buttons")
+	if buttons.size() < 4:
+		free_node(menu)
+		return
+	var new_game: Button = buttons[0]
+	var load_game: Button = buttons[1]
+	var settings: Button = buttons[2]
+	var quit: Button = buttons[3]
+
+	assert_ne(new_game.self_modulate, settings.self_modulate,
+		"the PRIMARY action is tinted differently from an ordinary one")
+	assert_ne(quit.self_modulate, settings.self_modulate,
+		"the EXIT action is tinted differently from an ordinary one")
+	assert_eq(load_game.self_modulate, settings.self_modulate,
+		"the two ordinary actions share one treatment")
+	assert_eq(new_game.get_theme_color("font_color"), UIPalette.COLOR_TITLE,
+		"the primary label reads in gold")
+	assert_eq(quit.get_theme_color("font_color"), UIPalette.COLOR_CRIMSON_HOVER,
+		"the exit label reads in the reserved crimson")
+	# Uniform size: the column must read as one engraved stack.
+	for button in buttons:
+		assert_eq((button as Button).custom_minimum_size.x,
+			float(UIPalette.MENU_BUTTON_WIDTH), "every button shares the token width")
+		assert_eq((button as Button).custom_minimum_size.y,
+			float(UIPalette.BUTTON_HEIGHT), "every button shares the token height")
+	free_node(menu)
+
+
+## Hover/focus must visibly change the button, on every role — keyboard focus included,
+## because this project is keyboard-first (`UI_UX_BIBLE.md` §4).
+func test_menu_button_hover_and_focus_change_appearance() -> void:
+	var menu := _menu()
+	var buttons := _collect_buttons(menu)
+	if buttons.is_empty():
+		free_node(menu)
+		return
+	var primary: Button = buttons[0]
+	var at_rest := primary.self_modulate
+	primary.mouse_entered.emit()
+	assert_ne(primary.self_modulate, at_rest, "hover lifts the primary button")
+	primary.mouse_exited.emit()
+	assert_eq(primary.self_modulate, at_rest, "leaving restores it")
+	primary.focus_entered.emit()
+	assert_ne(primary.self_modulate, at_rest,
+		"KEYBOARD focus is as visible as mouse hover")
+	primary.focus_exited.emit()
+	assert_eq(primary.self_modulate, at_rest, "losing focus restores it")
+	free_node(menu)
+
+
+## The visual pass must not have changed behaviour: the signals, the disabled Load state and
+## the localized labels are the contract the coordinator depends on (A20).
+func test_menu_behaviour_survived_the_visual_pass() -> void:
+	var menu := _menu()
+	for signal_name in ["new_game_pressed", "settings_pressed", "quit_pressed"]:
+		assert_true(menu.has_signal(signal_name), "%s still exists" % signal_name)
+	var buttons := _collect_buttons(menu)
+	assert_eq(buttons.size(), 4, "still four actions")
+	if buttons.size() == 4:
+		assert_false((buttons[0] as Button).disabled, "New Game is live")
+		assert_true((buttons[1] as Button).disabled, "Load Game stays disabled until Phase 23")
+		assert_false((buttons[2] as Button).disabled, "Settings is live (D-035)")
+		assert_false((buttons[3] as Button).disabled, "Quit is live")
+		for button in buttons:
+			assert_ne((button as Button).text, "", "every button has localized text")
+			assert_eq((button as Button).focus_mode, Control.FOCUS_ALL,
+				"every button is keyboard reachable")
+	free_node(menu)

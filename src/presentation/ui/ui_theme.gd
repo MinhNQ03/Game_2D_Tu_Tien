@@ -14,6 +14,45 @@ class_name UITheme
 ## builder FALLS BACK to a flat `StyleBoxFlat` so the UI degrades gracefully rather than
 ## crashing — the asset-contract test guards that the real textures exist.
 
+# --- Semantic button roles (D-041) -------------------------------------------
+#
+# Not every action deserves the same weight. The roles are declared HERE, centrally, so a
+# screen asks for a role and never tints a button itself — `main_menu.gd` must not contain a
+# colour (`04-coding-standards.md` no magic numbers; A4).
+#
+# The roles reuse the SAME xianxia textures and differ only by a central modulation, so the
+# pixel art is never replaced or distorted — only tinted (A1/A14).
+
+## The principal action on a screen (New Game). Warm gold lift.
+const ROLE_PRIMARY := "primary"
+## Ordinary actions (Load, Settings). The texture's own jade tone, untinted.
+const ROLE_SECONDARY := "secondary"
+## Leaving / destroying (Quit). Crimson — reserved, never decorative.
+const ROLE_DANGER := "danger"
+
+## Per-role modulation applied to the button texture. `Color(1,1,1)` means "leave the art
+## exactly as authored", which is why SECONDARY is the untinted baseline.
+static func role_modulate(role: String, hovered: bool = false) -> Color:
+	match role:
+		ROLE_PRIMARY:
+			return Color(1.14, 1.04, 0.80) if hovered else Color(1.06, 0.97, 0.76)
+		ROLE_DANGER:
+			return Color(1.18, 0.72, 0.70) if hovered else Color(1.08, 0.66, 0.64)
+		_:
+			return Color(1.08, 1.08, 1.08) if hovered else Color(1.0, 1.0, 1.0)
+
+
+## Font colour for a role's label, so the primary action also reads strongest in text.
+static func role_font_color(role: String) -> Color:
+	match role:
+		ROLE_PRIMARY:
+			return UIPalette.COLOR_TITLE
+		ROLE_DANGER:
+			return UIPalette.COLOR_CRIMSON_HOVER
+		_:
+			return UIPalette.COLOR_TEXT
+
+
 ## Build the shared foundation Theme. Styles base `Button` + `Label` so any Button/Label
 ## under a node with this theme inherits the asset-backed look.
 static func build() -> Theme:
@@ -142,6 +181,62 @@ static func badge_stylebox() -> StyleBox:
 	box.content_margin_top = 2
 	box.content_margin_bottom = 2
 	return box
+
+
+# --- Menu backdrop (D-041) ---------------------------------------------------
+#
+# The menu used to be a small plaque on a flat `ColorRect` of near-black, which read as a
+# Godot Control floating in a void (A2). These three builders compose a backdrop with depth
+# out of NOTHING but code-built gradients and one existing texture — so there is no new asset
+# dependency, no license question (`06-art-assets.md` provenance), and no per-frame cost: a
+# `GradientTexture2D` is rasterised once and then drawn as a static texture.
+
+## Vertical ink gradient for the menu ground: a lifted blue band above, sinking to the deep
+## ground below. This single texture is what gives the composition a horizon.
+static func backdrop_gradient() -> GradientTexture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, UIPalette.COLOR_BACKDROP_HIGH)
+	gradient.set_color(1, UIPalette.COLOR_BACKDROP_LOW)
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.fill = GradientTexture2D.FILL_LINEAR
+	# Top-to-bottom in normalised texture space.
+	tex.fill_from = Vector2(0.0, 0.0)
+	tex.fill_to = Vector2(0.0, 1.0)
+	tex.width = 16
+	tex.height = 256
+	return tex
+
+
+## Radial vignette drawn over the backdrop: transparent at the centre, ink at the edges, so
+## the eye is pulled to the menu plaque without the screen looking dirty.
+static func vignette_gradient() -> GradientTexture2D:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(0.0, 0.0, 0.0, 0.0))
+	gradient.set_color(1, UIPalette.COLOR_VIGNETTE)
+	# A late ramp: the darkening should only bite near the edge.
+	gradient.add_point(0.62, Color(0.0, 0.0, 0.0, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = gradient
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 256
+	tex.height = 256
+	return tex
+
+
+## The decorative corner ornament texture, or null if absent.
+##
+## This is `key_badge.png` used for **what it actually is**. D-034 measured it: a 61x61 piece
+## whose centre pixel is fully transparent — a hollow CORNER ORNAMENT that Phase 06 had
+## mistakenly pressed into service as a keycap (where, having no fill, it rendered glyphs as
+## smudges). Framing the menu corners is its real job, so D-041 puts it there and the keycap
+## stays the deliberate drawn chip from `badge_stylebox()`.
+static func corner_ornament() -> Texture2D:
+	if not ResourceLoader.exists(UIPalette.TEX_KEY_BADGE):
+		return null
+	return load(UIPalette.TEX_KEY_BADGE) as Texture2D
 
 
 ## True once every UI texture resolves (used by the asset-contract test + a startup guard).

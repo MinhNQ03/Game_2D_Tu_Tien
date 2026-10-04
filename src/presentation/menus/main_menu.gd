@@ -1,11 +1,13 @@
 extends Control
 ## MainMenu — Aetheria presentation (main-menu, asset-backed pixel-art pass).
 ##
-## A framed pixel-art menu (shared `UITheme`/`UIPalette` + 9-slice panel assets): a dark
-## textured background, a centered framed panel holding the title treatment (title + subtitle
-## + ornamental divider) and the action buttons with real normal/hover/pressed/focus/disabled
-## states. New Game and Quit are live; Load Game and Settings are disabled placeholders (no
-## save/settings system yet).
+## A framed pixel-art menu (shared `UITheme`/`UIPalette` + 9-slice panel assets) composed as
+## a SCENE rather than a widget stack (D-041): a deep ink ground with a gradient horizon, a
+## restrained vignette and four corner ornaments behind a centered framed plaque that holds
+## the title treatment (title + subtitle + ornamental divider) and a column of action buttons
+## carrying a semantic role hierarchy (one PRIMARY, two SECONDARY, one DANGER) with real
+## normal/hover/pressed/focus/disabled states. New Game, Settings and Quit are live; Load Game
+## stays a disabled placeholder until the save system lands (Phase 23).
 ##
 ## The menu does not know *why* a new game starts or *how* scenes load — it emits intent
 ## signals and the coordinator (Main) drives GameState + SceneRouter. All text is resolved
@@ -52,31 +54,24 @@ func _exit_tree() -> void:
 
 
 func _build_ui() -> void:
-	# --- Background: a dark tiled pixel surface (not a flat ColorRect) -------------
-	# A deep ink fill behind the framed panel (D-028). The xianxia inset texture is a FRAMED
-	# panel, not a seamless tile, so we no longer tile it as a backdrop (that would repeat its
-	# border); a flat deep-ink base reads as the "dark lacquer" ground the jade panel sits on.
-	var fill := ColorRect.new()
-	fill.name = "Background"
-	fill.color = UIPalette.COLOR_BACKGROUND
-	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(fill)
+	_build_backdrop()
 
-	# --- Centered framed panel -----------------------------------------------------
+	# --- Centered framed plaque ----------------------------------------------------
 	var center := CenterContainer.new()
+	center.name = "MenuCenter"
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(center)
 
 	var panel := PanelContainer.new()
+	panel.name = "MenuPlaque"
 	panel.add_theme_stylebox_override("panel", UITheme.panel_stylebox())
-	panel.custom_minimum_size = Vector2(360, 0)
+	panel.custom_minimum_size = Vector2(UIPalette.MENU_PANEL_WIDTH, 0)
 	center.add_child(panel)
 
 	var box := VBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", UIPalette.SPACE_MD)
+	box.add_theme_constant_override("separation", UIPalette.SPACE_SM)
 	panel.add_child(box)
 
 	_title = Label.new()
@@ -104,35 +99,142 @@ func _build_ui() -> void:
 		_divider.texture = load(UIPalette.TEX_TITLE_DIVIDER)
 	box.add_child(_divider)
 
+	# One deliberate gap between the title treatment and the action column, so the plaque
+	# reads as two blocks (identity, then actions) rather than one undifferentiated list.
 	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, UIPalette.SPACE_SM)
+	spacer.name = "TitleGap"
+	spacer.custom_minimum_size = Vector2(0, UIPalette.TITLE_GAP)
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(spacer)
 
-	_new_game_button = _make_menu_button()
-	_new_game_button.pressed.connect(_on_new_game)
-	box.add_child(_new_game_button)
+	var actions := VBoxContainer.new()
+	actions.name = "Actions"
+	actions.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	box.add_child(actions)
 
-	_load_game_button = _make_menu_button()
+	# Semantic hierarchy (A4): one PRIMARY action, two SECONDARY, one DANGER/exit. The roles
+	# live in `UITheme`; this screen never names a colour.
+	_new_game_button = _make_menu_button(UITheme.ROLE_PRIMARY)
+	_new_game_button.pressed.connect(_on_new_game)
+	actions.add_child(_new_game_button)
+
+	_load_game_button = _make_menu_button(UITheme.ROLE_SECONDARY)
 	_load_game_button.disabled = true  # No save system yet (Phase 23).
-	box.add_child(_load_game_button)
+	actions.add_child(_load_game_button)
 
 	# Settings is LIVE as of D-035: it carries the language switch (vi/en) that per-phase
 	# beta builds are play-tested with. Load Game stays disabled until save lands (Phase 23).
-	_settings_button = _make_menu_button()
+	_settings_button = _make_menu_button(UITheme.ROLE_SECONDARY)
 	_settings_button.pressed.connect(_on_settings)
-	box.add_child(_settings_button)
+	actions.add_child(_settings_button)
 
-	_quit_button = _make_menu_button()
+	_quit_button = _make_menu_button(UITheme.ROLE_DANGER)
 	_quit_button.pressed.connect(_on_quit)
-	box.add_child(_quit_button)
+	actions.add_child(_quit_button)
 
 
-## A uniformly sized menu button (so the column lines up) wearing the shared theme.
-func _make_menu_button() -> Button:
+## The presentation-only menu backdrop (D-041, A2/A7).
+##
+## Before this, the menu was a small plaque on a flat near-black `ColorRect`, which read as a
+## Godot Control floating in a void. The fix is composition, not content: a deep ink ground,
+## a vertical gradient that gives the screen a horizon, a restrained radial vignette, and
+## four corner ornaments.
+##
+## Deliberately built from code-generated gradients plus ONE existing texture: no new asset,
+## so no provenance question (`06-art-assets.md`), and no per-frame cost — a
+## `GradientTexture2D` rasterises once and is then a static draw. It carries no gameplay: no
+## collision, no player, no WorldRuntime, no state (A7).
+func _build_backdrop() -> void:
+	var fill := ColorRect.new()
+	fill.name = "Background"
+	fill.color = UIPalette.COLOR_BACKGROUND_DEEP
+	fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fill)
+
+	var sky := TextureRect.new()
+	sky.name = "BackdropGradient"
+	sky.texture = UITheme.backdrop_gradient()
+	# The gradient is a smooth ramp, so it is the one UI texture that must NOT be nearest-
+	# filtered: at 16x256 stretched full-screen, nearest would show visible banding steps.
+	sky.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	sky.stretch_mode = TextureRect.STRETCH_SCALE
+	sky.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sky)
+
+	var vignette := TextureRect.new()
+	vignette.name = "Vignette"
+	vignette.texture = UITheme.vignette_gradient()
+	vignette.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(vignette)
+
+	_build_corner_ornaments()
+
+
+## Four corner ornaments framing the screen. Uses `key_badge.png` for what D-034 measured it
+## to actually be — a hollow CORNER ORNAMENT (centre alpha 0), not the keycap Phase 06 had
+## pressed it into service as. Each copy is flipped so the piece points outward.
+func _build_corner_ornaments() -> void:
+	var tex := UITheme.corner_ornament()
+	if tex == null:
+		return
+	var corners := [
+		{"name": "OrnamentTL", "preset": Control.PRESET_TOP_LEFT, "h": false, "v": false},
+		{"name": "OrnamentTR", "preset": Control.PRESET_TOP_RIGHT, "h": true, "v": false},
+		{"name": "OrnamentBL", "preset": Control.PRESET_BOTTOM_LEFT, "h": false, "v": true},
+		{"name": "OrnamentBR", "preset": Control.PRESET_BOTTOM_RIGHT, "h": true, "v": true},
+	]
+	for corner in corners:
+		var piece := TextureRect.new()
+		piece.name = String(corner["name"])
+		piece.texture = tex
+		piece.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		# EXPAND_IGNORE_SIZE or the rect reports the whole 61x61 texture as its minimum and
+		# `custom_minimum_size` silently does nothing (D-034 / L-021).
+		piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		piece.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		piece.custom_minimum_size = Vector2(UIPalette.ORNAMENT_PX, UIPalette.ORNAMENT_PX)
+		piece.size = Vector2(UIPalette.ORNAMENT_PX, UIPalette.ORNAMENT_PX)
+		piece.flip_h = bool(corner["h"])
+		piece.flip_v = bool(corner["v"])
+		piece.modulate = UIPalette.COLOR_ORNAMENT
+		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		piece.set_anchors_preset(int(corner["preset"]) as Control.LayoutPreset)
+		piece.offset_left = UIPalette.HUD_MARGIN if not bool(corner["h"]) \
+			else -(UIPalette.ORNAMENT_PX + UIPalette.HUD_MARGIN)
+		piece.offset_top = UIPalette.HUD_MARGIN if not bool(corner["v"]) \
+			else -(UIPalette.ORNAMENT_PX + UIPalette.HUD_MARGIN)
+		piece.offset_right = piece.offset_left + UIPalette.ORNAMENT_PX
+		piece.offset_bottom = piece.offset_top + UIPalette.ORNAMENT_PX
+		add_child(piece)
+
+
+## A uniformly sized menu button (so the column lines up) wearing the shared theme, with its
+## semantic ROLE applied centrally (`UITheme.role_*`) — this screen names no colour.
+func _make_menu_button(role: String) -> Button:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(300, 0)
+	button.custom_minimum_size = Vector2(
+		UIPalette.MENU_BUTTON_WIDTH, UIPalette.BUTTON_HEIGHT)
 	button.focus_mode = Control.FOCUS_ALL
+	button.add_theme_color_override("font_color", UITheme.role_font_color(role))
+	button.self_modulate = UITheme.role_modulate(role)
+	# Hover lifts the role tint rather than swapping the texture, so the authored pixel art
+	# is never replaced — only modulated (A14).
+	button.mouse_entered.connect(_on_button_hover.bind(button, role, true))
+	button.mouse_exited.connect(_on_button_hover.bind(button, role, false))
+	button.focus_entered.connect(_on_button_hover.bind(button, role, true))
+	button.focus_exited.connect(_on_button_hover.bind(button, role, false))
 	return button
+
+
+func _on_button_hover(button: Button, role: String, active: bool) -> void:
+	if not is_instance_valid(button):
+		return
+	button.self_modulate = UITheme.role_modulate(role, active)
 
 
 func _refresh_text() -> void:

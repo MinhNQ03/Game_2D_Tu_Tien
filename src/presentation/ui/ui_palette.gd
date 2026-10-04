@@ -11,10 +11,38 @@ class_name UIPalette
 ## Vietnamese diacritics and English in the two first-class languages (`07-localization.md`).
 ## It carries NO behavior — just named constants.
 
-# --- Palette (prototype ink-and-jade tu-tiên tone) ---------------------------
+# --- Palette (ink-and-jade tu-tiên tone) -------------------------------------
 
 ## App background (behind the menu).
 const COLOR_BACKGROUND := Color(0.07, 0.08, 0.10)
+
+## The DEEP night-blue ground of the Aetheria visual direction (D-041). The reference art is
+## not neutral black — it is a cold ink-blue, which is what makes the antique gold read as
+## warm. Used as the menu backdrop base; `COLOR_BACKGROUND` stays the neutral app fill.
+const COLOR_BACKGROUND_DEEP := Color(0.035, 0.047, 0.086)
+
+## The upper band of the menu backdrop gradient — a slightly lifted blue so the composition
+## has a horizon rather than a flat void (D-041 fixes "panel floating on black").
+const COLOR_BACKDROP_HIGH := Color(0.075, 0.098, 0.165)
+
+## The lower band of the menu backdrop gradient (sinks back toward the deep ground).
+const COLOR_BACKDROP_LOW := Color(0.020, 0.028, 0.055)
+
+## Vignette ink drawn at the screen edges to focus the eye on the menu. Alpha-only; it must
+## stay subtle or it reads as a dirty screen.
+const COLOR_VIGNETTE := Color(0.0, 0.0, 0.0, 0.55)
+
+## Ornamental accent tint for the decorative corner pieces — antique gold at low alpha, so
+## the ornaments frame the screen without competing with the title.
+const COLOR_ORNAMENT := Color(0.84, 0.72, 0.42, 0.33)
+
+## Crimson/rose — DANGER and the exit action (D-041). The one warm-cold counterpoint to jade
+## in the reference. Reserved: it must never be used for ordinary emphasis, or it stops
+## meaning "careful".
+const COLOR_CRIMSON := Color(0.72, 0.26, 0.30)
+
+## Crimson at hover strength.
+const COLOR_CRIMSON_HOVER := Color(0.82, 0.34, 0.38)
 
 ## Panel/surface fill (menu button face, HUD plate).
 const COLOR_SURFACE := Color(0.13, 0.15, 0.18)
@@ -78,6 +106,53 @@ const SPACE_SM := 6
 const SPACE_MD := 12
 const SPACE_LG := 24
 const SPACE_XL := 40
+
+
+# --- Layout tokens (D-041) ---------------------------------------------------
+#
+# Named once here instead of repeated as literals across screens. Before D-041 the menu
+# panel width (360), button width (300) and HUD margins lived as magic numbers inside the
+# screens, so "make the menu wider" meant hunting literals in three files
+# (`04-coding-standards.md` no magic numbers).
+
+## Menu plaque width. Wide enough for the longest localized button label plus the 9-slice
+## border band on both sides, at either language.
+const MENU_PANEL_WIDTH := 420
+
+## Menu action button width inside the plaque (panel width minus the inset border + gutter).
+const MENU_BUTTON_WIDTH := 332
+
+## Uniform action-button height, so the menu column reads as one engraved stack rather than
+## buttons of slightly different sizes.
+const BUTTON_HEIGHT := 48
+
+## Gap between the title treatment and the action column.
+const TITLE_GAP := 18
+
+## Gap between major sections inside a panel (e.g. identity → status → values).
+const SECTION_GAP := 14
+
+## Gap between value rows within one section.
+const ROW_GAP := 4
+
+## Inner gutter between a panel's frame and its content, on top of the 9-slice border.
+const PANEL_GUTTER := 10
+
+## Screen-edge margin for HUD anchors, so nothing touches the viewport edge at any
+## resolution (A15 — the UI must not be authored around one screenshot size).
+const HUD_MARGIN := 18
+
+## Side of the decorative corner ornaments in the menu composition.
+const ORNAMENT_PX := 56
+
+## Portrait slot side in the HUD identity plaque.
+const IDENTITY_PORTRAIT_PX := 56
+
+## Minimum width of the HUD map-name plaque. A FLOOR, not a fixed width: it stops the plaque
+## from shrink-wrapping a two-letter map name (which read as a stray chip) and from resizing
+## every time the player walks into a map with a longer name, while still growing for a long
+## localized name (+40% vi/en budget, `docs/UI_UX_BIBLE.md`).
+const HUD_MAP_PANEL_WIDTH := 220
 
 ## Button inner padding (horizontal, vertical). Vertical nudged up (D-030) so a 22px button
 ## label sits with even breathing room top/bottom instead of feeling cramped.

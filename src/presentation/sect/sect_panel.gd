@@ -32,6 +32,7 @@ var _loc: Node = null
 
 var _title: Label
 var _emblem: TextureRect
+var _divider: TextureRect
 var _name: Label
 var _doctrine: Label
 var _type_tier: Label
@@ -79,27 +80,93 @@ func _build() -> void:
 	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(_title)
 
-	_name = _make_label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TEXT)
+	# Ornamental divider under the section title, matching the menu's title treatment so the
+	# two screens read as one design language (D-041).
+	_divider = TextureRect.new()
+	_divider.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_divider.stretch_mode = TextureRect.STRETCH_SCALE
+	_divider.custom_minimum_size = Vector2(0, 8)
+	_divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if ResourceLoader.exists(UIPalette.TEX_TITLE_DIVIDER):
+		_divider.texture = load(UIPalette.TEX_TITLE_DIVIDER)
+	box.add_child(_divider)
+
+	# LEVEL 2 — primary identity. The sect's own name is the thing the player came to read,
+	# so it is the largest text in the panel after the section title (A12).
+	_name = _make_label(UIPalette.FONT_SIZE_SUBTITLE, UIPalette.COLOR_TITLE)
 	box.add_child(_name)
+
+	# LEVEL 5 — supporting flavour. Wraps, muted, deliberately the quietest block.
 	_doctrine = _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	_doctrine.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_doctrine)
-	_type_tier = _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
-	box.add_child(_type_tier)
+
+	# LEVEL 3 — the player's standing. Jade accent: this is the one line about *them*.
 	_rank = _make_label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_ACCENT)
 	box.add_child(_rank)
-	_reputation = _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT)
-	box.add_child(_reputation)
-	_influence = _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT)
-	box.add_child(_influence)
-	_territory = _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT)
-	box.add_child(_territory)
+
+	var section_gap := Control.new()
+	section_gap.custom_minimum_size = Vector2(0, UIPalette.SECTION_GAP - UIPalette.SPACE_SM)
+	section_gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(section_gap)
+
+	# LEVEL 4 — supporting values as aligned label/value rows, so the numbers form a column
+	# the eye can scan instead of four sentences of differing length.
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", UIPalette.ROW_GAP)
+	box.add_child(rows)
+	_type_tier = _add_value_row(rows)
+	_reputation = _add_value_row(rows)
+	_influence = _add_value_row(rows)
+	_territory = _add_value_row(rows)
+
+	# LEVEL 5 — the resource summary wraps under the value column.
 	_resources = _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	_resources.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_resources)
 
 	_empty = _make_label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TEXT_MUTED)
 	box.add_child(_empty)
+
+
+## One aligned "label …… value" row: the caption sits left in muted text, the value right in
+## primary text. Returns the VALUE label (the caller sets its text and the caption via
+## `_set_row`), because the value is what changes at runtime.
+func _add_value_row(parent: VBoxContainer) -> Label:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	parent.add_child(row)
+
+	var caption := _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
+	caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(caption)
+
+	var value := _make_label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT)
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(value)
+	# The caption is reachable from the value for `_set_row` without a second member each.
+	value.set_meta("caption", caption)
+	return value
+
+
+## Fill one value row: `caption_key` is localized, `value_text` is already formatted.
+func _set_row(value_label: Label, caption_key: String, value_text: String) -> void:
+	var caption: Label = value_label.get_meta("caption")
+	if caption != null:
+		caption.text = _t(caption_key)
+	value_label.text = value_text
+
+
+## Show or hide a whole value row (caption included).
+func _set_row_visible(value_label: Label, shown: bool) -> void:
+	value_label.visible = shown
+	var caption: Label = value_label.get_meta("caption")
+	if caption != null:
+		caption.visible = shown
+	var row := value_label.get_parent() as Control
+	if row != null:
+		row.visible = shown
 
 
 func _make_label(font_size: int, color: Color) -> Label:
@@ -122,12 +189,12 @@ func _refresh() -> void:
 	_title.text = _t("UI_SECT_PANEL_TITLE")
 	var is_member := _view != null and _view.is_member
 	# Toggle the detail rows vs the empty-state line.
-	for row in [
-		_name, _doctrine, _type_tier, _rank,
-		_reputation, _influence, _territory, _resources,
-	]:
+	for row in [_name, _doctrine, _rank, _resources]:
 		row.visible = is_member
+	for value_label in [_type_tier, _reputation, _influence, _territory]:
+		_set_row_visible(value_label, is_member)
 	_emblem.visible = is_member
+	_divider.visible = is_member
 	_empty.visible = not is_member
 
 	if not is_member:
@@ -135,15 +202,19 @@ func _refresh() -> void:
 		_emblem.texture = null
 		return
 
+	# LEVEL 2: the sect's name stands alone — no "Name:" caption, because the section title
+	# already said what this panel is about (A12).
 	_name.text = _t(String(_view.sect_name_key))
-	_doctrine.text = "%s: %s" % [_t("UI_SECT_PANEL_DOCTRINE"), _t(String(_view.doctrine_key))]
-	_type_tier.text = "%s: %s   %s: %d" % [
-		_t("UI_SECT_PANEL_TYPE"), _t(_sect_type_key(_view.sect_type)),
-		_t("UI_SECT_PANEL_TIER"), _view.tier]
+	_doctrine.text = _t(String(_view.doctrine_key))
+	# LEVEL 3: the player's own standing.
 	_rank.text = "%s: %s" % [_t("UI_SECT_PANEL_RANK"), _t(String(_view.rank_name_key))]
-	_reputation.text = "%s: %d" % [_t("UI_SECT_PANEL_REPUTATION"), _view.reputation]
-	_influence.text = "%s: %d" % [_t("UI_SECT_PANEL_INFLUENCE"), _view.influence]
-	_territory.text = "%s: %d" % [_t("UI_SECT_PANEL_TERRITORY"), _view.territory_count]
+	# LEVEL 4: aligned value column.
+	_set_row(_type_tier, "UI_SECT_PANEL_TYPE", "%s · %s %d" % [
+		_t(_sect_type_key(_view.sect_type)), _t("UI_SECT_PANEL_TIER"), _view.tier])
+	_set_row(_reputation, "UI_SECT_PANEL_REPUTATION", str(_view.reputation))
+	_set_row(_influence, "UI_SECT_PANEL_INFLUENCE", str(_view.influence))
+	_set_row(_territory, "UI_SECT_PANEL_TERRITORY", str(_view.territory_count))
+	# LEVEL 5: the quietest block.
 	_resources.text = "%s: %s" % [
 		_t("UI_SECT_PANEL_RESOURCES"), _format_resources(_view.resource_summary)]
 

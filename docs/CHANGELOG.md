@@ -8,6 +8,51 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Production-foundation visual direction integrated into the runtime UI (D-041) — presentation only
+The UI was legible (D-034 fixed that) but **undesigned**: a plaque floating on flat near-black,
+four buttons of identical weight, and an identity block where "who I am" and "who I belong to"
+were typographically indistinguishable. This closes the composition gap before Phase 07 adds the
+first Faction UI and inherits the language. **No gameplay, domain, data, `.tres`, `project.godot`,
+locale, autoload or networking change** — `src/presentation/**` and
+`tests/unit/presentation/**` only.
+- **The main menu is composed as a scene**, not a widget stack: deep ink ground, a vertical
+  gradient **horizon**, a restrained radial vignette, four corner ornaments, then the plaque.
+  Built from **code-generated `GradientTexture2D` + one existing texture** — no new asset, so no
+  new provenance obligation, and no per-frame cost (a gradient rasterises once). The gradient
+  layers are the only UI textures on `TEXTURE_FILTER_LINEAR`; a 16×256 ramp stretched full-screen
+  would band under the project-default nearest filter. Everything else stays nearest.
+- **Button weight is now semantic.** `UITheme.ROLE_PRIMARY/SECONDARY/DANGER` +
+  `role_modulate()`/`role_font_color()`: the menu asks for a role and **never names a colour**.
+  Roles **modulate** the authored xianxia texture instead of replacing it. `COLOR_CRIMSON` is
+  **reserved** for leaving/destroying — never ordinary emphasis.
+- **`key_badge.png` is used for what it actually is.** D-034 measured its centre alpha at **0**:
+  it is a hollow **corner ornament**, which Phase 06 had pressed into service as a keycap (where
+  it rendered glyphs as smudges). It now frames the four screen corners; the keycap stays the
+  drawn `StyleBoxFlat` chip.
+- **HUD plaques gained hierarchy.** The identity plaque is one unit with **two tiers** (portrait +
+  name + title / ornamental rule / sect chip). The map-name plaque gained a width **floor** so it
+  stops resizing per map name, and the place name was promoted to the title tone. The sect panel's
+  four numeric facts became an aligned caption/value column instead of four sentences.
+- **Layout tokens replaced duplicated literals**: `MENU_PANEL_WIDTH`, `MENU_BUTTON_WIDTH`,
+  `BUTTON_HEIGHT`, `TITLE_GAP`, `SECTION_GAP`, `ROW_GAP`, `PANEL_GUTTER`, `HUD_MARGIN`,
+  `ORNAMENT_PX`, `IDENTITY_PORTRAIT_PX`, `HUD_MAP_PANEL_WIDTH`.
+- **Deliberately not done:** no HP/mana/realm/XP gauge. The reference shows them; nothing in the
+  session owns those values yet, and a gauge that looks right in a mock is a lie in a build. A
+  test asserts the HUD builds no `ProgressBar`/`TextureProgressBar`. No new `.gd` file either —
+  the shared row/section components were rejected because a new script cannot get its generated
+  `.uid` here (L-008/L-015); the row builder stays a private helper until a second panel needs it.
+- **Tests added** (structural, because this class of defect is invisible to compile/lint — L-021):
+  role distinctness, reserved-crimson, backdrop layering, ornament identity, layout-token
+  coherence, identity-plaque tiering, map-plaque floor, divider stretch, shared HUD margin,
+  no-unbound-stats, plus behaviour-survival tests on both the menu and the HUD.
+- **Known gap (stated, not glossed):** the task asked for runtime screenshots. **Godot is not
+  invocable on this machine (D-009)**, so none could be captured. The composition is asserted
+  structurally and by CI, *not observed*. Main Menu, HUD in both maps, and the open Sect panel in
+  `vi` + `en` still need a human eyeball in the editor.
+- **Updated:** `ui_palette`, `ui_theme`, `main_menu`, `gameplay_hud`, `sect_panel`,
+  `test_ui_theme`, `test_main_menu`, `test_gameplay_hud`, `UI_UX_BIBLE`, `ASSET_LICENSES`,
+  `DECISIONS` (D-041).
+
 ### 2026-10-04 — Design dependency hardening (D-040) — documentation only
 An independent review of the D-039 freeze found **two dependency defects**. Both lived in the
 *edges between phases*, which is the blind spot a per-system matrix creates: every row can be

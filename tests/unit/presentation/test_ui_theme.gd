@@ -127,3 +127,113 @@ func test_palette_tokens_are_sane() -> void:
 	assert_true(UIPaletteScript.SPACE_LG > 0, "spacing tokens are positive")
 	assert_true(UIPaletteScript.NINE_PATCH_MARGIN > 0, "nine-patch margin is positive")
 	assert_eq(UIPaletteScript.UI_TEXTURES.size(), 10, "all UI textures are registered")
+
+
+# --- D-041 production-foundation visual pass ---------------------------------
+
+## Semantic button roles must be VISUALLY distinct, or the hierarchy exists only in the
+## design doc. The roles tint the same authored texture, so the test asserts the tints
+## differ rather than asserting a specific colour (the values are tunable).
+func test_button_roles_are_visually_distinct() -> void:
+	var primary := UIThemeScript.role_modulate(UIThemeScript.ROLE_PRIMARY)
+	var secondary := UIThemeScript.role_modulate(UIThemeScript.ROLE_SECONDARY)
+	var danger := UIThemeScript.role_modulate(UIThemeScript.ROLE_DANGER)
+	assert_ne(primary, secondary, "PRIMARY is tinted differently from SECONDARY")
+	assert_ne(danger, secondary, "DANGER is tinted differently from SECONDARY")
+	assert_ne(primary, danger, "PRIMARY and DANGER are not the same tint")
+	# SECONDARY is the untinted baseline: it must leave the authored pixel art alone.
+	assert_eq(secondary, Color(1.0, 1.0, 1.0), "SECONDARY does not modulate the art at all")
+	# Hover must lift every role, so focus/hover is perceivable on all of them.
+	for role in [
+		UIThemeScript.ROLE_PRIMARY, UIThemeScript.ROLE_SECONDARY, UIThemeScript.ROLE_DANGER,
+	]:
+		assert_ne(UIThemeScript.role_modulate(role, true),
+			UIThemeScript.role_modulate(role, false),
+			"role '%s' changes on hover/focus" % role)
+
+
+## Role font colours must differ too, and DANGER must use the reserved crimson token rather
+## than a locally invented colour.
+func test_role_font_colors_use_reserved_tokens() -> void:
+	assert_eq(UIThemeScript.role_font_color(UIThemeScript.ROLE_PRIMARY),
+		UIPaletteScript.COLOR_TITLE, "PRIMARY label uses the gold title token")
+	assert_eq(UIThemeScript.role_font_color(UIThemeScript.ROLE_SECONDARY),
+		UIPaletteScript.COLOR_TEXT, "SECONDARY label uses the primary text token")
+	assert_eq(UIThemeScript.role_font_color(UIThemeScript.ROLE_DANGER),
+		UIPaletteScript.COLOR_CRIMSON_HOVER, "DANGER label uses the reserved crimson token")
+
+
+## The menu backdrop must be buildable with NO new asset: both layers are code-generated
+## gradients, which is what keeps provenance clean (`06-art-assets.md`) and the cost static.
+func test_backdrop_layers_are_code_built_not_assets() -> void:
+	var sky := UIThemeScript.backdrop_gradient()
+	assert_not_null(sky, "the backdrop gradient builds")
+	assert_true(sky is GradientTexture2D, "it is a code-built gradient, not a loaded file")
+	assert_true(sky.width > 0 and sky.height > 0, "it has a real size")
+	var vignette := UIThemeScript.vignette_gradient()
+	assert_not_null(vignette, "the vignette builds")
+	assert_true(vignette is GradientTexture2D, "the vignette is code-built too")
+	assert_eq(vignette.fill, GradientTexture2D.FILL_RADIAL, "the vignette is radial")
+	# The vignette must be transparent in the middle, or it would dim the menu itself.
+	var centre: Color = vignette.gradient.sample(0.0)
+	assert_true(centre.a <= 0.01, "the vignette centre is fully transparent (a=%.2f)" % centre.a)
+	var edge: Color = vignette.gradient.sample(1.0)
+	assert_true(edge.a > centre.a, "the vignette darkens toward the edge")
+
+
+## The corner ornament reuses `key_badge.png` for what D-034 MEASURED it to be — a hollow
+## corner piece. This pins the decision so a future pass does not put it back under a glyph.
+func test_corner_ornament_resolves_to_the_hollow_badge_art() -> void:
+	assert_true(ResourceLoader.exists(UIPaletteScript.TEX_KEY_BADGE),
+		"the ornament source texture is present")
+	assert_not_null(UIThemeScript.corner_ornament(), "the ornament texture loads")
+	# And the keycap must still be the DRAWN chip, never this hollow art (D-034 regression).
+	var badge := UIThemeScript.badge_stylebox()
+	assert_true(badge is StyleBoxFlat,
+		"the key badge is still a drawn flat chip, not the hollow ornament texture")
+
+
+## Layout tokens must be internally consistent, or the menu plaque clips its own buttons.
+func test_layout_tokens_are_coherent() -> void:
+	assert_true(UIPaletteScript.MENU_BUTTON_WIDTH < UIPaletteScript.MENU_PANEL_WIDTH,
+		"the action button fits inside the plaque (%d < %d)"
+		% [UIPaletteScript.MENU_BUTTON_WIDTH, UIPaletteScript.MENU_PANEL_WIDTH])
+	# The plaque must leave room for the 9-slice border band on BOTH sides, or the button
+	# would be drawn over the frame art (the D-034 content-margin lesson, applied to layout).
+	var border_room := UIPaletteScript.MENU_PANEL_WIDTH - UIPaletteScript.MENU_BUTTON_WIDTH
+	assert_true(border_room >= UIPaletteScript.INSET_MARGIN * 2,
+		"the plaque clears its own border band on both sides (%d >= %d)"
+		% [border_room, UIPaletteScript.INSET_MARGIN * 2])
+	for token in [
+		UIPaletteScript.BUTTON_HEIGHT, UIPaletteScript.TITLE_GAP, UIPaletteScript.SECTION_GAP,
+		UIPaletteScript.ROW_GAP, UIPaletteScript.PANEL_GUTTER, UIPaletteScript.HUD_MARGIN,
+		UIPaletteScript.ORNAMENT_PX, UIPaletteScript.IDENTITY_PORTRAIT_PX,
+	]:
+		assert_true(int(token) > 0, "every layout token is positive (got %d)" % int(token))
+	# Section gaps must be bigger than row gaps, or the hierarchy flattens (A12).
+	assert_true(UIPaletteScript.SECTION_GAP > UIPaletteScript.ROW_GAP,
+		"sections are separated more than the rows inside them")
+
+
+## Crimson is RESERVED for danger. If it drifts to equal the jade accent or the body text,
+## the "be careful" signal is gone (D-041 A1).
+func test_crimson_stays_reserved_and_distinct() -> void:
+	assert_ne(UIPaletteScript.COLOR_CRIMSON, UIPaletteScript.COLOR_ACCENT,
+		"crimson is not the jade interaction accent")
+	assert_ne(UIPaletteScript.COLOR_CRIMSON, UIPaletteScript.COLOR_TEXT,
+		"crimson is not the body text colour")
+	assert_true(UIPaletteScript.COLOR_CRIMSON.r > UIPaletteScript.COLOR_CRIMSON.g
+		and UIPaletteScript.COLOR_CRIMSON.r > UIPaletteScript.COLOR_CRIMSON.b,
+		"crimson is actually red-dominant")
+
+
+## The deep backdrop must be DARK, because every text token in the palette is light — the
+## same pairing rule D-034 had to learn the hard way, now applied to the backdrop.
+func test_backdrop_ground_is_dark_enough_for_light_text() -> void:
+	var deep := UIPaletteScript.COLOR_BACKGROUND_DEEP
+	var brightness := (deep.r + deep.g + deep.b) / 3.0 * 255.0
+	assert_true(brightness < float(UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT),
+		"the deep backdrop (%.0f) is below the light-surface limit (%d)"
+		% [brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
+	# It should read as ink-BLUE, not neutral black: that is what makes the gold read warm.
+	assert_true(deep.b > deep.r, "the ground is blue-leaning, not neutral grey")

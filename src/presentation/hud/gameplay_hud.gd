@@ -4,9 +4,17 @@ class_name GameplayHUD
 ##
 ## A screen-space (`CanvasLayer`) overlay that RENDERS a view of the running session inside
 ## framed pixel-art panels (shared `UITheme`/`UIPalette` 9-slice assets):
-##   - top-left   : an identity panel (portrait-frame slot + character name/title),
-##   - top-right  : a map-name panel,
+##   - top-left   : the IDENTITY PLAQUE — portrait slot + name/title + sect chip, read as ONE
+##                  unit under an ornamental divider (D-041),
+##   - top-right  : the map-name plaque (a localized place name under the same divider),
 ##   - bottom-left: a control-prompt panel with graphic key badges ([E] Interact / [Esc] Menu).
+##
+## D-041 changed the COMPOSITION only, never the data: the identity block used to be a flat
+## stack where the sect chip was indistinguishable from the character's title (two muted hint
+## lines in the same column), so the player could not tell "who I am" from "who I belong to".
+## The divider + section gap make that boundary visible. Screen-edge spacing now comes from
+## `UIPalette.HUD_MARGIN` rather than the generic `SPACE_MD`, so HUD framing can be retuned
+## in one place without touching inner padding.
 ##
 ## It OWNS no truth. The owner (MapBase) pushes data in via `set_character()`, `set_map_name()`
 ## and `set_interact_available()`; the HUD only formats + displays. Key glyphs come from
@@ -22,12 +30,13 @@ const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
 const SECT_PANEL_ACTION := &"sect_panel"
 
-## Side of the square portrait well. The frame art is 218x118 (D-034), so it is nine-patched
-## down to this size rather than used at its native size.
-const PORTRAIT_SLOT_PX := 48
-
-## Side of the small sect emblem chip in the identity panel.
+## Side of the small sect emblem chip in the identity panel. HUD-local: nothing else in the
+## UI draws a chip this size, so it stays here rather than widening the shared palette.
 const SECT_EMBLEM_PX := 20
+
+## Height of the ornamental divider strips. The source art is 136x21 (measured, D-034) and is
+## scaled to this band, so it reads as a thin engraved rule rather than a picture.
+const DIVIDER_HEIGHT := 8
 
 var _loc: Node = null
 var _input: Node = null
@@ -80,15 +89,22 @@ func _build_ui() -> void:
 	root.theme = UITheme.build()
 	add_child(root)
 
-	# --- Top-left: identity panel (portrait slot + name/title) --------------------
+	# --- Top-left: the identity plaque -------------------------------------------
+	# One plaque, two tiers: WHO I AM (portrait + name + title) above an ornamental divider,
+	# WHO I BELONG TO (sect chip) below it. Before D-041 the sect lines were just two more
+	# entries in the same column as the title, so the two kinds of identity blurred together.
 	var identity_panel := _panel()
 	identity_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	identity_panel.position = Vector2(UIPalette.SPACE_MD, UIPalette.SPACE_MD)
+	identity_panel.position = Vector2(UIPalette.HUD_MARGIN, UIPalette.HUD_MARGIN)
 	root.add_child(identity_panel)
+
+	var identity_body := VBoxContainer.new()
+	identity_body.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	identity_panel.add_child(identity_body)
 
 	var identity_row := HBoxContainer.new()
 	identity_row.add_theme_constant_override("separation", UIPalette.SPACE_MD)
-	identity_panel.add_child(identity_row)
+	identity_body.add_child(identity_row)
 
 	# Portrait frame slot (empty well for now; a portrait texture drops in later).
 	# A NinePatchRect, NOT a TextureRect: `portrait_frame.png` is 218x118 (measured, D-034)
@@ -97,7 +113,8 @@ func _build_ui() -> void:
 	# corners crisp at the small size we actually want (`06-art-assets.md` nine-slice rule).
 	var portrait := NinePatchRect.new()
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.custom_minimum_size = Vector2(PORTRAIT_SLOT_PX, PORTRAIT_SLOT_PX)
+	portrait.custom_minimum_size = Vector2(
+		UIPalette.IDENTITY_PORTRAIT_PX, UIPalette.IDENTITY_PORTRAIT_PX)
 	portrait.patch_margin_left = UIPalette.PORTRAIT_MARGIN
 	portrait.patch_margin_right = UIPalette.PORTRAIT_MARGIN
 	portrait.patch_margin_top = UIPalette.PORTRAIT_MARGIN
@@ -109,7 +126,7 @@ func _build_ui() -> void:
 
 	var identity_text := VBoxContainer.new()
 	identity_text.alignment = BoxContainer.ALIGNMENT_CENTER
-	identity_text.add_theme_constant_override("separation", 2)
+	identity_text.add_theme_constant_override("separation", UIPalette.ROW_GAP)
 	identity_row.add_child(identity_text)
 
 	_name_label = Label.new()
@@ -122,10 +139,15 @@ func _build_ui() -> void:
 	_title_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
 	identity_text.add_child(_title_label)
 
-	# Compact sect chip (Phase 06): emblem + sect name + rank, under the character identity.
+	# The engraved rule that separates the two identity tiers. Same art as the menu title and
+	# the sect panel header, so all three screens read as one design language (D-041).
+	identity_body.add_child(_divider_strip())
+
+	# Compact sect chip (Phase 06): emblem + sect name + rank. It now lives in the plaque's
+	# SECOND tier (a sibling of the portrait row), not nested beside the character title.
 	var sect_chip := HBoxContainer.new()
 	sect_chip.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	identity_text.add_child(sect_chip)
+	identity_body.add_child(sect_chip)
 
 	_sect_emblem = TextureRect.new()
 	_sect_emblem.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -139,7 +161,7 @@ func _build_ui() -> void:
 	sect_chip.add_child(_sect_emblem)
 
 	var sect_text := VBoxContainer.new()
-	sect_text.add_theme_constant_override("separation", 0)
+	sect_text.add_theme_constant_override("separation", UIPalette.ROW_GAP)
 	sect_chip.add_child(sect_text)
 
 	_sect_name_label = Label.new()
@@ -152,23 +174,35 @@ func _build_ui() -> void:
 	_sect_rank_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
 	sect_text.add_child(_sect_rank_label)
 
-	# --- Top-right: map-name panel ------------------------------------------------
+	# --- Top-right: the map-name plaque -------------------------------------------
+	# Stays top-RIGHT (a permanent top-centre banner would sit over the playfield), but it is
+	# now a proper plaque instead of a shrink-wrapped chip: a minimum width so the place name
+	# is centred in a stable frame, and the same ornamental rule under it. The place name is
+	# the player's sense of WHERE they are, which the UI bible ranks as primary orientation
+	# information — it should look authored, not like a debug readout.
 	var map_panel := _panel()
 	map_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	map_panel.position = Vector2(-UIPalette.SPACE_MD, UIPalette.SPACE_MD)
+	map_panel.position = Vector2(-UIPalette.HUD_MARGIN, UIPalette.HUD_MARGIN)
 	map_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	map_panel.custom_minimum_size = Vector2(UIPalette.HUD_MAP_PANEL_WIDTH, 0)
 	root.add_child(map_panel)
+
+	var map_body := VBoxContainer.new()
+	map_body.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	map_panel.add_child(map_body)
 
 	_map_label = Label.new()
 	_map_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_map_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_SUBTITLE)
-	_map_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
-	map_panel.add_child(_map_label)
+	_map_label.add_theme_color_override("font_color", UIPalette.COLOR_TITLE)
+	map_body.add_child(_map_label)
+
+	map_body.add_child(_divider_strip())
 
 	# --- Bottom-left: control-prompt panel (graphic key badges) -------------------
 	var prompt_panel := _panel()
 	prompt_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	prompt_panel.position = Vector2(UIPalette.SPACE_MD, -UIPalette.SPACE_MD)
+	prompt_panel.position = Vector2(UIPalette.HUD_MARGIN, -UIPalette.HUD_MARGIN)
 	prompt_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	# Grow RIGHT from the left edge but never past it; `grow_horizontal` defaults to END,
 	# which is what we want here — the explicit set documents that the row is bottom-LEFT
@@ -199,10 +233,12 @@ func _build_ui() -> void:
 	_sect_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	_sect_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_sect_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_sect_panel.position = Vector2(-UIPalette.SPACE_MD, 0)
+	_sect_panel.position = Vector2(-UIPalette.HUD_MARGIN, 0)
 	_sect_panel.visible = false
 	root.add_child(_sect_panel)
 
+
+# --- Builders ----------------------------------------------------------------
 
 ## A framed HUD panel wearing the shared 9-slice panel style.
 func _panel() -> PanelContainer:
@@ -210,6 +246,26 @@ func _panel() -> PanelContainer:
 	p.add_theme_stylebox_override("panel", UITheme.panel_stylebox())
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return p
+
+
+## A thin ornamental rule, used to separate tiers inside a plaque (D-041).
+##
+## `STRETCH_SCALE` + `size_flags_horizontal = EXPAND_FILL` makes the strip span whatever width
+## its parent plaque settles at, so it keeps working when a longer localized name widens the
+## panel (+40% string budget) instead of being authored for one screenshot width. It is a
+## plain `TextureRect`, not a NinePatchRect: the divider is DECOR with no interior to protect,
+## and scaling a 136x21 strip along one axis is exactly what the art is for. If the texture is
+## missing the node simply draws nothing — the layout gap stays, so nothing jumps.
+func _divider_strip() -> TextureRect:
+	var strip := TextureRect.new()
+	strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	strip.stretch_mode = TextureRect.STRETCH_SCALE
+	strip.custom_minimum_size = Vector2(0, DIVIDER_HEIGHT)
+	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if ResourceLoader.exists(UIPalette.TEX_TITLE_DIVIDER):
+		strip.texture = load(UIPalette.TEX_TITLE_DIVIDER)
+	return strip
 
 
 # --- Owner-pushed view state -------------------------------------------------
