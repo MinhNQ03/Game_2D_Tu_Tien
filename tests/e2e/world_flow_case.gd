@@ -24,6 +24,16 @@ const OPEN_MENU := &"open_menu"
 const MOVE_RIGHT := &"move_right"
 const SECT_PANEL := &"sect_panel"
 const ROUND_TRIPS := 20
+
+## Camera-follow probe geometry (D-036). The maps are 960x576 from (16,16), so the centre
+## band is where a follow camera is free of its limit clamp and can actually travel.
+const CAMERA_PROBE_START_X := 420.0
+const CAMERA_PROBE_Y := 304.0
+## Frames to let `position_smoothing` settle before sampling the camera; it eases, so a
+## single-frame sample is not a stable baseline.
+const CAMERA_SETTLE_FRAMES := 45
+## Frames of held movement - long enough that travel clearly exceeds easing noise.
+const CAMERA_PROBE_MOVE_FRAMES := 30
 const REQUIRED_AUTOLOADS := [
 	"EventBus", "GameState", "Localization", "InputService", "SceneRouter",
 ]
@@ -340,14 +350,21 @@ func _prove_movement(player: Node, input: Node, map: Node) -> void:
 	var p := player as Node2D
 	var cam := map.get_node_or_null("Camera2D") as Camera2D
 
-	# Start well left of centre so a correct follow must travel a visible distance right.
-	p.global_position = Vector2(120, 304)
-	await scene_tree.physics_frame
+	# Start near the map CENTRE, not at the edge. A follow camera is clamped by the
+	# MapData-driven limits to `[limit_left + half_view, limit_right - half_view]`, so from
+	# an edge position the camera is pinned and "did it move?" would be unanswerable. The
+	# centre is comfortably inside that band, so a correct follow MUST produce travel.
+	p.global_position = Vector2(CAMERA_PROBE_START_X, CAMERA_PROBE_Y)
+	# Let position smoothing settle ON the player before taking the baseline, otherwise the
+	# baseline is sampled mid-ease from the camera's authored position and the comparison is
+	# meaningless (it can even ease the "wrong" way).
+	for _s in range(CAMERA_SETTLE_FRAMES):
+		await scene_tree.physics_frame
 	var start_x: float = p.global_position.x
 	var cam_start_x: float = cam.global_position.x if cam != null else 0.0
 
 	Input.action_press(MOVE_RIGHT)
-	for _i in range(12):
+	for _i in range(CAMERA_PROBE_MOVE_FRAMES):
 		await scene_tree.physics_frame
 	Input.action_release(MOVE_RIGHT)
 	await scene_tree.physics_frame
@@ -357,12 +374,12 @@ func _prove_movement(player: Node, input: Node, map: Node) -> void:
 
 	assert_not_null(cam, "the map has a Camera2D to follow with")
 	if cam != null:
-		# Let the smoothing settle so this does not depend on a single frame.
-		for _j in range(30):
+		for _j in range(CAMERA_SETTLE_FRAMES):
 			await scene_tree.physics_frame
 		assert_true(cam.global_position.x > cam_start_x,
-			"camera tracked the player instead of staying at its authored position "
-			+ "(was %.1f, now %.1f)" % [cam_start_x, cam.global_position.x])
+			"camera tracked the player right instead of staying put (cam %.1f -> %.1f, "
+			% [cam_start_x, cam.global_position.x]
+			+ "player %.1f -> %.1f)" % [start_x, p.global_position.x])
 		# And it must never be dragged outside the authored map bounds.
 		assert_true(cam.global_position.x >= float(cam.limit_left)
 			and cam.global_position.x <= float(cam.limit_right),

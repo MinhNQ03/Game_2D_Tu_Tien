@@ -146,10 +146,26 @@ jobs:
 
       - name: World/Map E2E flow (Phase 03)
         run: |
-          set -euo pipefail
+          set -uo pipefail
           # Dedicated, ISOLATED process (D-019): boots the real app, New Game → hub map,
           # then drives REAL input (parse_input_event) to transition hub ↔ field 20×, the
-          # persistent player surviving each swap with no orphan-node leak, then a REAL
-          # `open_menu` returns to the menu. Separate process so it can't contaminate the
-          # shared suite. Non-zero exit on any failure; not swallowed.
-          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_world_flow.gd
+          # persistent player surviving each swap with no orphan-node leak, the camera
+          # following the player, then a REAL `open_menu` returns to the menu.
+          # The runner prints `[e2e-world] [FAIL] <assertion>` lines; they are surfaced as
+          # annotations so a failing assertion is readable without log access (D-009).
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_world_flow.gd 2>&1 \
+            | tee _e2e_world.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### World/Map E2E (rc=$rc)"
+            echo '```'
+            tail -n 120 _e2e_world.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            grep -E 'FAIL|ERROR|RESULT' _e2e_world.log | tail -n 40 \
+              | while IFS= read -r line; do echo "::error::[e2e-world] ${line}"; done
+            exit "$rc"
+          fi
