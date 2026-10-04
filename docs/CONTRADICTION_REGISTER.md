@@ -254,10 +254,16 @@
 - **Side A (D-039, `SYSTEM_DEPENDENCY_MATRIX.md`):** the Knowledge row read
   `| Knowledge | P-19/20 | the story/quest state owner | …`, i.e. knowledge state owned by Story
   and Quest and arriving in Phases 19–20.
-- **Side B (same freeze, two other documents):** `PROGRESSION_CULTIVATION_DESIGN.md` §10 lists
-  **Cultivation (P-12)** as reading knowledge for breakthrough prerequisites, and **Technique
-  (P-15)** as needing "Knowledge (14) for knowledge prerequisites"; the matrix's own Cultivation
-  and Technique rows both list `Knowledge` under *Reads*.
+- **Side B (the same freeze, three places — quoted exactly):**
+  - the matrix's **own Cultivation row (P-12)** listed `realm data, Knowledge` under *Reads*;
+  - the matrix's **own Technique row (P-15)** listed `TechniqueData, Knowledge` under *Reads* and
+    `Cultivation, Knowledge` under *Depends on*;
+  - `PROGRESSION_CULTIVATION_DESIGN.md` §7 declared knowledge may gate "hidden techniques … 
+    **breakthrough prerequisites**", while its §10 said "**Knowledge** has no engine of its own
+    before Quest/Story (19/20); until then it is specified here and authored as data when its
+    first consumer exists (anti-over-engineering)."
+  So three rows/paragraphs of one freeze asserted that P-12 and P-15 read knowledge, while a
+  fourth asserted its owner does not exist until P-19/20.
 - **Affected:** Cultivation (12), Technique (15), Crafting/Economy (13+), Dialogue (18),
   Quest (19), Story (20), every access gate that reads knowledge, and the save layout.
 - **Why it matters:** this is a **backwards dependency** — P-12 cannot read authoritative state
