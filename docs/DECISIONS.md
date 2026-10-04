@@ -2005,6 +2005,13 @@ tu-tiên figure; the Aetheria portraits are 310×560 illustrations with baked-in
 is the opposite of what a top-down walk cycle needs. This requires art authored to that spec, and
 no amount of importing substitutes for it. It is the one remaining item on the owner's list.
 
+> **SUPERSEDED by D-046.** The conclusion above ("no cleared pack has it, so it needs authored
+> art") held up — a direction-token scan across all nine supplied folders returned zero hits.
+> What was wrong was the implied dead end: the art was then AUTHORED, at 32×48 with real idle
+> and walk animation, by sampling the project-owned painted portraits. D-046 also found that the
+> deeper defect was never the pixel count — the sheet carried one frame per direction and every
+> profile left `walk_sheet` null, so the cast never animated at all (L-029).
+
 **Scope guard honored:** presentation + assets only. No domain, gameplay-rule, locale or autoload
 change.
 

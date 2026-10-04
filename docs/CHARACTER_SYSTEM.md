@@ -178,9 +178,11 @@ Phase 05 adds the presentation-side **character visual pipeline** (the domain ti
 unchanged — a `CharacterState` still carries NO sprite/presentation data):
 
 - `CharacterVisualProfileData` (`src/data/characters/character_visual_profile_data.gd`, a
-  `Resource`) — the §5 `sprite_set_ref` target: a directional sprite sheet (4 cardinal frames
-  at a `16×24` baseline), `frame_size`, and a feet anchor. Authored per archetype under
-  `data/characters/visual/*.tres`. Style rules: `docs/CHARACTER_ART_BIBLE.md`.
+  `Resource`) — the §5 `sprite_set_ref` target: a sprite sheet GRID of one ROW per cardinal
+  direction × N animation COLUMNS at a `32×48` baseline (D-046), plus `frame_size`,
+  `frame_duration` and a feet anchor. The frame count is derived from the texture width, not
+  authored. Authored per archetype under `data/characters/visual/*.tres`. Style rules:
+  `docs/CHARACTER_ART_BIBLE.md`.
 - `CharacterVisualComponent` (`src/presentation/characters/character_visual_component.gd`, a
   `Node2D`) — renders the profile and reacts to a facing/moving state pushed by the owner. It
   reads NO gameplay rules and never mutates `CharacterState`; `MovementComponent` stays the

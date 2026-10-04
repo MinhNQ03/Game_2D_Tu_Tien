@@ -163,10 +163,16 @@ func _refresh_frame() -> void:
 	var total := _profile.frame_count_of(sheet)
 	if total <= 0:
 		return
-	_sprite.hframes = total
+	# Guard the writes: this runs EVERY animated frame, so an unconditional `hframes` set and
+	# `set_process` call would be redundant per-frame work on the hot path
+	# (`05-performance-testing.md`). Only `frame` genuinely changes each tick.
+	if _sprite.hframes != total:
+		_sprite.hframes = total
 	if _column >= total:
 		_column = 0
 	# Grid index: rows are directions, columns are animation frames.
 	_sprite.frame = _direction * total + _column
 	# Only pay for _process when there is actually something to animate.
-	set_process(total > 1)
+	var should_process := total > 1
+	if is_processing() != should_process:
+		set_process(should_process)

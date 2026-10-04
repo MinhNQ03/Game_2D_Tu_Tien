@@ -547,6 +547,44 @@ CULTIVATORS = {
 }
 
 
+def _cell(px, col, row):
+    """The flat pixel list of one frame cell, for comparing frames."""
+    out = []
+    for y in range(CHAR_H):
+        row_px = px[row * CHAR_H + y]
+        out.extend(row_px[col * CHAR_W:(col + 1) * CHAR_W])
+    return out
+
+
+def _verify_sheet_animates(label, px, frames):
+    """Fail LOUD if the sheet has no visible motion, or if two facings are identical.
+
+    This guards the exact defect D-046 existed to fix (L-029): an animation INDEX that
+    advances over identical frames is still a static character. No runtime assertion can see
+    it — the sheet dimensions are right, the frame counter increments, every test passes — so
+    the check belongs here, where the art is produced and where it can actually be run
+    (Godot is not runnable locally, D-009).
+    """
+    if frames > 1:
+        # Every ADJACENT pair must differ, wrapping round. "At least one frame differs" would
+        # pass a cycle with a frozen step in it, which reads as a stutter on screen.
+        for direction in range(DIRECTION_COUNT):
+            for frame in range(frames):
+                nxt = (frame + 1) % frames
+                if _cell(px, frame, direction) == _cell(px, nxt, direction):
+                    raise SystemExit(
+                        "DEGENERATE ART: %s direction row %d frames %d and %d are "
+                        "pixel-identical - the animation would advance its index over a "
+                        "motionless character" % (label, direction, frame, nxt))
+    # Every facing must be distinguishable, or the character does not turn on screen.
+    for a in range(DIRECTION_COUNT):
+        for b in range(a + 1, DIRECTION_COUNT):
+            if _cell(px, 0, a) == _cell(px, 0, b):
+                raise SystemExit(
+                    "DEGENERATE ART: %s direction rows %d and %d are pixel-identical - the "
+                    "character would not visibly turn" % (label, a, b))
+
+
 def _gen_cultivator_sheet(name, pal, anim, frames):
     """One sheet: `frames` columns (animation) x 4 rows (DOWN, UP, LEFT, RIGHT)."""
     w = CHAR_W * frames
@@ -556,6 +594,7 @@ def _gen_cultivator_sheet(name, pal, anim, frames):
         for frame in range(frames):
             _draw_cultivator(px, frame * CHAR_W, direction * CHAR_H,
                              direction, pal, anim, frame)
+    _verify_sheet_animates("%s_%s" % (name, anim), px, frames)
     _png(os.path.join(ROOT, "assets/sprites/characters/%s_%s.png" % (name, anim)), w, h, px)
 
 
