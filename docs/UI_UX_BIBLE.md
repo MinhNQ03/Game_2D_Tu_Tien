@@ -1,0 +1,165 @@
+# UI_UX_BIBLE — Aetheria
+
+> **Owner of:** the visual language, the information hierarchy, the screen inventory, and the
+> per-phase UI evolution plan.
+> Token/asset implementation lives in `src/presentation/ui/ui_palette.gd` + `ui_theme.gd` (the
+> single source of truth for colours, type scale, spacing, texture paths and 9-slice margins) and
+> the asset rules in `.kiro/steering/06-art-assets.md`. This document owns the *design direction*;
+> it changes no runtime code.
+
+---
+
+## 1. The existing UI is a FOUNDATION, not a ceiling
+
+The live UI is the CC0 **Xianxia Pixel Pack** set wired through `UIPalette` → `UITheme` (D-028),
+hardened for legibility from *measured* asset pixels (D-034), with Vietnamese as the default
+language (D-035). It is **production foundation**: real, shipped, tested — and explicitly not
+final.
+
+**Do not destroy it.** Phase 25 is consolidation and polish, not a rescue rewrite. Every new
+screen is built on this language; if a screen needs something the language lacks, the language
+gets extended (in `UIPalette`/`UITheme`), not bypassed.
+
+## 2. The anti-pattern this document exists to prevent
+
+```
+Phase 07: placeholder → Phase 12: placeholder → Phase 19: placeholder → Phase 25: rewrite everything
+```
+
+That path guarantees a Phase-25 crisis and a game that looks unfinished for eighteen phases.
+The policy instead (Continuous Visual Integration, already binding in `docs/ROADMAP.md`):
+
+```
+feature phase → the first USABLE UI for its own feature → later refinement → Phase 25 consolidation
+```
+
+Each feature phase owns the first real visual treatment of its own feature. Phase 25 then unifies
+spacing, states, iconography and accessibility across screens that already work.
+
+## 3. Visual language (frozen direction)
+
+| Element | Direction |
+|---|---|
+| Surface | dark xianxia ink panels; ornate gold/jade framing via 9-slice |
+| World | pixel art, nearest filter, integer scaling (`06-art-assets.md`) |
+| System accent | restrained **teal/cyan** — interaction, selection, focus |
+| Danger / hostility | **crimson** |
+| Text | light on dark ink, with an outline for busy backgrounds (D-034) |
+| Density | compact, information-dense, contextual panels |
+| Input | keyboard-first desktop; semantic prompts, **never raw keycodes** |
+| Language | vi + en, both first-class, no hard-coded strings |
+
+**The measured-asset rule (L-021/D-034, binding):** before wiring any texture into a
+`StyleBox`/`TextureRect`/`NinePatchRect`, measure its pixel size, centre alpha and centre
+brightness. A surface that carries text must contrast with the text palette;
+`content_margin >= texture_margin` on every 9-slice box; a frame belongs in a `NinePatchRect`; a
+`TextureRect` used as a fixed-size slot must set `expand_mode = EXPAND_IGNORE_SIZE`.
+
+## 4. Information hierarchy (frozen)
+
+- **Panel hierarchy:** world → HUD overlay → contextual panel → modal. A modal owns input while
+  open; exactly one modal owner at a time.
+- **Typography:** title → subtitle → body → hint. Four steps, defined once in `UIPalette`.
+- **Icon language:** one icon per concept, globally. An icon never means two things.
+- **Semantic colour:** accent = interactive · crimson = danger/hostile · muted = unavailable ·
+  gold = canon/authority (sect, covenant, title). Colour is **never the only** carrier of meaning
+  (also text or icon) — an accessibility requirement, not a preference.
+- **Interaction states:** normal · hover · focus · pressed · disabled — all five, every control.
+  Keyboard focus must be as visible as mouse hover.
+- **Notifications:** transient and non-blocking; anything the player must act on is a panel, not a
+  toast.
+- **Navigation ownership:** one owner per screen stack; no screen frees the screen that opened it
+  (the D-035 settings pattern: hide, don't free).
+- **Readability + localization expansion:** layouts must absorb **+40%** string length (vi↔en
+  differ substantially) without clipping. Fixed-width labels are a bug.
+- **Safe area / resolution:** declared base viewport (1152×648, D-034) with `canvas_items`
+  stretch; no element may depend on an exact window size.
+
+## 5. Screen inventory (direction only — none implemented by this document)
+
+| Screen | Direction |
+|---|---|
+| Main Menu | **exists**; title, subtitle, New Game / Load / Settings / Quit |
+| Settings | **exists**; language now, categories later |
+| HUD | **exists**; identity, map, sect chip, semantic prompts. Grows: health/resource (P-09), realm (P-12) |
+| Character | identity, stats, origin, realm, path, sect — one screen that answers "what am I?" |
+| Cultivation | the realm ladder as a *ladder*; current layer, what the next one grants (not just a bar) |
+| Technique | known công pháp + the **compatibility graph** — the build screen |
+| Skill | loadout, costs, cooldowns, technique gates |
+| Equipment / Inventory | slots + stats; inventory grid with source/sink clarity |
+| Quest Journal | active/available/done, by category, with the *why* |
+| Dialogue | portrait + text + choices; choices show what they are about, never a morality icon |
+| Relationship | per-character the six dimensions, legibly — **not** one bar |
+| Sect | **exists** (panel); grows into roster, rank, contribution, politics |
+| Faction | influence and attitudes inside a sect (P-07) |
+| World Map / Atlas | the expansion screen (§6) |
+| Dungeon | run progress, checkpoints, modifiers |
+| Crafting / Shop | recipes with prerequisites visible; prices with regional context |
+| Pet | companion state |
+| Party / Social | reserved for P-32+; nothing now |
+| World Event | what is happening in the world without the player |
+| Story Chronicle | the player's own history — the Tà Đế identity surface |
+
+## 6. The UI must communicate world scale
+
+The UI is part of the storytelling: what it *shows* tracks what the player **knows**.
+
+| Stage | The UI shows |
+|---|---|
+| Early (Acts I–II) | character · sect · local map · current quests |
+| Mid (Acts III–V) | + cultivation · techniques · relationships · faction politics · regional map |
+| Late (Acts VI–X) | + world atlas (Main/Tiểu/Tàn/Hủ) · world gates · world events · **historical records** · the Tà Đế chronicle |
+
+Worked example of the same object deepening: "Thanh Vân Tông" → "Thanh Vân Tông + your rank and
+standing" → "+ its internal factions and their attitudes" → "+ its position in covenant politics
+and what its archives omitted". **Same screen, progressively more truth** — which is the UI
+expression of the reveal ladder (`NARRATIVE_MASTER_PLAN.md` §9).
+
+A corollary: screens may legitimately be **locked or absent** early. A world atlas shown in Act I
+spoils the scale the game spends forty hours earning.
+
+## 7. UI evolution by phase
+
+Each entry is the **first usable** treatment, in that feature's own phase.
+
+| Phase | UI deliverable |
+|---|---|
+| 07 Faction | faction/politics panel: influence, attitudes, stance |
+| 09 Combat | combat HUD — target, health, resource, hit feedback, **telegraph language + VFX vocabulary** |
+| 10 Enemy AI | enemy identification/threat read |
+| 11 Progression | level/XP surface |
+| 12 Cultivation | realm + layer surface; what the next layer grants |
+| 13 Inventory | inventory grid |
+| 14 Equipment | slots + stat deltas |
+| 15 Skill / Technique | loadout + compatibility graph |
+| 16 Pet | pet panel (where exposed) |
+| 17 NPC / Shop | interaction + trade |
+| 18 Dialogue | dialogue + choice presentation |
+| 19 Quest | journal |
+| 20 Story | chronicle / chapter surface |
+| 21 Dungeon | run UI |
+| 22 Boss | boss presentation (name, phases, escalation) |
+| 23 Save / Load | slots |
+| 24 Localization | full vi/en pass + **expansion audit** across every screen |
+| 25 Consolidation | consistency · interaction states · iconography · accessibility · polish |
+| 26 Audio/VFX | audio-visual feedback unification |
+| 32+ | party/social presentation (only if multiplayer proceeds) |
+
+## 8. Consistency audit (Audit T)
+
+Can combat, cultivation, inventory, technique, sect, faction, quest, dialogue, world map, dungeon
+and story all live under ONE visual language? **Yes**, because every one of them is a variation of
+three primitives the foundation already has:
+
+1. a **framed dark panel** carrying light text (the inset plate, D-034);
+2. a **list/grid of entries** with icon + name + value;
+3. a **contextual detail pane** for the selected entry.
+
+The sect panel already is exactly this shape. The screens differ in *content and density*, not in
+language. Risks to watch at Phase 25: density creep on the HUD, icon reuse for different
+concepts, and colour-only meaning.
+
+## 9. What this document does NOT do
+
+No screens are implemented, no runtime UI code is changed, and no asset is added. Phase 25 is
+consolidation of screens that already work — **not** a rescue rewrite (§1).
