@@ -12,7 +12,8 @@
 > data-driven camera bounds + follow, persistent player across 20 round trips), the
 > Character core, the Relationship core, the **Sect** core, and the UI/theme asset
 > contracts — plus three dedicated real-application E2E processes (app-flow, player-flow,
-> world-flow). **CI runs 10 gates** (see §5). Gameplay beyond world/map traversal +
+> world-flow). **CI runs 10 gates** (see §5) and the in-runner suite holds **275 test
+> methods across 33 files** (CI-green on `5f7d0c9`). Gameplay beyond world/map traversal +
 > sect membership is added phase by phase.
 
 ## 1. Test layers

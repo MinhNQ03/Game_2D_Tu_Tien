@@ -11,6 +11,9 @@ Dates are ISO (YYYY-MM-DD).
 ### 2026-10-03 — Phase 06 final hardening: fail-closed sect core (D-037)
 Six failure modes a green CI cannot see, closed. No new scope, no new autoload, **CI still
 10 gates**; the existing test files were expanded in place and no assertion was weakened.
+CI-verified green (all 10 gates) on `5f7d0c9`; the in-runner suite is now **275 test methods
+across 33 files** — 25 added by this change (+18 sect-domain, +3 sect-runtime, +3 HUD/sect
+panel, +1 localization), so 250 before it.
 - **Diplomacy retype is NON-DESTRUCTIVE.** `SectService._ensure_edge()` flipped ALLY→ENEMY by
   `remove_edge()` then `create_edge()`, so a rejected flip destroyed the very edge it was
   "rolling back" (and a successful one silently discarded the edge's dimensions + history).
