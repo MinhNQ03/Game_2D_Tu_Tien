@@ -294,6 +294,11 @@ func test_menu_backdrop_layers_fill_the_menu() -> void:
 		if not (control is ColorRect or control is TextureRect):
 			continue
 		# Only the full-screen layers, not the corner ornaments (which are deliberately small).
+		# ALL FOUR anchors must be checked: a BOTTOM_RIGHT-anchored ornament also has
+		# `anchor_right == 1` and `anchor_bottom == 1`, so filtering on those two alone let
+		# `OrnamentBR` through and the test failed on its intentional -18 inset.
+		if control.anchor_left != 0.0 or control.anchor_top != 0.0:
+			continue
 		if control.anchor_right != 1.0 or control.anchor_bottom != 1.0:
 			continue
 		covered += 1

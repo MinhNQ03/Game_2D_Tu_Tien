@@ -122,9 +122,12 @@ func test_no_session_and_no_factions_read_differently() -> void:
 func test_panel_renders_localized_names_goals_and_doctrine() -> void:
 	var panel := _panel()
 	_use_language("en")
-	panel.call("set_view", _view([
-		_row(&"FACTION_AZURE_TERRACE_NAME", TemplateScript.Stance.LOYALIST, 45, 39),
-	]))
+	# `is_dominant` so the doctrine is expected: D-043 limits the doctrine to the player's own
+	# side and whoever holds sway, because printing all three turned a comparison list into
+	# three paragraphs of prose. The withholding rule has its own test below.
+	var row := _row(&"FACTION_AZURE_TERRACE_NAME", TemplateScript.Stance.LOYALIST, 45, 39)
+	row.is_dominant = true
+	panel.call("set_view", _view([row]))
 	var text := _joined(panel)
 
 	assert_true(text.contains(_localized("UI_FACTION_PANEL_TITLE")), "the section title shows")
@@ -275,3 +278,42 @@ func _count_descendants(node: Node) -> int:
 	for child in node.get_children():
 		n += 1 + _count_descendants(child)
 	return n
+
+
+## D-043 density rule: the doctrine is shown for the player's OWN side and for whoever holds
+## sway, and withheld from everyone else.
+##
+## The first version printed every faction's full doctrine, which on the shipped three-faction
+## landscape produced three paragraphs of prose in a panel whose job is letting the player
+## compare sides at a glance. This pins both halves of the rule — shown where it matters, and
+## actually absent where it does not, since "shown everywhere" would also pass a test that only
+## checked the first half.
+func test_doctrine_is_shown_only_where_it_matters() -> void:
+	var panel := _panel()
+	_use_language("en")
+
+	var dominant := _row(&"FACTION_AZURE_TERRACE_NAME", TemplateScript.Stance.LOYALIST, 45, 45)
+	dominant.is_dominant = true
+	var mine := _row(&"FACTION_AZURE_OPEN_ROAD_NAME", TemplateScript.Stance.REFORMIST, 38, 38)
+	mine.is_player_faction = true
+	mine.doctrine_key = &"FACTION_AZURE_OPEN_ROAD_DOCTRINE"
+	var bystander := _row(
+		&"FACTION_AZURE_FRONTIER_NAME", TemplateScript.Stance.RADICAL, 31, 31)
+	bystander.doctrine_key = &"FACTION_AZURE_FRONTIER_DOCTRINE"
+
+	panel.call("set_view", _view([dominant, mine, bystander]))
+	var text := _joined(panel)
+
+	assert_true(text.contains(_localized("FACTION_AZURE_TERRACE_DOCTRINE")),
+		"the dominant faction's argument is shown")
+	assert_true(text.contains(_localized("FACTION_AZURE_OPEN_ROAD_DOCTRINE")),
+		"and the player's own side's argument")
+	assert_false(text.contains(_localized("FACTION_AZURE_FRONTIER_DOCTRINE")),
+		"but a faction that is neither the player's nor dominant is listed WITHOUT its "
+			+ "doctrine — otherwise the list becomes a wall of prose")
+	# It must still be listed, just compactly: withholding the doctrine is not hiding the row.
+	assert_true(text.contains(_localized("FACTION_AZURE_FRONTIER_NAME")),
+		"that faction is still listed with its name, stance and influence")
+	assert_true(text.contains(_localized("FACTION_STANCE_RADICAL")),
+		"and its stance")
+	free_node(panel)
