@@ -34,8 +34,18 @@ static func build() -> Theme:
 	theme.set_constant("h_separation", "Button", UIPalette.SPACE_SM)
 
 	# --- Label --------------------------------------------------------------
+	# The outline is what makes the light text tokens survive a busy background (map art,
+	# a lighter plate). Call sites that override `font_color` still inherit it, so adding it
+	# here fixes every existing label at once (D-034).
 	theme.set_color("font_color", "Label", UIPalette.COLOR_TEXT)
 	theme.set_font_size("font_size", "Label", UIPalette.FONT_SIZE_BODY)
+	theme.set_color("font_outline_color", "Label", UIPalette.COLOR_TEXT_OUTLINE)
+	theme.set_constant("outline_size", "Label", UIPalette.TEXT_OUTLINE_SIZE)
+
+	# Buttons sit on the LIGHT jade button texture (measured brightness 193), so their text
+	# needs the same outline treatment to stay readable.
+	theme.set_color("font_outline_color", "Button", UIPalette.COLOR_TEXT_OUTLINE)
+	theme.set_constant("outline_size", "Button", UIPalette.TEXT_OUTLINE_SIZE)
 
 	# --- PanelContainer: the framed window/HUD panel ------------------------
 	theme.set_stylebox("panel", "PanelContainer", panel_stylebox())
@@ -72,31 +82,66 @@ static func button_stylebox(state: String) -> StyleBox:
 	return _fallback_button_flat(state)
 
 
-## The framed panel StyleBox (for PanelContainer / `panel_node()`).
+## The framed panel StyleBox - the surface that CARRIES TEXT (menu panel, HUD plates).
+##
+## It uses the INK INSET texture, not `panel.png`. Measured (D-034): `panel.png` has a
+## centre brightness of 230 while every text token in `UIPalette` is light, so the old
+## pairing rendered near-white text on a near-white plate - the unreadable Phase-06 HUD.
+## `panel_inset.png` measures 19 (dark ink), which is what the light palette was designed
+## for. Content margins are >= the 9-slice border so text can never sit on the frame band.
 static func panel_stylebox() -> StyleBox:
-	var box := _texture_box(UIPalette.TEX_PANEL, UIPalette.PANEL_MARGIN,
-		UIPalette.SPACE_MD, UIPalette.SPACE_MD)
+	var box := _texture_box(UIPalette.TEX_PANEL_INSET, UIPalette.INSET_MARGIN,
+		UIPalette.INSET_MARGIN, UIPalette.INSET_MARGIN)
 	if box != null:
 		return box
 	return _fallback_surface_flat(UIPalette.COLOR_SURFACE)
 
 
-## The darker inset/well StyleBox (secondary surfaces).
+## The LIGHT jade plate (`panel.png`) - for decorative/accent surfaces that carry NO light
+## text. Kept available (the art is good) but deliberately not the text surface; anything
+## placed on it would need dark text, which this palette does not define.
+static func accent_panel_stylebox() -> StyleBox:
+	var box := _texture_box(UIPalette.TEX_PANEL, UIPalette.PANEL_MARGIN,
+		UIPalette.PANEL_MARGIN, UIPalette.PANEL_MARGIN)
+	if box != null:
+		return box
+	return _fallback_surface_flat(UIPalette.COLOR_SURFACE_HOVER)
+
+
+## A darker nested well inside a panel (secondary surface, e.g. a settings option list).
 static func inset_stylebox() -> StyleBox:
 	var box := _texture_box(UIPalette.TEX_PANEL_INSET, UIPalette.INSET_MARGIN,
-		UIPalette.SPACE_SM, UIPalette.SPACE_SM)
+		UIPalette.INSET_MARGIN, UIPalette.SPACE_MD)
 	if box != null:
 		return box
 	return _fallback_surface_flat(UIPalette.COLOR_SURFACE_PRESSED)
 
 
-## StyleBox for the key-badge chip (the "E"/"Esc" keycap). Asset-backed 9-slice.
+## StyleBox for the key-badge chip (the "E"/"Esc" keycap).
+##
+## Deliberately FLAT, not asset-backed. Measured (D-034): `key_badge.png` is a 61x61 corner
+## ornament whose CENTRE PIXEL IS FULLY TRANSPARENT (alpha 0) - it has no fill to put a
+## glyph on, and 9-slicing it down to keycap size collapsed its 18px border bands into each
+## other, which is why the Phase-06 prompts rendered as unreadable smudges. A keycap needs a
+## solid contrasting chip and the pack ships none, so we draw one: dark fill + jade edge.
+## Swap this back to `_texture_box` the day a real keycap texture lands.
 static func badge_stylebox() -> StyleBox:
-	var box := _texture_box(UIPalette.TEX_KEY_BADGE, UIPalette.KEY_BADGE_MARGIN,
-		UIPalette.SPACE_SM, 2)
-	if box != null:
-		return box
-	return _fallback_surface_flat(UIPalette.COLOR_BADGE)
+	var box := StyleBoxFlat.new()
+	box.bg_color = UIPalette.COLOR_BADGE
+	box.border_color = UIPalette.COLOR_BADGE_BORDER
+	box.border_width_left = 1
+	box.border_width_right = 1
+	box.border_width_top = 1
+	box.border_width_bottom = 1
+	box.corner_radius_top_left = 3
+	box.corner_radius_top_right = 3
+	box.corner_radius_bottom_left = 3
+	box.corner_radius_bottom_right = 3
+	box.content_margin_left = UIPalette.SPACE_SM
+	box.content_margin_right = UIPalette.SPACE_SM
+	box.content_margin_top = 2
+	box.content_margin_bottom = 2
+	return box
 
 
 ## True once every UI texture resolves (used by the asset-contract test + a startup guard).

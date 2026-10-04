@@ -14,6 +14,12 @@ class_name SectPanel
 
 const SectTemplate := preload("res://src/data/sects/sect_template_data.gd")
 
+## Side of the emblem chip in the panel header.
+const EMBLEM_PX := 28
+
+## Minimum panel width, wide enough for the longest localized label + value on one line.
+const PANEL_MIN_WIDTH := 280
+
 var _loc: Node = null
 
 var _title: Label
@@ -34,7 +40,7 @@ var _view: SectMembershipView = null
 func _ready() -> void:
 	_loc = get_node_or_null("/root/Localization")
 	add_theme_stylebox_override("panel", UITheme.panel_stylebox())
-	custom_minimum_size = Vector2(260, 0)
+	custom_minimum_size = Vector2(PANEL_MIN_WIDTH, 0)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _title == null:
 		_build()
@@ -54,7 +60,10 @@ func _build() -> void:
 	_emblem = TextureRect.new()
 	_emblem.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_emblem.custom_minimum_size = Vector2(32, 32)
+	# Without EXPAND_IGNORE_SIZE the rect reports the emblem's native size as its minimum
+	# and `custom_minimum_size` becomes a no-op floor, widening the panel (D-034).
+	_emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_emblem.custom_minimum_size = Vector2(EMBLEM_PX, EMBLEM_PX)
 	_emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(_emblem)
 
@@ -105,7 +114,10 @@ func _refresh() -> void:
 	_title.text = _t("UI_SECT_PANEL_TITLE")
 	var is_member := _view != null and _view.is_member
 	# Toggle the detail rows vs the empty-state line.
-	for row in [_name, _doctrine, _type_tier, _rank, _reputation, _influence, _territory, _resources]:
+	for row in [
+		_name, _doctrine, _type_tier, _rank,
+		_reputation, _influence, _territory, _resources,
+	]:
 		row.visible = is_member
 	_emblem.visible = is_member
 	_empty.visible = not is_member
@@ -124,7 +136,8 @@ func _refresh() -> void:
 	_reputation.text = "%s: %d" % [_t("UI_SECT_PANEL_REPUTATION"), _view.reputation]
 	_influence.text = "%s: %d" % [_t("UI_SECT_PANEL_INFLUENCE"), _view.influence]
 	_territory.text = "%s: %d" % [_t("UI_SECT_PANEL_TERRITORY"), _view.territory_count]
-	_resources.text = "%s: %s" % [_t("UI_SECT_PANEL_RESOURCES"), _format_resources(_view.resource_summary)]
+	_resources.text = "%s: %s" % [
+		_t("UI_SECT_PANEL_RESOURCES"), _format_resources(_view.resource_summary)]
 
 	if _view.emblem_ref != "" and ResourceLoader.exists(_view.emblem_ref):
 		_emblem.texture = load(_view.emblem_ref)

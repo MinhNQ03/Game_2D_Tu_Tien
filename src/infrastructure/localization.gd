@@ -13,8 +13,18 @@ extends Node
 ## Missing-key behavior (documented, see docs/TEST_PLAN.md / DEBUGGING.md): return the key
 ## itself and push_warning in dev — never crash, never return an empty string silently.
 
-const DEFAULT_LANGUAGE := "en"
-const SUPPORTED_LANGUAGES := ["en", "vi"]
+## Language the game STARTS in. Vietnamese: this is a Vietnamese-first project (`01-product`)
+## and the per-phase beta builds are play-tested in Vietnamese (D-035). A player's explicit
+## choice is persisted and overrides this on the next launch.
+const DEFAULT_LANGUAGE := "vi"
+
+## Language used when a key has no value in the active language. Deliberately SEPARATE from
+## DEFAULT_LANGUAGE (D-035): the start language and the translation fallback are different
+## concerns, and collapsing them means a key missing a `vi` value would "fall back" to `vi`
+## and resolve to the raw key instead of the English text that does exist.
+const FALLBACK_LANGUAGE := "en"
+
+const SUPPORTED_LANGUAGES := ["vi", "en"]
 const CSV_PATH := "res://locale/aetheria.csv"
 
 ## _table[key][lang] -> String
@@ -105,9 +115,9 @@ func t(key: String) -> String:
 	var entry: Dictionary = _table[key]
 	if entry.has(_language) and String(entry[_language]) != "":
 		return String(entry[_language])
-	if entry.has(DEFAULT_LANGUAGE) and String(entry[DEFAULT_LANGUAGE]) != "":
-		return String(entry[DEFAULT_LANGUAGE])
-	push_warning("[loc] key '%s' has no value for '%s' or default" % [key, _language])
+	if entry.has(FALLBACK_LANGUAGE) and String(entry[FALLBACK_LANGUAGE]) != "":
+		return String(entry[FALLBACK_LANGUAGE])
+	push_warning("[loc] key '%s' has no value for '%s' or fallback" % [key, _language])
 	return key
 
 
@@ -118,3 +128,17 @@ func t_args(key: String, args: Dictionary) -> String:
 	for arg_key in args.keys():
 		text = text.replace("{%s}" % str(arg_key), str(args[arg_key]))
 	return text
+
+
+# --- Persistence boundary (D-035) --------------------------------------------
+#
+# This service is deliberately DISK-FREE. Reading/writing the player's language preference
+# lives with the two owners of that concern:
+#   * `SettingsMenu` writes it when the player picks a language,
+#   * `Main` reads it at boot and applies it through `set_language()`.
+#
+# Keeping it out of here matters for correctness, not just tidiness: unit tests construct a
+# fresh `Localization` and call `set_language()` freely. If the service touched
+# `user://settings.cfg`, those tests would persist a language and the NEXT run would restore
+# it, so "the default language is vi" would pass or fail depending on leftover disk state —
+# the L-010 shared-state trap, just on disk instead of under /root.

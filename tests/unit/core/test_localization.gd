@@ -27,7 +27,7 @@ func test_vi_key_resolves() -> void:
 
 func test_language_switching() -> void:
 	var loc := _make()
-	assert_eq(loc.get_language(), "en", "default language is en")
+	assert_eq(loc.get_language(), "vi", "default language is vi (Vietnamese-first, D-035)")
 	assert_true(loc.set_language("vi"), "switch to vi")
 	assert_eq(loc.get_language(), "vi")
 	assert_eq(loc.t("UI_MENU_QUIT"), "Thoát", "vi after switch")
@@ -39,7 +39,50 @@ func test_language_switching() -> void:
 func test_unsupported_language_rejected() -> void:
 	var loc := _make()
 	assert_false(loc.set_language("fr"), "unsupported language rejected")
-	assert_eq(loc.get_language(), "en", "language unchanged after rejection")
+	assert_eq(loc.get_language(), "vi", "language unchanged after rejection")
+	free_node(loc)
+
+
+## The START language and the TRANSLATION FALLBACK are separate concerns (D-035). Collapsing
+## them would make a key that is missing a `vi` value "fall back" to `vi` and resolve to the
+## raw key, hiding the English text that does exist.
+func test_default_and_fallback_languages_are_distinct() -> void:
+	assert_eq(LocScript.DEFAULT_LANGUAGE, "vi", "the game starts in Vietnamese")
+	assert_eq(LocScript.FALLBACK_LANGUAGE, "en", "missing translations fall back to English")
+	assert_true(LocScript.SUPPORTED_LANGUAGES.has(LocScript.DEFAULT_LANGUAGE),
+		"the default language is supported")
+	assert_true(LocScript.SUPPORTED_LANGUAGES.has(LocScript.FALLBACK_LANGUAGE),
+		"the fallback language is supported")
+
+
+## Localization must stay DISK-FREE: if it persisted the language, unit tests would leave a
+## stale preference in `user://` and "the default is vi" would depend on leftover state
+## (the L-010 shared-state trap on disk). Persistence lives in Main + SettingsMenu.
+func test_switching_language_does_not_touch_disk() -> void:
+	var loc := _make()
+	loc.set_language("en")
+	loc.set_language("vi")
+	var fresh := _make()
+	assert_eq(fresh.get_language(), "vi",
+		"a fresh instance starts at the default (the service reads no persisted language)")
+	free_node(fresh)
+	free_node(loc)
+
+
+## The settings screen's keys must exist in BOTH languages like every other content key
+## (`07-localization.md`), or the screen would show raw keys in one language.
+func test_settings_keys_exist_in_both_languages() -> void:
+	var loc := _make()
+	var keys := [
+		"UI_SETTINGS_TITLE", "UI_SETTINGS_LANGUAGE_HINT", "UI_SETTINGS_BACK",
+		"UI_LANGUAGE_VI", "UI_LANGUAGE_EN", "UI_MENU_SETTINGS",
+	]
+	for key in keys:
+		assert_true(loc.has_key(key), "settings key '%s' exists in the table" % key)
+		loc.set_language("en")
+		assert_ne(loc.t(key), key, "en value present for '%s'" % key)
+		loc.set_language("vi")
+		assert_ne(loc.t(key), key, "vi value present for '%s'" % key)
 	free_node(loc)
 
 

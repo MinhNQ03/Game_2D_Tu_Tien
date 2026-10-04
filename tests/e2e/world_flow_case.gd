@@ -96,7 +96,8 @@ func test_real_world_map_flow() -> void:
 		sect_runtime_id = sect_runtime.get_instance_id()
 		assert_true(sect_runtime.call("is_session_active"),
 			"SectRuntime session active after New Game")
-		assert_eq(_count_named("SectRuntime"), 0, "SectRuntime is NOT an autoload (not under /root)")
+		assert_eq(_count_named("SectRuntime"), 0,
+			"SectRuntime is NOT an autoload (not under /root)")
 		assert_eq(sect_runtime.call("get_player_sect_id"), &"sect_azure_cloud",
 			"player enrolled in the authored start sect")
 
@@ -131,8 +132,8 @@ func test_real_world_map_flow() -> void:
 	var hub_map: Node = router.get_current_scene()
 	assert_true(_player_is_in_map(player, hub_map), "player is parented inside the hub map")
 
-	# Camera limits are data-driven from MapData.bounds (Rect2(16,16,448,288)).
-	_assert_camera_limits(hub_map, 16, 16, 464, 304, "hub")
+	# Camera limits are data-driven from MapData.bounds (Rect2(16,16,960,576) — D-036).
+	_assert_camera_limits(hub_map, 16, 16, 976, 592, "hub")
 
 	# --- 3b. Sect is VISIBLE in the HUD + the panel toggles via REAL input (Phase 06) ----
 	var hud := _find_gameplay_hud(hub_map)
@@ -146,7 +147,8 @@ func test_real_world_map_flow() -> void:
 		assert_true(sect_name != "" and (sect_name in hud_text),
 			"HUD shows the localized sect name")
 		for t in hud_text:
-			assert_false(t.contains("sect_azure_cloud"), "no raw sect id leaks into the HUD (%s)" % t)
+			assert_false(t.contains("sect_azure_cloud"),
+				"no raw sect id leaks into the HUD (%s)" % t)
 		# Toggle the Sect detail panel via a REAL `sect_panel` key event (bounded retry for
 		# input-dispatch frame timing). It starts closed, opens on the key.
 		assert_false(hud.call("is_sect_panel_open"), "sect panel starts closed")
@@ -158,7 +160,7 @@ func test_real_world_map_flow() -> void:
 		assert_true(hud.call("is_sect_panel_open"), "a real sect_panel key opened the panel")
 
 	# --- 4. a REAL semantic MOVEMENT step (proves InputService movement path) -----
-	await _prove_movement(player, input)
+	await _prove_movement(player, input, hub_map)
 
 	# --- 5. first transition hub → field via REAL interact input -----------------
 	await _interact_to_transition(player, "map_hub")
@@ -167,7 +169,7 @@ func test_real_world_map_flow() -> void:
 	var field_map: Node = router.get_current_scene()
 	assert_eq(player.get_instance_id(), player_id, "SAME player instance after transition")
 	assert_true(_player_is_in_map(player, field_map), "player re-parented into the field map")
-	_assert_camera_limits(field_map, 16, 16, 464, 304, "field")
+	_assert_camera_limits(field_map, 16, 16, 976, 592, "field")
 
 	# --- 6. >= 20 round trips, per-round invariants + no orphan leak -------------
 	await scene_tree.process_frame
@@ -326,13 +328,24 @@ func _assert_camera_limits(map: Node, l: int, t: int, r: int, b: int, tag: Strin
 
 ## Drive a genuine semantic MOVEMENT: press move_right (real key event + action state), let
 ## the Player poll InputService.get_move_vector() in its own _physics_process, then release.
-func _prove_movement(player: Node, input: Node) -> void:
+##
+## Also proves the camera FOLLOWS (D-036): the map's Camera2D is a plain child node, so
+## before this it stayed at its authored position and the player simply walked out of frame
+## once the view became smaller than the map. Asserting "the camera moved toward the player"
+## is the observable contract — not "the camera equals the player", because position
+## smoothing eases it over several frames.
+func _prove_movement(player: Node, input: Node, map: Node) -> void:
 	if not (player is Node2D):
 		return
 	var p := player as Node2D
-	p.global_position = Vector2(120, 160)
+	var cam := map.get_node_or_null("Camera2D") as Camera2D
+
+	# Start well left of centre so a correct follow must travel a visible distance right.
+	p.global_position = Vector2(120, 304)
 	await scene_tree.physics_frame
 	var start_x: float = p.global_position.x
+	var cam_start_x: float = cam.global_position.x if cam != null else 0.0
+
 	Input.action_press(MOVE_RIGHT)
 	for _i in range(12):
 		await scene_tree.physics_frame
@@ -341,6 +354,19 @@ func _prove_movement(player: Node, input: Node) -> void:
 	assert_true(p.global_position.x > start_x,
 		"player moved right via a real semantic move action (InputService path)")
 	assert_true(input.call("is_gameplay_active"), "still GAMEPLAY context after movement")
+
+	assert_not_null(cam, "the map has a Camera2D to follow with")
+	if cam != null:
+		# Let the smoothing settle so this does not depend on a single frame.
+		for _j in range(30):
+			await scene_tree.physics_frame
+		assert_true(cam.global_position.x > cam_start_x,
+			"camera tracked the player instead of staying at its authored position "
+			+ "(was %.1f, now %.1f)" % [cam_start_x, cam.global_position.x])
+		# And it must never be dragged outside the authored map bounds.
+		assert_true(cam.global_position.x >= float(cam.limit_left)
+			and cam.global_position.x <= float(cam.limit_right),
+			"camera stayed within the horizontal map limits while following")
 
 
 ## Stand the player in the active map's exit zone (teleport setup) and fire the exit via the

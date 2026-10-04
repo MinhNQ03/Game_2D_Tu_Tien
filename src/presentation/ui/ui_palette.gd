@@ -47,6 +47,18 @@ const COLOR_TEXT_DISABLED := Color(0.42, 0.45, 0.49)
 ## Key-badge background (the little "E"/"Esc" chip in a hint).
 const COLOR_BADGE := Color(0.17, 0.20, 0.24)
 
+## Key-badge border (jade keycap edge).
+const COLOR_BADGE_BORDER := Color(0.36, 0.78, 0.62, 0.85)
+
+## Text outline (D-034). Every text token above is LIGHT, so a dark stroke keeps labels
+## legible even where they sit over busy map art or a lighter surface. Cheap: it is a font
+## property, not an extra node or draw pass.
+const COLOR_TEXT_OUTLINE := Color(0.03, 0.04, 0.05, 0.9)
+
+## Outline stroke width in px. Godot grows the glyph outline outwards by this amount, so
+## keep it small - 3-4 reads as a clean 1px pixel-art stroke at our body/hint sizes.
+const TEXT_OUTLINE_SIZE := 4
+
 
 # --- Type scale --------------------------------------------------------------
 
@@ -113,10 +125,32 @@ const UI_TEXTURES := [
 ## declared per slot (read from each pack `.tres`): panels jade = 17; ink inset = 26/19;
 ## jade/silk buttons = L16 T14 R16 B18; the corner used as the key badge = 18.
 const PANEL_MARGIN := 17            # panel.png (jade, 218x118)
-const INSET_MARGIN := 24            # panel_inset.png (ink, 216x117 — authored 26/19, 24 safe)
+const INSET_MARGIN := 24            # panel_inset.png (ink, 216x117 - authored 26/19, 24 safe)
 const BUTTON_MARGIN := 16           # button_* (jade/silk, 130x54, border 16)
-const KEY_BADGE_MARGIN := 18        # key_badge.png (corner, 61x61, ~18 border)
+const KEY_BADGE_MARGIN := 18        # key_badge.png (corner ornament, 61x61) - see note below
 const PORTRAIT_MARGIN := 17         # portrait_frame.png (rosewood panel, 218x118)
+
+# --- MEASURED asset facts (D-034) --------------------------------------------
+# Taken from the actual PNGs, not estimated, because two of them were being used for the
+# wrong job and that is what made the Phase-06 HUD unreadable:
+#   panel.png        218x118  centre brightness 230  -> a LIGHT surface
+#   panel_inset.png  216x117  centre brightness  19  -> a DARK surface
+#   button_normal    130x54   centre brightness 193  -> light
+#   portrait_frame   218x118  centre brightness 229  -> a light PANEL, not a small frame
+#   key_badge.png    61x61    centre ALPHA 0         -> hollow corner ornament, NOT a keycap
+#   title_divider    136x21   centre brightness 120
+# Consequences, enforced by `UITheme`:
+#   * Every text token in this file is LIGHT, so a surface that carries text must be DARK ->
+#     `panel_stylebox()` uses the INSET (dark) texture. Light `panel.png` behind light text
+#     is what produced "white text on a white plate".
+#   * `key_badge.png` has a transparent centre, so it cannot back a key glyph; the keycap is
+#     drawn as a deliberate flat chip instead (see `UITheme.badge_stylebox`).
+#   * A 218x118 texture cannot be a 40x40 portrait slot; a `TextureRect` left at its default
+#     `expand_mode` reports the full texture size as its minimum and blows the layout apart.
+
+## Surface brightness (0-255) above which light text stops being readable, so the surface
+## must NOT be used behind the light text tokens. Asserted by the UI theme test.
+const SURFACE_LIGHT_BRIGHTNESS_LIMIT := 120
 
 ## Kept for backward compatibility / the default `_texture_box` margin (panels/portrait).
 const NINE_PATCH_MARGIN := 17

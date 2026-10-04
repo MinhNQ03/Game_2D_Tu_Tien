@@ -22,12 +22,14 @@ func test_player_damages_dummy() -> void:
 	await scene_tree.process_frame
 
 	var dummy_start: int = dummy.get_current_health()
-	var expected: int = DamageRulesScript.compute_hit(player.get_attack_power(), dummy.get_defense())
+	var expected: int = DamageRulesScript.compute_hit(
+		player.get_attack_power(), dummy.get_defense())
 	assert_true(expected > 0, "a hit deals positive damage")
 
 	var applied: int = dummy.take_damage(expected)
 	assert_eq(applied, expected, "dummy takes the computed hit")
-	assert_eq(dummy.get_current_health(), dummy_start - expected, "dummy HP dropped by exactly the hit")
+	assert_eq(dummy.get_current_health(), dummy_start - expected,
+		"dummy HP dropped by exactly the hit")
 
 	free_node(player)
 	free_node(dummy)
@@ -41,12 +43,14 @@ func test_dummy_damages_player() -> void:
 	await scene_tree.process_frame
 
 	var player_start: int = player.get_current_health()
-	var expected: int = DamageRulesScript.compute_hit(dummy.get_attack_power(), player.get_defense())
+	var expected: int = DamageRulesScript.compute_hit(
+		dummy.get_attack_power(), player.get_defense())
 	assert_true(expected > 0, "the dummy's retaliation deals positive damage")
 
 	var applied: int = player.take_damage(expected)
 	assert_eq(applied, expected, "player takes the dummy's hit (bidirectional)")
-	assert_eq(player.get_current_health(), player_start - expected, "player HP dropped by exactly the hit")
+	assert_eq(player.get_current_health(), player_start - expected,
+		"player HP dropped by exactly the hit")
 
 	free_node(player)
 	free_node(dummy)

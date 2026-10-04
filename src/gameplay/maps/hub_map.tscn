@@ -11,7 +11,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/sects/emblem_azure_cloud.png" id="9_emblem"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
-size = Vector2(480, 16)
+size = Vector2(992, 16)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
 size = Vector2(40, 48)
@@ -20,7 +20,7 @@ size = Vector2(40, 48)
 script = ExtResource("1_map")
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(240, 160)
+position = Vector2(496, 304)
 
 [node name="Visual" type="Node2D" parent="."]
 
@@ -28,54 +28,54 @@ position = Vector2(240, 160)
 texture_filter = 1
 tile_set = ExtResource("3_tileset")
 script = ExtResource("4_ground")
-fill_rect = Rect2i(1, 1, 28, 18)
+fill_rect = Rect2i(1, 1, 60, 36)
 
 [node name="Decor" type="Node2D" parent="Visual"]
 
 [node name="SectBanner" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(240, 56)
+position = Vector2(496, 96)
 scale = Vector2(2, 2)
 texture = ExtResource("9_emblem")
 
 [node name="TreeNW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(64, 72)
+position = Vector2(120, 120)
 texture = ExtResource("6_tree")
 
 [node name="TreeSW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(64, 248)
+position = Vector2(120, 480)
 texture = ExtResource("6_tree")
 
 [node name="PlanterN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(168, 80)
+position = Vector2(320, 140)
 texture = ExtResource("8_planter")
 
 [node name="PlanterS" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(168, 240)
+position = Vector2(320, 460)
 texture = ExtResource("8_planter")
 
 [node name="RockN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(330, 88)
+position = Vector2(660, 152)
 texture = ExtResource("7_rock")
 
 [node name="RockS" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(330, 236)
+position = Vector2(660, 452)
 texture = ExtResource("7_rock")
 
 [node name="LanternN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(448, 108)
+position = Vector2(900, 240)
 texture = ExtResource("5_lantern")
 
 [node name="LanternS" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(448, 212)
+position = Vector2(900, 368)
 texture = ExtResource("5_lantern")
 
 [node name="Collision" type="Node2D" parent="."]
@@ -83,26 +83,26 @@ texture = ExtResource("5_lantern")
 [node name="Walls" type="Node2D" parent="Collision"]
 
 [node name="WallTop" type="StaticBody2D" parent="Collision/Walls"]
-position = Vector2(240, 8)
+position = Vector2(496, 8)
 
 [node name="ShapeTop" type="CollisionShape2D" parent="Collision/Walls/WallTop"]
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="WallBottom" type="StaticBody2D" parent="Collision/Walls"]
-position = Vector2(240, 312)
+position = Vector2(496, 600)
 
 [node name="ShapeBottom" type="CollisionShape2D" parent="Collision/Walls/WallBottom"]
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="WallLeft" type="StaticBody2D" parent="Collision/Walls"]
-position = Vector2(8, 160)
+position = Vector2(8, 304)
 rotation = 1.5707963
 
 [node name="ShapeLeft" type="CollisionShape2D" parent="Collision/Walls/WallLeft"]
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="WallRight" type="StaticBody2D" parent="Collision/Walls"]
-position = Vector2(472, 160)
+position = Vector2(984, 304)
 rotation = 1.5707963
 
 [node name="ShapeRight" type="CollisionShape2D" parent="Collision/Walls/WallRight"]
@@ -113,15 +113,15 @@ shape = SubResource("RectangleShape2D_wall_h")
 [node name="Spawns" type="Node2D" parent="."]
 
 [node name="spawn_default" type="Marker2D" parent="Spawns"]
-position = Vector2(240, 160)
+position = Vector2(496, 304)
 
 [node name="from_field" type="Marker2D" parent="Spawns"]
-position = Vector2(420, 160)
+position = Vector2(900, 304)
 
 [node name="Exits" type="Node2D" parent="."]
 
 [node name="ExitToField" type="Area2D" parent="Exits"]
-position = Vector2(448, 160)
+position = Vector2(944, 304)
 script = ExtResource("2_exit")
 exit_id = &"exit_to_field"
 

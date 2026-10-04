@@ -94,7 +94,8 @@ func register_sect(state: SectState, template: SectTemplateData) -> bool:
 		push_error("[sect] register_sect got null state")
 		return false
 	if template == null or not template.is_valid():
-		push_error("[sect] register_sect '%s': null/invalid template" % (state.id if state else &""))
+		push_error("[sect] register_sect '%s': null/invalid template"
+			% (state.id if state else &""))
 		return false
 	if not _store.add(state):
 		return false
@@ -145,13 +146,14 @@ func join_member(
 		var low := template.lowest_rank() if template != null else null
 		resolved_rank = low.rank_id if low != null else &""
 	if template == null or not template.has_rank(resolved_rank):
-		push_error("[sect] join_member: rank '%s' not in sect '%s' ladder" % [resolved_rank, sect_id])
+		push_error("[sect] join_member: rank '%s' not in sect '%s' ladder"
+			% [resolved_rank, sect_id])
 		return false
 	# Character must exist (if a resolver is installed) — never invent a character (§10).
 	if not _character_exists(character_id):
 		push_error("[sect] join_member: character '%s' does not exist" % character_id)
 		return false
-	sect._set_member_rank(character_id, resolved_rank)
+	sect.write_member_rank(character_id, resolved_rank)
 	_write_character_cache(character_id, sect_id, resolved_rank)
 	member_joined.emit(sect_id, character_id, resolved_rank)
 	return true
@@ -168,7 +170,7 @@ func leave_member(sect_id: StringName, character_id: StringName) -> bool:
 		push_error("[sect] leave_member: '%s' not in sect '%s'" % [character_id, sect_id])
 		return false
 	var was_leader := sect.leader_ref == character_id
-	sect._remove_member(character_id)
+	sect.erase_member(character_id)
 	_clear_character_cache(character_id)
 	member_left.emit(sect_id, character_id)
 	if was_leader:
@@ -189,7 +191,7 @@ func change_rank(sect_id: StringName, character_id: StringName, rank_id: StringN
 	if template == null or not template.has_rank(rank_id):
 		push_error("[sect] change_rank: rank '%s' not in sect '%s' ladder" % [rank_id, sect_id])
 		return false
-	sect._set_member_rank(character_id, rank_id)
+	sect.write_member_rank(character_id, rank_id)
 	_write_character_cache(character_id, sect_id, rank_id)
 	member_rank_changed.emit(sect_id, character_id, rank_id)
 	return true
@@ -207,8 +209,8 @@ func assign_leader(sect_id: StringName, character_id: StringName) -> bool:
 		push_error("[sect] assign_leader: '%s' not in sect '%s'" % [character_id, sect_id])
 		return false
 	if character_id != &"":
-		sect._remove_elder(character_id)  # leader and elder are mutually exclusive
-	sect._set_leader(character_id)
+		sect.erase_elder(character_id)  # leader and elder are mutually exclusive
+	sect.write_leader(character_id)
 	leader_changed.emit(sect_id, character_id)
 	return true
 
@@ -225,7 +227,7 @@ func assign_elder(sect_id: StringName, character_id: StringName) -> bool:
 	if sect.leader_ref == character_id:
 		push_error("[sect] assign_elder: '%s' is the leader (cannot also be elder)" % character_id)
 		return false
-	sect._add_elder(character_id)
+	sect.insert_elder(character_id)
 	return true
 
 
@@ -234,7 +236,7 @@ func remove_elder(sect_id: StringName, character_id: StringName) -> bool:
 	var sect := _require_sect(sect_id, "remove_elder")
 	if sect == null:
 		return false
-	sect._remove_elder(character_id)
+	sect.erase_elder(character_id)
 	return true
 
 
@@ -253,7 +255,7 @@ func adjust_resource(sect_id: StringName, resource_id: StringName, delta: int) -
 	var new_value := maxi(0, old_value + delta)
 	if new_value == old_value:
 		return old_value
-	sect._set_resource(resource_id, new_value)
+	sect.write_resource(resource_id, new_value)
 	resource_changed.emit(sect_id, resource_id, new_value)
 	return new_value
 
@@ -270,7 +272,7 @@ func set_reputation(sect_id: StringName, scope: StringName, value: int) -> bool:
 	var clamped := clampi(value, SectState.REP_MIN, SectState.REP_MAX)
 	if clamped == sect.get_reputation(scope):
 		return true
-	sect._set_reputation(scope, clamped)
+	sect.write_reputation(scope, clamped)
 	reputation_changed.emit(sect_id, scope, clamped)
 	return true
 
@@ -304,7 +306,7 @@ func add_territory(sect_id: StringName, region_id: StringName) -> bool:
 	if region_id == &"":
 		push_error("[sect] add_territory: empty region id")
 		return false
-	sect._add_territory(region_id)
+	sect.insert_territory(region_id)
 	return true
 
 
@@ -313,7 +315,7 @@ func remove_territory(sect_id: StringName, region_id: StringName) -> bool:
 	var sect := _require_sect(sect_id, "remove_territory")
 	if sect == null:
 		return false
-	sect._remove_territory(region_id)
+	sect.erase_territory(region_id)
 	return true
 
 
@@ -339,12 +341,12 @@ func clear_diplomacy(sect_id: StringName, other_sect_id: StringName) -> bool:
 	var b := _require_sect(other_sect_id, "clear_diplomacy")
 	if a == null or b == null:
 		return false
-	a._remove_ally(other_sect_id)
-	a._remove_enemy(other_sect_id)
-	b._remove_ally(sect_id)
-	b._remove_enemy(sect_id)
+	a.erase_ally(other_sect_id)
+	a.erase_enemy(other_sect_id)
+	b.erase_ally(sect_id)
+	b.erase_enemy(sect_id)
 	if _relationship != null:
-		_relationship.remove_edge(_edge_id(sect_id, other_sect_id))
+		_relationship.remove_edge(edge_id(sect_id, other_sect_id))
 	diplomacy_changed.emit(sect_id, other_sect_id, &"NONE")
 	return true
 
@@ -376,15 +378,15 @@ func _set_diplomacy(sect_id: StringName, other_sect_id: StringName, relation: St
 	# Sect state second: declared diplomacy is symmetric on both sects. Clear the opposite
 	# relation first so a pair is never both ally and enemy.
 	if want_ally:
-		a._remove_enemy(other_sect_id)
-		b._remove_enemy(sect_id)
-		a._add_ally(other_sect_id)
-		b._add_ally(sect_id)
+		a.erase_enemy(other_sect_id)
+		b.erase_enemy(sect_id)
+		a.insert_ally(other_sect_id)
+		b.insert_ally(sect_id)
 	else:
-		a._remove_ally(other_sect_id)
-		b._remove_ally(sect_id)
-		a._add_enemy(other_sect_id)
-		b._add_enemy(sect_id)
+		a.erase_ally(other_sect_id)
+		b.erase_ally(sect_id)
+		a.insert_enemy(other_sect_id)
+		b.insert_enemy(sect_id)
 	diplomacy_changed.emit(sect_id, other_sect_id, relation)
 	return true
 
@@ -396,7 +398,7 @@ func _set_diplomacy(sect_id: StringName, other_sect_id: StringName, relation: St
 func _ensure_edge(sect_id: StringName, other_sect_id: StringName, relation: StringName) -> bool:
 	if _relationship == null:
 		return true
-	var edge_id := _edge_id(sect_id, other_sect_id)
+	var edge_id := edge_id(sect_id, other_sect_id)
 	var store := _relationship.get_store()
 	var existing: RelationshipEdge = store.get_edge(edge_id) if store != null else null
 	if existing != null:
@@ -411,7 +413,7 @@ func _ensure_edge(sect_id: StringName, other_sect_id: StringName, relation: Stri
 
 ## Deterministic, stable edge id for a Sect↔Sect pair: endpoints sorted so A-B and B-A map to
 ## the SAME id (one edge per pair, §14).
-static func _edge_id(a: StringName, b: StringName) -> StringName:
+static func edge_id(a: StringName, b: StringName) -> StringName:
 	var sa := String(a)
 	var sb := String(b)
 	if sa <= sb:
@@ -434,7 +436,8 @@ func sync_character_cache() -> void:
 			_write_character_cache(member, s.id, s.rank_of(member))
 
 
-func _write_character_cache(character_id: StringName, sect_id: StringName, rank_id: StringName) -> void:
+func _write_character_cache(
+		character_id: StringName, sect_id: StringName, rank_id: StringName) -> void:
 	if not _character_resolver.is_valid():
 		return
 	var cs: CharacterState = _character_resolver.call(character_id)

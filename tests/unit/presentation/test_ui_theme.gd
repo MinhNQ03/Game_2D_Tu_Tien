@@ -53,8 +53,9 @@ func test_all_ui_textures_exist() -> void:
 	assert_true(UIThemeScript.textures_present(), "UITheme reports all textures present")
 
 
-## When the textures are present the theme must actually be asset-backed (StyleBoxTexture),
-## not the flat fallback — proving the UI uses REAL pixel-art assets, not programmatic boxes.
+## When the textures are present the panel/button must actually be asset-backed
+## (StyleBoxTexture), not the flat fallback — proving the UI uses REAL pixel-art assets.
+## The key badge is deliberately NOT asset-backed; see the dedicated test below.
 func test_theme_is_asset_backed_when_textures_present() -> void:
 	if not UIThemeScript.textures_present():
 		return  # textures not imported (shouldn't happen in CI); asset-contract test covers it
@@ -62,8 +63,61 @@ func test_theme_is_asset_backed_when_textures_present() -> void:
 		"panel uses an asset-backed StyleBoxTexture")
 	assert_true(UIThemeScript.button_stylebox("normal") is StyleBoxTexture,
 		"button uses an asset-backed StyleBoxTexture")
-	assert_true(UIThemeScript.badge_stylebox() is StyleBoxTexture,
-		"key badge uses an asset-backed StyleBoxTexture")
+	assert_true(UIThemeScript.accent_panel_stylebox() is StyleBoxTexture,
+		"the light accent plate uses an asset-backed StyleBoxTexture")
+
+
+## REGRESSION GUARD (D-034): the text-bearing panel must use the DARK ink texture.
+##
+## `panel.png` was measured at centre brightness 230 (near white) while every text token in
+## UIPalette is light, so pairing them rendered near-white text on a near-white plate — the
+## unreadable Phase-06 HUD. If someone points `panel_stylebox()` back at `TEX_PANEL`, this
+## fails instead of shipping an invisible HUD again.
+func test_text_panel_uses_the_dark_surface() -> void:
+	if not UIThemeScript.textures_present():
+		return
+	var box := UIThemeScript.panel_stylebox() as StyleBoxTexture
+	assert_not_null(box, "panel stylebox is texture-backed")
+	assert_not_null(box.texture, "panel stylebox carries a texture")
+	assert_eq(box.texture.resource_path, UIPaletteScript.TEX_PANEL_INSET,
+		"the panel that carries light text uses the DARK inset texture, not the light plate")
+
+
+## REGRESSION GUARD (D-034): text must never be drawn on top of the 9-slice border band.
+## The border band does not stretch, so a content margin SMALLER than the texture margin
+## pushes glyphs onto the frame art (what made the Phase-06 panels look clipped).
+func test_panel_content_margin_clears_the_frame_border() -> void:
+	if not UIThemeScript.textures_present():
+		return
+	var box := UIThemeScript.panel_stylebox() as StyleBoxTexture
+	assert_true(box.content_margin_left >= box.texture_margin_left,
+		"left content margin clears the 9-slice border")
+	assert_true(box.content_margin_top >= box.texture_margin_top,
+		"top content margin clears the 9-slice border")
+	assert_true(box.content_margin_right >= box.texture_margin_right,
+		"right content margin clears the 9-slice border")
+	assert_true(box.content_margin_bottom >= box.texture_margin_bottom,
+		"bottom content margin clears the 9-slice border")
+
+
+## REGRESSION GUARD (D-034): the key badge is a deliberate FLAT chip, not the pack texture.
+## `key_badge.png` is a 61x61 corner ornament whose centre pixel is fully TRANSPARENT, so it
+## cannot back a key glyph; 9-slicing it to keycap size collapsed its border bands and the
+## prompts rendered as smudges. A keycap needs a solid contrasting fill.
+func test_key_badge_is_a_solid_chip_not_the_hollow_ornament() -> void:
+	var badge := UIThemeScript.badge_stylebox()
+	assert_true(badge is StyleBoxFlat,
+		"the keycap is a solid flat chip (key_badge.png has a transparent centre)")
+	var flat := badge as StyleBoxFlat
+	assert_true(flat.bg_color.a > 0.5, "the keycap has an opaque fill behind the glyph")
+
+
+## The light text tokens rely on an outline to stay readable over map art / lighter plates.
+func test_theme_gives_text_a_readable_outline() -> void:
+	var theme: Theme = UIThemeScript.build()
+	assert_true(theme.has_color("font_outline_color", "Label"), "Label has an outline colour")
+	assert_true(theme.has_constant("outline_size", "Label"), "Label has an outline size")
+	assert_true(theme.get_constant("outline_size", "Label") > 0, "the outline is visible")
 
 
 ## The palette tokens the menu/HUD read must be present and sane.

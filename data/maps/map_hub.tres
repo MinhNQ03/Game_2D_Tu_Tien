@@ -15,6 +15,6 @@ id = &"map_hub"
 name_key = "UI_MAP_HUB_NAME"
 scene_key = "map_hub"
 scene_path = "res://src/gameplay/maps/hub_map.tscn"
-bounds = Rect2(16, 16, 448, 288)
+bounds = Rect2(16, 16, 960, 576)
 default_spawn_id = &"spawn_default"
 exits = [SubResource("MapExit_to_field")]

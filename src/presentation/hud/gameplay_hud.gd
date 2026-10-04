@@ -22,6 +22,13 @@ const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
 const SECT_PANEL_ACTION := &"sect_panel"
 
+## Side of the square portrait well. The frame art is 218x118 (D-034), so it is nine-patched
+## down to this size rather than used at its native size.
+const PORTRAIT_SLOT_PX := 48
+
+## Side of the small sect emblem chip in the identity panel.
+const SECT_EMBLEM_PX := 20
+
 var _loc: Node = null
 var _input: Node = null
 var _bus: Node = null
@@ -67,6 +74,10 @@ func _build_ui() -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The HUD must wear the shared theme like the menu does (D-034). A CanvasLayer cannot
+	# hold a Theme, so it goes on this root Control and every panel/label below inherits the
+	# asset-backed styles AND the text outline that keeps light text readable over map art.
+	root.theme = UITheme.build()
 	add_child(root)
 
 	# --- Top-left: identity panel (portrait slot + name/title) --------------------
@@ -80,10 +91,17 @@ func _build_ui() -> void:
 	identity_panel.add_child(identity_row)
 
 	# Portrait frame slot (empty well for now; a portrait texture drops in later).
-	var portrait := TextureRect.new()
+	# A NinePatchRect, NOT a TextureRect: `portrait_frame.png` is 218x118 (measured, D-034)
+	# and a TextureRect reports its whole texture as the minimum size, which is what pushed a
+	# giant empty rosewood plate over the identity text. Nine-patching keeps the frame's
+	# corners crisp at the small size we actually want (`06-art-assets.md` nine-slice rule).
+	var portrait := NinePatchRect.new()
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.custom_minimum_size = Vector2(40, 40)
+	portrait.custom_minimum_size = Vector2(PORTRAIT_SLOT_PX, PORTRAIT_SLOT_PX)
+	portrait.patch_margin_left = UIPalette.PORTRAIT_MARGIN
+	portrait.patch_margin_right = UIPalette.PORTRAIT_MARGIN
+	portrait.patch_margin_top = UIPalette.PORTRAIT_MARGIN
+	portrait.patch_margin_bottom = UIPalette.PORTRAIT_MARGIN
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if ResourceLoader.exists(UIPalette.TEX_PORTRAIT_FRAME):
 		portrait.texture = load(UIPalette.TEX_PORTRAIT_FRAME)
@@ -112,7 +130,11 @@ func _build_ui() -> void:
 	_sect_emblem = TextureRect.new()
 	_sect_emblem.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_sect_emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_sect_emblem.custom_minimum_size = Vector2(16, 16)
+	# EXPAND_IGNORE_SIZE is required for `custom_minimum_size` to actually govern: the
+	# default EXPAND_KEEP_SIZE makes a TextureRect report its full texture as its minimum,
+	# so the chip would grow to the emblem's native size and shove the layout around (D-034).
+	_sect_emblem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_sect_emblem.custom_minimum_size = Vector2(SECT_EMBLEM_PX, SECT_EMBLEM_PX)
 	_sect_emblem.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sect_chip.add_child(_sect_emblem)
 
@@ -148,6 +170,10 @@ func _build_ui() -> void:
 	prompt_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	prompt_panel.position = Vector2(UIPalette.SPACE_MD, -UIPalette.SPACE_MD)
 	prompt_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	# Grow RIGHT from the left edge but never past it; `grow_horizontal` defaults to END,
+	# which is what we want here — the explicit set documents that the row is bottom-LEFT
+	# anchored and is why the prompts must stay narrow (one badge + one short label each).
+	prompt_panel.grow_horizontal = Control.GROW_DIRECTION_END
 	root.add_child(prompt_panel)
 
 	var prompt_box := HBoxContainer.new()
@@ -164,16 +190,18 @@ func _build_ui() -> void:
 	prompt_box.add_child(_menu_row)
 
 	# --- Sect detail panel (Phase 06): hidden until the player presses `sect_panel` ----
-	var sect_panel_anchor := Control.new()
-	sect_panel_anchor.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	sect_panel_anchor.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	sect_panel_anchor.grow_vertical = Control.GROW_DIRECTION_BOTH
-	sect_panel_anchor.position = Vector2(-UIPalette.SPACE_MD, 0)
-	sect_panel_anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(sect_panel_anchor)
+	# Anchored on the PANEL ITSELF, directly under `root`. The previous version wrapped it in
+	# an empty size-0 Control and set `grow_horizontal = BEGIN` on that WRAPPER; growth
+	# direction does not propagate to children, so the panel still grew END (rightwards) from
+	# the right edge and ~95% of it sat outside the viewport — only a sliver of its jade frame
+	# was visible, which read as "pressing T does nothing" (D-034).
 	_sect_panel = SectPanelScript.new() as SectPanel
+	_sect_panel.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	_sect_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_sect_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_sect_panel.position = Vector2(-UIPalette.SPACE_MD, 0)
 	_sect_panel.visible = false
-	sect_panel_anchor.add_child(_sect_panel)
+	root.add_child(_sect_panel)
 
 
 ## A framed HUD panel wearing the shared 9-slice panel style.

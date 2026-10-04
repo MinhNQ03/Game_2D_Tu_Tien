@@ -17,6 +17,17 @@ const REQUIRED_CONTAINERS := [CONTAINER_SYSTEMS, CONTAINER_WORLD, CONTAINER_UI]
 
 const MENU_SCENE := "res://src/presentation/menus/main_menu.tscn"
 
+## The settings screen (D-035). Like the menu it is a plain `Control` parented under
+## `Main/UI`, NOT a SceneRouter scene: the router owns the CONTENT scene under `Main/World`
+## (the map), while menus/overlays are UI. It is shown INSTEAD of the menu and hands control
+## back via `close_requested`, so the lifecycle phase never changes (we stay in MENU).
+const SETTINGS_SCRIPT := "res://src/presentation/menus/settings_menu.gd"
+
+## Player preferences on disk (D-035). Read here at boot to restore the chosen language;
+## written by the settings screen. A RefCounted helper, NOT a new autoload — the D-017
+## autoload budget stays at five.
+const SettingsStoreScript := preload("res://src/infrastructure/settings_store.gd")
+
 ## PHASE 03: New Game now enters the WORLD via `WorldRuntime` (a node under `Main/Systems`),
 ## which owns the per-session persistent Player and loads the first MAP (the hub) through
 ## SceneRouter. This replaces the Phase-02 single `FIRST_SCENE_KEY` wiring — maps are now
@@ -52,6 +63,7 @@ const REQUIRED_AUTOLOADS := [
 ]
 
 var _menu: Control = null
+var _settings: Control = null  # settings screen while open (D-035); null otherwise
 var _world: Node = null   # WorldRuntime (per-session world/map coordinator), under Systems
 # RelationshipRuntime (per-session relationship graph), under Systems (D-026).
 var _relationship: Node = null
@@ -96,6 +108,10 @@ func _boot() -> void:
 		push_error("[boot] begin_initialization rejected; aborting boot")
 		return
 
+	# Apply the player's saved language BEFORE any UI is built, so the menu renders in the
+	# right language on the first frame (no visible flip). D-035.
+	_apply_saved_language()
+
 	# Give the router its content host (the World node). Map scene_keys are registered by
 	# WorldRuntime at session start, not here (catalog-driven — D-021).
 	router.call("set_scene_host", get_node(CONTAINER_WORLD))
@@ -119,6 +135,24 @@ func _boot() -> void:
 	_event_bus().call("emit_game_booted")
 
 	_show_menu()
+
+
+## Apply the language the player last chose in Settings (D-035).
+##
+## The bootstrap reads the preference and the `Localization` service applies it; the service
+## itself never touches disk, so unit tests can switch language freely without leaving a
+## stale file behind (see the persistence note in `localization.gd`). Absent/invalid values
+## are ignored — `Localization.DEFAULT_LANGUAGE` (vi) then stands. Non-fatal by design: a
+## preferences problem must never stop the game from booting.
+func _apply_saved_language() -> void:
+	var loc := get_node_or_null("/root/Localization")
+	if loc == null:
+		return
+	var saved := SettingsStoreScript.new().get_language()
+	if saved == "":
+		return  # first run: no choice stored yet
+	if not bool(loc.call("set_language", saved)):
+		push_warning("[boot] saved language '%s' is not supported; keeping default" % saved)
 
 
 ## Instantiate the WorldRuntime node under Systems and connect its return-to-menu intent.
@@ -196,10 +230,16 @@ func _show_menu() -> void:
 	_menu = packed.instantiate() as Control
 	get_node(CONTAINER_UI).add_child(_menu)
 	_menu.connect("new_game_pressed", _on_new_game_pressed)
+	_menu.connect("settings_pressed", _on_settings_pressed)
 	_menu.connect("quit_pressed", _on_quit_pressed)
 
 
 func _hide_menu() -> void:
+	# Close settings with the menu: it is a child of the menu flow, so leaving it parented
+	# while the session starts would strand a Control over the running game.
+	if _settings != null and is_instance_valid(_settings):
+		_settings.queue_free()
+	_settings = null
 	if _menu != null and is_instance_valid(_menu):
 		_menu.queue_free()
 	_menu = null
@@ -284,7 +324,8 @@ func _start_sect_session() -> void:
 		return
 	# The hub map loaded during world start_session (BEFORE the sect session existed), so push
 	# the now-available sect view into the already-active map's HUD.
-	if _world != null and is_instance_valid(_world) and _world.has_method("refresh_active_map_sect_view"):
+	if _world != null and is_instance_valid(_world) \
+			and _world.has_method("refresh_active_map_sect_view"):
 		_world.call("refresh_active_map_sect_view")
 
 
@@ -303,6 +344,47 @@ func _on_return_to_menu() -> void:
 	if gs != null and gs.call("is_session_active"):
 		gs.call("end_session")
 	_show_menu()
+
+
+## Settings intent from the menu (D-035): show the settings screen OVER the menu.
+##
+## The menu is HIDDEN, not freed, and `GameState` is not touched at all — we are already in
+## the MENU phase and settings is not a lifecycle step. Re-running `_show_menu()` on the way
+## back would ask for an `enter_menu` transition we are already in, so this path deliberately
+## avoids it: settings opens and closes as pure UI.
+func _on_settings_pressed() -> void:
+	if _settings != null and is_instance_valid(_settings):
+		return  # already open
+	var script: GDScript = load(SETTINGS_SCRIPT) as GDScript
+	if script == null:
+		push_error("[main] failed to load settings screen: %s" % SETTINGS_SCRIPT)
+		return
+	var screen: Control = script.new() as Control
+	if screen == null:
+		push_error("[main] settings screen is not a Control")
+		return
+	_settings = screen
+	get_node(CONTAINER_UI).add_child(_settings)
+	_settings.connect("close_requested", _on_settings_closed)
+	if _menu != null and is_instance_valid(_menu):
+		_menu.visible = false
+
+
+## Back from settings: drop the screen and reveal the menu again (no lifecycle change).
+func _on_settings_closed() -> void:
+	if _settings != null and is_instance_valid(_settings):
+		_settings.queue_free()
+	_settings = null
+	if _menu != null and is_instance_valid(_menu):
+		_menu.visible = true
+	else:
+		# The menu went away while settings was open (not expected) — rebuild it properly.
+		_show_menu()
+
+
+## Is the settings screen currently open? (for tests)
+func is_settings_open() -> bool:
+	return _settings != null and is_instance_valid(_settings)
 
 
 func _on_quit_pressed() -> void:

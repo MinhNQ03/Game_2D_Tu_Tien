@@ -51,3 +51,8 @@ UI_SECT_PANEL_TERRITORY,Territory,Lãnh Địa
 UI_SECT_PANEL_RESOURCES,Resources,Tài Nguyên
 UI_SECT_PANEL_NONE,You do not belong to a sect.,Bạn chưa gia nhập tông môn nào.
 UI_SECT_PANEL_TOGGLE,Sect,Tông Môn
+UI_SETTINGS_TITLE,Settings,Thiết Lập
+UI_SETTINGS_LANGUAGE_HINT,Choose the language used across the game.,Chọn ngôn ngữ dùng trong toàn bộ game.
+UI_SETTINGS_BACK,Back,Quay lại
+UI_LANGUAGE_VI,Tiếng Việt,Tiếng Việt
+UI_LANGUAGE_EN,English,English

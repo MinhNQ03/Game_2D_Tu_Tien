@@ -72,11 +72,24 @@ assets/
 - **UI is pixel art too**: nearest filter, mipmaps off, like the world art. The project
   default `rendering/textures/canvas_textures/default_texture_filter=0` (nearest) applies;
   UI `TextureRect`s also set `texture_filter = nearest` locally.
-- **9-slice is mandatory for stretchable frames.** Panel/button/badge textures carry a
+- **9-slice is mandatory for stretchable frames.** Panel/button/frame textures carry a
   documented, non-stretched border MARGIN consumed as the `StyleBoxTexture.texture_margin`
-  (declared per slot in `UIPalette` — e.g. panel 17, inset 24, button 16, key-badge 18 for the
+  (declared per slot in `UIPalette` — panel 17, inset 24, button 16, portrait 17 for the
   current Xianxia set). Only the center stretches, so corners stay crisp at any panel size —
   never scale a whole pixel-art frame with fractional/stretch that distorts corners.
+- **`content_margin >= texture_margin`** on every framed box. The border band does not
+  stretch, so a smaller content margin draws text on top of the frame art (D-034).
+- **MEASURE an asset before building colour/layout on it** (D-034, L-021): pixel size, centre
+  alpha (is there a fill to draw on?) and centre brightness (light or dark surface?). The
+  measured numbers for the current set are recorded in `ui_palette.gd`. Two consequences worth
+  knowing: `panel.png` is a LIGHT plate (brightness 230) so it must NOT sit behind this
+  project's light-only text palette — `panel_stylebox()` uses the dark ink inset and the light
+  plate is `accent_panel_stylebox()`; and `key_badge.png` is a HOLLOW corner ornament (centre
+  alpha 0), not a keycap, so the key chip is drawn as a flat `StyleBoxFlat` until real keycap
+  art exists.
+- **A frame belongs in a `NinePatchRect`.** A `TextureRect` used as a fixed-size slot MUST set
+  `expand_mode = EXPAND_IGNORE_SIZE`, otherwise it reports its whole texture as its minimum
+  size and `custom_minimum_size` silently does nothing (D-034).
 - **Integer scaling only** for pixel UI; no fractional scale that blurs edges.
 - **Single source of truth for UI tokens + asset paths**: `src/presentation/ui/ui_palette.gd`
   (colors, type scale, spacing, texture paths, per-slot 9-slice margins) → `ui_theme.gd` builds
@@ -98,6 +111,10 @@ assets/
   live UI language is Xianxia.
 - The Xianxia UI is a **production foundation**, still subject to incremental polish under
   Continuous Visual Integration (`docs/ROADMAP.md`); it is not frozen as final.
+- **Not every slot is asset-backed any more (D-034).** The key-prompt chip is a drawn
+  `StyleBoxFlat` because the pack ships no keycap (its `key_badge.png` is a hollow corner
+  ornament). This is a deliberate, tested legibility trade, not an oversight; swap it back the
+  day real keycap art lands. `docs/ASSET_LICENSES.md` records the asset as unused for that slot.
 
 ## Fonts & localization
 

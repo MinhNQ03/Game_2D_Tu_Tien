@@ -137,7 +137,8 @@ func _validate_resources(errors: Array[String]) -> void:
 		if typeof(qty) != TYPE_INT:
 			errors.append("starting_resources['%s'] must be an int" % String(key))
 		elif int(qty) < 0:
-			errors.append("starting_resources['%s'] must be >= 0 (got %d)" % [String(key), int(qty)])
+			errors.append("starting_resources['%s'] must be >= 0 (got %d)"
+				% [String(key), int(qty)])
 
 
 func _validate_territory(errors: Array[String]) -> void:

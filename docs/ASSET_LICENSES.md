@@ -73,15 +73,15 @@ attribution; credited here anyway.
 
 | # | Repo file (slot) | Source file in pack | Type | License | Used in |
 |---|------------------|---------------------|------|---------|---------|
-| U1 | `assets/ui/xianxia/panels/panel.png` (218×118, m17) | `ui_xianxia_panel_01_jade.png` | UI panel | CC0 | framed menu/HUD panels (`UITheme.panel_stylebox`) |
-| U2 | `assets/ui/xianxia/panels/panel_inset.png` (216×117, m24) | `ui_xianxia_panel_01_ink.png` | UI panel | CC0 | inset/well surfaces (`UITheme.inset_stylebox`) |
+| U1 | `assets/ui/xianxia/panels/panel.png` (218×118, m17) | `ui_xianxia_panel_01_jade.png` | UI panel | CC0 | decorative/accent plates only (`UITheme.accent_panel_stylebox`) — **not** behind light text, see D-034 |
+| U2 | `assets/ui/xianxia/panels/panel_inset.png` (216×117, m24) | `ui_xianxia_panel_01_ink.png` | UI panel | CC0 | **the text-bearing surface**: menu + HUD panels (`UITheme.panel_stylebox`) and inset wells (D-034) |
 | U3 | `assets/ui/xianxia/buttons/button_normal.png` (130×54, m16) | `ui_xianxia_button_01_jade_normal.png` | UI button | CC0 | Button normal state |
 | U4 | `assets/ui/xianxia/buttons/button_hover.png` | `ui_xianxia_button_01_jade_hover.png` | UI button | CC0 | Button hover state |
 | U5 | `assets/ui/xianxia/buttons/button_pressed.png` | `ui_xianxia_button_01_jade_pressed.png` | UI button | CC0 | Button pressed state |
 | U6 | `assets/ui/xianxia/buttons/button_disabled.png` | `ui_xianxia_button_01_silk_normal.png` | UI button | CC0 | Button disabled (Load Game / Settings) |
 | U7 | `assets/ui/xianxia/buttons/button_focus.png` | `ui_xianxia_button_01_silk_hover.png` | UI button | CC0 | Button keyboard-focus ring |
-| U8 | `assets/ui/xianxia/frames/key_badge.png` (61×61, m18) | `ui_xianxia_01_corner.png` | UI frame | CC0 | `UIKeyBadge` keycap chip ([E]/[Esc]) |
-| U9 | `assets/ui/xianxia/frames/portrait_frame.png` (218×118) | `ui_xianxia_panel_01_rosewood.png` | UI frame | CC0 | HUD character portrait slot |
+| U8 | `assets/ui/xianxia/frames/key_badge.png` (61×61, m18) | `ui_xianxia_01_corner.png` | UI frame | CC0 | **NOT USED at runtime (D-034)** — it is a hollow corner ornament (centre alpha 0), so it cannot back a key glyph; `UIKeyBadge` draws a flat chip instead. Kept for a future ornament slot. |
+| U9 | `assets/ui/xianxia/frames/portrait_frame.png` (218×118) | `ui_xianxia_panel_01_rosewood.png` | UI frame | CC0 | HUD character portrait slot, nine-patched down to 48×48 (D-034) |
 | U10 | `assets/ui/xianxia/frames/title_divider.png` (136×21) | `ui_xianxia_01_divider_jade.png` | UI ornament | CC0 | main-menu title divider |
 
 > **Retired (D-028):** the P4–P13 self-made `assets/ui/mana_soul/` prototype UI set and

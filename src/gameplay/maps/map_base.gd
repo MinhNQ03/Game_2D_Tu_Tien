@@ -40,6 +40,8 @@ var _active_exit: MapExit = null       # the exit (data) the player currently st
 var _active_zone: MapExitZone = null   # which zone set _active_exit (for exit tracking)
 var _hud: GameplayHUD = null           # presentation overlay (name/map/hints); owned here
 var _sect_view: SectMembershipView = null  # cached read-only sect view (Phase 06); pushed in
+var _camera: Camera2D = null           # this map's camera; follows the player (D-036)
+var _follow_target: Node2D = null      # the player node the camera tracks (resolved lazily)
 
 
 func _ready() -> void:
@@ -109,22 +111,95 @@ func set_sect_view(view: SectMembershipView) -> void:
 
 # --- Camera (data-driven limits from MapData.bounds; shared zoom baseline) ---
 
-## Shared camera zoom baseline for all maps. At 2x, the 16px pixel-art tiles
-## (`06-art-assets.md`) read at a comfortable size on the default window without per-map
-## tuning. It is a single baseline (not per-MapData) by decision (D-023): a map's framing
-## differs by its `bounds`, not by a bespoke zoom. Integer factor keeps pixels crisp.
-const CAMERA_ZOOM := Vector2(2.0, 2.0)
+## Minimum camera zoom for all maps. At 2x the 16px pixel-art tiles (`06-art-assets.md`)
+## read at a comfortable size. It is a FLOOR, not a fixed value (D-034): see
+## `_resolve_camera_zoom` for why a fixed zoom left the map smaller than the screen.
+const CAMERA_ZOOM_MIN := 2.0
+
+## Hard ceiling so a tiny future map cannot zoom in absurdly far.
+const CAMERA_ZOOM_MAX := 8.0
+
+## How quickly the camera eases toward the player (Camera2D position smoothing). Responsive
+## enough to keep the player near centre, soft enough not to feel rigidly bolted on.
+const CAMERA_SMOOTHING_SPEED := 8.0
+
+
+## Zoom that guarantees the visible world is never LARGER than the map.
+##
+## The camera shows `viewport_size / zoom` world pixels. With the old fixed 2x and the
+## default 1152x648 viewport that was 576x324, while the hub's bounds were then only
+## 448x288 - so the view could not be clamped inside the camera limits and the uncovered
+## strip showed through as the engine's grey clear colour ("the map does not fill the screen
+## / the HUD floats outside the map"). The maps were subsequently authored larger than the
+## view (960x576, D-036) so there is room for the camera to actually travel.
+##
+## So the zoom is DERIVED: take the larger of the two axis ratios needed to cover `bounds`,
+## floor it at CAMERA_ZOOM_MIN, and round UP to a whole number to keep pixels crisp (integer
+## zoom avoids pixel-art shimmer). Works for any future map size without per-map tuning, and
+## falls back to the floor if the viewport/bounds are degenerate (e.g. headless with no
+## window), so tests never divide by zero.
+func _resolve_camera_zoom(bounds: Rect2) -> float:
+	var view := get_viewport_rect().size
+	if view.x <= 0.0 or view.y <= 0.0 or bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+		return CAMERA_ZOOM_MIN
+	var needed := maxf(view.x / bounds.size.x, view.y / bounds.size.y)
+	# No rounding up: ceil() turned a needed 3.01 into 4.0 and framed the player far too
+	# close (D-036). Maps are authored comfortably larger than the view, so `needed` is
+	# normally below the floor and the zoom lands exactly on the integer CAMERA_ZOOM_MIN;
+	# the fractional path only engages on an extreme window aspect, where covering the map
+	# matters more than a perfectly integer scale.
+	return clampf(maxf(needed, CAMERA_ZOOM_MIN), CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX)
+
 
 func _configure_camera_limits(bounds: Rect2) -> void:
 	var cam := get_node_or_null("Camera2D")
 	if cam == null or not (cam is Camera2D):
 		return
 	var camera := cam as Camera2D
-	camera.zoom = CAMERA_ZOOM
+	_camera = camera
+	var zoom := _resolve_camera_zoom(bounds)
+	camera.zoom = Vector2(zoom, zoom)
 	camera.limit_left = int(bounds.position.x)
 	camera.limit_top = int(bounds.position.y)
 	camera.limit_right = int(bounds.position.x + bounds.size.x)
 	camera.limit_bottom = int(bounds.position.y + bounds.size.y)
+	# Ease toward the player instead of snapping, so following does not amplify the pixel
+	# jitter of per-frame physics movement.
+	camera.position_smoothing_enabled = true
+	camera.position_smoothing_speed = CAMERA_SMOOTHING_SPEED
+
+
+## Keep the camera on the player.
+##
+## The map scene's `Camera2D` is a plain child node, so on its own it stays wherever the
+## scene authored it — a STATIC camera. That was invisible while the whole map fitted on
+## screen, but once the view is smaller than the map the player simply walks out of frame
+## (D-036). Updated in `_physics_process` because the player moves there too, so the camera
+## and the body advance in the same step; `position_smoothing` does the visual easing.
+##
+## The camera LIMITS (from `MapData.bounds`) still clamp the result, so following can never
+## reveal anything past the map edge. Cost is one node doing one assignment per physics
+## frame — the standard follow-camera cost, not a per-entity loop
+## (`05-performance-testing.md`).
+func _physics_process(_delta: float) -> void:
+	if _camera == null:
+		return
+	if _follow_target == null or not is_instance_valid(_follow_target):
+		_follow_target = _find_player_node()
+		if _follow_target == null:
+			return  # player not spawned/parented yet; try again next frame
+	_camera.global_position = _follow_target.global_position
+
+
+## The player node realized in this map (or null before WorldRuntime parents it).
+func _find_player_node() -> Node2D:
+	var host := get_player_host()
+	if host == null:
+		return null
+	for child in host.get_children():
+		if child is Player:
+			return child as Node2D
+	return null
 
 
 # --- Exit-zone binding (zones carry exit_id; data owns destination) ----------

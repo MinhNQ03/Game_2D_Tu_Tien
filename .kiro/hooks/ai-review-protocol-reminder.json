@@ -3,12 +3,11 @@
   "hooks": [
     {
       "name": "Enforce AI review protocol before completing a feature",
-      "trigger": "PreToolUse",
-      "description": "On a code-modifying tool use, remind the agent to follow the AI review protocol loop and pre-completion gates before declaring work done.",
-      "matcher": "fs_write|str_replace|fs_append",
+      "trigger": "Stop",
+      "description": "Nhắc chạy đủ các gate của 08-ai-review-protocol.md TRƯỚC KHI tuyên bố xong việc. Trigger là Stop (kết thúc một lượt agent), KHÔNG phải PreToolUse: bản cũ khớp fs_write|str_replace|fs_append nên chặn MỌI lần sửa file và buộc gọi lại tool y nguyên, làm mỗi edit tốn gấp đôi lượt và chậm kinh khủng. Mục đích của nhắc nhở này là 'trước khi kết thúc', và Stop đúng là thời điểm đó.",
       "action": {
         "type": "agent",
-        "prompt": "Before finishing: follow .kiro/steering/08-ai-review-protocol.md — READ → PLAN → IMPLEMENT → TEST → REVIEW → DOCS, and pass all pre-completion gates (architecture, dependency, side-effect, performance, regression, test, documentation). \"Build passes\" is not \"done\". For Godot changes, the authoritative test is: godot --headless --path . -s res://tests/run_tests.gd. Keep changes data-driven and respect the layer boundaries and the persistent/runtime/presentation partition for core systems."
+        "prompt": "Before declaring this work done, follow .kiro/steering/08-ai-review-protocol.md — READ → PLAN → IMPLEMENT → TEST → REVIEW → DOCS, and pass the pre-completion gates (architecture, dependency, side-effect, performance, regression, test, documentation). \"Build passes\" is not \"done\". Local gate: python tools/gdscript_lint.py --changed. Authoritative gate: the CI job \"Foundation gates (Godot 4.7)\" must be green (Godot is not runnable locally — D-009). Keep changes data-driven and respect the layer boundaries and the persistent/runtime/presentation partition for core systems."
       }
     }
   ]

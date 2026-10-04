@@ -307,3 +307,66 @@
   clean != compiles-clean under warnings-as-errors).
 - **Fixed:** Phase 06 (D-032). `sect_state.gd` `from_dict` now types the three staged arrays
   as `Variant` and casts on commit; CI `b3c98cc` green (all 9 gates).
+
+## L-021 — Using an art asset without MEASURING it (light plate behind light text, hollow ornament as a keycap, 218×118 texture as a 40×40 slot)
+- **Symptom (Phase 06 follow-up, D-034):** the HUD shipped broken four ways at once and every
+  cause was an unverified assumption about a PNG. Reading the actual files settled it in one
+  pass: `panel.png` has a centre brightness of **230** (near white) while every text token in
+  `UIPalette` is light (0.62–0.96) → "white text on a white plate"; `key_badge.png` has a
+  centre **alpha of 0** (it is a hollow corner ornament, not a keycap) so the glyph had no
+  backing and its two 18px border bands collapsed into each other at keycap size → prompts
+  rendered as smudges; `portrait_frame.png` is a **218×118 panel**, not a small frame, and a
+  `TextureRect` left at the default `expand_mode = EXPAND_KEEP_SIZE` reports its whole texture
+  as its minimum size, so `custom_minimum_size = Vector2(40,40)` was a no-op floor and a giant
+  empty plate covered the character name. None of this is visible in code review, and
+  `get_diagnostics`/the linter/the compile gate cannot see it.
+- **Rule:** **measure an asset before building layout or colour decisions on it.** Before
+  wiring a texture into a `StyleBox`/`TextureRect`/`NinePatchRect`, know its pixel size, its
+  centre alpha (is there a fill to draw on?) and its centre brightness (light or dark surface?)
+  — a 20-line stdlib PNG reader is enough, no Pillow needed. Then:
+  - a surface that CARRIES TEXT must contrast with the text palette; never pair a light plate
+    with a light-only palette "because the art looks nice";
+  - `content_margin >= texture_margin` on every 9-slice box, or glyphs draw on the frame band;
+  - a FRAME belongs in a `NinePatchRect`; a `TextureRect` used as a fixed-size slot MUST set
+    `expand_mode = EXPAND_IGNORE_SIZE` or its `custom_minimum_size` is ignored;
+  - record the measured numbers in the palette next to the margins they justify, and add a test
+    that asserts the pairing (e.g. "the text panel uses the DARK texture"), so the next art
+    pass cannot silently regress it.
+- **Also (layout):** **growth direction belongs to the node that grows.** A panel was wrapped in
+  an empty size-0 `Control` carrying `grow_horizontal = BEGIN`; growth does NOT propagate to
+  children, so the panel still grew the default direction (rightwards) from the right edge and
+  sat ~95% off-screen — which the player reported as "the key does nothing". Set anchors and
+  growth on the node being positioned, and prefer a container over an empty anchor node.
+- **Fixed:** D-034. Dark ink text plate + `accent_panel_stylebox()` for the light plate, drawn
+  flat keycap, text outline, HUD wears the shared theme, `NinePatchRect` portrait, sect panel
+  anchored on itself; four regression tests added.
+
+## L-022 — A static camera hides behind a view that happens to fit, and a hook on every edit taxes every edit
+- **Symptom A (D-036):** each map scene's `Camera2D` was a plain child parked at the map centre
+  and **nothing ever moved it** — there was no follow code anywhere, since Phase 03. It looked
+  correct for three phases purely because the whole map fitted on screen. The moment the view
+  became smaller than the map, the player walked straight out of frame. Compounding it: the
+  derived zoom used `ceil()`, turning a needed 3.01 into 4.0 (far too close), and a 448×288 map
+  is smaller than a 16:9 screen at any comfortable zoom, so "cover the map" and "let the camera
+  travel" were mutually exclusive until the map itself was authored larger.
+- **Rule A:** when a camera, viewport or scaling value changes, **ask what was only working
+  because the old value hid it.** "The whole level fits on screen" silently satisfies the
+  requirement "the camera shows the player" — so verify the mechanism exists, not just that the
+  result currently looks right. Camera framing has three coupled inputs (viewport size, zoom,
+  map bounds); changing one without checking the other two produces either background bleed or
+  an off-screen player. And when bounds and the painted floor are authored in SEPARATE files,
+  add a test comparing them (an L-014 drift guard) — they drive the camera limits.
+- **Symptom B (D-033):** the `PreToolUse` AI-review hook matched `fs_write|str_replace|fs_append`
+  with an `agent` action, so it intercepted EVERY file edit and the tool call had to be re-issued
+  — doubling the round trips for every single edit across a long session. Meanwhile the only
+  on-save hook ran `godot`, which is not on PATH (D-009), so it no-opped silently and delivered
+  zero value for a process spawn per save.
+- **Rule B:** **a hook's trigger must match its purpose, and a hook that cannot run is worse
+  than no hook.** A "before you declare done" reminder belongs on `Stop`, not on every write.
+  Scope `PostFileSave` matchers to the paths that matter and make the command check only what
+  changed (e.g. `git diff`-driven), not the whole project. If a hook depends on a binary that
+  the machine does not have, delete it or make its absence loud — do not leave a silent no-op
+  that costs time on every save and trains people to ignore hooks.
+- **Fixed:** D-033 (reminder moved to `Stop`, dead `godot` hook removed, lint hook scoped to
+  `^(src|tests|tools)/.*\.gd$` + `--changed`) and D-036 (camera follow in `MapBase`, no zoom
+  round-up, maps authored 960×576, bounds↔floor drift test, E2E proves the camera moved).

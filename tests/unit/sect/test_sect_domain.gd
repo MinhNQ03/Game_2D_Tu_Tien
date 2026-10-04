@@ -159,7 +159,8 @@ func test_6_malformed_state_rejected() -> void:
 		"elder not in roster fails closed")
 	assert_false(bad.from_dict({"id": "sect_a", "rank_by_character": {}, "resources": {"x": -5}}),
 		"negative resource fails closed")
-	assert_false(bad.from_dict({"id": "sect_a", "rank_by_character": {}, "reputation": {"world": 999}}),
+	assert_false(bad.from_dict(
+		{"id": "sect_a", "rank_by_character": {}, "reputation": {"world": 999}}),
 		"out-of-range reputation fails closed")
 	assert_false(bad.from_dict({"rank_by_character": {}}), "missing id fails closed")
 
@@ -342,7 +343,7 @@ func test_23_alliance_mirror_to_relationship() -> void:
 	var a := svc.get_store().get_sect(&"sect_a")
 	var b := svc.get_store().get_sect(&"sect_b")
 	assert_true(a.is_ally(&"sect_b") and b.is_ally(&"sect_a"), "symmetric declared alliance")
-	var edge_id := SectService._edge_id(&"sect_a", &"sect_b")
+	var edge_id := SectService.edge_id(&"sect_a", &"sect_b")
 	assert_true(svc.get_relationship_store().has_edge(edge_id), "mirrored relationship edge exists")
 
 
@@ -351,7 +352,7 @@ func test_24_enemy_mirror_to_relationship() -> void:
 	_reg(svc, &"sect_a")
 	_reg(svc, &"sect_b")
 	assert_true(svc.add_enemy(&"sect_a", &"sect_b"), "enmity declared")
-	var edge := svc.get_relationship_store().get_edge(SectService._edge_id(&"sect_a", &"sect_b"))
+	var edge := svc.get_relationship_store().get_edge(SectService.edge_id(&"sect_a", &"sect_b"))
 	assert_not_null(edge, "mirrored edge exists")
 	assert_eq(edge.relationship_type, &"ENEMY", "edge typed ENEMY")
 
@@ -374,7 +375,7 @@ func test_25_relationship_failure_rolls_back() -> void:
 
 
 func test_26_symmetric_sect_relationship() -> void:
-	assert_eq(SectService._edge_id(&"sect_a", &"sect_b"), SectService._edge_id(&"sect_b", &"sect_a"),
+	assert_eq(SectService.edge_id(&"sect_a", &"sect_b"), SectService.edge_id(&"sect_b", &"sect_a"),
 		"edge id is order-independent (one edge per pair)")
 
 
@@ -386,7 +387,7 @@ func test_27_duplicate_alliance_rejected() -> void:
 	assert_false(svc.add_alliance(&"sect_a", &"sect_b"), "duplicate alliance rejected")
 	# Flipping ally -> enemy retypes the single edge (no duplicate).
 	assert_true(svc.add_enemy(&"sect_a", &"sect_b"), "can switch to enemy")
-	var edge := svc.get_relationship_store().get_edge(SectService._edge_id(&"sect_a", &"sect_b"))
+	var edge := svc.get_relationship_store().get_edge(SectService.edge_id(&"sect_a", &"sect_b"))
 	assert_eq(edge.relationship_type, &"ENEMY", "edge retyped to ENEMY (single edge)")
 	var a := svc.get_store().get_sect(&"sect_a")
 	assert_false(a.is_ally(&"sect_b"), "no longer declared ally")

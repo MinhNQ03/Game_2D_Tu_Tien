@@ -16,7 +16,10 @@ class_name SectState
 ## MUTATION DISCIPLINE: callers do NOT edit the arrays/dicts here directly; every change goes
 ## through `SectService` (the single mutation path, §9). The members exposed here are read via
 ## *copy* accessors so a caller cannot mutate internal collections behind the service's back.
-## The service is in the same domain package and uses the private `_`-prefixed mutators.
+## Writes go through the documented SERVICE-ONLY raw writers at the bottom of this file
+## (`write_*` / `insert_*` / `erase_*`) - they do no validation, so calling one from outside
+## the sect domain bypasses every invariant. They are public because GDScript has no
+## package visibility (D-033); the invariant is enforced by review + tests, not a prefix.
 ##
 ## Phase 06 scope: identity, leadership, membership+rank, resources, territory, reputation,
 ## influence, declared allies/enemies. Factions/techniques/secrets/story-flags are NOT here
@@ -89,15 +92,21 @@ static func create_from_template(template: SectTemplateData) -> SectState:
 	var state := SectState.new()
 	state.id = template.id
 	state.template_id = template.id
-	# Seed economy (value copies — the state OWNS its numbers, never writes back to template).
+	# Seed economy through the raw writers (value copies - the state OWNS its numbers and
+	# never writes back into the shared template Resource). Going through the writers rather
+	# than touching the dicts/arrays directly keeps ALL storage mutation on one seam.
 	for key in template.starting_resources:
-		state._resources[String(key)] = int(template.starting_resources[key])
-	state._territory = template.starting_territory.duplicate()
+		state.write_resource(StringName(String(key)), int(template.starting_resources[key]))
+	for region in template.starting_territory:
+		state.insert_territory(region)
 	for scope in template.reputation_seed:
-		state._reputation[String(scope)] = int(template.reputation_seed[scope])
+		state.write_reputation(
+			StringName(String(scope)), int(template.reputation_seed[scope]))
 	state.influence = template.influence_seed
-	state._ally_sect_ids = template.default_ally_sect_ids.duplicate()
-	state._enemy_sect_ids = template.default_enemy_sect_ids.duplicate()
+	for ally in template.default_ally_sect_ids:
+		state.insert_ally(ally)
+	for enemy in template.default_enemy_sect_ids:
+		state.insert_enemy(enemy)
 	return state
 
 
@@ -183,66 +192,77 @@ func is_enemy(sect_id: StringName) -> bool:
 	return _enemy_sect_ids.has(sect_id)
 
 
-# --- Private mutators (SERVICE-ONLY; `_`-prefix = not a public API) ----------
-# The SectService (same domain package) is the single mutation path. These do the raw write;
-# ALL validation (membership invariants, clamping, rollback) lives in the service.
+# --- Raw writers (SERVICE-ONLY) ----------------------------------------------
+#
+# These perform the RAW write with NO validation: every membership invariant, clamp and
+# rollback lives in `SectService`, which is the single mutation path (§9). They are named
+# `write_*` / `insert_*` / `erase_*` so they read as low-level storage operations and never
+# shadow the validated service verbs (`join_member`, `add_alliance`, ...): if you are
+# calling one of these from outside the sect domain, you are bypassing the rules.
+#
+# They are PUBLIC on purpose. GDScript has no package/friend visibility, so the previous
+# `_`-prefixed form made `SectService` reach into another class's private API on every
+# mutation (28 violations flagged by `tools/gdscript_lint.py` GD002, D-033). An underscore
+# that the owning package must itself violate is not encapsulation, it is noise - so the
+# seam is now explicit and documented instead of pretend-private. The real guard is the
+# single-mutation-path invariant, enforced by review + the domain tests, not by a prefix.
 
-func _set_member_rank(character_id: StringName, rank_id: StringName) -> void:
+func write_member_rank(character_id: StringName, rank_id: StringName) -> void:
 	_rank_by_character[String(character_id)] = String(rank_id)
 
 
-func _remove_member(character_id: StringName) -> void:
+func erase_member(character_id: StringName) -> void:
 	_rank_by_character.erase(String(character_id))
 	_elder_refs.erase(character_id)
 	if leader_ref == character_id:
 		leader_ref = &""
 
 
-func _set_leader(character_id: StringName) -> void:
+func write_leader(character_id: StringName) -> void:
 	leader_ref = character_id
 
 
-func _add_elder(character_id: StringName) -> void:
+func insert_elder(character_id: StringName) -> void:
 	if not _elder_refs.has(character_id):
 		_elder_refs.append(character_id)
 
 
-func _remove_elder(character_id: StringName) -> void:
+func erase_elder(character_id: StringName) -> void:
 	_elder_refs.erase(character_id)
 
 
-func _set_resource(resource_id: StringName, quantity: int) -> void:
+func write_resource(resource_id: StringName, quantity: int) -> void:
 	_resources[String(resource_id)] = maxi(0, quantity)
 
 
-func _set_reputation(scope: StringName, value: int) -> void:
+func write_reputation(scope: StringName, value: int) -> void:
 	_reputation[String(scope)] = clampi(value, REP_MIN, REP_MAX)
 
 
-func _add_territory(region_id: StringName) -> void:
+func insert_territory(region_id: StringName) -> void:
 	if not _territory.has(region_id):
 		_territory.append(region_id)
 
 
-func _remove_territory(region_id: StringName) -> void:
+func erase_territory(region_id: StringName) -> void:
 	_territory.erase(region_id)
 
 
-func _add_ally(sect_id: StringName) -> void:
+func insert_ally(sect_id: StringName) -> void:
 	if not _ally_sect_ids.has(sect_id):
 		_ally_sect_ids.append(sect_id)
 
 
-func _remove_ally(sect_id: StringName) -> void:
+func erase_ally(sect_id: StringName) -> void:
 	_ally_sect_ids.erase(sect_id)
 
 
-func _add_enemy(sect_id: StringName) -> void:
+func insert_enemy(sect_id: StringName) -> void:
 	if not _enemy_sect_ids.has(sect_id):
 		_enemy_sect_ids.append(sect_id)
 
 
-func _remove_enemy(sect_id: StringName) -> void:
+func erase_enemy(sect_id: StringName) -> void:
 	_enemy_sect_ids.erase(sect_id)
 
 

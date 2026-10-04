@@ -17,7 +17,16 @@
 > 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship core +
 > early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
 > all 9 gates green). Phase 06 (Sect) is **CLOSED** (D-032, CI-verified 2026-10-03 on
-> `b3c98cc`, all 9 gates green). Phase 07 (Faction/Politics) is NOT STARTED.
+> `b3c98cc`). Phase 07 (Faction/Politics) is NOT STARTED.
+>
+> **Phase 06 follow-up (2026-10-03, D-033…D-036 — not a phase):** an engine-free GDScript lint
+> gate that runs on save (`tools/gdscript_lint.py`) plus a compile check that actually detects a
+> broken `class_name`, so the L-020 class of bug fails locally in a second instead of costing a
+> CI round; the Phase-06 HUD made legible from MEASURED asset pixels (dark text plate, drawn
+> keycap, text outline, nine-patched frames) and the Sect panel brought back on-screen; the
+> camera now FOLLOWS the player with the hub/field maps authored 960×576 so the view fits inside
+> the map; and Vietnamese is the default language with an in-game Settings screen whose choice
+> persists (no new autoload). **CI gates: 9 → 10.**
 >
 > **Visual follow-up (2026-10-03, D-028 — not a phase):** the production UI art was upgraded
 > from the self-made prototype set to the CC0 **Xianxia Pixel Pack** UI (`assets/ui/xianxia/`)

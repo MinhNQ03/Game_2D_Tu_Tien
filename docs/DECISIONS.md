@@ -920,3 +920,186 @@ after CI is green on the commit (all 9 gates) — see CHANGELOG/ROADMAP for the 
 Append `D-00N — <title> — <status> (date)` with Context / Options / Decision /
 Consequence (or Blocking). Never silently change a shipped decision — mark the old one
 **Superseded** and add a new entry.
+
+---
+
+## D-033 — An engine-free GDScript lint gate that runs on save, plus a compile check that actually detects a broken class — **Accepted** (2026-10-03, Phase 06 follow-up)
+
+**Context:** L-020 cost a full CI round and a misdiagnosis. `sect_state.gd` failed to compile
+because three locals inferred `Variant` from a `-> Variant` helper (a warning promoted to an
+error). A script that fails to compile does not register its `class_name`, so every
+`SectState.create_from_template(...)` call site died at runtime with the deeply misleading
+`Nonexistent function 'create_from_template' in base 'GDScript'`. Two guess-fixes were pushed
+at the CALL SITES before the real error was read. Two things made that possible:
+1. **No local feedback existed.** Godot is not on PATH (D-009), and the only on-save hook ran
+   `godot --headless … parse_check.gd`, so it silently no-opped on every save. The author's
+   first signal was always a red CI run — or pasting the log in by hand.
+2. **The parse gate could not see the failure.** `tools/parse_check.gd` only checked
+   `load(path) == null`, and `load()` returns a NON-NULL but unusable `GDScript` for a script
+   that parses yet fails to compile. The gate was green while the class was broken.
+
+**Decisions:**
+- **Add `tools/gdscript_lint.py`** — pure Python, zero dependencies, no engine. Rules, chosen
+  for ZERO false positives because a noisy gate gets ignored:
+  - `GD001 variant-infer` — `var x := <Variant expression>` (the L-020 bug), detected by
+    finding the call that PRODUCES the value, so `int(d.get(k))` is silent while `d.get(k)` is
+    flagged. The repo-wide index of `-> Variant` functions makes project helpers count too.
+  - `GD002 private-access` — `other._member` where `_member` is declared in a DIFFERENT file.
+    Same-file access through another receiver stays legal (that is normal same-class access),
+    and Godot's own virtuals (`_ready`, `_process`, …) are exempt.
+  - `GD003 line-too-long` — the budget Godot's own diagnostics flag.
+- **The linter is self-tested (`--selftest`) and CI runs the self-test first.** This gate is
+  load-bearing; a linter whose rules silently stopped matching is worse than no linter. The
+  GD001 cases are the real L-020 lines plus the fix that replaced them.
+- **It runs BEFORE Godot is downloaded in CI** (new gate 2 of 10) so a compile-breaking warning
+  fails in seconds instead of after an engine download plus import.
+- **On save it checks only CHANGED files** (`--changed`, via git) while still building the
+  private-member index across the whole project — a partial index cannot distinguish "private
+  member owned elsewhere" from "unknown name" and would silently miss GD002.
+- **`tools/parse_check.gd` now proves a script COMPILES**, not merely loads: `load()` non-null,
+  `can_instantiate()` true, and — the clearest signal — a script declaring `class_name X` must
+  actually appear in `ProjectSettings.get_global_class_list()`. `can_instantiate()` was chosen
+  over `reload()` deliberately: `reload()` would also detect it but recompiles the running tool
+  and the live autoloads (D-019), which is not a risk worth taking in a gate that cannot be
+  rehearsed locally (D-009). The project has no `@abstract` classes, so "cannot instantiate"
+  means "does not compile". The class_name check self-disables if the engine reports an empty
+  global class list, so it can never fail the build for an environment reason.
+
+**Consequences:** the class of bug that produced L-020 now fails on save, in Python, in under
+a second. The authoritative gates are unchanged in spirit: the linter catches a known, narrow,
+precisely-decidable set; everything else remains the job of the compile check and the headless
+suite (`08-ai-review-protocol.md`: parse/compile passing is still not "done").
+
+**Alternatives rejected:** installing `gdtoolkit`/`gdlint` (another toolchain to pin, and its
+rules do not cover the inferred-Variant trap that actually bit us); relying on the IDE's
+diagnostics (they did not report the missing property class in L-018 and are not a CI gate);
+making CI print more on failure as the permanent answer (that is diagnosis, not prevention —
+steering 10 §1.3 requires removing such scaffolding once the error is understood).
+
+---
+
+## D-034 — UI surfaces and 9-slice assets are chosen from MEASURED pixels: dark text plate, flat keycap, nine-patched frames — **Accepted** (2026-10-03, Phase 06 follow-up)
+
+**Context:** The Phase-06 HUD shipped visually broken in four ways at once: near-invisible text,
+a huge empty rosewood plate covering the character name, control prompts rendered as unreadable
+smudges, and pressing `T` appearing to do nothing. Every one traced to an assumption about an
+asset that nobody had measured. Reading the actual PNGs settled it:
+
+| asset | size | centre | reality |
+|---|---|---|---|
+| `panel.png` | 218×118 | brightness **230** | a LIGHT plate |
+| `panel_inset.png` | 216×117 | brightness **19** | a DARK plate |
+| `button_normal.png` | 130×54 | brightness 193 | light |
+| `portrait_frame.png` | 218×118 | brightness 229 | a light PANEL, not a small frame |
+| `key_badge.png` | 61×61 | **alpha 0** | a hollow corner ornament, NOT a keycap |
+
+**Decisions:**
+- **A surface that carries text must be DARK, because every text token in `UIPalette` is light**
+  (0.62–0.96). `panel_stylebox()` now uses the ink inset texture; the light jade plate is still
+  available as `accent_panel_stylebox()` for decoration that carries no light text. Pairing
+  light text with the light plate is what produced "white text on a white plate".
+- **`content_margin >= texture_margin` on every framed box.** The 9-slice border band does not
+  stretch, so a smaller content margin draws glyphs on top of the frame art.
+- **The keycap is a deliberate flat chip, not the pack texture.** `key_badge.png` has a
+  transparent centre, so it cannot back a glyph, and nine-slicing it down to keycap size
+  collapsed its 18px border bands into each other. The pack ships no keycap, so one is drawn:
+  dark fill + jade edge. This is an honest downgrade from "asset-backed", recorded here.
+- **Light text gets a dark outline** (`font_outline_color`/`outline_size` on Label and Button in
+  the shared theme), so labels survive a busy background without a second text palette.
+- **The HUD wears the shared theme.** A `CanvasLayer` cannot hold a `Theme`, so it goes on the
+  HUD's root `Control` — previously only the main menu was themed at all.
+- **A `TextureRect` used as a sized slot MUST set `expand_mode = EXPAND_IGNORE_SIZE`,** and a
+  FRAME belongs in a `NinePatchRect`. Left at the default `EXPAND_KEEP_SIZE`, a TextureRect
+  reports its whole texture as its minimum size, which is how a 218×118 plate ended up as a
+  "40×40" portrait slot and shoved the identity panel over the name.
+- **Growth direction is a property of the node that grows.** The sect panel was wrapped in an
+  empty size-0 `Control` carrying `grow_horizontal = BEGIN`; growth does not propagate to
+  children, so the panel still grew rightwards off-screen and only a sliver of its frame was
+  visible — which read as "`T` does nothing". The anchors/growth now live on the panel itself.
+- **The base viewport is declared** (`1152×648`). It was previously undeclared, so the project
+  ran on an engine default that nothing in the repo stated.
+- **Measured facts are recorded in `ui_palette.gd`** next to the margins they justify, and
+  guarded by tests (the text plate must be the dark texture; content margins must clear the
+  border; the keycap must have an opaque fill; the theme must carry an outline) so this cannot
+  silently regress to white-on-white.
+
+**Consequences:** the live UI is no longer 100% asset-backed — the keycap is drawn. That is the
+correct trade for legibility, and `docs/ASSET_LICENSES.md` records the pack asset as unused for
+that slot. Reverting any of these pairings now fails a test rather than shipping.
+
+---
+
+## D-035 — Vietnamese is the default language, with an in-game Settings screen and a persisted choice (no new autoload) — **Accepted** (2026-10-03, Phase 06 follow-up)
+
+**Context:** Per-phase beta builds are play-tested in Vietnamese, but the game started in
+English and there was no way to change language without editing code. `01-product.md` makes
+Vietnamese and English both first-class from the foundation, so this was a gap, not a feature
+request. There was also no persistence of any kind in the project yet.
+
+**Decisions:**
+- **`DEFAULT_LANGUAGE = "vi"`.** The game starts in Vietnamese.
+- **`FALLBACK_LANGUAGE = "en"` is a SEPARATE constant.** The start language and the translation
+  fallback are different concerns: collapsing them means a key missing its `vi` value would
+  "fall back" to `vi`, resolve to the raw key, and hide the English text that does exist.
+- **A `SettingsMenu` screen** (reachable from the now-enabled Settings button) lists one button
+  per `Localization.available_languages()` — so adding a third language stays a CSV change plus
+  one label key, with no screen edit. The active choice is marked in TEXT, not colour alone.
+- **Settings is UI, not a routed scene.** Like the main menu it is a `Control` under `Main/UI`;
+  `SceneRouter` owns the CONTENT scene under `Main/World` (the map). Opening it HIDES the menu
+  rather than freeing it, and closing it reveals the menu again, so the lifecycle never leaves
+  the MENU phase and no `enter_menu` transition is re-requested.
+- **`SettingsStore` is a `RefCounted`, not an autoload** (budget stays at 5 — D-017). It is a
+  thin `ConfigFile` wrapper over `user://settings.cfg` that load-modify-saves so a future
+  preference owned by someone else is not clobbered, and whose every failure path degrades to
+  "no preference" with a warning — a preferences problem must never block boot. The config path
+  is injectable so tests bind to a scratch file.
+- **`Localization` stays DISK-FREE.** Persistence lives with the two owners of the concern: the
+  settings screen writes the choice, and `Main` reads it at boot and applies it through
+  `set_language()` before any UI is built. This is a correctness decision, not tidiness: unit
+  tests construct a `Localization` and switch language freely, so a service that wrote to
+  `user://` would leave a stale preference and make "the default language is vi" pass or fail
+  on leftover disk state — the L-010 shared-state trap, on disk instead of under `/root`.
+
+**Consequences:** `SaveService` (Phase 23) remains the owner of GAMEPLAY saves; this store is
+only for application preferences and must not accumulate run/session/world data. Load Game
+stays disabled until that phase.
+
+---
+
+## D-036 — The camera follows the player, and maps are authored larger than the view — **Accepted** (2026-10-03, Phase 06 follow-up)
+
+**Context:** D-034 made the camera zoom cover the map so no background showed around it. That
+immediately exposed a gap that had been hidden since Phase 03: each map scene's `Camera2D` is a
+plain child node parked at the map centre, and **nothing ever moved it**. While the whole map
+fitted on screen a static camera looked correct; once the view was smaller than the map the
+player simply walked out of frame. Two further problems compounded it: rounding the derived
+zoom UP (`ceil`) turned a needed 3.01 into 4.0 and framed the player far too close, and a
+448×288 map is smaller than a 16:9 screen at any comfortable zoom, so "cover the map" and "let
+the camera travel" were in direct conflict.
+
+**Decisions:**
+- **`MapBase` follows the player** in `_physics_process` (the player moves there too, so body
+  and camera advance in the same step), with `position_smoothing` doing the visual easing. The
+  target is resolved lazily, because `WorldRuntime` parents the player after the scene loads.
+  The camera LIMITS (from `MapData.bounds`) still clamp the result, so following can never
+  reveal anything past the map edge. Cost: one node, one assignment per physics frame.
+- **No rounding up of the derived zoom.** The floor stays `CAMERA_ZOOM_MIN` (2.0); maps are
+  authored comfortably larger than the view so the zoom normally lands exactly on that integer,
+  and the fractional path only engages on an extreme window aspect, where covering the map
+  matters more than a perfectly integer scale.
+- **The hub and field maps are authored 960×576** (60×36 tiles) instead of 448×288, which is
+  what actually resolves the conflict: at a 16:9-ish window the zoom settles at 2.0, the view
+  (~675×324) sits comfortably inside the map, and the camera has room to travel on both axes.
+  Walls, spawns, exits and decor moved with the new extent; node names and prop textures are
+  unchanged, so the structural contracts still hold.
+- **`MapData.bounds` is tested against the scene's painted floor.** The bounds drive the camera
+  limits and the zoom while the floor lives in the scene as `fill_rect` (tile coordinates), and
+  the two are hand-authored in different files. A structural test now compares them, so a future
+  resize cannot silently clamp the camera to the wrong rectangle (an L-014 drift guard).
+- **The E2E proves the camera MOVED**, not that it equals the player position (smoothing eases
+  it over frames), and that it stayed inside the horizontal limits while following.
+
+**Consequences:** the maps are now mostly open ground — they are prototype layouts and the extra
+space is intentional room for the NPC/encounter content of later phases. The camera-follow
+behaviour is per-map in `MapBase`; if a later phase needs cinematic or multi-target framing it
+should become its own component rather than growing this coordinator.

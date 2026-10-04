@@ -18,6 +18,10 @@ const FieldScene := preload("res://src/gameplay/maps/field_map.tscn")
 const HUB_DATA := "res://data/maps/map_hub.tres"
 const FIELD_DATA := "res://data/maps/map_field.tres"
 
+## Base tile size (`06-art-assets.md`). Used to convert the scene's tile-coordinate
+## `fill_rect` into world units so it can be compared with `MapData.bounds`.
+const TILE_PX := 16
+
 
 func _assert_map_structure(scene: PackedScene, data_path: String) -> void:
 	var map: Node = scene.instantiate()  # NOT added to the tree
@@ -43,6 +47,19 @@ func _assert_map_structure(scene: PackedScene, data_path: String) -> void:
 		# D-029: pixel-art tiles render nearest-filtered (no blur) like the rest of the world.
 		assert_eq((ground as TileMapLayer).texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
 			"ground TileMapLayer is nearest-filtered (pixel art)")
+
+	# SOURCE-OF-TRUTH GUARD (D-036): `MapData.bounds` drives the camera limits and the camera
+	# zoom, while the painted floor lives in the SCENE as `fill_rect` (tile coords). If the
+	# two drift, the camera is clamped to the wrong rectangle — either letting the view run
+	# off the painted floor, or over-zooming to "cover" a map larger than what exists. They
+	# are authored by hand in different files, so they are checked against each other here.
+	if ground is TileMapLayer and data != null:
+		var cells: Rect2i = (ground as TileMapLayer).fill_rect
+		var painted := Rect2(
+			Vector2(cells.position) * TILE_PX, Vector2(cells.size) * TILE_PX)
+		assert_eq(data.bounds, painted,
+			"MapData.bounds %s matches the painted floor %s (fill_rect %s x %dpx tiles)"
+			% [str(data.bounds), str(painted), str(cells), TILE_PX])
 
 	# Boundary walls (static collision) under Collision/Walls.
 	var walls := map.get_node_or_null("Collision/Walls")

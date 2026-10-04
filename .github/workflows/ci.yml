@@ -3,14 +3,17 @@ name: CI
 # CI for Aetheria (decisions D-012, foundation hardening).
 # Gates, in order — each FAILS the job on a non-zero exit (no failures are swallowed):
 #   1. checkout
-#   2. download Godot 4.7 (matches project.godot feature tag "4.7")
-#   3. import project (generate .godot resource cache)
-#   4. project-wide GDScript parse check (src/ + tests/ + tools/)
-#   5. runtime boot smoke (boot application/run/main_scene headless, run _ready, exit)
-#   6. headless test suite (custom runner — unit + integration + gameplay; excludes tests/e2e/)
-#   7. real-application E2E flow (dedicated isolated process — D-019)
-#   8. player sandbox E2E flow (dedicated isolated process — Phase 02)
-#   9. world/map E2E flow (dedicated isolated process — Phase 03)
+#   2. GDScript static lint, engine-free (tools/gdscript_lint.py — D-033; runs first so a
+#      compile-breaking warning-as-error or a private-access break fails in seconds)
+#   3. download Godot 4.7 (matches project.godot feature tag "4.7")
+#   4. import project (generate .godot resource cache)
+#   5. project-wide GDScript COMPILE check (src/ + tests/ + tools/ — load + can_instantiate
+#      + class_name registration, D-033)
+#   6. runtime boot smoke (boot application/run/main_scene headless, run _ready, exit)
+#   7. headless test suite (custom runner — unit + integration + gameplay; excludes tests/e2e/)
+#   8. real-application E2E flow (dedicated isolated process — D-019)
+#   9. player sandbox E2E flow (dedicated isolated process — Phase 02)
+#  10. world/map E2E flow (dedicated isolated process — Phase 03)
 #
 # NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
 # scripts were statically validated via the GDScript language server. The first real
@@ -32,6 +35,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Needs no engine, so it runs BEFORE the Godot download and fails fastest. It is the
+      # SAME command a developer runs on save (D-033), and it catches the class of bug that
+      # previously cost a whole CI round just to become readable (L-020). `--selftest`
+      # first: a linter whose rules silently stopped matching is worse than no linter.
+      - name: GDScript static lint (no engine required)
+        run: |
+          set -euo pipefail
+          python3 tools/gdscript_lint.py --selftest
+          python3 tools/gdscript_lint.py
 
       - name: Download Godot ${{ env.GODOT_VERSION }}
         run: |

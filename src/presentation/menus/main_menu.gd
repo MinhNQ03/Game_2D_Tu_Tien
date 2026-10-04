@@ -14,6 +14,7 @@ extends Control
 ## localization, context) is unchanged from the shell; only the presentation is dressed.
 
 signal new_game_pressed()
+signal settings_pressed()
 signal quit_pressed()
 
 var _title: Label
@@ -115,8 +116,10 @@ func _build_ui() -> void:
 	_load_game_button.disabled = true  # No save system yet (Phase 23).
 	box.add_child(_load_game_button)
 
+	# Settings is LIVE as of D-035: it carries the language switch (vi/en) that per-phase
+	# beta builds are play-tested with. Load Game stays disabled until save lands (Phase 23).
 	_settings_button = _make_menu_button()
-	_settings_button.disabled = true  # No settings system yet (placeholder slot).
+	_settings_button.pressed.connect(_on_settings)
 	box.add_child(_settings_button)
 
 	_quit_button = _make_menu_button()
@@ -146,6 +149,10 @@ func _refresh_text() -> void:
 
 func _on_new_game() -> void:
 	new_game_pressed.emit()
+
+
+func _on_settings() -> void:
+	settings_pressed.emit()
 
 
 func _on_quit() -> void:

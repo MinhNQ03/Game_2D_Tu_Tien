@@ -52,6 +52,52 @@ Dates are ISO (YYYY-MM-DD).
   on `b3c98cc` — all 9 gates.** See lesson L-020. (Temporary CI diagnostic from steering 10 §1.3
   was added to read the real error, then fully removed in the same fix commit.)
 
+### 2026-10-03 — Phase 06 follow-up: engine-free lint gate, UI legibility fix, camera follow, Vietnamese default + Settings (D-033…D-036)
+- **Engine-free GDScript lint gate (D-033):** new `tools/gdscript_lint.py` (pure Python, no
+  dependencies, no Godot) with three zero-false-positive rules — `GD001` a local inferring
+  `Variant` (the L-020 compile-breaker), `GD002` cross-file private access, `GD003` line
+  budget. It self-tests (`--selftest`), runs as CI gate 2 of 10 **before** Godot is even
+  downloaded, and on save checks only files git reports as changed. Fixed all 44 existing
+  violations it found (28 private-access + 16 long lines).
+- **`parse_check.gd` now proves a script COMPILES** (D-033): `load()` non-null +
+  `can_instantiate()` + a declared `class_name` must actually be registered globally. The old
+  gate only checked `load() != null`, which is why a non-compiling `SectState` passed it.
+- **Hook cost cut:** the AI-review reminder moved from `PreToolUse` (which fired on *every*
+  file edit and blocked the tool) to `Stop`; the dead `godot`-on-PATH parse hook was removed.
+- **`SectState` private mutators became a documented public raw-writer API** (D-033):
+  `write_*`/`insert_*`/`erase_*`. GDScript has no package visibility, so the old `_`-prefixed
+  form forced `SectService` to violate another class's private API on every mutation. The
+  single-mutation-path invariant is now held by docs + tests, not a prefix. `_edge_id` →
+  `edge_id`.
+- **UI legibility, from measured pixels (D-034):** the text-bearing panel now uses the DARK ink
+  texture (`panel.png` measures brightness 230 — near white — behind a light-only text
+  palette); content margins clear the 9-slice border; the key badge is a drawn flat chip
+  because `key_badge.png` has a fully transparent centre and is a corner ornament, not a
+  keycap; light text gets a dark outline; the HUD finally wears the shared theme. The empty
+  "portrait" is a `NinePatchRect` and sized slots set `expand_mode`, so a 218×118 plate no
+  longer reports itself as a 40×40 slot and shoves the identity panel over the name.
+- **Pressing `T` works (D-034):** the Sect panel was wrapped in an empty size-0 `Control`
+  carrying the grow direction — which does not propagate to children — so the panel grew
+  off-screen and only a sliver of its frame showed. Anchors/growth now live on the panel.
+- **Camera follows the player (D-036):** each map's `Camera2D` was a static child that nothing
+  ever moved; invisible while the whole map fitted on screen, fatal once it did not. `MapBase`
+  now tracks the player in `_physics_process` with position smoothing, still clamped by the
+  data-driven limits. Derived zoom no longer rounds up (a needed 3.01 became 4.0 and framed far
+  too close), and the hub/field maps are authored **960×576** instead of 448×288 so the view
+  fits inside the map and the camera has room to travel.
+- **Vietnamese is the default language + a Settings screen (D-035):** `DEFAULT_LANGUAGE = "vi"`
+  with a SEPARATE `FALLBACK_LANGUAGE = "en"` (collapsing them would make a key missing its
+  Vietnamese value resolve to the raw key instead of the English text that exists). The
+  Settings button is enabled and opens a screen built from `available_languages()`; the choice
+  persists in `user://settings.cfg` via a `SettingsStore` `RefCounted` (**no new autoload** —
+  budget stays at 5). `Localization` stays deliberately disk-free so unit tests cannot leave a
+  stale language behind.
+- **Tests:** +4 UI-theme regression guards (dark text surface, content margin clears border,
+  keycap has an opaque fill, theme carries an outline), +3 localization tests (vi default,
+  default≠fallback, settings keys in both languages), new `test_settings_store.gd` (7) and
+  `test_settings_menu.gd` (5), a `MapData.bounds` ↔ painted-floor drift guard, and the world
+  E2E now proves the camera actually moved and stayed within limits. CI gates: 9 → 10.
+
 ### 2026-10-03 — Changelog correction: D-030 added 2 (not 4) test methods (D-031)
 - Corrected the D-030 entry's test-method count to "+2 test methods" (the two
   `test_hub_decor_contract`/`test_field_decor_contract`); the other D-030 test changes were

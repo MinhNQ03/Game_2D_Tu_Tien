@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "GDScript lint on save (changed files only)",
+      "trigger": "PostFileSave",
+      "description": "Quét lint các file .gd ĐÃ THAY ĐỔI ngay khi lưu (git diff + staged + untracked), không quét cả 92 file. Bắt GD001 variant-infer (lỗi L-020 làm class_name không đăng ký -> crash runtime), GD002 private-access xuyên file, GD003 dòng quá dài. Python thuần, không cần Godot nên chạy gần như tức thì. Chỉ khớp .gd trong src/tests/tools để không chạy vô ích khi lưu file khác.",
+      "matcher": "^(src|tests|tools)/.*\\.gd$",
+      "action": {
+        "type": "command",
+        "command": "python tools/gdscript_lint.py --changed",
+        "timeout": 30
+      }
+    }
+  ]
+}

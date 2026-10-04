@@ -40,7 +40,8 @@ func _run() -> void:
 
 	var failures: Array = case.call("get_failures")
 	if failures.is_empty():
-		print("[e2e-world] PASS — real world/map flow (new game -> hub -> interact -> field -> back -> menu)")
+		print("[e2e-world] PASS - real world/map flow "
+			+ "(new game -> hub -> interact -> field -> back -> menu)")
 		print("[e2e-world] RESULT: PASS")
 		quit(0)
 		return
