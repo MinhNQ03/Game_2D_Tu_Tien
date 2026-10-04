@@ -24,10 +24,15 @@ var _session_active: bool = false
 
 
 ## Begin a relationship session: load + validate the config and rule catalog, then build a
-## fresh empty store + service. Returns false (loud) on a missing/invalid config so the owner
-## (Main) can decide — but relationships failing to load must NOT crash the world session, so
-## Main treats this as non-fatal (logged) in Phase 05 (no relationship content depends on it
-## yet). Idempotent: a second call with an active session is a no-op returning true.
+## fresh empty store + service. Returns false (loud) on a missing/invalid config.
+##
+## FATAL at the caller since Phase 06 (D-037). In Phase 05 this was advisory — nothing
+## consumed the graph, so Main logged a failure and carried on. The sect session now MIRRORS
+## Sect↔Sect diplomacy into this graph, so a missing graph means the sect world would start
+## half-wired (sect state declaring enemies no relationship edge records). Main therefore
+## aborts New Game and unwinds to the menu on false.
+##
+## Idempotent: a second call with an active session is a no-op returning true.
 func start_session() -> bool:
 	if _session_active and _service != null:
 		return true
