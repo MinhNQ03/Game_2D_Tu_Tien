@@ -40,6 +40,10 @@ const SECT_EMBLEM_PX := 20
 ## scaled to this band, so it reads as a thin engraved rule rather than a picture.
 const DIVIDER_HEIGHT := 8
 
+## How far the painted portrait is inset inside its frame, so the frame's border art overlaps
+## the picture's edge instead of the picture spilling over the border.
+const PORTRAIT_INSET := 5
+
 var _loc: Node = null
 var _input: Node = null
 var _bus: Node = null
@@ -54,6 +58,7 @@ var _sect_view: SectMembershipView = null  # read-only sect view (Phase 06); may
 var _name_label: Label
 var _title_label: Label
 var _map_label: Label
+var _portrait: TextureRect
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
 var _sect_row: UIPromptRow
@@ -135,18 +140,50 @@ func _build_ui() -> void:
 	# and a TextureRect reports its whole texture as the minimum size, which is what pushed a
 	# giant empty rosewood plate over the identity text. Nine-patching keeps the frame's
 	# corners crisp at the small size we actually want (`06-art-assets.md` nine-slice rule).
-	var portrait := NinePatchRect.new()
-	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait.custom_minimum_size = Vector2(
+	# The well is a stack: the painted portrait UNDER the rosewood nine-patch frame, so the
+	# frame's border art overlaps the portrait's edges the way a real mounted picture does.
+	# The frame alone was what shipped before — an empty plate with nothing in it (D-044).
+	var portrait_well := Control.new()
+	portrait_well.custom_minimum_size = Vector2(
 		UIPalette.IDENTITY_PORTRAIT_PX, UIPalette.IDENTITY_PORTRAIT_PX)
-	portrait.patch_margin_left = UIPalette.PORTRAIT_MARGIN
-	portrait.patch_margin_right = UIPalette.PORTRAIT_MARGIN
-	portrait.patch_margin_top = UIPalette.PORTRAIT_MARGIN
-	portrait.patch_margin_bottom = UIPalette.PORTRAIT_MARGIN
-	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_well.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	identity_row.add_child(portrait_well)
+
+	# The painted face. An `AtlasTexture` head crop (see `UITheme.portrait_texture`) because
+	# the source is a full standing figure; inset by the frame's border so the art sits INSIDE
+	# the frame rather than under its edge.
+	_portrait = TextureRect.new()
+	_portrait.name = "Portrait"
+	# LINEAR: painted art, not pixel art — and this is a DOWNscale (310px source into a 56px
+	# well), where nearest would alias the face badly.
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_portrait.offset_left = PORTRAIT_INSET
+	_portrait.offset_top = PORTRAIT_INSET
+	_portrait.offset_right = -PORTRAIT_INSET
+	_portrait.offset_bottom = -PORTRAIT_INSET
+	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_portrait.texture = UITheme.portrait_texture()
+	_portrait.visible = _portrait.texture != null
+	portrait_well.add_child(_portrait)
+
+	# The frame, drawn OVER the portrait. A NinePatchRect, not a TextureRect:
+	# `portrait_frame.png` is 218x118 (measured, D-034) and a TextureRect reports its whole
+	# texture as its minimum size, which is what pushed a giant empty rosewood plate over the
+	# identity text.
+	var portrait_frame := NinePatchRect.new()
+	portrait_frame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait_frame.patch_margin_left = UIPalette.PORTRAIT_MARGIN
+	portrait_frame.patch_margin_right = UIPalette.PORTRAIT_MARGIN
+	portrait_frame.patch_margin_top = UIPalette.PORTRAIT_MARGIN
+	portrait_frame.patch_margin_bottom = UIPalette.PORTRAIT_MARGIN
+	portrait_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if ResourceLoader.exists(UIPalette.TEX_PORTRAIT_FRAME):
-		portrait.texture = load(UIPalette.TEX_PORTRAIT_FRAME)
-	identity_row.add_child(portrait)
+		portrait_frame.texture = load(UIPalette.TEX_PORTRAIT_FRAME)
+	portrait_well.add_child(portrait_frame)
 
 	var identity_text := VBoxContainer.new()
 	identity_text.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -174,6 +211,10 @@ func _build_ui() -> void:
 	identity_body.add_child(sect_chip)
 
 	_sect_emblem = TextureRect.new()
+	# Named so the tier-separation test can identify it structurally. It used to be found by
+	# "the only TextureRect in the plaque", which stopped being true the moment the identity
+	# row gained a painted portrait (D-044) — a name is the stable marker.
+	_sect_emblem.name = "SectEmblem"
 	_sect_emblem.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_sect_emblem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# EXPAND_IGNORE_SIZE is required for `custom_minimum_size` to actually govern: the

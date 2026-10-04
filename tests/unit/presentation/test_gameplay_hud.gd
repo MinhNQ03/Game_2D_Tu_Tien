@@ -247,11 +247,14 @@ func test_identity_plaque_separates_personal_identity_from_affiliation() -> void
 		assert_eq(kinds[2], "HBoxContainer", "tier 2 is the sect chip")
 
 	# And the sect chip is NOT a descendant of the name/title column any more — that nesting
-	# is exactly what made the two identities blur. The portrait is a NinePatchRect while the
-	# sect emblem is a TextureRect, so a TextureRect inside tier 1 means the chip crept back.
+	# is exactly what made the two identities blur. Identified by NODE NAME: the old marker
+	# ("the only TextureRect in the plaque") stopped being valid once tier 1 gained a painted
+	# portrait, which is itself a TextureRect.
 	var identity_row := body.get_child(0)
-	assert_eq(_count_class(identity_row, "TextureRect"), 0,
+	assert_null(identity_row.find_child("SectEmblem", true, false),
 		"the sect emblem no longer sits inside the character's own name column")
+	assert_not_null(body.get_child(2).find_child("SectEmblem", true, false),
+		"it lives in tier 2, the sect chip")
 	free_node(hud)
 
 

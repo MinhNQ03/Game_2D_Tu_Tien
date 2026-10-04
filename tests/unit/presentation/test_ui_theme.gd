@@ -126,7 +126,8 @@ func test_palette_tokens_are_sane() -> void:
 		"title font is larger than body")
 	assert_true(UIPaletteScript.SPACE_LG > 0, "spacing tokens are positive")
 	assert_true(UIPaletteScript.NINE_PATCH_MARGIN > 0, "nine-patch margin is positive")
-	assert_eq(UIPaletteScript.UI_TEXTURES.size(), 10, "all UI textures are registered")
+	# 10 pixel-art xianxia textures + 5 painted-tier assets (D-044).
+	assert_eq(UIPaletteScript.UI_TEXTURES.size(), 15, "all UI textures are registered")
 
 
 # --- D-041 production-foundation visual pass ---------------------------------
@@ -163,8 +164,10 @@ func test_role_font_colors_use_reserved_tokens() -> void:
 		UIPaletteScript.COLOR_CRIMSON_HOVER, "DANGER label uses the reserved crimson token")
 
 
-## The menu backdrop must be buildable with NO new asset: both layers are code-generated
-## gradients, which is what keeps provenance clean (`06-art-assets.md`) and the cost static.
+## The two GRADIENT layers stay code-generated, so the backdrop still has a working
+## composition if the painted scene is ever missing, and their cost stays static (a
+## `GradientTexture2D` rasterises once). D-044 added a painted scene layer ON TOP of these —
+## it did not replace them, and this guards the fallback.
 func test_backdrop_layers_are_code_built_not_assets() -> void:
 	var sky := UIThemeScript.backdrop_gradient()
 	assert_not_null(sky, "the backdrop gradient builds")
@@ -237,3 +240,95 @@ func test_backdrop_ground_is_dark_enough_for_light_text() -> void:
 		% [brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
 	# It should read as ink-BLUE, not neutral black: that is what makes the gold read warm.
 	assert_true(deep.b > deep.r, "the ground is blue-leaning, not neutral grey")
+
+
+# --- D-044 painted UI tier ---------------------------------------------------
+
+## THE GUARD THIS PROJECT WAS MISSING: the button surface must be dark enough to carry the
+## light-only text palette.
+##
+## D-034 established the rule and the measured threshold (`SURFACE_LIGHT_BRIGHTNESS_LIMIT`,
+## 120) and enforced it for PANELS — but the buttons were left on `button_normal.png`, whose
+## centre brightness is **202**, i.e. in violation the whole time. Only the text outline was
+## holding legibility together, and the bright plate is what read as "plastic".
+##
+## It asserts the ASSET PATH rather than re-measuring pixels: the measured facts live in
+## `UIPalette`, and what can silently regress is somebody repointing the stylebox back at the
+## light pixel-art plate. That is exactly what this catches.
+func test_button_surface_is_dark_enough_for_light_text() -> void:
+	if not UIThemeScript.textures_present():
+		return
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var box := UIThemeScript.button_stylebox(state) as StyleBoxTexture
+		assert_not_null(box, "the '%s' button is texture-backed" % state)
+		if box == null:
+			continue
+		assert_not_null(box.texture, "the '%s' button carries a texture" % state)
+		assert_eq(box.texture.resource_path, UIPaletteScript.TEX_BUTTON_PAINTED,
+			("the '%s' button uses the DARK painted plate (measured centre 29), never the "
+				+ "light xianxia plate (202) — the light one breaks the %d brightness limit "
+				+ "that the text palette depends on")
+				% [state, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
+
+
+## Every per-state tint must keep the plate dark. The tints are multiplicative, so a factor
+## above ~4 would be needed to cross the limit from 29 — but a future "let's brighten hover"
+## edit is exactly the kind of change that would reintroduce the defect, so the headroom is
+## pinned rather than assumed.
+func test_button_state_tints_cannot_brighten_past_the_limit() -> void:
+	var headroom := float(UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT) / 29.0
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var tint := UIThemeScript.state_modulate(state)
+		var strongest := maxf(maxf(tint.r, tint.g), tint.b)
+		assert_true(strongest < headroom,
+			("the '%s' tint (max channel %.2f) keeps the measured centre brightness 29 under "
+				+ "the %d limit (headroom %.2fx)")
+				% [state, strongest, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT, headroom])
+
+
+## The button content margin must still clear the 9-slice border on the painted plate, or the
+## label is drawn on top of the gold filigree.
+func test_painted_button_content_margin_clears_its_ornament() -> void:
+	if not UIThemeScript.textures_present():
+		return
+	var box := UIThemeScript.button_stylebox("normal") as StyleBoxTexture
+	assert_true(box.content_margin_left >= box.texture_margin_left,
+		"the label clears the left gold corner")
+	assert_true(box.content_margin_right >= box.texture_margin_right,
+		"and the right one")
+	assert_true(box.content_margin_top >= box.texture_margin_top, "and the top frame")
+	assert_true(box.content_margin_bottom >= box.texture_margin_bottom, "and the bottom")
+	# The vertical 9-slice bands must fit inside the authored button height, or they collapse
+	# into each other and the plate reads as squashed.
+	assert_true(box.texture_margin_top + box.texture_margin_bottom
+			< UIPaletteScript.BUTTON_HEIGHT,
+		"the unstretched vertical bands (%d+%d) fit inside BUTTON_HEIGHT (%d)"
+			% [int(box.texture_margin_top), int(box.texture_margin_bottom),
+				UIPaletteScript.BUTTON_HEIGHT])
+
+
+## The painted backdrop and the portrait crop must actually resolve — these are the two assets
+## that replaced "a plaque on a flat gradient" and "an empty portrait well".
+func test_painted_backdrop_and_portrait_resolve() -> void:
+	assert_not_null(UIThemeScript.menu_backdrop(), "the painted menu backdrop loads")
+	var portrait := UIThemeScript.portrait_texture()
+	assert_not_null(portrait, "the painted portrait loads")
+	if portrait == null:
+		return
+	# It must be a SQUARE crop: the source is a full standing figure, and handing the raw
+	# 310x560 texture to a square well would show the character's midriff instead of a face.
+	var atlas := portrait as AtlasTexture
+	assert_not_null(atlas, "the portrait is an AtlasTexture crop, not the whole figure")
+	if atlas == null:
+		return
+	assert_eq(int(atlas.region.size.x), int(atlas.region.size.y),
+		"the crop is square, so it fits a square portrait well without distortion")
+	assert_eq(int(atlas.region.position.y), 0,
+		"and is taken from the TOP of the figure, where the head is")
+	assert_true(atlas.region.size.x > 0.0, "the crop has a real area")
+	# The two portraits must be different art, or the female variant is pointless.
+	var female := UIThemeScript.portrait_texture(true) as AtlasTexture
+	assert_not_null(female, "the female portrait loads")
+	if female != null:
+		assert_ne(female.atlas.resource_path, atlas.atlas.resource_path,
+			"the two portrait variants are different source art")

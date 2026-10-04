@@ -32,14 +32,22 @@ const ROLE_DANGER := "danger"
 
 ## Per-role modulation applied to the button texture. `Color(1,1,1)` means "leave the art
 ## exactly as authored", which is why SECONDARY is the untinted baseline.
+## Per-role modulation applied to the button plate. `Color(1,1,1)` means "leave the art
+## exactly as authored", which is why SECONDARY is the untinted baseline.
+##
+## The tints are RESTRAINED on purpose since D-044 put a painted teal plate underneath: a
+## strong red DANGER tint multiplied against teal produces muddy brown, not "careful". So
+## DANGER only darkens and warms slightly, and the actual danger signal is carried by the
+## crimson LABEL (`role_font_color`) plus the word itself — which also satisfies the rule that
+## colour is never the only carrier of meaning (`UI_UX_BIBLE.md` §4).
 static func role_modulate(role: String, hovered: bool = false) -> Color:
 	match role:
 		ROLE_PRIMARY:
-			return Color(1.14, 1.04, 0.80) if hovered else Color(1.06, 0.97, 0.76)
+			return Color(1.16, 1.06, 0.84) if hovered else Color(1.06, 0.99, 0.82)
 		ROLE_DANGER:
-			return Color(1.18, 0.72, 0.70) if hovered else Color(1.08, 0.66, 0.64)
+			return Color(1.02, 0.86, 0.84) if hovered else Color(0.92, 0.78, 0.76)
 		_:
-			return Color(1.08, 1.08, 1.08) if hovered else Color(1.0, 1.0, 1.0)
+			return Color(1.10, 1.10, 1.10) if hovered else Color(1.0, 1.0, 1.0)
 
 
 ## Font colour for a role's label, so the primary action also reads strongest in text.
@@ -94,31 +102,77 @@ static func build() -> Theme:
 
 ## Button StyleBox for a given state name ("normal"/"hover"/"pressed"/"disabled"/"focus"),
 ## asset-backed with the 9-slice border margin + button inner padding.
+## Button StyleBox for a given state name ("normal"/"hover"/"pressed"/"disabled"/"focus").
+##
+## Backed by the PAINTED jade plate (D-044), not the xianxia pixel-art button, and the reason
+## is measured rather than aesthetic: `button_normal.png` has a centre brightness of **202**
+## and `button_hover.png` **217**, against this project's own measured
+## `SURFACE_LIGHT_BRIGHTNESS_LIMIT` of **120** — the threshold above which a surface must not
+## carry the light-only text palette. D-034 found exactly this defect for panels and fixed it
+## there (`panel.png` 231 -> the dark `panel_inset.png` at 15) but left the BUTTONS on the
+## light plate, where only the text outline was holding legibility together. The painted plate
+## measures **29**, so this swap makes the button surface legal for the first time and removes
+## the "bright plastic" read in one change.
+##
+## All five states come from ONE texture, differentiated by modulation in `role_modulate` and
+## by the per-state tints here. Five separate painted files would have to stay in sync with
+## each other through every future art pass; one plate plus arithmetic cannot drift.
 static func button_stylebox(state: String) -> StyleBox:
-	var tex_path := ""
-	match state:
-		"hover":
-			tex_path = UIPalette.TEX_BUTTON_HOVER
-		"pressed":
-			tex_path = UIPalette.TEX_BUTTON_PRESSED
-		"disabled":
-			tex_path = UIPalette.TEX_BUTTON_DISABLED
-		"focus":
-			tex_path = UIPalette.TEX_BUTTON_FOCUS
-		_:
-			tex_path = UIPalette.TEX_BUTTON_NORMAL
-	var pad_h := UIPalette.BUTTON_PAD_H
-	var pad_v := UIPalette.BUTTON_PAD_V
-	# The focus ring should not add padding (it overlays the normal box), so keep its content
-	# margins at the border only.
-	if state == "focus":
-		pad_h = UIPalette.BUTTON_MARGIN
-		pad_v = UIPalette.BUTTON_MARGIN
-	var box := _texture_box(tex_path, UIPalette.BUTTON_MARGIN, pad_h, pad_v)
+	var box := _painted_button_box(state)
 	if box != null:
 		return box
 	# Fallback (texture missing): a flat state box so the button still works.
 	return _fallback_button_flat(state)
+
+
+## The painted plate as a 9-slice box, or null if the art is absent.
+##
+## The ornate gold ENDS are protected by a wide horizontal margin and the gold frame by a thin
+## vertical one, so the filigree is never stretched — only the flat centre absorbs the resize.
+## That is what makes a 245x90 painted plate usable at 332x64 without visible distortion.
+static func _painted_button_box(state: String) -> StyleBoxTexture:
+	var tex_path := UIPalette.TEX_BUTTON_PAINTED
+	if not ResourceLoader.exists(tex_path):
+		return null
+	var tex := load(tex_path) as Texture2D
+	if tex == null:
+		return null
+	var pad_h := UIPalette.PAINTED_BUTTON_PAD_H
+	var pad_v := UIPalette.PAINTED_BUTTON_PAD_V
+	# The focus ring overlays the normal box, so it must not add padding of its own.
+	if state == "focus":
+		pad_h = UIPalette.PAINTED_BUTTON_MARGIN_H
+		pad_v = UIPalette.PAINTED_BUTTON_MARGIN_V
+	var box := StyleBoxTexture.new()
+	box.texture = tex
+	box.texture_margin_left = UIPalette.PAINTED_BUTTON_MARGIN_H
+	box.texture_margin_right = UIPalette.PAINTED_BUTTON_MARGIN_H
+	box.texture_margin_top = UIPalette.PAINTED_BUTTON_MARGIN_V
+	box.texture_margin_bottom = UIPalette.PAINTED_BUTTON_MARGIN_V
+	box.content_margin_left = pad_h
+	box.content_margin_right = pad_h
+	box.content_margin_top = pad_v
+	box.content_margin_bottom = pad_v
+	box.modulate_color = state_modulate(state)
+	return box
+
+
+## Per-state tint of the single painted plate. Multiplicative, so the plate only ever gets
+## DARKER or slightly brighter — it can never cross back over the brightness limit the swap
+## above exists to respect.
+static func state_modulate(state: String) -> Color:
+	match state:
+		"hover":
+			return Color(1.22, 1.22, 1.20)
+		"pressed":
+			return Color(0.78, 0.80, 0.82)
+		"disabled":
+			return Color(0.52, 0.55, 0.58, 0.80)
+		"focus":
+			# The focus box sits ON TOP of the normal one, so it only adds a lift.
+			return Color(1.0, 1.0, 1.0, 0.45)
+		_:
+			return Color(1.0, 1.0, 1.0)
 
 
 ## The framed panel StyleBox - the surface that CARRIES TEXT (menu panel, HUD plates).
@@ -237,6 +291,39 @@ static func corner_ornament() -> Texture2D:
 	if not ResourceLoader.exists(UIPalette.TEX_KEY_BADGE):
 		return null
 	return load(UIPalette.TEX_KEY_BADGE) as Texture2D
+
+
+## The painted menu backdrop scene, or null if absent.
+static func menu_backdrop() -> Texture2D:
+	if not ResourceLoader.exists(UIPalette.TEX_MENU_BACKDROP):
+		return null
+	return load(UIPalette.TEX_MENU_BACKDROP) as Texture2D
+
+
+## A head-and-shoulders crop of a painted standing portrait, as an `AtlasTexture`.
+##
+## The source art is a full standing figure (310x560), so dropping it straight into a 56px
+## square well would show the character's midriff. An `AtlasTexture` region over the TOP
+## SQUARE of the image yields head + shoulders — and it costs nothing at runtime, because an
+## atlas is a view onto the same texture rather than a second copy in memory.
+##
+## `female` picks the alternate portrait. Returns null when the art is missing, so the HUD
+## keeps its empty well instead of rendering a broken texture.
+static func portrait_texture(female: bool = false) -> Texture2D:
+	var path := UIPalette.TEX_PORTRAIT_FEMALE if female else UIPalette.TEX_PORTRAIT_MALE
+	if not ResourceLoader.exists(path):
+		return null
+	var source := load(path) as Texture2D
+	if source == null:
+		return null
+	var side := float(source.get_width()) * UIPalette.PORTRAIT_HEAD_CROP_RATIO
+	side = minf(side, float(source.get_height()))
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source
+	# Centred horizontally, flush to the top — where a standing figure's head is.
+	atlas.region = Rect2(
+		(float(source.get_width()) - side) * 0.5, 0.0, side, side)
+	return atlas
 
 
 ## True once every UI texture resolves (used by the asset-contract test + a startup guard).

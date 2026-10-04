@@ -91,6 +91,25 @@ assets/
   `expand_mode = EXPAND_IGNORE_SIZE`, otherwise it reports its whole texture as its minimum
   size and `custom_minimum_size` silently does nothing (D-034).
 - **Integer scaling only** for pixel UI; no fractional scale that blurs edges.
+
+### The PAINTED UI tier is a documented exception (D-044)
+
+There are now **two** UI asset classes, and they do not share rules:
+- **Pixel art** (`assets/ui/xianxia/`) — nearest filter, integer scale, everything above applies.
+- **Painted** (`assets/ui/aetheria/`, self-made/project-owned) — **LINEAR** filter, and
+  non-integer stretching is acceptable. Forcing nearest on a soft gradient or on fine gold
+  filigree stair-steps it; the nearest/integer rule exists to protect a PIXEL GRID, and painted
+  art has none. 9-slice margins still apply, to protect ornate ENDS from being stretched.
+
+They live in separate folders with separate `UIPalette` constants **on purpose** — so the two
+rule sets cannot be confused. This exception is UI-only: the world, tiles, props and character
+sprites remain strictly pixel art under the rules above.
+
+**The brightness rule binds BOTH tiers.** `SURFACE_LIGHT_BRIGHTNESS_LIMIT` (120) is not a
+pixel-art rule, it is a legibility rule: any surface carrying this project's light-only text
+palette must measure below it. D-034 enforced it for panels and missed the buttons, which sat at
+202 for four phases. When you wire ANY new surface that carries text, measure its centre
+brightness and add the assertion.
 - **Single source of truth for UI tokens + asset paths**: `src/presentation/ui/ui_palette.gd`
   (colors, type scale, spacing, texture paths, per-slot 9-slice margins) → `ui_theme.gd` builds
   the shared `Theme` → `MainMenu` / `GameplayHUD` / future screens consume it. Swapping the art

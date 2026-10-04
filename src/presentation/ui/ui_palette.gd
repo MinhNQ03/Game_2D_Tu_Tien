@@ -124,7 +124,12 @@ const MENU_BUTTON_WIDTH := 332
 
 ## Uniform action-button height, so the menu column reads as one engraved stack rather than
 ## buttons of slightly different sizes.
-const BUTTON_HEIGHT := 48
+##
+## 64, not 48: the painted plate is 245x90 (D-044), and 332x64 keeps the drawn aspect close
+## enough to the authored one that the flat centre absorbs the resize invisibly. At 48 the
+## vertical 9-slice bands (14+14) would eat too much of the box and the plate would read as
+## squashed.
+const BUTTON_HEIGHT := 64
 
 ## Gap between the title treatment and the action column.
 const TITLE_GAP := 18
@@ -202,11 +207,71 @@ const TEX_KEY_BADGE := UI_ASSET_DIR + "/frames/key_badge.png"
 const TEX_PORTRAIT_FRAME := UI_ASSET_DIR + "/frames/portrait_frame.png"
 const TEX_TITLE_DIVIDER := UI_ASSET_DIR + "/frames/title_divider.png"
 
+# --- PAINTED UI tier (Aetheria pack, project-owned, D-044) -------------------
+#
+# A SECOND, deliberately different asset class from the pixel-art xianxia set above, and the
+# rules for it are different — so it lives in its own folder and its own constants rather than
+# being mixed into `UI_ASSET_DIR`.
+#
+# These are painted (self-generated, project-owned — `docs/ASSET_LICENSES.md`), not pixel art.
+# Consequences, which are the whole reason this is a separate tier:
+#   * They are drawn with **LINEAR** filtering, not nearest. Nearest on a soft painted gradient
+#     and on fine gold filigree produces stair-stepping; the "integer scale / nearest only"
+#     rule in `06-art-assets.md` exists to protect PIXEL art and does not apply here.
+#   * Non-integer stretching is acceptable for the same reason — there is no pixel grid to
+#     break. The 9-slice margins below still protect the ornate ENDS from being distorted.
+# The pixel-art world/sprite rules are untouched: this tier is UI-only.
+
+const PAINTED_UI_DIR := "res://assets/ui/aetheria"
+
+## The painted button plate. MEASURED: 245x90, centre brightness 29 (DARK) — which is why it
+## can legally carry this project's light-only text palette, unlike the xianxia
+## `button_normal.png` at 202 (see SURFACE_LIGHT_BRIGHTNESS_LIMIT below).
+const TEX_BUTTON_PAINTED := PAINTED_UI_DIR + "/buttons/button_jade.png"
+
+## A violet variant of the same plate, for a role that must read as clearly apart.
+const TEX_BUTTON_PAINTED_ALT := PAINTED_UI_DIR + "/buttons/button_violet.png"
+
+## The painted menu backdrop: cloud peaks over a dark navy ground. MEASURED 310x330, and its
+## own background navy is deliberately close to COLOR_BACKGROUND_DEEP so the scene can sit
+## CENTRED over that fill with no visible seam — which is what lets it be shown at a modest
+## ~1.9x upscale instead of being stretched 4x+ to cover a full screen and going soft.
+const TEX_MENU_BACKDROP := PAINTED_UI_DIR + "/backdrop/cloud_peaks.png"
+
+## Painted character portraits for the HUD identity plaque (310x560 / 300x560 standing
+## figures — an `AtlasTexture` crops the head region, see `UITheme.portrait_texture`).
+const PORTRAIT_DIR := "res://assets/sprites/characters/portraits"
+const TEX_PORTRAIT_MALE := PORTRAIT_DIR + "/cultivator_male.png"
+const TEX_PORTRAIT_FEMALE := PORTRAIT_DIR + "/cultivator_female.png"
+
+## 9-slice border of the painted button plate: the gold corner filigree runs ~44px in from
+## each side and the gold frame sits ~14px from the top/bottom. Those bands are NOT stretched,
+## so the ornaments stay intact while the flat centre absorbs the resize.
+const PAINTED_BUTTON_MARGIN_H := 44
+const PAINTED_BUTTON_MARGIN_V := 14
+
+## Text inset for the painted button. Wider than the 9-slice margin (the project's
+## `content_margin >= texture_margin` rule) AND wide enough to clear the qi-swirl emblem on
+## the left and the cloud motif on the right, so a label never collides with the artwork.
+const PAINTED_BUTTON_PAD_H := 62
+const PAINTED_BUTTON_PAD_V := 14
+
+## Fraction of the screen height the painted backdrop scene occupies, centred. Keeps the
+## upscale modest; the surrounding fill is the same navy as the art's own ground.
+const MENU_BACKDROP_HEIGHT_RATIO := 0.88
+
+## Side of the head crop taken from a standing portrait, as a fraction of its width. The
+## figures are framed head-to-knee, so the top square of the image is head + shoulders.
+const PORTRAIT_HEAD_CROP_RATIO := 1.0
+
+
 ## Every runtime UI texture (for the asset-contract test — all must exist + be tracked).
 const UI_TEXTURES := [
 	TEX_PANEL, TEX_PANEL_INSET,
 	TEX_BUTTON_NORMAL, TEX_BUTTON_HOVER, TEX_BUTTON_PRESSED, TEX_BUTTON_DISABLED,
 	TEX_BUTTON_FOCUS, TEX_KEY_BADGE, TEX_PORTRAIT_FRAME, TEX_TITLE_DIVIDER,
+	TEX_BUTTON_PAINTED, TEX_BUTTON_PAINTED_ALT, TEX_MENU_BACKDROP,
+	TEX_PORTRAIT_MALE, TEX_PORTRAIT_FEMALE,
 ]
 
 ## 9-slice border margins (px) authored into each xianxia texture (D-028). The border band of

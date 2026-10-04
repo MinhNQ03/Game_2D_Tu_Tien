@@ -8,6 +8,47 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — Real painted UI art, and the button legibility violation fixed (D-044)
+The owner's verdict on the build was that the UI looked cheap. D-043 fixed the structural causes;
+this fixes the **surfaces**. The Aetheria asset pack was confirmed by the owner as
+**self-generated → project-owned**, which cleared the provenance block (`06-art-assets.md`).
+- **The buttons were breaking this project's own measured rule.** `SURFACE_LIGHT_BRIGHTNESS_LIMIT`
+  is **120**; `button_normal.png` measures **202** and `button_hover.png` **217**. The buttons
+  have carried light text on a too-light plate since D-028, with only the text outline holding
+  legibility together — D-034 found exactly this for panels, fixed it there, and **left the
+  buttons out**. That, plus red silk art against an agreed jade direction, is what read as
+  "plastic". The painted plate measures **29**. Tests now pin the asset path for all five states
+  and pin that no per-state tint can multiply 29 back over 120.
+- **A second, deliberately separate asset tier** (`assets/ui/aetheria/`): painted, **not** pixel
+  art, so drawn with **LINEAR** filtering and non-integer stretching is fine — the
+  nearest/integer-scale rule exists to protect a pixel grid and these have none. Pixel-art
+  world/sprite/panel rules untouched; this tier is UI-only with its own folder and constants.
+- **One plate, five states.** Differentiated by modulation rather than five painted files, which
+  would have to stay in sync through every future art pass. 9-slice margins protect the gold ends
+  (44px) and frame (14px); only the flat centre resizes. `BUTTON_HEIGHT` 48 → **64** so the
+  245×90 plate is not squashed — a test asserts the unstretched bands still fit the height.
+- **Role tints became restrained.** Red DANGER × teal plate = muddy brown, not "careful". DANGER
+  now only darkens slightly; the signal is the crimson **label** plus the word, which also keeps
+  colour from being the only carrier of meaning.
+- **The menu has a painted scene** — cloud peaks over dark navy, **centred and aspect-preserved
+  at ~88% screen height, not stretched**. Stretching 310×330 to fill 1280×720+ is a 4×+ upscale
+  and goes soft; centring is ~1.9×. It is seamless because the art's own background navy is close
+  to `COLOR_BACKGROUND_DEEP`. The code-built gradient + vignette stay underneath as a working
+  fallback (guarded by a test).
+- **The HUD portrait well is no longer empty** — it was a rosewood frame around nothing. Now the
+  painted portrait sits UNDER the nine-patch frame so the border overlaps the picture's edge. An
+  `AtlasTexture` crops the head region, because the source is a full 310×560 standing figure and
+  a raw texture in a 56px square well would show the midriff.
+- **Honest limits:** the **map is still bare** and this pack cannot fix it (`08_tiles/*` are
+  256×256 painted; the world grid is 16px — a 256px painting cannot become a 16px tile without
+  being redrawn). The **player is still the proto sprite** (the portraits are illustrations with
+  baked backgrounds, not a 16×24 four-direction transparent sheet). And `main_menu.png` was **not**
+  used as a background — the pack's README says the infographic crops are references, "not
+  cleaned into production sprites".
+- **Provenance recorded** in `ASSET_LICENSES.md` with per-file rows **and** a table of what was
+  deliberately not imported, so it is not re-litigated.
+- **Still not seen on screen:** Godot is not runnable here (D-009).
+
 ### 2026-10-02 — Layout defects fixed: 0×0 menu, overflowing side panels, no design resolution (D-043)
 Reported from running-build screenshots. Two of the three causes were real defects, and in each
 case the thing that *looked* wrong was not the cause. **Presentation + display config only** — no

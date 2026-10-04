@@ -174,6 +174,27 @@ func _build_backdrop() -> void:
 	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(sky)
 
+	# The painted scene (D-044) — what finally makes this a composed screen rather than a
+	# plaque on a gradient.
+	#
+	# It is CENTRED and aspect-preserved at ~88% of the screen height, NOT stretched to cover
+	# the viewport. Stretching a 310x330 painting to fill 1280x720+ is a 4x+ upscale and goes
+	# visibly soft; centring it is only ~1.9x. The reason that works seamlessly is measured:
+	# the artwork's own background navy is deliberately close to COLOR_BACKGROUND_DEEP, so the
+	# surrounding fill reads as a continuation of the painting instead of as a border around it.
+	var scene := TextureRect.new()
+	scene.name = "BackdropScene"
+	scene.texture = UITheme.menu_backdrop()
+	# LINEAR, not nearest: this is PAINTED art, not pixel art. Nearest would stair-step the
+	# soft cloud gradients and the fine gold detail (`UIPalette` painted-tier note).
+	scene.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	scene.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	scene.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scene.visible = scene.texture != null
+	add_child(scene)
+
 	var vignette := TextureRect.new()
 	vignette.name = "Vignette"
 	vignette.texture = UITheme.vignette_gradient()
@@ -231,6 +252,9 @@ func _make_menu_button(role: String) -> Button:
 	button.custom_minimum_size = Vector2(
 		UIPalette.MENU_BUTTON_WIDTH, UIPalette.BUTTON_HEIGHT)
 	button.focus_mode = Control.FOCUS_ALL
+	# The button plate is PAINTED art (D-044), so it is filtered LINEAR like the backdrop —
+	# nearest would stair-step its gold filigree at this non-integer scale.
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	button.add_theme_color_override("font_color", UITheme.role_font_color(role))
 	button.self_modulate = UITheme.role_modulate(role)
 	# Hover lifts the role tint rather than swapping the texture, so the authored pixel art
