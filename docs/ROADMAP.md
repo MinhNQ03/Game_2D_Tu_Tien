@@ -17,7 +17,22 @@
 > 5-ObjectDB / 1-resource test-exit leak and this doc drift). Phase 05 (Relationship core +
 > early character visual pipeline) is **CLOSED** (D-026, CI-verified 2026-10-03 on `21ef622`,
 > all 9 gates green). Phase 06 (Sect) is **CLOSED** (D-032, CI-verified 2026-10-03 on
-> `b3c98cc`, all 9 gates green at the time). Phase 07 (Faction/Politics) is NOT STARTED.
+> `b3c98cc`, all 9 gates green at the time; **final hardening D-037**, see below).
+> **Phase 07 (Faction/Politics) is NOT STARTED.**
+>
+> **Phase 06 final hardening (2026-10-03, D-037 — not a phase, no new scope):** the sect core
+> was audited for failure modes that a green CI cannot see, and six were closed: the Sect↔Sect
+> diplomacy mirror now RETYPES an edge in place instead of removing and recreating it (a
+> rejected flip used to destroy the edge it was "rolling back" — L-023);
+> `SectRuntime.start_session()` is fail-closed and commits nothing until all nine steps succeed
+> (it used to warn-and-continue into a half-session — L-025); New Game treats a relationship or
+> sect failure as FATAL and unwinds Sect → Relationship → World → GameState → MENU;
+> `SectState.from_dict()` validates `typeof()` before converting, so a corrupt payload is no
+> longer coerced into an accepted state (L-024); the rank ladder's `authority` must increase
+> strictly along the authored order; the catalog validates referential integrity of every
+> declared ally/enemy (no more silent skipping of a dangling id); and the Sect panel renders
+> resource names through `SECT_RESOURCE_*` localization keys instead of raw content ids. No new
+> autoload, no new CI gate (**still 10**), no Phase 07 work.
 >
 > **Phase 06 follow-up (2026-10-03, D-033…D-036 — not a phase):** an engine-free GDScript lint
 > gate that runs on save (`tools/gdscript_lint.py`) plus a compile check that actually detects a
@@ -32,20 +47,22 @@
 > from the self-made prototype set to the CC0 **Xianxia Pixel Pack** UI (`assets/ui/xianxia/`)
 > through the existing `UITheme`/`UIPalette` seam (no gameplay/domain change, no new systems).
 > A full local asset audit (5 packs classified A/B/C/D) is recorded in `docs/ASSET_LICENSES.md`.
-> This does not advance the phase sequence; Phase 06 remains NOT STARTED.
+> This did not advance the phase sequence (Phase 06 had not started *at that time*).
 >
 > **Visual follow-up (2026-10-03, D-029 — not a phase):** the currently-visible WORLD (hub +
 > field tileset) and CHARACTER sprite were redrawn in-place from the first flat prototype to a
 > **production-foundation** tier (shaded + dithered tiles, a fully-outlined shaded top-down
 > figure, and self-made Chinese garden-courtyard props as `Visual/Decor` decorations) — same
 > files/dimensions/seams, pure presentation, no gameplay/domain/data change. Still self-made /
-> project-owned; a bespoke art pass can replace it later. Phase 06 remains NOT STARTED.
+> project-owned; a bespoke art pass can replace it later. (Phase 06 had not started *at that
+> time*.)
 >
 > **Close-out (2026-10-03, D-030 — not a phase):** Phase 05 close-out + visual-foundation
 > hardening — documentation drift reconciled (this ROADMAP, `ARCHITECTURE`, `GAME_FLOW`,
 > `06-art-assets` steering), **Continuous Visual Integration** adopted as policy (below), the
 > D-029 visual contracts guarded by tests, and one small UI polish pass through the existing
-> `UITheme`/`UIPalette` seam. No gameplay/domain change, no new systems; Phase 06 NOT STARTED.
+> `UITheme`/`UIPalette` seam. No gameplay/domain change, no new systems. (Phase 06 had not
+> started *at that time*.)
 >
 > **Reorder note (2026-10-02, Phase 1 kickoff):** the core social/world systems
 > (Character / Relationship / Sect / Faction / World Simulation) were moved **earlier** —
@@ -190,7 +207,13 @@ roster wins on drift; the alliance/enemy mirror stays consistent with the relati
 (rollback on failure); domain + runtime + localization tests pass and the world/map E2E asserts
 the player's sect is live + visible + survives map round trips. CLOSED on the CI-green commit.
 
-## Phase 07 — Faction / Sect Politics
+**Final hardening (D-037):** closed six failure modes a green CI could not see — a
+non-destructive in-place diplomacy retype, a fail-closed `start_session()`, a fatal + unwinding
+New Game path, strict `typeof()` validation at the `from_dict` boundary, a strictly increasing
+rank ladder, catalog referential integrity for declared diplomacy, and localized resource names
+in the Sect panel. Tests expanded in place; **CI still 10 gates**; no new scope.
+
+## Phase 07 — Faction / Sect Politics *(NOT STARTED)*
 Internal factions + emergent politics (`docs/SECT_SYSTEM.md` §7): `FactionState`,
 influence, attitudes toward player/other factions, resolved as rules over data.
 **Exit:** multi-faction sect authored via data; a faction influence/attitude change

@@ -20,8 +20,10 @@ class_name SectService
 ## means "character checks disabled" (pure unit tests of roster logic without characters).
 ##
 ## RELATIONSHIP MIRROR (§14): alliances/enemies are mirrored to Sect↔Sect edges in the shared
-## `RelationshipService`. A diplomacy mutation is TRANSACTIONAL across both stores: if the
-## relationship mutation fails, the sect mutation is rolled back so the two never diverge.
+## `RelationshipService`. A diplomacy mutation is TRANSACTIONAL across both stores: the
+## relationship side runs FIRST and is NON-DESTRUCTIVE (an existing edge of the wrong type is
+## retyped in place, never removed-then-recreated), so if it fails nothing has been destroyed
+## and the sect side is never touched — the two stores can never diverge.
 ##
 ## Templates (for rank-ladder validation) are REGISTERED in-memory alongside the state via
 ## `register_sect(state, template)` — the service never loads from disk, so it is fully
@@ -104,20 +106,49 @@ func register_sect(state: SectState, template: SectTemplateData) -> bool:
 
 
 ## After all sects are registered, mirror each sect's DECLARED allies/enemies into the
-## relationship graph (§14). Idempotent: a pair already mirrored is skipped (no duplicate
-## edge). Only mirrors a pair when BOTH sects exist (a dangling reference is skipped, not
-## mirrored). Call once at session start.
-func apply_default_diplomacy() -> void:
+## relationship graph (§14). Idempotent: a pair already mirrored at the right type is a
+## no-op (no duplicate edge). Call once at session start.
+##
+## FAILS CLOSED (returns false, loud) instead of degrading silently:
+##   * a DANGLING declaration (a declared ally/enemy sect that is not in the store) is an
+##     error, not something to skip — skipping produced a session where the sect state said
+##     "enemy of X" while the relationship graph held no such edge, i.e. the two stores
+##     diverged from the first frame;
+##   * a sect declaring ANY diplomacy with NO relationship service installed is an error for
+##     the same reason: there is no graph to mirror into, so the mirror is not "disabled", it
+##     is MISSING. A service with no relationship mirror is only legitimate when nothing
+##     declares diplomacy at all (roster-only unit tests).
+## The caller (SectRuntime) aborts the session on false, so no half-mirrored session exists.
+func apply_default_diplomacy() -> bool:
 	if _relationship == null:
-		return
+		for sect in _store.all():
+			var s0 := sect as SectState
+			if not s0.ally_sect_ids().is_empty() or not s0.enemy_sect_ids().is_empty():
+				push_error("[sect] apply_default_diplomacy: sect '%s' declares diplomacy but "
+					% s0.id + "no RelationshipService is installed to mirror it into")
+				return false
+		return true
 	for sect in _store.all():
 		var s := sect as SectState
 		for ally in s.ally_sect_ids():
-			if _store.has(ally):
-				_ensure_edge(s.id, ally, REL_TYPE_ALLY)
+			if not _store.has(ally):
+				push_error("[sect] apply_default_diplomacy: sect '%s' declares unknown ally '%s'"
+					% [s.id, ally])
+				return false
+			if not _ensure_edge(s.id, ally, REL_TYPE_ALLY):
+				push_error("[sect] apply_default_diplomacy: ally mirror failed for %s<->%s"
+					% [s.id, ally])
+				return false
 		for enemy in s.enemy_sect_ids():
-			if _store.has(enemy):
-				_ensure_edge(s.id, enemy, REL_TYPE_ENEMY)
+			if not _store.has(enemy):
+				push_error("[sect] apply_default_diplomacy: sect '%s' declares unknown enemy '%s'"
+					% [s.id, enemy])
+				return false
+			if not _ensure_edge(s.id, enemy, REL_TYPE_ENEMY):
+				push_error("[sect] apply_default_diplomacy: enemy mirror failed for %s<->%s"
+					% [s.id, enemy])
+				return false
+	return true
 
 
 # --- Membership (the roster is authoritative, D-015) ------------------------
@@ -392,22 +423,29 @@ func _set_diplomacy(sect_id: StringName, other_sect_id: StringName, relation: St
 
 
 ## Ensure a symmetric Sect↔Sect relationship edge of `relation` exists between the pair, with
-## a deterministic stable id. If an edge already exists with a different type, it is removed
-## and recreated with the new type (so ally→enemy flips cleanly). Returns false if the
-## relationship service rejects creation. No duplicate edge for the same pair.
+## a deterministic stable id. Returns false if the relationship service rejects the mutation.
+## No duplicate edge for the same pair.
+##
+## NON-DESTRUCTIVE BY CONTRACT: an existing edge of the WRONG type is RETYPED IN PLACE via
+## `RelationshipService.set_relationship_type()` — it is never removed and recreated. The old
+## remove-then-create shape destroyed the edge on the FIRST leg, so a failure on the create
+## leg left no edge at all: the caller's "rollback" restored the sect side while the mirrored
+## edge (with its dimensions + history) was already gone, which is exactly the divergence §14
+## forbids. Retyping in place means a rejected mutation leaves the previous edge fully intact
+## (same id, endpoints, symmetric/known flags, dimension values and history).
 func _ensure_edge(sect_id: StringName, other_sect_id: StringName, relation: StringName) -> bool:
 	if _relationship == null:
 		return true
-	var edge_id := edge_id(sect_id, other_sect_id)
+	var eid := edge_id(sect_id, other_sect_id)
 	var store := _relationship.get_store()
-	var existing: RelationshipEdge = store.get_edge(edge_id) if store != null else null
+	var existing: RelationshipEdge = store.get_edge(eid) if store != null else null
 	if existing != null:
 		if existing.relationship_type == relation:
 			return true  # already the right edge; idempotent
-		_relationship.remove_edge(edge_id)
+		return _relationship.set_relationship_type(eid, relation)
 	var from_ep := RelationshipEndpoint.for_sect(sect_id)
 	var to_ep := RelationshipEndpoint.for_sect(other_sect_id)
-	var edge := _relationship.create_edge(edge_id, from_ep, to_ep, relation, true, true)
+	var edge := _relationship.create_edge(eid, from_ep, to_ep, relation, true, true)
 	return edge != null
 
 

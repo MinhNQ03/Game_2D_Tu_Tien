@@ -303,14 +303,40 @@ func to_dict() -> Dictionary:
 ## every member rank non-empty; leader (if set) and every elder are in the roster; no member
 ## is both leader and elder; resources int >= 0; reputation int in range; territory unique
 ## non-empty; ally/enemy unique and disjoint and not self.
+##
+## STRICT TYPES — every field is checked with `typeof()` BEFORE any conversion, and a wrong
+## type is a rejection, never a coercion. This matters because GDScript's `String()`/`int()`
+## will happily INVENT a plausible value out of a malformed payload: `String(100)` turns a
+## number into the id `"100"`, `String(null)` turns a missing value into `""` (which then
+## reads as "no leader" instead of "corrupt"), and `int("100")`/`int(100.0)` turn text and a
+## float into a quantity. Each of those silently converts a corrupt save into an accepted
+## state — the exact failure mode fail-closed validation exists to prevent. So:
+##   * every ID-like field (`id`, `template_id`, `leader_ref`, member ids, rank ids, elder
+##     refs, territory ids, ally/enemy ids, resource ids, reputation scopes) must be a
+##     String or StringName — not a number, bool, null, object, array or dictionary;
+##   * every COUNT-like field (resource quantity, reputation value, influence) must be
+##     TYPE_INT — a float (even `100.0`) and a numeric string are rejected.
+## Still ATOMIC: everything is staged in locals and committed only after the whole payload
+## validates, so a rejected payload leaves this instance byte-identical to before the call.
 func from_dict(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		push_error("[sect] from_dict: payload is not a Dictionary")
 		return false
 	var dict: Dictionary = data
+	if dict.has("id") and not _is_id_token(dict["id"]):
+		push_error("[sect] from_dict: 'id' must be a String/StringName (got %s)"
+			% type_string(typeof(dict["id"])))
+		return false
 	var in_id := StringName(String(dict.get("id", "")))
 	if in_id == &"":
 		push_error("[sect] from_dict: missing id")
+		return false
+
+	# Content reference. Validated here (before the commit) so a malformed template_id cannot
+	# slip in on the last line — the commit block must contain no validation of its own.
+	if dict.has("template_id") and not _is_id_token(dict["template_id"]):
+		push_error("[sect] from_dict '%s': 'template_id' must be a String/StringName (got %s)"
+			% [in_id, type_string(typeof(dict["template_id"]))])
 		return false
 
 	# Roster.
@@ -320,8 +346,18 @@ func from_dict(data: Variant) -> bool:
 		return false
 	var staged_ranks := {}
 	for key in (ranks_in as Dictionary):
+		if not _is_id_token(key):
+			push_error("[sect] from_dict '%s': member id must be a String/StringName (got %s)"
+				% [in_id, type_string(typeof(key))])
+			return false
+		var rank_value: Variant = (ranks_in as Dictionary)[key]
+		if not _is_id_token(rank_value):
+			push_error("[sect] from_dict '%s': rank id for member '%s' must be a "
+				% [in_id, String(key)]
+				+ "String/StringName (got %s)" % type_string(typeof(rank_value)))
+			return false
 		var cid := String(key)
-		var rid := String((ranks_in as Dictionary)[key])
+		var rid := String(rank_value)
 		if cid == "":
 			push_error("[sect] from_dict '%s': empty member id in roster" % in_id)
 			return false
@@ -334,6 +370,10 @@ func from_dict(data: Variant) -> bool:
 		staged_ranks[cid] = rid
 
 	# Leadership.
+	if dict.has("leader_ref") and not _is_id_token(dict["leader_ref"]):
+		push_error("[sect] from_dict '%s': 'leader_ref' must be a String/StringName (got %s)"
+			% [in_id, type_string(typeof(dict["leader_ref"]))])
+		return false
 	var in_leader := StringName(String(dict.get("leader_ref", "")))
 	if in_leader != &"" and not staged_ranks.has(String(in_leader)):
 		push_error("[sect] from_dict '%s': leader '%s' not in roster" % [in_id, in_leader])
@@ -345,6 +385,10 @@ func from_dict(data: Variant) -> bool:
 	var staged_elders: Array[StringName] = []
 	var elder_seen := {}
 	for e in (elders_in as Array):
+		if not _is_id_token(e):
+			push_error("[sect] from_dict '%s': elder ref must be a String/StringName (got %s)"
+				% [in_id, type_string(typeof(e))])
+			return false
 		var ecid := String(e)
 		if ecid == "" or not staged_ranks.has(ecid):
 			push_error("[sect] from_dict '%s': elder '%s' not in roster" % [in_id, ecid])
@@ -365,7 +409,16 @@ func from_dict(data: Variant) -> bool:
 		push_error("[sect] from_dict '%s': resources is not a Dictionary" % in_id)
 		return false
 	for key in (resources_in as Dictionary):
-		var qty := int((resources_in as Dictionary)[key])
+		if not _is_id_token(key):
+			push_error("[sect] from_dict '%s': resource id must be a String/StringName (got %s)"
+				% [in_id, type_string(typeof(key))])
+			return false
+		var qty_value: Variant = (resources_in as Dictionary)[key]
+		if typeof(qty_value) != TYPE_INT:
+			push_error("[sect] from_dict '%s': resource '%s' quantity must be an int (got %s)"
+				% [in_id, String(key), type_string(typeof(qty_value))])
+			return false
+		var qty: int = qty_value
 		if qty < 0:
 			push_error("[sect] from_dict '%s': resource '%s' negative (%d)" % [in_id, key, qty])
 			return false
@@ -377,14 +430,28 @@ func from_dict(data: Variant) -> bool:
 		push_error("[sect] from_dict '%s': reputation is not a Dictionary" % in_id)
 		return false
 	for scope in (reputation_in as Dictionary):
-		var val := int((reputation_in as Dictionary)[scope])
+		if not _is_id_token(scope):
+			push_error("[sect] from_dict '%s': reputation scope must be a String/StringName "
+				% in_id + "(got %s)" % type_string(typeof(scope)))
+			return false
+		var rep_value: Variant = (reputation_in as Dictionary)[scope]
+		if typeof(rep_value) != TYPE_INT:
+			push_error("[sect] from_dict '%s': reputation '%s' must be an int (got %s)"
+				% [in_id, String(scope), type_string(typeof(rep_value))])
+			return false
+		var val: int = rep_value
 		if val < REP_MIN or val > REP_MAX:
 			push_error("[sect] from_dict '%s': reputation '%s' %d out of [%d,%d]" % [
 				in_id, scope, val, REP_MIN, REP_MAX])
 			return false
 		staged_reputation[String(scope)] = val
 
-	var in_influence := int(dict.get("influence", 0))
+	var influence_value: Variant = dict.get("influence", 0)
+	if typeof(influence_value) != TYPE_INT:
+		push_error("[sect] from_dict '%s': influence must be an int (got %s)"
+			% [in_id, type_string(typeof(influence_value))])
+		return false
+	var in_influence: int = influence_value
 	if in_influence < 0:
 		push_error("[sect] from_dict '%s': influence must be >= 0 (%d)" % [in_id, in_influence])
 		return false
@@ -435,14 +502,18 @@ static func _sorted_string_names(arr: Array[StringName]) -> Array:
 	return out
 
 
-## Parse an Array of ids into a typed Array[StringName], rejecting empty/duplicate entries.
-## Returns null on malformed input (not an Array, empty id, or a duplicate).
+## Parse an Array of ids into a typed Array[StringName], rejecting empty/duplicate entries
+## and any entry that is not already a String/StringName (a number/bool/null/object would be
+## COERCED into a plausible-looking id, inventing content out of corrupt data).
+## Returns null on malformed input (not an Array, wrong entry type, empty id, or a duplicate).
 static func _parse_unique_id_array(value: Variant) -> Variant:
 	if typeof(value) != TYPE_ARRAY:
 		return null
 	var out: Array[StringName] = []
 	var seen := {}
 	for item in (value as Array):
+		if not _is_id_token(item):
+			return null
 		var s := String(item)
 		if s == "":
 			return null
@@ -451,3 +522,13 @@ static func _parse_unique_id_array(value: Variant) -> Variant:
 		seen[s] = true
 		out.append(StringName(s))
 	return out
+
+
+## True only for a String or StringName — the two types an authored/serialized ID may have.
+## Everything else (int, float, bool, null, Object, Array, Dictionary) is REJECTED rather
+## than converted: `String(100)`, `String(null)` and `String(true)` all produce a syntactically
+## valid id out of data that was never an id, which is how a corrupt payload becomes an
+## "accepted" state. Validate the type, then convert — never convert to find out.
+static func _is_id_token(value: Variant) -> bool:
+	var t := typeof(value)
+	return t == TYPE_STRING or t == TYPE_STRING_NAME

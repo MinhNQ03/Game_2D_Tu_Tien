@@ -31,54 +31,136 @@ var _player_sect_id: StringName = &""
 var _player_instance_id: StringName = &""
 
 
-## Begin a sect session. `relationship_service` (may be null) powers the Sect↔Sect mirror;
-## `character_resolver` (may be invalid) lets the service validate membership + sync the
-## player's `CharacterState` cache; `player_instance_id` is the player to enroll into the
-## authored start sect. Returns false (loud) on a missing/invalid catalog. NON-FATAL at the
-## caller (Main) — like RelationshipRuntime, a sect-load failure must not abort New Game.
+## Begin a sect session — FAIL-CLOSED. `relationship_service` powers the Sect↔Sect mirror
+## (REQUIRED whenever the catalog declares any default diplomacy); `character_resolver` lets
+## the service validate membership + sync the player's `CharacterState` cache;
+## `player_instance_id` is the player to enroll into the authored start sect.
 ## Idempotent: a second call with an active session is a no-op returning true.
+##
+## The session is reported ACTIVE only after EVERY one of these succeeded:
+##   1. the catalog exists, loads, and validates,
+##   2. the relationship dependency is satisfied (a graph exists if diplomacy is declared),
+##   3. every authored template is valid,
+##   4. a `SectState` was built for every template,
+##   5. every `register_sect` succeeded,
+##   6. the default diplomacy mirror succeeded for every declared pair,
+##   7. the authored player start sect resolves in the store,
+##   8. the player's enrollment through the service succeeded,
+##   9. the player's derived `CharacterState` cache agrees with the authoritative roster.
+##
+## Everything is built into LOCALS and only committed to the node's fields at the very end,
+## so a failure can never leave a half-session visible: `is_session_active()` stays false and
+## `get_service()`/`get_store()`/`get_player_sect_id()` stay empty. Returns false (loud) on
+## any failure; the caller (Main) treats that as FATAL for New Game and unwinds.
 func start_session(
 		relationship_service: RelationshipService,
 		character_resolver: Callable,
 		player_instance_id: StringName) -> bool:
 	if _session_active and _service != null:
 		return true
-	_catalog = _load_catalog()
-	if _catalog == null:
-		return false
-	_store = SectStore.new()
-	_service = SectService.new(_store)
-	if relationship_service != null:
-		_service.set_relationship_service(relationship_service)
-	if character_resolver.is_valid():
-		_service.set_character_resolver(character_resolver)
-	_player_instance_id = player_instance_id
 
-	# Register every authored sect (state + template) with the service.
-	for tmpl in _catalog.sects:
+	# 1. Catalog (boundary-validated).
+	var catalog := _load_catalog()
+	if catalog == null:
+		return _fail_start("catalog missing, unloadable or invalid")
+
+	# 2. Relationship dependency. Declared diplomacy has nowhere to be mirrored without a
+	#    graph, so starting anyway would guarantee sect-state/relationship-graph divergence.
+	if relationship_service == null and _declares_diplomacy(catalog):
+		return _fail_start("catalog declares default diplomacy but no RelationshipService "
+			+ "was provided to mirror it into")
+
+	var store := SectStore.new()
+	var service := SectService.new(store)
+	if relationship_service != null:
+		service.set_relationship_service(relationship_service)
+	if character_resolver.is_valid():
+		service.set_character_resolver(character_resolver)
+
+	# 3-5. Every authored sect must be valid, buildable AND registered. A single bad entry
+	#      aborts the whole session rather than silently shipping a partial sect world.
+	for tmpl in catalog.sects:
+		if tmpl == null:
+			return _fail_start("catalog contains a null sect template")
+		if not tmpl.is_valid():
+			return _fail_start("invalid sect template '%s': %s"
+				% [tmpl.id, str(tmpl.validation_errors())])
 		var state := SectState.create_from_template(tmpl)
 		if state == null:
-			push_error("[sect] failed to build SectState for '%s'" % tmpl.id)
-			continue
-		_service.register_sect(state, tmpl)
-	# Mirror declared alliances/enemies into the relationship graph once all sects exist (§14).
-	_service.apply_default_diplomacy()
+			return _fail_start("failed to build SectState for '%s'" % tmpl.id)
+		if not service.register_sect(state, tmpl):
+			return _fail_start("failed to register sect '%s'" % tmpl.id)
 
-	# Enroll the player into the authored starting sect (membership flows through the service,
-	# so the ROSTER is authoritative and the player's derived cache is written — not just
-	# CharacterState.sect_id set directly, §17/D-015).
-	_player_sect_id = &""
-	if _catalog.player_start_sect_id != &"" and player_instance_id != &"":
-		var ok := _service.join_member(
-			_catalog.player_start_sect_id, player_instance_id, _catalog.player_start_rank_id)
-		if ok:
-			_player_sect_id = _catalog.player_start_sect_id
-		else:
-			push_warning("[sect] player could not join start sect '%s'"
-				% _catalog.player_start_sect_id)
+	# 6. Mirror declared alliances/enemies into the relationship graph now that all sects
+	#    exist (§14). A dangling or rejected pair fails the session.
+	if not service.apply_default_diplomacy():
+		return _fail_start("default diplomacy mirror failed (see errors above)")
 
+	# 7-8. Enroll the player into the authored starting sect. Membership flows through the
+	#      service, so the ROSTER is authoritative and the derived cache is written — never
+	#      `CharacterState.sect_id` set directly (§17/D-015).
+	var resolved_sect_id: StringName = &""
+	if catalog.player_start_sect_id != &"":
+		if store.get_sect(catalog.player_start_sect_id) == null:
+			return _fail_start("authored player start sect '%s' is not in the store"
+				% catalog.player_start_sect_id)
+		if player_instance_id == &"":
+			return _fail_start("catalog names a player start sect but no player instance id "
+				+ "was provided to enroll")
+		if not service.join_member(
+				catalog.player_start_sect_id, player_instance_id,
+				catalog.player_start_rank_id):
+			return _fail_start("player '%s' could not join start sect '%s'"
+				% [player_instance_id, catalog.player_start_sect_id])
+		resolved_sect_id = catalog.player_start_sect_id
+
+	# 9. Derived-cache sync + verification (D-015: the roster is authority, the
+	#    CharacterState fields are a cache that MUST agree with it).
+	service.sync_character_cache()
+	if resolved_sect_id != &"" and character_resolver.is_valid():
+		var cs: CharacterState = character_resolver.call(player_instance_id)
+		var sect := store.get_sect(resolved_sect_id)
+		if cs == null or cs.sect_id != resolved_sect_id \
+				or cs.sect_rank != sect.rank_of(player_instance_id):
+			# Unwind the enrollment so the character is not left pointing at a sect that
+			# this (aborted) session owns.
+			service.leave_member(resolved_sect_id, player_instance_id)
+			return _fail_start("player's derived CharacterState cache does not match the "
+				+ "authoritative roster after enrollment")
+
+	# Commit: only now does the session exist.
+	_catalog = catalog
+	_store = store
+	_service = service
+	_player_instance_id = player_instance_id
+	_player_sect_id = resolved_sect_id
 	_session_active = true
 	return true
+
+
+## Report a start failure loudly and leave NO half-session behind: every session field is
+## cleared, so `is_session_active()` is false and every getter reads empty. Always false.
+func _fail_start(reason: String) -> bool:
+	push_error("[sect] session start aborted: %s" % reason)
+	_session_active = false
+	_service = null
+	_store = null
+	_catalog = null
+	_player_sect_id = &""
+	_player_instance_id = &""
+	return false
+
+
+## True if ANY authored sect in `catalog` declares a default ally or enemy — i.e. whether the
+## session needs a relationship graph to mirror into.
+static func _declares_diplomacy(catalog: SectCatalog) -> bool:
+	for tmpl in catalog.sects:
+		if tmpl == null:
+			continue
+		if not tmpl.default_ally_sect_ids.is_empty() \
+				or not tmpl.default_enemy_sect_ids.is_empty():
+			return true
+	return false
 
 
 ## End the sect session: drop the store/service (RefCounted, freed with the last reference).

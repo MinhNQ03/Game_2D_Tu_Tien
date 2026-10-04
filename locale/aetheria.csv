@@ -51,6 +51,11 @@ UI_SECT_PANEL_TERRITORY,Territory,Lãnh Địa
 UI_SECT_PANEL_RESOURCES,Resources,Tài Nguyên
 UI_SECT_PANEL_NONE,You do not belong to a sect.,Bạn chưa gia nhập tông môn nào.
 UI_SECT_PANEL_TOGGLE,Sect,Tông Môn
+UI_SECT_PANEL_RESOURCE_UNKNOWN,Unknown Resource,Tài nguyên khác
+SECT_RESOURCE_SPIRIT_STONES,Spirit Stones,Linh Thạch
+SECT_RESOURCE_PILLS,Pills,Đan Dược
+SECT_RESOURCE_MANPOWER,Manpower,Nhân Lực
+SECT_RESOURCE_BLOOD_CRYSTALS,Blood Crystals,Huyết Tinh
 UI_SETTINGS_TITLE,Settings,Thiết Lập
 UI_SETTINGS_LANGUAGE_HINT,Choose the language used across the game.,Chọn ngôn ngữ dùng trong toàn bộ game.
 UI_SETTINGS_BACK,Back,Quay lại

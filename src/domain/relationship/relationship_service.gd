@@ -87,6 +87,35 @@ func remove_edge(edge_id: StringName) -> bool:
 	return _store.remove_edge(edge_id)
 
 
+## Retype an EXISTING edge IN PLACE: only `relationship_type` is rewritten. Everything else
+## is preserved — `id`, `from_ref`/`to_ref` (so the canonical order and the endpoint indexes
+## are untouched), `symmetric`, `known`, every `dimensions` value, and the whole `history`.
+##
+## This exists so a caller that needs to CHANGE a qualitative type never has to
+## remove-then-recreate: that pattern destroys the edge first, so a failure on the recreate
+## leg leaves NOTHING behind (the mirror's own data is gone even though the caller then
+## "rolls back"). Here a failure is detected BEFORE any write, so the old edge survives 100%
+## intact. Fails LOUD + returns false on an unknown edge, a missing store, or an empty type;
+## it never creates an edge. Returns true (no-op) when the edge already has that type.
+##
+## Does NOT emit `relationship_changed` — that signal reports a DIMENSION change and carries
+## int old/new values; the qualitative type is not a dimension. No consumer exists for a
+## type-change event yet, so no speculative signal is added (`03-architecture.md`, L-005).
+func set_relationship_type(edge_id: StringName, relationship_type: StringName) -> bool:
+	if relationship_type == &"":
+		push_error("[relationship] set_relationship_type '%s': empty type" % edge_id)
+		return false
+	if _store == null:
+		push_error("[relationship] set_relationship_type '%s': no store" % edge_id)
+		return false
+	var edge: RelationshipEdge = _store.get_edge(edge_id)
+	if edge == null:
+		push_error("[relationship] set_relationship_type on unknown edge '%s'" % edge_id)
+		return false
+	edge.relationship_type = relationship_type
+	return true
+
+
 # --- Mutation (the single path; clamp + history + signal) -------------------
 
 ## Apply a `delta` to `dimension` on edge `edge_id`, attributing `cause`. Returns true if the

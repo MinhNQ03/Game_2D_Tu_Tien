@@ -20,6 +20,14 @@ const EMBLEM_PX := 28
 ## Minimum panel width, wide enough for the longest localized label + value on one line.
 const PANEL_MIN_WIDTH := 280
 
+## Localization key prefix for a sect resource's display name (§7). The id is upper-cased and
+## appended: `pills` -> `SECT_RESOURCE_PILLS`.
+const RESOURCE_KEY_PREFIX := "SECT_RESOURCE_"
+
+## Shown instead of an unlocalized resource id. A missing translation degrades to a localized
+## generic word, never to the internal token.
+const RESOURCE_FALLBACK_KEY := "UI_SECT_PANEL_RESOURCE_UNKNOWN"
+
 var _loc: Node = null
 
 var _title: Label
@@ -94,9 +102,9 @@ func _build() -> void:
 	box.add_child(_empty)
 
 
-func _make_label(size: int, color: Color) -> Label:
+func _make_label(font_size: int, color: Color) -> Label:
 	var l := Label.new()
-	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_font_size_override("font_size", font_size)
 	l.add_theme_color_override("font_color", color)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
@@ -158,15 +166,37 @@ func _sect_type_key(sect_type: int) -> String:
 			return "SECT_TYPE_ORTHODOX"
 
 
-## Compact "qty id, qty id" summary of the resource dict (resource ids are internal tokens,
-## not user-facing names; shown as a terse count line, deterministic by sorted key).
+## Compact "qty NAME, qty NAME" summary of the resource dict, deterministic by sorted key.
+##
+## The dict keys are INTERNAL content ids (`spirit_stones`, `blood_crystals`, …) and must
+## never reach the screen (§21, `07-localization.md`: no raw id, no hard-coded user-facing
+## text). Each id is resolved to its localized display name; an id with no authored key gets
+## the localized GENERIC label, so an unlocalized resource degrades to "Unknown Resource" /
+## "Tài nguyên khác" rather than leaking the token.
 func _format_resources(summary: Dictionary) -> String:
 	var keys := summary.keys()
 	keys.sort()
 	var parts: Array[String] = []
 	for key in keys:
-		parts.append("%d %s" % [int(summary[key]), String(key)])
+		parts.append("%d %s" % [int(summary[key]), _resource_label(String(key))])
 	return ", ".join(parts) if not parts.is_empty() else "-"
+
+
+## The localization KEY for a sect resource id: `spirit_stones` -> `SECT_RESOURCE_SPIRIT_STONES`
+## (§7 convention). A pure, static naming rule — NOT a resource registry/lookup table: adding
+## a resource id to content means adding its two CSV rows, no code and no new system
+## (`03-architecture.md` anti-over-engineering).
+static func resource_name_key(resource_id: String) -> String:
+	return RESOURCE_KEY_PREFIX + resource_id.to_upper()
+
+
+## Localized display name for a resource id, or the localized generic fallback when the
+## convention key has not been authored. Never returns the raw id.
+func _resource_label(resource_id: String) -> String:
+	var key := resource_name_key(resource_id)
+	if _loc != null and bool(_loc.call("has_key", key)):
+		return _t(key)
+	return _t(RESOURCE_FALLBACK_KEY)
 
 
 func _t(key: String) -> String:

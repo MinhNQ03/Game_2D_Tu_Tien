@@ -942,11 +942,11 @@ at the CALL SITES before the real error was read. Two things made that possible:
 - **Add `tools/gdscript_lint.py`** — pure Python, zero dependencies, no engine. Rules, chosen
   for ZERO false positives because a noisy gate gets ignored:
   - `GD001 variant-infer` — `var x := <Variant expression>` (the L-020 bug), detected by
-    finding the call that PRODUCES the value, so `int(d.get(k))` is silent while `d.get(k)` is
-    flagged. The repo-wide index of `-> Variant` functions makes project helpers count too.
+	finding the call that PRODUCES the value, so `int(d.get(k))` is silent while `d.get(k)` is
+	flagged. The repo-wide index of `-> Variant` functions makes project helpers count too.
   - `GD002 private-access` — `other._member` where `_member` is declared in a DIFFERENT file.
-    Same-file access through another receiver stays legal (that is normal same-class access),
-    and Godot's own virtuals (`_ready`, `_process`, …) are exempt.
+	Same-file access through another receiver stays legal (that is normal same-class access),
+	and Godot's own virtuals (`_ready`, `_process`, …) are exempt.
   - `GD003 line-too-long` — the budget Godot's own diagnostics flag.
 - **The linter is self-tested (`--selftest`) and CI runs the self-test first.** This gate is
   load-bearing; a linter whose rules silently stopped matching is worse than no linter. The
@@ -1103,3 +1103,109 @@ the camera travel" were in direct conflict.
 space is intentional room for the NPC/encounter content of later phases. The camera-follow
 behaviour is per-map in `MapBase`; if a later phase needs cinematic or multi-target framing it
 should become its own component rather than growing this coordinator.
+
+---
+
+## D-037 — Phase 06 final hardening: the sect core fails closed, never destroys before it succeeds, and never coerces at a boundary — **Accepted** (2026-10-03, Phase 06 final hardening)
+
+**Context:** Phase 06 closed CI-green and the follow-up (D-033…D-036) added a lint gate, UI
+legibility, camera follow and a Vietnamese default — all ten gates green. None of that could see
+the class of defect audited here: every one of these is a path that only runs when something
+goes WRONG, so a green suite proves nothing about it. Six were found and closed. "CI is green"
+is explicitly not a reason to leave a failure mode open
+(`.kiro/steering/08-ai-review-protocol.md`: build passing is not done).
+
+**Decisions:**
+
+- **A diplomacy retype is IN PLACE; nothing is destroyed before the replacement succeeds.**
+  `SectService._ensure_edge()` flipped ALLY→ENEMY by `remove_edge()` **then** `create_edge()`.
+  The surrounding `_set_diplomacy()` was a correct transaction and a test even proved the SECT
+  side rolled back — but by the time `create_edge` could fail the original edge was already
+  gone, with its dimension values and history. A rejected flip therefore left the sect state
+  saying "allied" and the relationship graph holding no edge at all: exactly the divergence the
+  transaction existed to prevent. On the SUCCESS path it was lossy too, because a new edge is
+  seeded from config defaults. New narrow API `RelationshipService.set_relationship_type()`
+  rewrites ONLY `relationship_type`, preserving `id`, `from_ref`/`to_ref` (so the endpoint
+  indexes and canonical order are untouched), `symmetric`, `known`, every dimension and the
+  whole history; it fails loud on an unknown edge or an empty type and never creates one. It
+  emits no signal: `relationship_changed` reports a DIMENSION change with int values, and no
+  consumer of a type-change event exists (no speculative surface — L-005). The tests now assert
+  OBJECT IDENTITY plus preserved dimensions/history, because a test that only checks the
+  resulting type passes for a recreated edge. See L-023.
+
+- **`SectRuntime.start_session()` is fail-closed and commits nothing until every step succeeds.**
+  It used to write its own fields as it went, `continue` past a sect that failed to register,
+  `push_warning` when the player could not join, and then set `_session_active = true` and
+  return `true` regardless — so `is_session_active()` could advertise a sect world with missing
+  sects, no player membership, or declared enmities absent from the relationship graph. It is now
+  nine explicit steps built into LOCALS (catalog valid → relationship dependency satisfied →
+  every template valid → every state built → every registration succeeded → diplomacy mirrored →
+  start sect resolves → player enrolled → derived cache agrees with the roster), committed only
+  at the end, with `_fail_start()` clearing every field. A failure is invisible by construction
+  rather than by a cleanup path. `apply_default_diplomacy()` returns `bool` and fails closed on a
+  DANGLING declaration (previously skipped) and on declared diplomacy with no relationship
+  service to mirror into (previously the whole mirror was skipped); the only legitimate no-mirror
+  case is "nothing declares diplomacy", which roster-only unit tests use. See L-025.
+
+- **A relationship or sect failure is FATAL for New Game, and the unwind is ordered.** `Main`
+  still treated both as advisory even though the sect session had become a hard consumer of the
+  relationship graph AND a writer of the player's derived `CharacterState.sect_id`. The reachable
+  end state was phase `RUNNING` + a live world + `character.sect_id` set + an inactive sect
+  session: membership no system owned. Both are now fatal, `_start_sect_session()` returns `bool`
+  and reports every prerequisite it checks, and `_unwind_failed_session()` ends
+  **Sect → Relationship → World → GameState** then shows the menu. That order is reverse
+  dependency order: the sect session holds the graph and the character cache, both owned by
+  subsystems ended after it. The E2E now asserts the forbidden combination is unreachable.
+
+- **`SectState.from_dict()` validates `typeof()` BEFORE converting.** The validator was
+  fail-closed and atomic and still accepted garbage, because every field was read through a
+  COERCION. GDScript's converters do not fail, they invent: `int("100")` and `int(100.0)` both
+  give the valid quantity `100`, `int(true)` gives `1`, `String(99)` gives the plausible id
+  `"99"`, and `String(null)` gives `""` — which then reads as the legitimate "no leader" rather
+  than "corrupt payload". Every ID-like field (`id`, `template_id`, `leader_ref`, member ids,
+  rank ids, elder refs, territory/ally/enemy ids, resource ids, reputation scopes — dictionary
+  KEYS included) must now be `TYPE_STRING`/`TYPE_STRING_NAME`, and every count-like field
+  (resource quantity, reputation value, influence) must be `TYPE_INT`, so an integral float is
+  rejected rather than quietly promoted. The staged-then-commit shape is unchanged, so a
+  rejection leaves the instance byte-identical. See L-024.
+
+- **The rank ladder's `authority` must increase STRICTLY along the authored array.** The array
+  order is the official progression (§4) and `authority` is what rules compare, so the two must
+  agree or the ladder means two things at once: `[10, 20, 20]` makes a promotion that grants no
+  authority, and `[30, 20, 10]` makes every promotion a demotion while `lowest_rank()` /
+  `highest_rank()` (which pick by authority, not position) silently disagree with the author's
+  intent. With monotonicity enforced, "the next rung" and "more authority" are the same
+  statement and `lowest_rank()` is always the first entry.
+
+- **`SectCatalog` validates referential integrity of declared diplomacy.** A template can only
+  check the SHAPE of its own two lists (non-self, unique, disjoint); whether a referenced id
+  EXISTS is a question only the catalog can answer — and it used to be answered by silently
+  dropping the pair at mirror time, producing a session whose sect state declared an enemy no
+  sect in the world matched. A dangling ally/enemy now makes the catalog INVALID, so
+  `SectRuntime` refuses to load it instead of booting a world that disagrees with its own data.
+  A test reads the SHIPPED catalog, so authoring a dangling reference fails the suite rather
+  than the player's boot (an L-014 drift guard).
+
+- **The Sect panel renders resource NAMES, never content ids.** `_format_resources()` printed
+  the dict keys (`spirit_stones`, `pills`, `manpower`, `blood_crystals`) straight onto the
+  screen: both a raw-id leak (§21) and hard-coded non-localized text in a Vietnamese-first game.
+  Each id now resolves through the pure naming convention
+  `spirit_stones → SECT_RESOURCE_SPIRIT_STONES` with vi+en rows authored, and an id with no
+  authored key falls back to a LOCALIZED generic label. Deliberately a naming rule, not a
+  resource registry/lookup system: new content is two CSV rows, no code (anti-over-engineering,
+  `03-architecture.md`).
+
+**Scope guard honored:** no Faction/Politics (Phase 07), no World Simulation, no Combat,
+Inventory, SaveService or networking; **no new autoload** (D-017 budget stays at 5); **no new CI
+gate** (still 10) — the existing test files were expanded in place; no assertion was weakened to
+make a test pass. The one intentional behavioural break is that `SectRuntime.start_session(null,
+…)` against a catalog that declares diplomacy now FAILS; the unit tests that relied on the old
+silent-skip were updated to supply a real in-memory `RelationshipService` (the same shape
+`RelationshipRuntime` provides), and a new test pins the fail-closed behaviour.
+
+**Consequences:** the sect world is now all-or-nothing. A content error in `data/sects/` (a
+dangling reference, a bad ladder, an invalid template) will ABORT New Game back to the menu with
+a loud error instead of starting a quietly-wrong session — which is the intended trade, and makes
+content errors impossible to miss during authoring. `SaveService` (D-005, still Open) inherits a
+`from_dict` that rejects type-drift, so a future save-format migration must convert types
+explicitly rather than leaning on coercion.

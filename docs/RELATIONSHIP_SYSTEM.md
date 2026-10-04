@@ -1,8 +1,23 @@
 # RELATIONSHIP_SYSTEM — Aetheria
 
-> **Design only. No gameplay implemented.** Defines relationships between Characters,
-> between the Player and Characters, and between Characters and Sects as serializable
-> domain state. Companion to `docs/CHARACTER_SYSTEM.md` and `docs/SECT_SYSTEM.md`.
+> **Status: the CORE is IMPLEMENTED (Phase 05, D-026).** Defines relationships between
+> Characters, between the Player and Characters, and between Characters and Sects as
+> serializable domain state. Companion to `docs/CHARACTER_SYSTEM.md` and
+> `docs/SECT_SYSTEM.md`.
+>
+> **What is live:** the serializable graph (`RelationshipEdge` · `RelationshipEndpoint` ·
+> `RelationshipStore`), the single mutation path + observable signal
+> (`RelationshipService`, incl. in-place `set_relationship_type()` — D-037), the data-driven
+> config/rule catalog (`src/data/relationship/`, authored in `data/relationship/*.tres`), and
+> the per-session owner `RelationshipRuntime` (a node under `Main/Systems`, NOT an autoload)
+> which starts with New Game and survives map swaps. **Phase 06 consumes this graph:** sect
+> diplomacy is mirrored into it as symmetric Sect↔Sect edges, so there is exactly ONE
+> relationship graph in a session and the sect session REQUIRES it (New Game fails closed
+> without it — D-037).
+>
+> **What is still design only:** the event→delta content library beyond the authored sample
+> rules, decay/propagation, group/faction-level attitudes (Phase 07), and any dialogue/quest
+> consumer of these values.
 
 ## 1. Position in the architecture
 

@@ -4,8 +4,16 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> Status (through Phase 05 close-out, 2026-10-03): Phase 05 (Relationship core + early
-> character visual pipeline) is **CLOSED** (D-026); Phase 06 (Sect) is **NOT STARTED**. The
+> Status (through Phase 06 final hardening, 2026-10-03): Phase 05 (Relationship core + early
+> character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is **CLOSED** (D-032,
+> hardened in D-037); Phase 07 (Faction/Politics) is **NOT STARTED**. **Sect membership is
+> LIVE in the runnable flow:** New Game enrols the player into the authored start sect
+> (Azure Cloud, at Outer Disciple) through `SectRuntime`, the in-map **HUD** carries a
+> localized sect chip, the `sect_panel` action (`T`) toggles a **Sect detail panel** (name,
+> doctrine, type/tier, your rank, reputation, influence, territory, a localized resource
+> summary), and the hub shows a sect banner. None of it displays a raw id. A relationship or
+> sect session failure now ABORTS New Game and unwinds back to the menu (D-037) instead of
+> entering a half-wired world. The
 > player is a real **Character** (one authoritative `CharacterState` bound to the Player node,
 > D-023), the in-map **HUD** shows the character's identity + map name + localized control hints,
 > and the main menu has a presentation pass. The live UI is the CC0 **Xianxia Pixel Pack** 9-slice

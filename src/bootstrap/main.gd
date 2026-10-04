@@ -265,68 +265,111 @@ func _on_new_game_pressed() -> void:
 	# "how". On any failure, unwind to a usable menu rather than a half-started session.
 	if not bool(_world.call("start_session")):
 		push_error("[main] world session failed to start; returning to menu")
-		_world.call("end_session")
-		gs.call("end_session")
-		_show_menu()
+		_unwind_failed_session()
 		return
 
-	# Start the relationship session alongside the world session (D-026). This is NON-FATAL
-	# in Phase 05: no gameplay yet depends on the graph, so a config-load failure is logged by
-	# the runtime but must not abort an otherwise-good New Game. It owns its own data.
-	if _relationship != null and is_instance_valid(_relationship):
-		if not bool(_relationship.call("start_session")):
-			push_warning("[main] relationship session did not start (see errors above)")
+	# Start the relationship session alongside the world session (D-026). Since Phase 06 this
+	# is FATAL, not advisory: the sect session mirrors Sect↔Sect diplomacy INTO this graph, so
+	# a missing graph means the sect world would start half-wired (sect state declaring
+	# enemies that no relationship edge records). A hard dependency fails the New Game.
+	if _relationship == null or not is_instance_valid(_relationship):
+		push_error("[main] cannot start new game: RelationshipRuntime missing")
+		_unwind_failed_session()
+		return
+	if not bool(_relationship.call("start_session")):
+		push_error("[main] relationship session failed to start; returning to menu")
+		_unwind_failed_session()
+		return
 
 	# Start the sect session (Phase 06), AFTER the world + relationship sessions: it enrolls
 	# the player (from WorldRuntime's CharacterState) into the authored start sect and mirrors
-	# Sect↔Sect alliances into the relationship graph. NON-FATAL: a sect-load failure is logged
-	# and must not abort an otherwise-good New Game.
-	_start_sect_session()
+	# Sect↔Sect alliances into the relationship graph. Also FATAL: the player's CharacterState
+	# carries a DERIVED sect cache, so letting a failed sect session through could leave the
+	# forbidden combination "RUNNING + world active + character.sect_id set + sect session
+	# inactive" — a running game whose sect membership no system owns.
+	if not _start_sect_session():
+		push_error("[main] sect session failed to start; returning to menu")
+		_unwind_failed_session()
+		return
 
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
 		push_error("[main] confirm_session_running rejected; unwinding to menu")
-		_world.call("end_session")
-		if _relationship != null and is_instance_valid(_relationship):
-			_relationship.call("end_session")
-		if _sect != null and is_instance_valid(_sect):
-			_sect.call("end_session")
-		gs.call("end_session")
-		_show_menu()
+		_unwind_failed_session()
 		return
+
+
+## Unwind a partially-started New Game back to a usable menu.
+##
+## Order is REVERSE DEPENDENCY order — Sect → Relationship → World → GameState → menu —
+## because the sect session holds the relationship graph (its diplomacy mirror) and the
+## player's CharacterState (its derived membership cache), both of which are owned by the
+## subsystems ended after it. Ending a dependency first would drop state the dependent is
+## still unwinding through.
+##
+## Every step is null-safe and idempotent (`end_session` on all three runtimes is safe to
+## call when no session is active), so this is callable from any failure point in
+## `_on_new_game_pressed`. After it runs there is no session anywhere: no player, no map, no
+## graph, no sect store, and the lifecycle is back at MENU with the menu shown.
+func _unwind_failed_session() -> void:
+	if _sect != null and is_instance_valid(_sect):
+		_sect.call("end_session")
+	if _relationship != null and is_instance_valid(_relationship):
+		_relationship.call("end_session")
+	if _world != null and is_instance_valid(_world):
+		_world.call("end_session")
+	var gs := _game_state()
+	if gs != null and bool(gs.call("is_session_active")):
+		gs.call("end_session")
+	_show_menu()
 
 
 ## Start the SectRuntime session (Phase 06). Pulls the shared RelationshipService from the
 ## RelationshipRuntime (for the Sect↔Sect mirror), builds a character resolver bound to
 ## WorldRuntime's single player CharacterState (so the service validates membership + syncs
 ## the player's derived cache without touching /root or the tree, §11), and enrolls the player
-## using WorldRuntime's stable instance id. All null-safe + NON-FATAL (logged, never aborts).
-func _start_sect_session() -> void:
+## using WorldRuntime's stable instance id.
+##
+## Returns TRUE only when the sect session is actually live. Every prerequisite the caller
+## cannot see from outside is reported as a failure here (missing SectRuntime, missing
+## RelationshipService, missing player CharacterState) rather than quietly skipped, because
+## New Game treats a sect failure as fatal and must not proceed on a half-wired session.
+func _start_sect_session() -> bool:
 	if _sect == null or not is_instance_valid(_sect):
-		return
-	var rel_service: Variant = null
-	if _relationship != null and is_instance_valid(_relationship):
-		rel_service = _relationship.call("get_service")
-	var player_character = _world.call("get_player_character") if _world != null else null
-	var player_id: StringName = &""
-	if player_character != null:
-		player_id = player_character.instance_id
+		push_error("[main] cannot start sect session: SectRuntime missing")
+		return false
+	if _relationship == null or not is_instance_valid(_relationship):
+		push_error("[main] cannot start sect session: RelationshipRuntime missing")
+		return false
+	var rel_service: RelationshipService = _relationship.call("get_service")
+	if rel_service == null:
+		push_error("[main] cannot start sect session: no RelationshipService (graph session "
+			+ "not running) to mirror Sect↔Sect diplomacy into")
+		return false
+	var player_character: CharacterState = null
+	if _world != null and is_instance_valid(_world):
+		player_character = _world.call("get_player_character")
+	if player_character == null:
+		push_error("[main] cannot start sect session: WorldRuntime has no player "
+			+ "CharacterState to enroll")
+		return false
+	var player_id: StringName = player_character.instance_id
 	# Resolver: the ONLY character this session knows is the player (no CharacterRegistry yet,
 	# §11). It returns the player's CharacterState for the player's id, else null — so the
 	# service rejects enrolling any non-existent character and never invents one (§10).
 	var resolver := func(cid: StringName) -> CharacterState:
-		if player_character != null and cid == player_id:
+		if cid == player_id:
 			return player_character
 		return null
 	if not bool(_sect.call("start_session", rel_service, resolver, player_id)):
-		push_warning("[main] sect session did not start (see errors above)")
-		return
+		return false
 	# The hub map loaded during world start_session (BEFORE the sect session existed), so push
 	# the now-available sect view into the already-active map's HUD.
 	if _world != null and is_instance_valid(_world) \
 			and _world.has_method("refresh_active_map_sect_view"):
 		_world.call("refresh_active_map_sect_view")
+	return true
 
 
 func _on_return_to_menu() -> void:

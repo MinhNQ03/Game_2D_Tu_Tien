@@ -6,8 +6,9 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (through Phase 05 close-out, 2026-10-03):** Phase 05 (Relationship core +
-> early character visual pipeline) is **CLOSED** (D-026); Phase 06 (Sect) is **NOT STARTED**.
+> **CURRENT STATE (through Phase 06 final hardening, 2026-10-03):** Phase 05 (Relationship
+> core + early character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is
+> **CLOSED** (D-032, hardened in D-037). Phase 07 (Faction/Politics) is **NOT STARTED**.
 > The live UI is the CC0 Xianxia Pixel Pack set (D-028) and the visible world/character art is
 > at the **production-foundation** tier (D-029) — both presentation-only, no gameplay/domain
 > change. The repo boots to a playable world/map slice where the player is a real Character,
@@ -52,9 +53,14 @@
 >   under `Main/Systems` (sibling, NOT an autoload) that enrolls the player into the authored
 >   start sect and survives map swaps. Membership roster is the source of truth (D-015);
 >   `CharacterState.sect_id`/`sect_rank` are a derived cache. Declared alliances/enemies mirror
->   (transactionally) to Sect↔Sect edges in the ONE relationship graph. A localized Sect HUD
+>   (transactionally and NON-DESTRUCTIVELY — an edge is retyped in place, never removed and
+>   recreated, D-037) to Sect↔Sect edges in the ONE relationship graph. A localized Sect HUD
 >   chip + `SectPanel` + hub banner render a read-only `SectMembershipView` (presentation owns no
->   sect truth). SECT relationship endpoints are now backed by real `SectState`s.
+>   sect truth; resource ids render through `SECT_RESOURCE_*` keys, never as raw tokens).
+>   SECT relationship endpoints are now backed by real `SectState`s. `SectRuntime.start_session()`
+>   is FAIL-CLOSED (D-037): it commits nothing until every step succeeds, and New Game treats a
+>   relationship or sect failure as fatal, unwinding Sect → Relationship → World → GameState →
+>   MENU rather than running a half-wired session.
 > - Phase-02 Player Sandbox (`src/gameplay/sandbox/`) is retained for combat validation but
 >   is not reachable from New Game. The `prologue_shell` is retained but no longer first.
 > - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`;

@@ -45,6 +45,9 @@ enum SectType { ORTHODOX, DEMONIC, NEUTRAL, HIDDEN }
 
 # --- Rank ladder (ordered; array order = official progression, §4) ----------
 
+## Ordered rungs, lowest rank FIRST. The array order is the official progression, so
+## `authority` MUST increase strictly from entry to entry (validated). Authoring them out of
+## order is a content bug, not a style choice — see `_validate_rank_ladder()`.
 @export var rank_ladder: Array[SectRankData] = []
 
 
@@ -109,12 +112,22 @@ func validation_errors() -> Array[String]:
 	return errors
 
 
-## Rank ladder: non-empty, each rank valid, rank ids unique, authorities non-negative.
+## Rank ladder: non-empty, each rank valid, rank ids unique, authorities non-negative, and
+## `authority` STRICTLY INCREASING along the array.
+##
+## The array order IS the official progression (§4), and `authority` is what rules compare
+## two ranks with — so the two must agree or the ladder means two different things at once:
+## `[10, 20, 20]` makes a "promotion" that grants no extra authority, and `[30, 20, 10]`
+## makes every promotion a demotion while `lowest_rank()`/`highest_rank()` (which pick by
+## authority, not by position) silently disagree with the authored order. Requiring strict
+## monotonicity keeps "the next entry in the ladder" and "more authority" the same statement,
+## so `lowest_rank()` is always `rank_ladder[0]` and `highest_rank()` always the last entry.
 func _validate_rank_ladder(errors: Array[String]) -> void:
 	if rank_ladder.is_empty():
 		errors.append("rank_ladder must have at least one rank")
 		return
 	var seen := {}
+	var previous: SectRankData = null
 	for i in rank_ladder.size():
 		var rank := rank_ladder[i]
 		if rank == null:
@@ -127,6 +140,12 @@ func _validate_rank_ladder(errors: Array[String]) -> void:
 		if seen.has(rid):
 			errors.append("duplicate rank_id '%s' in rank_ladder" % rid)
 		seen[rid] = true
+		if previous != null and rank.authority <= previous.authority:
+			errors.append(
+				("rank_ladder[%d] '%s' authority %d must be STRICTLY greater than the "
+				+ "previous rank '%s' (%d) - array order is the official progression")
+				% [i, rid, rank.authority, String(previous.rank_id), previous.authority])
+		previous = rank
 
 
 func _validate_resources(errors: Array[String]) -> void:
@@ -212,6 +231,9 @@ func find_rank(rank_id: StringName) -> SectRankData:
 
 
 ## The lowest-authority rank (the entry rank a new disciple joins at), or null if empty.
+## On a VALID ladder this is always `rank_ladder[0]` — authority increases strictly along the
+## array — but it is resolved by authority rather than by position so the function still
+## answers "least authority" correctly while content is being authored/validated.
 func lowest_rank() -> SectRankData:
 	var best: SectRankData = null
 	for rank in rank_ladder:
@@ -222,7 +244,8 @@ func lowest_rank() -> SectRankData:
 	return best
 
 
-## The highest-authority rank (the leader rank), or null if empty.
+## The highest-authority rank (the leader rank), or null if empty. On a VALID ladder this is
+## always the LAST entry (see `lowest_rank()`), resolved by authority for the same reason.
 func highest_rank() -> SectRankData:
 	var best: SectRankData = null
 	for rank in rank_ladder:

@@ -370,3 +370,93 @@
 - **Fixed:** D-033 (reminder moved to `Stop`, dead `godot` hook removed, lint hook scoped to
   `^(src|tests|tools)/.*\.gd$` + `--changed`) and D-036 (camera follow in `MapBase`, no zoom
   round-up, maps authored 960×576, bounds↔floor drift test, E2E proves the camera moved).
+
+## L-023 — Destroying the old value BEFORE the replacement succeeds (a "rollback" that only restores one side)
+- **Symptom (Phase 06 final hardening):** `SectService._ensure_edge()` flipped a Sect↔Sect
+  relationship from ALLY to ENEMY by `remove_edge(id)` **then** `create_edge(id, …)`. The
+  surrounding `_set_diplomacy()` was correctly written as a transaction — relationship side
+  first, sect side only on success — and a test even proved the sect side rolled back. But the
+  rollback restored only the SECT side: by the time `create_edge` could fail, the original edge
+  was **already gone**, taking its `dimensions` and `history` with it. A rejected flip left the
+  sect state saying "allied" while the relationship graph held **no edge at all** — the exact
+  divergence the transaction existed to prevent. Even on the SUCCESS path the recreate silently
+  discarded every accumulated dimension value and the whole history log, because a "new" edge
+  is seeded from config defaults. Nothing caught it: the flip test only asserted the resulting
+  `relationship_type`, so a brand-new edge of the right type looked identical to a retyped one.
+- **Rule:** **Never destroy the existing value before the replacement has succeeded.** When a
+  mutation means "change one field of a thing that already exists", mutate IN PLACE (add a
+  narrow API for it — `set_relationship_type()`) instead of delete-then-recreate. Delete-first
+  is not a transaction: it makes failure unrecoverable and makes success lossy. Two concrete
+  checks:
+  - **A two-store transaction must be able to fail with NOTHING destroyed.** Order the steps so
+    every rejection happens before the first write, and ask "if step 2 fails, is step 1's old
+    state still there?" A rollback that restores store A while store B's data is already gone
+    is not a rollback.
+  - **Assert IDENTITY and PRESERVED state, not just the new value.** A test that only checks
+    `type == ENEMY` passes for a recreated object. Capture `get_instance_id()` plus the fields
+    that must survive (dimensions, history, flags, endpoints) and assert they are unchanged —
+    that is what distinguishes "retyped" from "replaced".
+- **Fixed:** Phase 06 final hardening. `RelationshipService.set_relationship_type()` (in place,
+  rewrites only the type); `_ensure_edge` never removes; tests 29-31 in
+  `tests/unit/sect/test_sect_domain.gd` assert object identity + dimension/history survival on
+  the success path AND full survival of the old edge on the rejected path.
+
+## L-024 — Coercing a value before validating its type turns a corrupt payload into an accepted state
+- **Symptom (Phase 06 final hardening):** `SectState.from_dict()` was carefully fail-closed and
+  atomic — and still accepted garbage, because every field was read through a CONVERSION:
+  `String(dict.get("leader_ref", ""))`, `int(resources[key])`, `int(dict.get("influence", 0))`.
+  GDScript's converters do not fail, they invent: `int("100")` and `int(100.0)` both yield the
+  valid quantity `100`; `int(true)` yields `1`; `String(99)` yields the plausible id `"99"`;
+  `String(null)` yields `""`, which then reads as the legitimate "this sect has no leader"
+  rather than "this payload is corrupt". So a save with the wrong TYPE in a field sailed through
+  every subsequent range/roster check and committed, and the validator's own error messages
+  could never fire. The same shape sat in `_parse_unique_id_array`, where `String(42)` made a
+  number into a sect id and `String(true)` made a bool into `"true"`.
+- **Rule:** **At a hydrate/deserialize boundary, check `typeof()` FIRST and reject; only then
+  convert.** Never use `String()`/`int()`/`float()` as a validator — they are coercions, and a
+  coercion that succeeds on bad input is indistinguishable from valid input. Concretely: an
+  ID-like field must be `TYPE_STRING` or `TYPE_STRING_NAME` (not a number, bool, null, object,
+  array or dict); a COUNT-like field must be `TYPE_INT` (a float is rejected even when integral,
+  so `100.0` is not quietly promoted). Apply it to dictionary KEYS too, not just values — a
+  roster/resource/reputation key is an id. Keep the staged-then-commit shape so a rejection
+  leaves the receiver byte-identical, and write each negative test so the payload differs from a
+  KNOWN-GOOD fixture in exactly one field **and would otherwise be accepted** — if the bad
+  payload would fail for a second reason anyway, the test proves nothing about the type check.
+- **Fixed:** Phase 06 final hardening. `SectState._is_id_token()` + per-field `typeof()` gates in
+  `from_dict`/`_parse_unique_id_array`; tests 33-43 in `tests/unit/sect/test_sect_domain.gd`
+  (test 33 proves the baseline fixture is accepted; each other case asserts `false` AND an
+  unchanged snapshot).
+
+## L-025 — "Warn and continue" inside a session starter publishes a half-session, and a dependency that quietly became mandatory
+- **Symptom (Phase 06 final hardening):** `SectRuntime.start_session()` wrote straight to its own
+  fields as it went, `continue`d past a sect that failed to register, `push_warning`ed when the
+  player could not join the start sect — and then set `_session_active = true` and returned
+  `true` regardless. So `is_session_active()` could report a live sect world that was missing
+  sects, had no player membership, or (because `apply_default_diplomacy()` returned `void` and
+  skipped unmirrorable pairs) declared enmities that the relationship graph had no record of.
+  `Main` then compounded it: it treated BOTH the relationship and sect sessions as advisory
+  (`push_warning`, keep going) even though the sect session had become a hard CONSUMER of the
+  relationship graph and a writer of the player's derived `CharacterState.sect_id`. The
+  reachable end state was a game at phase `RUNNING`, world live, `character.sect_id` set, and
+  the sect subsystem inactive — membership that no system owned. Every gate was green, because
+  "returns true" was the only thing anyone asserted.
+- **Rule:** **A session starter must build into LOCALS and commit to its own fields only after
+  every step has succeeded** — then a failure is invisible by construction (`is_session_active()`
+  stays false, every getter stays empty) instead of relying on a cleanup path to undo a partial
+  write. Inside such a function, `continue`/`push_warning`-and-proceed is banned: either the
+  step is required (abort the whole start, loudly, naming the step) or it is genuinely optional
+  (then it must be legal for it to be absent — e.g. no mirror is fine only when nothing declares
+  diplomacy). Also: **when a subsystem becomes a real consumer of another, its caller must stop
+  treating that dependency as advisory** — re-read the caller when you add the dependency, don't
+  leave the old `push_warning`. And **name the forbidden combination and assert it**: write the
+  impossible state down ("RUNNING + world live + character.sect_id set + sect session inactive")
+  and put an assertion in the E2E that it cannot be reached, because "start returned true" is
+  not a test of what the session contains. Extends L-004 (fail loud on a missing REQUIRED
+  dependency) from the bootstrap's autoload check to every per-session subsystem.
+- **Fixed:** Phase 06 final hardening. `SectRuntime.start_session()` is a 9-step fail-closed
+  build with `_fail_start()`; `apply_default_diplomacy()` returns `bool` and fails closed on a
+  dangling or unmirrorable declaration; `Main` makes relationship + sect failures FATAL for New
+  Game and unwinds Sect → Relationship → World → GameState → MENU via
+  `_unwind_failed_session()`; `tests/unit/sect/test_sect_runtime.gd` asserts no observable
+  half-session after a rejected start, and `tests/e2e/world_flow_case.gd` asserts the forbidden
+  combination is unreachable.

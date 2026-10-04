@@ -111,6 +111,30 @@ func test_real_world_map_flow() -> void:
 		assert_eq(sect_runtime.call("get_player_sect_id"), &"sect_azure_cloud",
 			"player enrolled in the authored start sect")
 
+	# Phase 06 final hardening (§3): the FORBIDDEN combination is "lifecycle RUNNING + a live
+	# world + a character carrying a sect id + an INACTIVE sect session" — a running game whose
+	# sect membership no subsystem owns. New Game now treats a sect failure as fatal, so
+	# reaching RUNNING at all implies the sect session is live. Assert that implication here
+	# (a regression would show as RUNNING with the sect subsystem dark).
+	if gs.get_phase() == gs.Phase.RUNNING:
+		assert_true(sect_runtime != null and sect_runtime.call("is_session_active"),
+			"RUNNING implies a live SectRuntime session (the forbidden half-session state "
+			+ "cannot be reached)")
+
+	# §11: there is ONE relationship graph. The sect session's declared diplomacy must be
+	# mirrored into the graph the RelationshipRuntime owns — not a private second graph.
+	if relationship_runtime != null and sect_runtime != null:
+		var rel_service: RelationshipService = relationship_runtime.call("get_service")
+		assert_not_null(rel_service, "the relationship session exposes its service")
+		if rel_service != null:
+			var mirrored := rel_service.get_store().get_edge(
+				SectService.edge_id(&"sect_azure_cloud", &"sect_crimson_flame"))
+			assert_not_null(mirrored,
+				"the authored Sect↔Sect enmity is mirrored into the SHARED relationship graph")
+			if mirrored != null:
+				assert_eq(mirrored.relationship_type, &"ENEMY",
+					"the mirrored edge carries the declared type")
+
 	var player: Node = world_runtime.call("get_player")
 	assert_not_null(player, "WorldRuntime owns a persistent player")
 	if player == null:
@@ -159,6 +183,11 @@ func test_real_world_map_flow() -> void:
 		for t in hud_text:
 			assert_false(t.contains("sect_azure_cloud"),
 				"no raw sect id leaks into the HUD (%s)" % t)
+			# §7: the sect panel's resource summary must render localized names, never the
+			# internal content ids the domain keys its resource dict by.
+			for raw_resource_id in ["spirit_stones", "pills", "manpower"]:
+				assert_false(t.contains(raw_resource_id),
+					"no raw resource id '%s' leaks into the HUD (%s)" % [raw_resource_id, t])
 		# Toggle the Sect detail panel via a REAL `sect_panel` key event (bounded retry for
 		# input-dispatch frame timing). It starts closed, opens on the key.
 		assert_false(hud.call("is_sect_panel_open"), "sect panel starts closed")

@@ -4,14 +4,16 @@
 > Goal: **not** blind 100% coverage — strong coverage of high-risk logic, cheap smoke
 > coverage of the whole flow, and every fixed bug pinned by a regression test.
 >
-> Status: strategy defined; runner + framework in place. Through Phase 03 the suite covers
-> the core framework (lifecycle/scene-router/input/localization/event-bus), the Player core
-> (stats/health/movement/damage + player↔dummy integration), and the World/Map system
-> (MapData/MapCatalog validation, data-driven catalog, source-of-truth scene↔data checks,
-> no-leak + transactional-rollback map transitions, data-driven camera bounds, persistent
-> player across 20 round trips), plus three dedicated real-application E2E processes
-> (app-flow, player-flow, world-flow). Gameplay beyond world/map traversal is added phase
-> by phase.
+> Status (through **Phase 06** final hardening): strategy defined; runner + framework in
+> place. The suite covers the core framework (lifecycle/scene-router/input/localization/
+> event-bus/settings), the Player core (stats/health/movement/damage + player↔dummy
+> integration), the World/Map system (MapData/MapCatalog validation, data-driven catalog,
+> source-of-truth scene↔data checks, no-leak + transactional-rollback map transitions,
+> data-driven camera bounds + follow, persistent player across 20 round trips), the
+> Character core, the Relationship core, the **Sect** core, and the UI/theme asset
+> contracts — plus three dedicated real-application E2E processes (app-flow, player-flow,
+> world-flow). **CI runs 10 gates** (see §5). Gameplay beyond world/map traversal +
+> sect membership is added phase by phase.
 
 ## 1. Test layers
 
@@ -331,3 +333,67 @@ is CI.
   selects the direction frame (diagonal→cardinal, zero keeps last facing); a missing/invalid
   profile fails clearly; the preview builds all four; and a `CharacterState` serializes NO
   presentation data (the layering invariant).
+
+**Phase 06 added Sect tests (high-risk: membership authority / diplomacy / save seam):**
+- `tests/unit/sect/test_sect_domain.gd` — the whole sect domain in one pure-RefCounted file:
+  - **Data validation:** `SectTemplateData`/`SectRankData` well-formed vs. malformed (missing
+    name_key, tier < 1, self in the enemy list, duplicate/empty rank ladder) and the rank
+    ladder's `authority` **strictly increasing along the array** (10/20/30 valid; 10/20/20,
+    20/10/30 and 30/20/10 rejected), with `lowest_rank()`/`highest_rank()` matching the first
+    and last authored entries.
+  - **`SectCatalog` referential integrity:** a declared ally/enemy that is not in the catalog
+    (the `sect_ghost` case), a self-reference, a duplicate, and an ally/enemy overlap each
+    invalidate the catalog — plus a drift guard that the SHIPPED `data/sects/sect_catalog.tres`
+    is referentially sound, so authoring a dangling reference fails the suite, not the player's
+    boot.
+  - **State + serialization:** creation from a template, a byte-stable `to_dict`/`from_dict`
+    round trip, and fail-closed hydration (leader/elder not on the roster, negative resource,
+    out-of-range reputation, missing id).
+  - **STRICT TYPES at the hydrate boundary:** a known-good payload is proven ACCEPTED first,
+    then each case mutates exactly ONE field to a wrong type and asserts both halves of the
+    contract — `from_dict` returns false AND the receiving state's snapshot is unchanged:
+    resource quantity as `"100"` / `100.0`, resource id as an int, influence as `"5"` / `5.0`,
+    reputation value as `"10"` / `10.0` / `true` and its scope as an int, a rank id or member id
+    as an int, `leader_ref` as an int or `null`, an elder ref as an int, a territory/ally/enemy
+    id as an int or bool, and `template_id`/`id` as an int or `null`. The int cases deliberately
+    use payloads that would otherwise VALIDATE, so they fail only because of the type check.
+  - **Store:** add, duplicate-id rejection, count.
+  - **Membership (roster is authority, D-015):** join/duplicate-join, leave/non-member leave,
+    rank change, unknown rank, the single-leader and leader∌elder invariants, a sect cannot
+    join itself, disciples = roster − leader − elders, and the `CharacterState` derived cache
+    being written on join/rank/leave and REBUILT from the roster by `sync_character_cache()`.
+  - **Economy:** resource clamp at 0, reputation clamp to ±100, influence clamp at 0, territory
+    uniqueness.
+  - **Diplomacy mirror (§14):** ally/enemy mirrored to a symmetric Sect↔Sect edge, one
+    order-independent edge id per pair, duplicate declaration rejected, and the rollback when
+    the relationship side fails. **Non-destructive retype:** an ally→enemy flip keeps the SAME
+    edge object (asserted by instance id) with its endpoints, flags, dimension values and
+    history intact; a REJECTED flip leaves the old edge fully intact and the sect side
+    unchanged; `set_relationship_type` rejects an unknown edge (without creating one) and an
+    empty type.
+  - **`apply_default_diplomacy()` fails closed:** a dangling declaration and a declaration with
+    no relationship service to mirror into are errors (not silent skips), while a roster-only
+    service that declares nothing needs no mirror and the resolvable case still mirrors.
+- `tests/unit/sect/test_sect_runtime.gd` — the per-session owner: it is a Node and NOT an
+  autoload; a session loads the authored catalog, enrols the player at the authored start rank
+  with the derived cache matching the roster, and MIRRORS the authored enmity into the shared
+  relationship graph. **Fail-closed:** starting without a relationship service (while the
+  catalog declares diplomacy) or with no player to enrol is REJECTED, and afterwards no session
+  state is observable at all (inactive, null service/store, empty sect id, non-member view) and
+  the player's `CharacterState` carries no sect id. `end_session` clears the same surface.
+  Nodes are freed (L-019).
+- `tests/unit/presentation/test_gameplay_hud.gd` (extended) — the `SectPanel` renders
+  **localized** resource names: no raw id (`spirit_stones`/`pills`/`manpower`) reaches a label,
+  the localized names + quantities do, an unlocalized id falls back to the localized generic
+  label instead of leaking the token, and the `id → SECT_RESOURCE_*` key convention holds.
+- `tests/unit/core/test_localization.gd` (extended) — every Phase-06 sect key exists in BOTH
+  vi and en, and a drift guard reads the SHIPPED catalog so every authored `starting_resources`
+  id must have its `SECT_RESOURCE_*` display name in both languages.
+- `tests/e2e/world_flow_case.gd` (extended) — in the real app: a `SectRuntime` exists under
+  `Main/Systems`, is NOT an autoload, is session-active after New Game, enrolled the player in
+  the authored start sect, and is the SAME instance (with membership intact) across all 20
+  hub↔field round trips. The HUD shows the localized sect name and leaks no raw sect or
+  resource id; a REAL `sect_panel` key event opens the detail panel. The authored enmity is
+  mirrored into the graph the `RelationshipRuntime` owns (proving ONE shared graph), and the
+  **forbidden state** is asserted unreachable: reaching `RUNNING` implies a live sect session,
+  so "RUNNING + world live + `character.sect_id` set + sect session inactive" cannot occur.

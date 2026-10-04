@@ -148,7 +148,7 @@ func test_phase06_sect_keys_exist_in_both_languages() -> void:
 		"UI_HUD_SECT_NONE", "UI_SECT_PANEL_TITLE", "UI_SECT_PANEL_DOCTRINE", "UI_SECT_PANEL_TYPE",
 		"UI_SECT_PANEL_TIER", "UI_SECT_PANEL_RANK", "UI_SECT_PANEL_REPUTATION",
 		"UI_SECT_PANEL_INFLUENCE", "UI_SECT_PANEL_TERRITORY", "UI_SECT_PANEL_RESOURCES",
-		"UI_SECT_PANEL_NONE", "UI_SECT_PANEL_TOGGLE",
+		"UI_SECT_PANEL_NONE", "UI_SECT_PANEL_TOGGLE", "UI_SECT_PANEL_RESOURCE_UNKNOWN",
 	]
 	for key in keys:
 		assert_true(loc.has_key(key), "sect key '%s' exists in the table" % key)
@@ -156,4 +156,34 @@ func test_phase06_sect_keys_exist_in_both_languages() -> void:
 		assert_ne(loc.t(key), key, "en value present for '%s'" % key)
 		loc.set_language("vi")
 		assert_ne(loc.t(key), key, "vi value present for '%s'" % key)
+	free_node(loc)
+
+
+## Every resource id in AUTHORED sect content must have its `SECT_RESOURCE_*` display key in
+## BOTH languages (§7). This is a drift guard, not a fixed list: it reads the shipped catalog,
+## so adding `starting_resources` to a sect without adding the two CSV rows fails the suite
+## instead of showing the player an internal token (or the generic fallback) in the panel.
+func test_authored_sect_resource_ids_have_localized_names() -> void:
+	var loc := _make()
+	var cat := load("res://data/sects/sect_catalog.tres") as SectCatalog
+	assert_not_null(cat, "the authored sect catalog loads")
+	if cat == null:
+		free_node(loc)
+		return
+	var checked := 0
+	for tmpl in cat.sects:
+		if tmpl == null:
+			continue
+		for resource_id in tmpl.starting_resources:
+			var key := SectPanel.resource_name_key(String(resource_id))
+			assert_true(loc.has_key(key),
+				"authored resource '%s' needs the display key '%s'" % [resource_id, key])
+			if not loc.has_key(key):
+				continue
+			loc.set_language("en")
+			assert_ne(loc.t(key), key, "en name present for resource '%s'" % resource_id)
+			loc.set_language("vi")
+			assert_ne(loc.t(key), key, "vi name present for resource '%s'" % resource_id)
+			checked += 1
+	assert_true(checked > 0, "the authored catalog actually declares resources to check")
 	free_node(loc)

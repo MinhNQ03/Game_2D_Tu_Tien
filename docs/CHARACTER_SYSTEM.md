@@ -1,9 +1,25 @@
 # CHARACTER_SYSTEM — Aetheria
 
-> **Design only. No gameplay implemented.** This defines the architecture and data model
-> for Character as a **core** system (D-011), not a quest-decoration NPC. The player is a
-> Character too. Rules: `.kiro/steering/03-architecture.md`, data conventions:
+> **Status: the CORE is IMPLEMENTED (Phase 04, D-023).** This defines the architecture and
+> data model for Character as a **core** system (D-011), not a quest-decoration NPC. The
+> player is a Character too. Rules: `.kiro/steering/03-architecture.md`, data conventions:
 > `docs/DATA_SCHEMA.md`.
+>
+> **What is live:** `CharacterTemplateData` (data, `src/data/characters/`) and the
+> authoritative serializable `CharacterState` (domain, `src/domain/character/`). The **Player
+> is bound to ONE `CharacterState`** that `WorldRuntime` owns for the session and does NOT
+> recreate on a map swap; `StatsComponent` reads it and `HealthComponent` syncs HP/life-state
+> back. `CharacterState` carries no presentation data (the sprite comes from the separate
+> `CharacterVisualProfileData` pipeline, D-026).
+>
+> **Sect fields are a DERIVED CACHE (D-015).** `CharacterState.sect_id`/`sect_rank` are
+> written by `SectService` on join/leave/rank and rebuilt from the roster by
+> `sync_character_cache()`. The **sect ROSTER is the authority**: on any disagreement the
+> roster wins, and nothing outside the sect domain may set these two fields.
+>
+> **What is still design only:** NPC authoring at scale, goals/secrets-driven behaviour,
+> off-screen life-state evolution (`docs/WORLD_SIMULATION.md`), and the character registry
+> implied by a multi-character world (Phase 07+).
 
 ## 1. Why Character is core
 

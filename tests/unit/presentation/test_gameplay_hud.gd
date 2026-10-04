@@ -9,6 +9,7 @@ const HUDScript := preload("res://src/presentation/hud/gameplay_hud.gd")
 const StateScript := preload("res://src/domain/character/character_state.gd")
 const TemplateScript := preload("res://src/data/characters/character_template_data.gd")
 const StatBlockScript := preload("res://src/data/stats/stat_block.gd")
+const SectPanelScript := preload("res://src/presentation/sect/sect_panel.gd")
 
 
 func _hud() -> Node:
@@ -81,6 +82,98 @@ func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 	# proving a graphic treatment, not floating text. Interact + menu => at least 2.
 	assert_true(_key_badge_count(hud) >= 2, "interact + menu each have a graphic key badge")
 	free_node(hud)
+
+
+# --- SectPanel resource rendering (§7 hardening) -----------------------------
+
+## The sect resource summary is keyed by INTERNAL content ids (`spirit_stones`, `pills`, …).
+## The panel used to print those tokens straight onto the screen, which is both a raw-id leak
+## (§21) and hard-coded English-ish text in a Vietnamese-first game (`07-localization.md`).
+## Every id must now render through its `SECT_RESOURCE_*` display key.
+func test_sect_panel_renders_localized_resource_names_not_raw_ids() -> void:
+	var panel: Node = SectPanelScript.new()
+	add_to_tree(panel)  # _ready() resolves Localization + builds the labels
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	if loc != null:
+		loc.call("set_language", "en")
+	panel.call("set_view", _sect_view({
+		"spirit_stones": 1200, "pills": 48, "manpower": 320,
+	}))
+
+	var all_text := _all_label_text(panel)
+	for raw_id in ["spirit_stones", "pills", "manpower"]:
+		for t in all_text:
+			assert_false(String(t).contains(raw_id),
+				"no raw resource id '%s' reaches the screen (saw '%s')" % [raw_id, t])
+	# The localized names DO appear, with their quantities.
+	var resources_line := _line_containing(all_text, "1200")
+	assert_ne(resources_line, "", "the resource summary line is rendered")
+	if loc != null:
+		for key in [
+			"SECT_RESOURCE_SPIRIT_STONES", "SECT_RESOURCE_PILLS", "SECT_RESOURCE_MANPOWER",
+		]:
+			var localized := String(loc.call("t", key))
+			assert_true(resources_line.contains(localized),
+				"the summary shows the localized name for '%s' ('%s')" % [key, localized])
+	free_node(panel)
+
+
+## An id with no authored display key must degrade to the LOCALIZED generic label, never to
+## the internal token (a missing translation is a content gap, not a reason to leak data).
+func test_sect_panel_falls_back_to_a_localized_label_for_an_unknown_resource() -> void:
+	var panel: Node = SectPanelScript.new()
+	add_to_tree(panel)
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	if loc != null:
+		loc.call("set_language", "vi")
+	panel.call("set_view", _sect_view({"unobtainium_dust": 7}))
+
+	var all_text := _all_label_text(panel)
+	for t in all_text:
+		assert_false(String(t).contains("unobtainium_dust"),
+			"an unlocalized resource id never reaches the screen (saw '%s')" % t)
+	var line := _line_containing(all_text, "7")
+	assert_ne(line, "", "the summary line is still rendered for an unknown resource")
+	if loc != null:
+		var fallback := String(loc.call("t", "UI_SECT_PANEL_RESOURCE_UNKNOWN"))
+		assert_true(line.contains(fallback),
+			"it shows the localized generic label '%s' instead" % fallback)
+	free_node(panel)
+
+
+## The id → key convention itself (§7): `spirit_stones` -> `SECT_RESOURCE_SPIRIT_STONES`.
+## A pure naming rule, so new content needs CSV rows only — no registry, no code change.
+func test_sect_resource_key_convention() -> void:
+	assert_eq(SectPanel.resource_name_key("spirit_stones"), "SECT_RESOURCE_SPIRIT_STONES",
+		"resource id maps to its upper-cased prefixed key")
+	assert_eq(SectPanel.resource_name_key("pills"), "SECT_RESOURCE_PILLS", "short id")
+	assert_eq(SectPanel.resource_name_key("blood_crystals"), "SECT_RESOURCE_BLOOD_CRYSTALS",
+		"multi-word id")
+
+
+## A member view carrying `summary` as its resource dict; the other fields are real authored
+## keys so the panel renders a complete, localizable row set.
+func _sect_view(summary: Dictionary) -> SectMembershipView:
+	var view := SectMembershipView.new()
+	view.is_member = true
+	view.sect_name_key = &"SECT_AZURE_CLOUD_NAME"
+	view.doctrine_key = &"SECT_AZURE_CLOUD_DOCTRINE"
+	view.rank_name_key = &"SECT_RANK_OUTER_DISCIPLE"
+	view.tier = 3
+	view.reputation = 45
+	view.influence = 60
+	view.territory_count = 2
+	view.resource_summary = summary
+	return view
+
+
+## The first label text containing `needle`, or "" if none. Used to pick the resource summary
+## line out of the panel without depending on label order.
+func _line_containing(all_text: Array, needle: String) -> String:
+	for t in all_text:
+		if String(t).contains(needle):
+			return String(t)
+	return ""
 
 
 ## Collect every Label's text under a node (recursive).

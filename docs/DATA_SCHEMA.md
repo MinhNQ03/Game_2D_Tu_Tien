@@ -5,8 +5,21 @@
 > `docs/GAME_FLOW.md`). All user-facing text is a **localization key**, never a literal
 > (`.kiro/steering/07-localization.md`).
 >
-> Status: **schema design.** No Resource scripts exist yet; these are the intended
-> shapes. Field names are the proposed contract — pin changes in `docs/DECISIONS.md`.
+> Status: **partly implemented, partly schema design.** Two tiers live in this document and
+> they must not be confused:
+>
+> - **IMPLEMENTED** (real `Resource` scripts + authored `.tres` content, validated at the
+>   boundary and covered by tests): stats (`src/data/stats/`), maps (`src/data/maps/`),
+>   characters (`src/data/characters/`), character visuals, relationship config/rules
+>   (`src/data/relationship/`), and **sects** (`src/data/sects/`:
+>   `SectTemplateData` · `SectRankData` · `SectCatalog`, authored in `data/sects/*.tres`).
+>   For these, the shapes below are the SHIPPED contract — changing a field is a code +
+>   content change, and the field names here must match the scripts (a doc that contradicts
+>   the code is a bug, L-014/L-018).
+> - **DESIGN ONLY** (no script exists yet; these are intended shapes): items, equipment,
+>   skills, công pháp, quests, dialogue, enemies/bosses, pets, cultivation tiers, and the
+>   **Faction / World-Simulation** data (Phase 07+). Field names are the proposed contract —
+>   pin changes in `docs/DECISIONS.md`.
 
 ## 0. Conventions
 

@@ -154,7 +154,28 @@ Keeping it a serializable domain store is Stage-2 groundwork. Added to
 - A faction influence/attitude change produces documented, deterministic outcomes.
 See `docs/TEST_PLAN.md`.
 
-## 12. Explicitly NOT in this step
+## 12. Scope: what is implemented vs. still a contract
 
-No sect gameplay, no politics engine, no UI, no event resolution implemented. This is the
-contract for the Sect and Faction/Politics phases (`docs/ROADMAP.md`).
+**IMPLEMENTED — Phase 06 (D-032), hardened in D-037:**
+- Data: `SectTemplateData` · `SectRankData` · `SectCatalog` (`src/data/sects/`, authored in
+  `data/sects/*.tres`). The rank ladder's array order is the official progression and
+  `authority` MUST increase strictly along it (validated). The catalog validates referential
+  integrity of every declared ally/enemy — a dangling id makes the catalog invalid, so the
+  session refuses to load it rather than silently skipping the pair.
+- Domain: `SectState` (authoritative, serializable, roster = source of truth, D-015) ·
+  `SectStore` · `SectService` (the single mutation path, with membership/economy invariants
+  and the transactional, NON-DESTRUCTIVE Sect↔Sect relationship mirror). `from_dict()` is
+  fail-closed, atomic AND strictly typed (a wrong type is rejected, never coerced).
+- Runtime: `SectRuntime` (a node under `Main/Systems`, NOT an autoload) enrols the player
+  into the authored start sect and survives map swaps. `start_session()` is FAIL-CLOSED: it
+  commits nothing until the catalog, every template, every registration, the diplomacy
+  mirror, the player enrolment and the derived-cache sync have all succeeded.
+- UI: a localized sect HUD chip, the `sect_panel` toggle, a hub banner — all rendering a
+  read-only `SectMembershipView`. No raw ids reach the screen; resource ids resolve through
+  `SECT_RESOURCE_*` keys with a localized generic fallback.
+
+**STILL A CONTRACT ONLY (not implemented):** internal factions and the politics engine,
+sect techniques/rules/secrets, sect events + event resolution, succession rules, recruitment,
+missions/contribution, and sect persistence through `SaveService`. Those belong to Phase 07
+(Faction/Politics) and later content phases (`docs/ROADMAP.md`). Nothing above may be
+anticipated with speculative fields (`.kiro/steering/03-architecture.md`).

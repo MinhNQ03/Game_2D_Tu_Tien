@@ -8,6 +8,50 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-03 — Phase 06 final hardening: fail-closed sect core (D-037)
+Six failure modes a green CI cannot see, closed. No new scope, no new autoload, **CI still
+10 gates**; the existing test files were expanded in place and no assertion was weakened.
+- **Diplomacy retype is NON-DESTRUCTIVE.** `SectService._ensure_edge()` flipped ALLY→ENEMY by
+  `remove_edge()` then `create_edge()`, so a rejected flip destroyed the very edge it was
+  "rolling back" (and a successful one silently discarded the edge's dimensions + history).
+  New `RelationshipService.set_relationship_type()` rewrites only the type in place, preserving
+  id/endpoints/flags/dimensions/history; `_ensure_edge` never removes. Tests assert OBJECT
+  IDENTITY + preserved state, not just the resulting type (L-023).
+- **`SectRuntime.start_session()` is FAIL-CLOSED.** It used to `continue` past a sect that
+  failed to register, warn when the player could not join, and report success anyway. It is now
+  nine steps built into locals and committed only at the end (`_fail_start()` clears
+  everything), so a failure leaves no observable session. `apply_default_diplomacy()` returns
+  `bool` and fails closed on a dangling declaration or on declared diplomacy with no graph to
+  mirror into — both were previously skipped in silence (L-025).
+- **New Game treats relationship + sect failures as FATAL.** `_start_sect_session()` returns
+  `bool`; `_unwind_failed_session()` ends **Sect → Relationship → World → GameState** (reverse
+  dependency order) and returns to the menu. The forbidden state "RUNNING + world live +
+  `character.sect_id` set + sect session inactive" is now unreachable and asserted so in the
+  world E2E.
+- **`SectState.from_dict()` validates `typeof()` before converting.** Coercions do not fail,
+  they invent: `int("100")`/`int(100.0)` → `100`, `String(99)` → `"99"`, `String(null)` → `""`
+  (read as "no leader"). ID-like fields must be String/StringName, count-like fields must be
+  `TYPE_INT`, dictionary KEYS included. Still atomic — a rejection leaves the state
+  byte-identical (L-024).
+- **Rank ladder `authority` must increase STRICTLY** along the authored array order (the array
+  IS the progression), so `10/20/20`, `20/10/30` and `30/20/10` are rejected.
+- **`SectCatalog` validates referential integrity** of every declared ally/enemy (resolves, no
+  self-reference, no duplicate, allies/enemies disjoint). A dangling id now invalidates the
+  catalog instead of being silently skipped at mirror time; a drift guard reads the SHIPPED
+  catalog.
+- **The Sect panel shows localized resource NAMES**, never content ids: `spirit_stones` →
+  `SECT_RESOURCE_SPIRIT_STONES` (a pure naming convention, not a registry), with vi+en rows for
+  spirit stones / pills / manpower / blood crystals and a localized generic fallback.
+- **Docs reconciled:** `ARCHITECTURE` + `GAME_FLOW` (Phase 06 CLOSED, Phase 07 NOT STARTED, sect
+  membership/HUD/panel described as live), `DATA_SCHEMA` (implemented vs. design-only tiers),
+  `RELATIONSHIP_SYSTEM` + `CHARACTER_SYSTEM` (no longer "design only"; the character sect fields
+  documented as a derived cache), `SECT_SYSTEM` §12 (implemented vs. still-a-contract),
+  `TEST_PLAN` (Phase 06 coverage + 10 gates), `ROADMAP`, `DECISIONS` (D-037), lessons
+  (L-023/L-024/L-025).
+- **Breaking (tests only):** `start_session(null, …)` against a catalog that declares diplomacy
+  now fails; the sect runtime tests supply a real in-memory `RelationshipService` instead, and a
+  new test pins the fail-closed behaviour.
+
 ### 2026-10-03 — Phase 06: Sect System (core domain + runtime + UI) (D-032)
 - **Sect domain (core system, data-driven):** `SectTemplateData` + `SectRankData` (ordered
   rank ladder as content, not code) + `SectCatalog`; `SectState` (authoritative roster —
