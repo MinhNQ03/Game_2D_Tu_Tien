@@ -80,7 +80,10 @@ func test_writing_one_key_preserves_other_keys() -> void:
 func test_corrupt_file_degrades_then_recovers() -> void:
 	var f := FileAccess.open(TEMP_PATH, FileAccess.WRITE)
 	assert_not_null(f, "scratch file opened")
-	f.store_string("this is not a valid ConfigFile \x00\x01 [[[")
+	# Malformed on purpose: an unclosed section header and a bare `=`. NOTE: no `\x..`
+	# escapes here — GDScript has no hex escape, and writing one is a PARSE error that
+	# stops the whole script from compiling (caught by `tools/parse_check.gd`, D-033).
+	f.store_string("[unclosed section\nkey with no value\n=== garbage ===\n")
 	f.close()
 
 	assert_eq(_store().get_language(), "",
