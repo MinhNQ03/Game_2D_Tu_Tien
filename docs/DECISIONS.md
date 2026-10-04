@@ -1292,3 +1292,89 @@ with **zero `SCRIPT ERROR:` lines**, which is the proof that the repaired fixtur
 execute (the seven previously-aborting methods were already being counted as passes, so the
 total moved 275 → 282 purely from the seven NEW tests added here). The count is quoted from the
 gate's `::notice::` annotation.
+
+---
+
+## D-039 — Master Game Design Freeze v2.1: the world, narrative and systems design is frozen before the content phases begin — **Accepted** (2026-10-04, documentation only)
+
+**Context:** Phases 00–06 built a correct foundation — lifecycle, input, localization, maps,
+Character, Relationship, Sect — each serializable, data-driven and CI-verified. The remaining 28
+phases add *content-bearing* systems (combat, cultivation, items, quests, story, dungeons, a
+multi-world cosmos), and those fail differently: not by crashing, but by being individually
+reasonable and **collectively incoherent**. That failure is only visible in aggregate, hundreds of
+quests later, when the fix is a rewrite. So the design was audited and frozen while changing a
+realm name still costs one markdown edit instead of a save-format migration.
+
+The audit was not a summarisation pass. It found **eleven real contradictions already in the
+repository**, each recorded with an authoritative owner in `docs/CONTRADICTION_REGISTER.md`. Three
+mattered enough to name here:
+
+- **C-003 (premise-breaking).** `NARRATIVE_DIRECTION.md` §1 promises the player begins with "no
+  sect standing", while `data/sects/sect_catalog.tres` enrols them into Azure Cloud at Outer
+  Disciple on New Game — and D-037 had just made that enrolment *fail-closed mandatory*. The
+  game's own premise ("a nobody earns a place") was false in minute one. Canon: the narrative wins;
+  the enrolment is honest Phase-06 scaffolding (a HUD chip and a panel need a member to render) and
+  becomes `&""` in the phase that can dramatise joining. Flipping it today would trade a true
+  premise for a blank panel and lose the only live coverage of the sect path.
+- **C-001 (most expensive if deferred).** The realm ladder was still the conventional
+  Luyện Khí → Trúc Cơ *example* in the steering glossary. Nothing had been authored against it —
+  no realm id, no `.tres`, no locale key, Phase 12 NOT STARTED — which made this the last cheap
+  moment to replace it. Frozen hierarchy: **PHÀM → HẬU THIÊN → TIÊN THIÊN → NGỰ THIÊN → TRỌNG
+  THIÊN** (+ structural THÁI THIÊN / VÔ THIÊN), nine layers per numbered realm, each layer meaning
+  the same KIND of thing in every realm.
+- **C-002 (the default a team drifts into).** The supplied design poster gated maps by level
+  ("Lv 10–30"), while steering 02 binds content gating to cảnh giới. Resolution: **level is never
+  an access gate**; the poster's bands are advisory **threat ratings**, and access is a layered
+  gate (realm + quest/story + knowledge + sect/faction standing + world state + key item). Once
+  two maps ship with a `min_level`, realms are decorative — so `MapData` is forbidden from ever
+  gaining that field.
+
+**Decisions:**
+- **Thirteen documents** created, with **one authoritative owner per rule** declared in
+  `docs/GAME_DESIGN_FREEZE.md` §2. Deliberately NOT duplicated: the damage formula stays only in
+  `DATA_SCHEMA.md`, relationship dimensions only in `RELATIONSHIP_SYSTEM.md`, phase numbers only in
+  `ROADMAP.md`. A document that restates another's rule as if it owned it is a bug (L-014).
+- **Canon is a lookup table, not prose.** `CANON_LEDGER.md` holds the frozen facts as citable ids
+  (`CL-nn`) because bibles get rewritten and content authors need something stable to cite.
+- **Original world, structural inspiration only.** Aetheria takes the *shape* of cultivation
+  fiction (a vast hierarchy, a Main World above lesser worlds, suppressed history) and none of its
+  content: no characters, sects, techniques, artifacts, world names or plots from any existing
+  work. New canon: **Hạo Nguyên Giới** (Main World, 5 đại vực / 12 châu), the **Hải Giới**,
+  Tiểu/Tàn/Hủ/Vô Giới, the **Thiên Khế** covenant, the historical **Tà Đế** with three
+  incompatible records, **ĐÊM VỠ MẠCH** as the inciting event, and five gender-independent Origins.
+- **Identity is derived, never counted.** No `evil_score`, morality meter or alignment anywhere.
+  "Tà Đế" is read from cultivation + techniques + knowledge + relationships + sect/faction standing
+  + world events + decisions, which is what lets a compassionate player earn the title and a
+  ruthless one avoid it.
+- **Three categories of "forbidden" are kept distinct** (CL-01): **Ma Đạo** (a named tradition) ·
+  **Tà Đạo** (a political proscription) · **Cấm Pháp** (a factual self-destructive cost).
+  Collapsing them is what turns ambiguity into a verdict, so `SectType.DEMONIC` is frozen as *the
+  orthodox label*, not a moral fact.
+- **Knowledge (Tri Thức) is a third progression concept** — named, discrete, permanent, and
+  sometimes WRONG. Without it every lock must be opened with power and the only reward the game can
+  give is a bigger number; with it, the central mystery becomes playable (the Thiên Khế cannot be
+  defeated, only understood).
+- **Two dependency graphs are separated** (`SYSTEM_DEPENDENCY_MATRIX.md` §3): engineering
+  dependency (what must exist to run) and player-facing content dependency (what must exist for a
+  beat to be playable). Confusing them is how teams build a story engine before the systems its
+  branches read. Audit W confirmed the roadmap follows the engineering graph correctly — Combat and
+  Enemy AI before Level/XP and Cultivation is right, because XP has no source until combat emits it.
+- **Balance is deliberately NOT frozen.** XP curves, damage, drop rates, cultivation speed,
+  cooldowns, threat boundaries and map sizes stay tunable; the architecture they plug into is
+  frozen. Phase 11 may tune the XP curve; it may not decide that level gates access.
+- **Extensibility was tested, not asserted.** The 10-quest/5-NPC/3-map/2-dungeon/2-boss/
+  3-technique/2-weapon/1-sect/2-faction/1-Minor-World simulation passes as data + content scenes
+  (`CONTENT_BIBLE.md` §15), with two honest exceptions recorded: a **sixth weapon family** and a
+  **new element/status** are closed-set design changes requiring their own decision entries.
+
+**Scope guard honored:** documentation only. **No gameplay code, no runtime behaviour change, no
+content/`.tres`/locale change, no new autoload** (budget stays at 5), **no networking**, no God
+object, no speculative framework, no phase renumbering. Six content debts were created by resolving
+contradictions, each bound to a named phase (`GAME_DESIGN_FREEZE.md` §7) so none is lost.
+
+**Consequences:** future phases inherit a decided world instead of inventing one locally. The cost
+is that canon changes are now expensive on purpose — critical canon (protagonist identity, Origins,
+world law, Thiên Khế, realm/world hierarchy, major sects/factions, the historical Tà Đế, core
+progression, economy architecture, multiplayer narrative semantics) requires a DECISIONS entry
+recording OLD · NEW · WHY · IMPACT · AFFECTED CONTENT · AFFECTED SYSTEMS · MIGRATION. That friction
+is the point: it is what stops Act VIII from quietly contradicting Act I.

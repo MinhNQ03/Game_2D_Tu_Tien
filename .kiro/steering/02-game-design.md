@@ -2,12 +2,23 @@
 
 > Steering: always included. Shared vocabulary and the design rules every system
 > must respect. This is design intent, **not** an implementation spec.
+>
+> **The full design is FROZEN (D-039).** This file stays the short enforceable rulebook; the
+> master index of who owns which design rule is `docs/GAME_DESIGN_FREEZE.md`, frozen facts are in
+> `docs/CANON_LEDGER.md` (cite `CL-nn`), and known contradictions with their resolutions are in
+> `docs/CONTRADICTION_REGISTER.md` (cite `C-nnn`). Changing critical canon requires a
+> `docs/DECISIONS.md` entry.
 
 ## Canonical glossary (use these exact terms in code & docs)
 
 | Term (vi) | Term (en) | Meaning |
 |---|---|---|
-| Cảnh giới | Realm | A major cultivation tier (e.g. Luyện Khí → Trúc Cơ → …). Gates power & content. |
+| Cảnh giới | Realm | A major cultivation tier. Gates **capability and content access**, not smooth power. The frozen hierarchy is **PHÀM → HẬU THIÊN → TIÊN THIÊN → NGỰ THIÊN → TRỌNG THIÊN** (+ structural THÁI THIÊN / VÔ THIÊN), nine layers per numbered realm — owned by `docs/PROGRESSION_CULTIVATION_DESIGN.md`, names frozen in `docs/CANON_LEDGER.md` CL-02. The conventional Luyện Khí / Trúc Cơ / Kim Đan ladder is **NOT** Aetheria canon (D-039, C-001). |
+| Tri thức | Knowledge | A third progression concept, distinct from XP and realm: named, discrete, permanent facts the player has LEARNED. Gates techniques, world gates, dialogue and alternate quest solutions (CL-14). |
+| Đạo cơ | Dao seed | Layer 7 of any numbered realm — where the player's personal Dao forms. The build-defining layer (CL-03). |
+| Tà đạo | Heterodox | A **political** category: what the orthodox institutions have proscribed. Distinct from **Ma đạo** (a named tradition) and **Cấm pháp** (methods that are genuinely self-destructive). Never a synonym for "evil" (CL-01). |
+| Thiên Khế | Heaven Covenant | The ancient covenant that rations and protects the spiritual veins — and the institutions that administer it. Aetheria's central mystery (CL-06). |
+| Tà Đế | Heretic Emperor | A historical title, and an **emergent** identity the player may earn, accept, reject or redefine. Never a class, score, alignment or mandatory ending (CL-07). |
 | Tu luyện | Cultivation | The act of accumulating cultivation progress toward the next realm. |
 | Công pháp | Technique / Art | A cultivation method that shapes stats, resource, and which skills are usable. |
 | Linh khí / Mana | Spiritual energy | The combat/skill resource pool. |
@@ -42,6 +53,15 @@ Two parallel, intentionally distinct axes — do **not** collapse them into one 
 
 Design rule: content gating keys off **cảnh giới**; fine power tuning keys off
 **level**. Both must be serializable and testable (see `docs/TEST_PLAN.md`).
+
+**Level is NEVER an access gate** (D-039, C-002) — not for maps, dungeons, worlds, quests,
+techniques or dialogue. Where a number must communicate difficulty, that is an advisory
+**threat rating**, not permission. Access is a LAYERED gate (realm + quest/story + knowledge +
+sect/faction standing + world state + key item/technique), owned by
+`docs/MAP_DUNGEON_DESIGN.md` §3. `MapData` must never gain a `min_level` field.
+
+A realm advance must always answer *"what can I do now that I could not before?"* with something
+other than a bigger number (`docs/PROGRESSION_CULTIVATION_DESIGN.md` §1).
 
 ## Combat (design contract)
 

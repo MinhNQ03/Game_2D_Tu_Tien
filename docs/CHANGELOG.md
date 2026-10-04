@@ -8,6 +8,45 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-04 — MASTER GAME DESIGN FREEZE v2.1 (D-039) — documentation only
+The world, narrative and systems design is frozen **before** the content-bearing phases begin.
+**No gameplay code, no runtime behaviour change, no content/locale change, no new autoload, no
+networking, no phase renumbering.** CI stays at 10 gates.
+- **Thirteen documents created**, with ONE authoritative owner per rule declared in the master
+  index `docs/GAME_DESIGN_FREEZE.md`: `CANON_LEDGER.md` · `CONTRADICTION_REGISTER.md` ·
+  `WORLD_BIBLE.md` · `NARRATIVE_MASTER_PLAN.md` · `PROGRESSION_CULTIVATION_DESIGN.md` ·
+  `COMBAT_DESIGN.md` · `ECONOMY_CRAFTING_DESIGN.md` · `SOCIAL_DESIGN.md` ·
+  `MAP_DUNGEON_DESIGN.md` · `SYSTEM_DEPENDENCY_MATRIX.md` · `CONTENT_BIBLE.md` · `UI_UX_BIBLE.md`.
+- **Eleven real contradictions found in the existing repo** and resolved with named owners.
+  The three that mattered most: the narrative promised "no sect standing" while the build enrolled
+  the player in a sect on New Game (**C-003**, premise-breaking); the realm ladder was still the
+  conventional Luyện Khí/Trúc Cơ example in steering with nothing authored against it (**C-001**,
+  last cheap moment to change); and maps were being gated by level against steering's own
+  cảnh-giới contract (**C-002** — level is now *never* an access gate, and `MapData` may never
+  gain a `min_level`).
+- **New original canon:** Hạo Nguyên Giới (Main World, 5 đại vực / 12 châu), the Hải Giới and the
+  Tiểu/Tàn/Hủ/Vô Giới categories, the **Thiên Khế** covenant, the historical **Tà Đế** with three
+  incompatible records, **ĐÊM VỠ MẠCH** as the inciting event, a twelve-beat prologue, five
+  gender-independent Origins, and the realm hierarchy **PHÀM → HẬU THIÊN → TIÊN THIÊN → NGỰ THIÊN
+  → TRỌNG THIÊN** with nine meaningful layers each.
+- **Identity is derived, never counted** — no `evil_score`, morality meter or alignment. "Tà Đế"
+  is read from accumulated history, so a compassionate player can earn it and a ruthless one can
+  avoid it.
+- **Knowledge (Tri Thức) frozen as a third progression concept** alongside level and realm, and
+  the three categories of "forbidden" (Ma Đạo / Tà Đạo / Cấm Pháp) kept deliberately distinct.
+- **Updated:** `GAME_FLOW.md` (one status block instead of two — C-006; prologue now points at its
+  spec — C-007), `NARRATIVE_DIRECTION.md` (now the short north star pointing at the long form),
+  `MULTIPLAYER_PLAN.md` (+§2a the four-way narrative state split, so co-op can never destroy
+  personal canon), `ROADMAP.md`, `DECISIONS.md` (D-039), steering `01-product` (the player fantasy),
+  `02-game-design` (realm glossary row corrected + level-never-gates rule + six new terms),
+  `06-art-assets` (UI design direction pointer).
+- **Balance stays unfrozen on purpose:** XP curves, damage, drop rates, cultivation speed,
+  cooldowns, threat boundaries, map sizes. Architecture first, numbers later.
+- **Extensibility tested, not asserted:** the 10-quest/5-NPC/3-map/2-dungeon/2-boss/3-technique/
+  2-weapon/1-sect/2-faction/1-Minor-World simulation passes as data + content scenes, with two
+  recorded exceptions (a sixth weapon family, and any new element/status, are closed-set design
+  changes).
+
 ### 2026-10-04 — Phase 06 follow-up: the reverse transaction + test integrity (D-038)
 Four residual issues D-037's green CI could not reveal. No new scope, no new autoload, **CI
 still 10 gates** (the existing suite gate was hardened, not duplicated). CI-verified green on

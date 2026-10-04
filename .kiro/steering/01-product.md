@@ -14,6 +14,20 @@ player grows from a mortal into a cultivator, advancing through **cảnh giới*
 **skills**, collecting **equipment / items / pets**, and progressing a **branching
 story** across many maps, dungeons, and bosses.
 
+## The player fantasy (frozen, D-039)
+
+> *I entered this world as nobody. I chose my path. The world remembered what I did. Power changed
+> me. Knowledge changed me. Relationships changed. Organisations reacted. The world changed.
+> Eventually the world may call me savior, rebel, heretic, ruler, monster, reformer — or* **Tà Đế**.
+
+The player is **not** a chosen one, a reincarnation, an heir, or the owner of a guaranteed destiny,
+and is never exempt from the core `CharacterState` model. "Tà Đế" is an **emergent identity** read
+out of accumulated history — never a class, a score, an alignment bar or a mandatory ending. There
+is no `evil_score` anywhere in Aetheria.
+
+The full design — world, narrative, cultivation, combat, economy, social, map/dungeon, UI,
+dependencies — is frozen. **Master index: `docs/GAME_DESIGN_FREEZE.md`.**
+
 ## Pillars (ranked)
 
 1. **Progression that feels earned** — level, XP, cultivation realms, công pháp.

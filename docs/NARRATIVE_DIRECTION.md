@@ -7,6 +7,16 @@
 > names, characters, plots, or text copied from any existing game or novel. Ties to
 > `.kiro/steering/01-product.md`, `.kiro/steering/02-game-design.md`,
 > `docs/RELATIONSHIP_SYSTEM.md`, `docs/CHARACTER_SYSTEM.md`.
+>
+> **This remains the short north star. The LONG FORM is `docs/NARRATIVE_MASTER_PLAN.md`**
+> (D-039), which owns the prologue, the five Origins, the act structure, the reveal ladder, the
+> gender policy and the branch/convergence policy. Nothing here was superseded — the six
+> invariants in §6 below are carried forward verbatim into the freeze. Where this document says
+> "first arc direction" (§4), the master plan says exactly which beats, in which order, and why.
+>
+> One clarification the freeze added: §1's "no sect standing" is **canon**, and the current
+> build's automatic enrolment into Azure Cloud is Phase-06 scaffolding, not canon
+> (`docs/CONTRADICTION_REGISTER.md` C-003).
 
 ## 1. Premise
 

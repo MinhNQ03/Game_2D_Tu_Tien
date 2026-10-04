@@ -38,6 +38,27 @@ These are the *same* seams named in `docs/GAME_FLOW.md` §5 and `docs/ARCHITECTU
 §10, now extended with the core social/world systems (`docs/CHARACTER_SYSTEM.md`,
 `RELATIONSHIP_SYSTEM.md`, `SECT_SYSTEM.md`, `WORLD_SIMULATION.md`).
 
+### 2a. The NARRATIVE state split (D-039) — four kinds of state, not one
+
+Seam hygiene keeps the *data* replicable; this split keeps the **story** survivable. Frozen by
+the Master Game Design Freeze (`docs/NARRATIVE_MASTER_PLAN.md` §14):
+
+| State | Scope | Later behaviour |
+|---|---|---|
+| **Personal story state** | per player | **never shared.** Player A's chapter progress can neither advance nor erase Player B's |
+| **World chronicle state** | per world/shard | may be shared, or instantiated per group |
+| **Party / instance state** | temporary, per run | co-op dungeon/boss runs; discarded after |
+| **Social state** | shared | relationships, sects, factions, guild-like structures |
+
+**The acceptance test for any future co-op design:** two players at different points in their
+personal stories must be able to party, run a dungeon, fight a boss, split loot and join a world
+event **without either player's story state being forced to match the other's**. A design that
+requires them to be synchronised has destroyed personal canon and must be rejected.
+
+This is why `Story` is listed as per-player personal state in
+`docs/SYSTEM_DEPENDENCY_MATRIX.md` while `Sect`/`Relationship`/`Faction`/`World-sim` are listed
+as server-owned shared state — the split is already reflected in the engineering matrix.
+
 ### 2b. State partition every core system must keep (persistent / runtime / presentation)
 
 For multiplayer later, each core system separates its state into three tiers (defined for

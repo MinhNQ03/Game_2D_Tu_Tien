@@ -213,6 +213,17 @@ New Game path, strict `typeof()` validation at the `from_dict` boundary, a stric
 rank ladder, catalog referential integrity for declared diplomacy, and localized resource names
 in the Sect panel. Tests expanded in place; **CI still 10 gates**; no new scope.
 
+**MASTER GAME DESIGN FREEZE v2.1 (2026-10-04, D-039 — documentation only, NOT a phase):** the
+world, narrative, cultivation, combat, economy, social, map/dungeon, UI and dependency design were
+audited and frozen BEFORE the content-bearing phases begin. Thirteen documents; master index
+`docs/GAME_DESIGN_FREEZE.md`. The audit found **eleven real contradictions already present in the
+repository** (`docs/CONTRADICTION_REGISTER.md`) — including the premise-breaking one where the
+narrative promised the player "no sect standing" while the build enrolled them into a sect on New
+Game (C-003), and the realm ladder, which was still the conventional Luyện Khí/Trúc Cơ *example*
+in steering while nothing had actually been authored (C-001). **No gameplay code, no runtime
+behaviour change, no new autoload, no networking, no phase renumbering** — the engineering
+sequence below was audited (Audit W) and required no correction.
+
 **Follow-up (D-038):** four residual issues — `clear_diplomacy()` made transactional (the
 REMOVE leg was still inverted), authored default diplomacy required to be symmetric and
 non-conflicting across the pair, a working character resolver required at the runtime boundary,

@@ -24,17 +24,22 @@
 > The runnable flow is unchanged (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
 > MENU); the start map is data-driven (`MapCatalog.start_map_id`). The menu now also offers
 > **MAIN MENU → SETTINGS → MAIN MENU** (language vi/en, D-035), and in-map the camera
-> FOLLOWS the player across maps authored larger than the screen (D-036). Below:
+> FOLLOWS the player across maps authored larger than the screen (D-036).
 >
-> Status (as of Phase 03): **early gameplay implemented.** `main.tscn` is the **bootstrap**
-> scene (`Main → Systems / World / UI`, script `src/bootstrap/main.gd`; D-010). The CURRENT
-> runnable flow is: START → MAIN MENU → NEW GAME → WORLD SESSION (`WorldRuntime`) → **HUB
-> MAP** → the player moves (semantic input) and uses map exits to travel **HUB ↔ FIELD**,
-> then `open_menu` returns to the menu. Combat exists only in the Phase-02 player sandbox
-> (not reachable from New Game now). The branching-story / dialogue / quest / NPC flow below
-> is still the *design target* for later phases; the "Prologue" box in §3 is a future story
-> scene, NOT the current first gameplay scene. Everything beyond world/map traversal remains
-> the intended flow + the contracts implementation must satisfy.
+> `main.tscn` is the **bootstrap** scene (`Main → Systems / World / UI`, script
+> `src/bootstrap/main.gd`; D-010). Combat exists only in the Phase-02 player sandbox (not
+> reachable from New Game). The branching-story / dialogue / quest / NPC flow below is the
+> *design target* for later phases; the "PROLOGUE" box in §1 is a future story scene, **not**
+> the current first gameplay scene — it is now fully specified beat-by-beat in
+> `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039). Everything beyond world/map traversal remains the
+> intended flow plus the contracts implementation must satisfy.
+>
+> **ONE status block only.** This is it. Per-system implementation status lives inside each
+> §3.x contract, where it cannot be mistaken for the global state; phase state lives in
+> `docs/ROADMAP.md` (`CONTRADICTION_REGISTER.md` C-006).
+>
+> **Design canon** (what the content flowing through these systems must be) is frozen by D-039:
+> start at `docs/GAME_DESIGN_FREEZE.md`.
 
 ## 1. High-level flow
 
@@ -164,7 +169,11 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Dependencies:** gameplay, domain (initial progression), data (starting config),
   infrastructure.
 - **Events:** `run_started`, `chapter_entered(chapter_id)`, `story_beat(id)`.
-- **Implementation status (as of Phase 03):** this box is the *design* target. Today New
+- **Design (D-039):** the prologue's twelve beats, its causal chain (`ĐÊM VỠ MẠCH`), the five
+  Origins and the five things the player must leave holding are specified in
+  `docs/NARRATIVE_MASTER_PLAN.md` §4–§6. New Game also selects an `origin_id` (run-scoped data,
+  not a character subclass).
+- **Implementation status:** this box is the *design* target. Today New
   Game enters the **World/Map**: `WorldRuntime` (a node under `Main/Systems`) spawns one
   persistent Player and loads the **hub map** as the first scene; the player walks to a
   `MapExitZone` and presses the semantic `interact` action to move between the hub and a
@@ -382,9 +391,15 @@ with minimal changes to these systems (a design goal, not a guarantee). Detail i
 
 ## 6. Open design questions
 
-Tracked in `docs/DECISIONS.md`. Notably: real-time vs. turn-based combat resolution;
-scene-instanced vs. single-scene map streaming; final save file format. These are
+Tracked in `docs/DECISIONS.md`. Notably: real-time vs. turn-based combat resolution (D-007);
+scene-instanced vs. single-scene map streaming; final save file format (D-005). These are
 **not** decided here and must be resolved before the relevant system is built.
+
+The *content* design questions that used to sit here — what the world is, what the realms are,
+what the prologue is, how access is gated — were closed by the **Master Game Design Freeze**
+(D-039). Eleven contradictions found during that audit, with their resolutions and owners, are in
+`docs/CONTRADICTION_REGISTER.md`. Two of them concern this flow directly: C-006 (this file used to
+carry two status blocks) and C-007 (the PROLOGUE box was named here but defined nowhere).
 
 ## Phase 05 note (D-026) — relationship substrate + character visuals, flow unchanged
 

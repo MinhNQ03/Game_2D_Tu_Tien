@@ -95,6 +95,13 @@ assets/
   (colors, type scale, spacing, texture paths, per-slot 9-slice margins) → `ui_theme.gd` builds
   the shared `Theme` → `MainMenu` / `GameplayHUD` / future screens consume it. Swapping the art
   pack is editing files under `UIPalette.UI_ASSET_DIR`, not touching gameplay/UI logic.
+- **UI DESIGN direction is frozen in `docs/UI_UX_BIBLE.md`** (D-039): the visual language, the
+  information hierarchy (panel/typography/icon/semantic-colour/interaction states/modal + navigation
+  ownership), the screen inventory, the rule that the UI must communicate the player's EXPANDING
+  understanding of the world, and the first-usable-UI-per-feature-phase evolution plan. Two
+  consequences for asset work: **colour is never the only carrier of meaning** (always text or icon
+  too), and every layout must absorb **+40% string length** for vi↔en without clipping. This file
+  stays the owner of asset/import/provenance rules; the bible owns the design direction.
 
 ### Current UI (D-028 — live)
 
