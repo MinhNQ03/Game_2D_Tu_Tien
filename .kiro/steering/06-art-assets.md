@@ -21,8 +21,17 @@
 - **Base tile size: `16px`** (`Vector2i(16, 16)`). Keep it consistent; don't mix
   incompatible pixel densities without a strong technical reason logged in `DECISIONS.md`.
 - Character baseline is `16×24` (`player_proto.png` single frame + the `*_proto_idle.png`
-  64×24 four-direction sheets); the world tileset is a `48×16` strip of three 16px tiles
-  (grass / path / wall), `prototype_tileset.png`.
+  64×24 four-direction sheets). **The character sprite is still PROTOTYPE art** — none of the
+  licence-cleared packs ships a 16×24 four-direction tu-tiên figure, so replacing it needs art
+  authored to that spec (D-045).
+- **The map floor is the Verdant 00 East Asian Village 16px set** (`assets/tiles/verdant/`,
+  `data/maps/east_asian_tileset.tres`, D-045): 4 moss (`koke`) fills + 4 cut-stone (`ta`) fills
+  + a stone-on-moss transition autotile, of which the **16 cardinal masks** are wired. This
+  REPLACED the 3-tile `48×16` prototype strip (`prototype_tileset.png`, D-022/D-029) — one
+  repeated grass tile over a whole map is what read as unfinished, and the floor is most of the
+  screen. The old strip stays in the repo but no map references it.
+  Licence: free/commercial, no attribution, **may not be resold as an asset pack** — terms in
+  `assets/tiles/verdant/LICENSE.txt` and `docs/ASSET_LICENSES.md`.
 - Project default texture filter is **nearest** (`project.godot`
   `rendering/textures/canvas_textures/default_texture_filter=0`); pixel-art nodes also set
   `texture_filter = 1` (nearest) locally. Mipmaps **off** on sprite/tile imports.

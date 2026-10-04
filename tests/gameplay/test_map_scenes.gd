@@ -197,3 +197,151 @@ func test_hub_decor_contract() -> void:
 
 func test_field_decor_contract() -> void:
 	_assert_decor_contract(FieldScene, "field")
+
+
+# --- D-045 East Asian tileset floor ------------------------------------------
+
+## The autotile mask table must be COMPLETE and UNAMBIGUOUS.
+##
+## `_paint_stone` looks the computed neighbour mask up in `AUTOTILE_BY_MASK` with
+## `.get(mask, AUTOTILE_BY_MASK[0])` — so a MISSING key does not error, it silently falls back
+## to the `single` tile and paints a visibly wrong edge. That is invisible to the compiler, to
+## the linter and to CI, and it cannot be eyeballed here (Godot is not runnable locally,
+## D-009). So the table's completeness is asserted directly: all 16 combinations of the four
+## cardinal bits must be present, and no two may point at the same atlas cell.
+func test_autotile_mask_table_is_complete_and_unambiguous() -> void:
+	var table: Dictionary = PrototypeGround.AUTOTILE_BY_MASK
+	assert_eq(table.size(), 16,
+		"all 16 cardinal neighbour combinations are mapped (got %d)" % table.size())
+
+	var bits := [
+		PrototypeGround.MASK_N, PrototypeGround.MASK_E,
+		PrototypeGround.MASK_S, PrototypeGround.MASK_W,
+	]
+	# Every subset of the four bits must have an entry — that is what "complete" means here.
+	for combination in 16:
+		var mask := 0
+		for i in 4:
+			if combination & (1 << i) != 0:
+				mask |= int(bits[i])
+		assert_true(table.has(mask),
+			"mask %d is mapped (missing keys fall back to 'single' and paint a wrong edge)"
+				% mask)
+
+	# Distinct coordinates: two masks sharing a cell would mean one of them is wrong, since
+	# each mask describes a different edge shape.
+	var seen := {}
+	var keys: Array = table.keys()
+	keys.sort()
+	for mask in keys:
+		var coord: Vector2i = table[mask]
+		var key := "%d,%d" % [coord.x, coord.y]
+		assert_false(seen.has(key),
+			"mask %s has its own atlas cell (%s collides with mask %s)"
+				% [str(mask), key, str(seen.get(key))])
+		seen[key] = mask
+		# And it must sit inside the 12x4 sheet the pack ships.
+		assert_true(coord.x >= 0 and coord.x < 12 and coord.y >= 0 and coord.y < 4,
+			"mask %s maps inside the 12x4 autotile sheet (got %s)" % [str(mask), str(coord)])
+
+
+## The cardinal bits must be distinct powers of two, or two different neighbour patterns
+## would compute the same mask and the table lookup above would be meaningless.
+func test_cardinal_mask_bits_are_independent() -> void:
+	var bits := [
+		PrototypeGround.MASK_N, PrototypeGround.MASK_E,
+		PrototypeGround.MASK_S, PrototypeGround.MASK_W,
+	]
+	var combined := 0
+	for bit in bits:
+		assert_true(int(bit) > 0, "each cardinal bit is positive")
+		assert_eq(int(bit) & (int(bit) - 1), 0, "bit %s is a power of two" % str(bit))
+		assert_eq(combined & int(bit), 0, "bit %s does not overlap another" % str(bit))
+		combined |= int(bit)
+
+
+## Tile variety must be DETERMINISTIC (D-040 — no RNG before Phase 08's seeded seam), in
+## range, and not degenerate.
+##
+## "Deterministic" is the load-bearing property: with `randi()` the map would paint
+## differently every run, so a screenshot, a save and a reloaded save would disagree about the
+## world. Asserting the same cell twice is what proves no RNG crept in.
+func test_ground_variant_is_deterministic_and_in_range() -> void:
+	var cells := [
+		Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-7, 13),
+		Vector2i(31, 29), Vector2i(-40, -40), Vector2i(1000, 997),
+	]
+	for count in [1, 4, 8]:
+		for cell in cells:
+			var first := PrototypeGround.variant_for_cell(cell, count)
+			assert_true(first >= 0 and first < count,
+				"variant for %s is in [0,%d) (got %d)" % [str(cell), count, first])
+			# Called again it MUST agree — this is the no-RNG assertion.
+			for _repeat in 3:
+				assert_eq(PrototypeGround.variant_for_cell(cell, count), first,
+					"variant for %s is stable across calls (no RNG)" % str(cell))
+	# A single-variant material must not divide by anything or wander.
+	assert_eq(PrototypeGround.variant_for_cell(Vector2i(5, 9), 1), 0,
+		"a one-variant material always resolves to index 0")
+
+	# And it must actually VARY: a hash that returns a constant would reintroduce the flat
+	# single-tile floor this replaced, while still passing every assertion above.
+	var produced := {}
+	for y in 8:
+		for x in 8:
+			produced[PrototypeGround.variant_for_cell(Vector2i(x, y), 4)] = true
+	assert_eq(produced.size(), 4,
+		"all 4 variants appear across an 8x8 patch (got %d) — a constant hash would mean a "
+			% produced.size() + "flat one-tile floor again")
+
+
+## Neighbouring cells must not land on the same variant too often, or the "variety" is a
+## pattern. A plain `(x + y) % count` passes the tests above and still produces visible
+## diagonal stripes, which is exactly why the hash multiplies x and y by different odd primes.
+func test_ground_variants_do_not_form_diagonal_stripes() -> void:
+	var diagonal_matches := 0
+	var samples := 0
+	for y in 16:
+		for x in 16:
+			samples += 1
+			var here := PrototypeGround.variant_for_cell(Vector2i(x, y), 4)
+			var down_right := PrototypeGround.variant_for_cell(Vector2i(x + 1, y + 1), 4)
+			if here == down_right:
+				diagonal_matches += 1
+	# With 4 variants, chance agreement is ~25%. A `(x+y)%4` hash would score 0% on this
+	# particular diagonal and 100% on the anti-diagonal, so a wide band around chance is the
+	# honest assertion — it catches a degenerate pattern without pretending to test randomness
+	# quality, which a deterministic hash does not owe us.
+	var ratio := float(diagonal_matches) / float(samples)
+	assert_true(ratio > 0.05 and ratio < 0.60,
+		"diagonal neighbours agree %.0f%% of the time — near chance, not a stripe pattern"
+			% (ratio * 100.0))
+
+
+## The shipped TileSet must carry BOTH atlas sources the painter addresses by id, at the
+## project's 16px cell. The painter calls `set_cell(..., SOURCE_GROUND/SOURCE_AUTOTILE, ...)`
+## with bare ints, so a TileSet missing a source paints nothing at all — silently.
+func test_east_asian_tileset_has_both_sources_at_16px() -> void:
+	# Loaded by path rather than read off a map scene, so the resource stays checked even if a
+	# map is later repointed at a different tileset.
+	var tileset := load("res://data/maps/east_asian_tileset.tres") as TileSet
+	assert_not_null(tileset, "the East Asian TileSet loads")
+	if tileset == null:
+		return
+	assert_eq(tileset.tile_size, Vector2i(TILE_PX, TILE_PX),
+		"the TileSet cell matches the project's %dpx world grid" % TILE_PX)
+	for source_id in [PrototypeGround.SOURCE_GROUND, PrototypeGround.SOURCE_AUTOTILE]:
+		assert_true(tileset.has_source(int(source_id)),
+			"source id %s exists (the painter addresses it by that bare int)" % str(source_id))
+
+	# The ground sheet must expose the 8 fills the painter indexes (4 moss + 4 stone), or a
+	# variant lookup would address an undeclared tile and paint nothing.
+	var ground_source := tileset.get_source(
+		int(PrototypeGround.SOURCE_GROUND)) as TileSetAtlasSource
+	assert_not_null(ground_source, "the ground source is an atlas source")
+	if ground_source == null:
+		return
+	var needed := PrototypeGround.KOKE_COLUMNS + PrototypeGround.TA_COLUMNS
+	for column in needed:
+		assert_true(ground_source.has_tile(Vector2i(column, 0)),
+			"ground tile %d:0 is declared (4 moss + 4 stone fills)" % column)

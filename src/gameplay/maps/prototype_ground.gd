@@ -98,7 +98,7 @@ func _paint() -> void:
 ## Moss, with one of four authored variants chosen deterministically per cell. Four variants
 ## break up the repetition that made a single-tile floor look like graph paper.
 func _paint_moss(cell: Vector2i) -> void:
-	var column := _variant(cell, KOKE_COLUMNS)
+	var column := variant_for_cell(cell, KOKE_COLUMNS)
 	set_cell(cell, SOURCE_GROUND, Vector2i(column, 0))
 
 
@@ -117,7 +117,7 @@ func _paint_stone(cell: Vector2i) -> void:
 		mask |= MASK_W
 	var fully_enclosed := mask == (MASK_N | MASK_E | MASK_S | MASK_W)
 	if fully_enclosed:
-		var column := TA_FIRST_COLUMN + _variant(cell, TA_COLUMNS)
+		var column := TA_FIRST_COLUMN + variant_for_cell(cell, TA_COLUMNS)
 		set_cell(cell, SOURCE_GROUND, Vector2i(column, 0))
 		return
 	var coord: Vector2i = AUTOTILE_BY_MASK.get(mask, AUTOTILE_BY_MASK[0])
@@ -144,7 +144,10 @@ func _is_stone(cell: Vector2i) -> bool:
 ## RNG before Phase 08's seeded seam). The two odd multipliers decorrelate x from y so the
 ## variants do not fall into visible diagonal stripes, which is what a plain `(x + y) % count`
 ## produces.
-static func _variant(cell: Vector2i, count: int) -> int:
+##
+## PUBLIC because the determinism is a contract worth asserting, and a test reaching for a
+## `_`-prefixed helper in another file is a cross-file private access the linter flags (GD002).
+static func variant_for_cell(cell: Vector2i, count: int) -> int:
 	if count <= 1:
 		return 0
 	var h := cell.x * 73856093 ^ cell.y * 19349663
