@@ -256,8 +256,8 @@ The map floor now uses the **East Asian Village** set from this pack
 
 | # | Repo file | Source in pack | Type | Licence | Used in |
 |---|-----------|----------------|------|---------|---------|
-| T1 | `assets/tiles/verdant/v16_ground.png` (128×16 = 8 tiles) | `sheets/16x16/v16_ground.png` | tileset | free/commercial | Map floor fills: cols 0–3 `koke_1..4` (moss), cols 4–7 `ta_1..4` (cut stone) |
-| T2 | `assets/tiles/verdant/v16_ta_on_koke.png` (192×64 = 48 slots) | `sheets/16x16/autotile_v16_ta_on_koke.png` | tileset | free/commercial | Stone-on-moss transition autotile; the **16 cardinal masks** are wired, the rest stay available |
+| T1 | `assets/tiles/verdant/v16_ground.png` (128×16 = 8 tiles) | `sheets/16x16/v16_ground.png` | tileset | free/commercial | Map floor fills: cols 0–3 `koke_1..4` (moss, measured `rgb(62,100,54)`), cols 4–7 `ta_1..4` (**田 flooded rice paddy — WATER**, measured `rgb(43,100,109)`; first mis-recorded as "cut stone", see D-045) |
+| T2 | `assets/tiles/verdant/v16_ta_on_koke.png` (192×64 = 48 slots) | `sheets/16x16/autotile_v16_ta_on_koke.png` | tileset | free/commercial | Paddy-on-moss transition autotile (the paddy's bund edge); the **16 cardinal masks** are wired, the rest stay available |
 | T3 | `assets/tiles/verdant/LICENSE.txt` | `LICENSE.txt` | licence | — | The pack's own terms, committed with the art |
 
 **Tile roles were read from the pack's machine-readable `tiles.json`, not eyeballed** — that

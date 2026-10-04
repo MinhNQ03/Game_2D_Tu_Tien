@@ -1950,9 +1950,25 @@ area, not to how interesting it is to work on.
 
 ### The replacement
 
-4 moss (`koke`) fills + 4 cut-stone (`ta`) fills + the stone-on-moss transition autotile,
-composed into a courtyard — an east-west avenue plus a central plaza — whose edges are drawn
-transition tiles rather than a hard rectangular cut.
+4 moss (`koke`) fills + 4 flooded rice-paddy (`ta`) fills + the paddy-on-moss transition
+autotile, composed into terraced paddy blocks either side of a clear moss walkway, whose edges
+are drawn bund tiles rather than a hard rectangular cut.
+
+> **CORRECTION, same day.** This section first described `ta` as "cut stone" and laid it out as
+> a stone courtyard with an east-west avenue and a central plaza. **`ta` is 田 — a flooded rice
+> paddy**, measured at `rgb(43, 100, 109)`. The pack's own readme says "Shrine, **Rice Paddies**
+> & Village Houses"; I read the material NAME and inferred "stone" instead of sampling the
+> pixels, so the shipped map rendered a cross of open water through the middle of the village.
+> The owner's screenshot caught it in one look — which is the whole argument for screenshots
+> over test counts here: 377 green tests cannot see that a tile is blue (D-009).
+>
+> This is **L-021 exactly** — *measure an asset before building on it* — failed in a new way:
+> I measured the asset's SLOTS correctly out of `tiles.json` and never measured its COLOUR.
+> Slot geometry and material identity are two different facts and both have to be sampled.
+> Fixed in `9ba1fdd`: the material is now used for what it is, with a dry walkway the player
+> can always travel. Real cut stone for a courtyard exists in the same pack and is measured —
+> `v23_ground`, `rgb(155,143,123)`–`rgb(194,180,156)`, the "Mosaic Plaza" set — and is the
+> material a later courtyard pass should import.
 
 **Tile roles were read from the pack's machine-readable `tiles.json`, not eyeballed.** That is
 where the ground-sheet column layout (cols 0–3 moss, 4–7 stone) and every mask→atlas coordinate

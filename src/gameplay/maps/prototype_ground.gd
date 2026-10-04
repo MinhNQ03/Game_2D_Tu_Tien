@@ -3,9 +3,10 @@ class_name PrototypeGround
 ## PrototypeGround — Aetheria gameplay (the painted map floor).
 ##
 ## Paints a map's floor from the **Verdant 00 East Asian Village** 16px tileset
-## (`data/maps/east_asian_tileset.tres`) — moss ground (`koke`) with a stone courtyard
-## (`ta`) laid over it, edged with a real 16-mask autotile so the stone meets the moss with
-## drawn transition tiles instead of a hard seam.
+## (`data/maps/east_asian_tileset.tres`) — moss ground (`koke`) with terraced flooded rice
+## paddies (`ta` = 田, measured rgb(43,100,109): WATER, not stone) set into it, edged with a
+## real 16-mask autotile so each paddy's bund meets the moss with drawn transition tiles
+## instead of a hard seam.
 ##
 ## WHY THIS REPLACED THE 3-TILE VERSION (D-045). The previous floor had exactly three tiles —
 ## one grass, one path, one wall — stamped in a flat grid with a single straight stripe across
@@ -26,7 +27,7 @@ const SOURCE_GROUND := 0
 const SOURCE_AUTOTILE := 1
 
 ## Ground sheet layout, read from the pack's own `tiles.json` rather than eyeballed:
-## columns 0-3 are `koke_1..4` (moss), columns 4-7 are `ta_1..4` (cut stone).
+## columns 0-3 are `koke_1..4` (moss), columns 4-7 are `ta_1..4` (flooded paddy water).
 const KOKE_COLUMNS := 4
 const TA_FIRST_COLUMN := 4
 const TA_COLUMNS := 4
@@ -93,7 +94,7 @@ func _paint() -> void:
 	for y in range(y0, y1):
 		for x in range(x0, x1):
 			var cell := Vector2i(x, y)
-			if _is_paddy(cell):
+			if is_paddy_cell(cell):
 				_paint_paddy(cell)
 			else:
 				_paint_moss(cell)
@@ -111,13 +112,13 @@ func _paint_moss(cell: Vector2i) -> void:
 ## (the raised earth edge) is drawn art rather than a hard rectangular cut.
 func _paint_paddy(cell: Vector2i) -> void:
 	var mask := 0
-	if _is_paddy(cell + Vector2i(0, -1)):
+	if is_paddy_cell(cell + Vector2i(0, -1)):
 		mask |= MASK_N
-	if _is_paddy(cell + Vector2i(1, 0)):
+	if is_paddy_cell(cell + Vector2i(1, 0)):
 		mask |= MASK_E
-	if _is_paddy(cell + Vector2i(0, 1)):
+	if is_paddy_cell(cell + Vector2i(0, 1)):
 		mask |= MASK_S
-	if _is_paddy(cell + Vector2i(-1, 0)):
+	if is_paddy_cell(cell + Vector2i(-1, 0)):
 		mask |= MASK_W
 	var fully_enclosed := mask == (MASK_N | MASK_E | MASK_S | MASK_W)
 	if fully_enclosed:
@@ -141,7 +142,10 @@ func _paint_paddy(cell: Vector2i) -> void:
 ## map edge, in rows above and below a clear moss walkway, with moss gaps between them for the
 ## bunds to read. The player always has dry ground to travel on, and flooded terraces either
 ## side is what an East Asian village floor actually looks like.
-func _is_paddy(cell: Vector2i) -> bool:
+## PUBLIC because the layout makes two promises a test has to be able to check — a dry central
+## walkway and no paddy on the wall ring — and a test reaching for a `_`-prefixed method in
+## another file is a cross-file private access the linter flags (GD002).
+func is_paddy_cell(cell: Vector2i) -> bool:
 	if paddy_block_width <= 0 or paddy_block_height <= 0:
 		return false
 	var centre_y := fill_rect.position.y + int(fill_rect.size.y * 0.5)

@@ -344,4 +344,79 @@ func test_east_asian_tileset_has_both_sources_at_16px() -> void:
 	var needed := PrototypeGround.KOKE_COLUMNS + PrototypeGround.TA_COLUMNS
 	for column in needed:
 		assert_true(ground_source.has_tile(Vector2i(column, 0)),
-			"ground tile %d:0 is declared (4 moss + 4 stone fills)" % column)
+			"ground tile %d:0 is declared (4 moss + 4 flooded-paddy fills)" % column)
+
+
+## The two promises the paddy layout makes, pinned on the REAL map scenes.
+##
+## `ta` is 田, a flooded rice paddy — not stone, as the first version of this floor assumed.
+## That mistake shipped a cross of open water through the middle of the village, so the layout
+## now owes the player two things, and neither is visible to any other gate:
+##   1. a DRY WALKWAY down the middle they can always travel;
+##   2. paddies that never touch the map edge, where the boundary walls are.
+## The scenes are instantiated but deliberately NOT added to the tree, for the reason in this
+## file's header: `MapBase._ready()` calls `InputService.set_gameplay_context()`, a shared
+## `/root` autoload mutation that must not happen inside the common runner (L-010), and the
+## runner's isolation guard would fail the suite for it. Nothing here needs the tree —
+## `is_paddy_cell()` is a pure function of the authored exports, so the layout can be queried
+## without the layer ever painting a cell.
+func test_paddy_layout_leaves_a_dry_walkway_and_clears_the_walls() -> void:
+	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
+		var packed: PackedScene = (entry as Array)[0]
+		var label: String = (entry as Array)[1]
+		var map: Node = packed.instantiate()  # NOT added to the tree (L-010)
+		assert_not_null(map, "%s map instantiates" % label)
+		if map == null:
+			continue
+		var ground := map.get_node_or_null("Visual/Ground") as TileMapLayer
+		assert_not_null(ground, "%s has a ground layer" % label)
+		if ground == null:
+			map.free()
+			continue
+
+		var rect: Rect2i = ground.fill_rect
+		var centre_y := rect.position.y + int(rect.size.y * 0.5)
+		var half: int = ground.walkway_half_height
+
+		# 1. The walkway band must be completely dry, across the FULL width of the map.
+		var flooded_on_walkway := 0
+		for x in range(rect.position.x, rect.position.x + rect.size.x):
+			for dy in range(-half, half + 1):
+				if ground.is_paddy_cell(Vector2i(x, centre_y + dy)):
+					flooded_on_walkway += 1
+		assert_eq(flooded_on_walkway, 0,
+			("%s: the central walkway (%d rows) is entirely dry — %d flooded cell(s) would "
+				+ "put water across the player's only through-route")
+				% [label, half * 2 + 1, flooded_on_walkway])
+
+		# 2. No paddy may sit on the outermost ring, where the boundary walls are: a flooded
+		#    cell under a wall reads as water leaking into the collision edge.
+		var flooded_on_edge := 0
+		var x1 := rect.position.x + rect.size.x - 1
+		var y1 := rect.position.y + rect.size.y - 1
+		for x in range(rect.position.x, rect.position.x + rect.size.x):
+			if ground.is_paddy_cell(Vector2i(x, rect.position.y)):
+				flooded_on_edge += 1
+			if ground.is_paddy_cell(Vector2i(x, y1)):
+				flooded_on_edge += 1
+		for y in range(rect.position.y, rect.position.y + rect.size.y):
+			if ground.is_paddy_cell(Vector2i(rect.position.x, y)):
+				flooded_on_edge += 1
+			if ground.is_paddy_cell(Vector2i(x1, y)):
+				flooded_on_edge += 1
+		assert_eq(flooded_on_edge, 0,
+			"%s: no paddy touches the map edge (%d did)" % [label, flooded_on_edge])
+
+		# 3. And it must actually produce SOME paddies — a layout that floods nothing would
+		#    pass both assertions above while silently reverting to a flat one-material floor.
+		var flooded_total := 0
+		for y in range(rect.position.y, rect.position.y + rect.size.y):
+			for x in range(rect.position.x, rect.position.x + rect.size.x):
+				if ground.is_paddy_cell(Vector2i(x, y)):
+					flooded_total += 1
+		assert_true(flooded_total > 0,
+			"%s: the layout actually places paddies (a layout that floods nothing is a flat "
+				% label + "single-material floor again)")
+		# Never added to the tree, so it is freed directly rather than via `free_node` (L-019:
+		# a Node created in a test must be released by that test either way).
+		map.free()

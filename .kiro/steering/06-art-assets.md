@@ -25,8 +25,9 @@
   licence-cleared packs ships a 16×24 four-direction tu-tiên figure, so replacing it needs art
   authored to that spec (D-045).
 - **The map floor is the Verdant 00 East Asian Village 16px set** (`assets/tiles/verdant/`,
-  `data/maps/east_asian_tileset.tres`, D-045): 4 moss (`koke`) fills + 4 cut-stone (`ta`) fills
-  + a stone-on-moss transition autotile, of which the **16 cardinal masks** are wired. This
+  `data/maps/east_asian_tileset.tres`, D-045): 4 moss (`koke`) fills + 4 flooded rice-paddy
+  (`ta` = 田, measured `rgb(43,100,109)` — **water, not stone**) fills
+  + a paddy-on-moss transition autotile, of which the **16 cardinal masks** are wired. This
   REPLACED the 3-tile `48×16` prototype strip (`prototype_tileset.png`, D-022/D-029) — one
   repeated grass tile over a whole map is what read as unfinished, and the floor is most of the
   screen. The old strip stays in the repo but no map references it.

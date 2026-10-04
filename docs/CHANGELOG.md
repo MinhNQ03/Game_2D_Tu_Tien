@@ -23,12 +23,23 @@ included a 16px tileset built for exactly this grid.
 - **The floor was 3 tiles.** One grass, one path, one wall, stamped flat with a single straight
   stripe — a whole map drawn from one repeated tile is what read as bare, and no UI work could
   fix it because the floor is most of the screen. It is now the **East Asian Village** set:
-  4 moss (`koke`) fills, 4 cut-stone (`ta`) fills, and a real stone-on-moss transition autotile.
-- **A stone courtyard with drawn edges**, not a hard rectangular cut: an avenue plus a central
-  plaza, edged by the autotile's **16 cardinal masks** wired from coordinates read out of the
-  pack's own `tiles.json` (not eyeballed). The remaining 31 masks of the 47-mask set encode
-  diagonal neighbours and stay unwired — placing them wrong is visible and cannot be verified
-  here (D-009). The 16 cardinal tiles are a complete subset for a rectangular courtyard.
+  4 moss (`koke`) fills, 4 flooded rice-paddy (`ta`) fills, and a real paddy-on-moss autotile.
+- **Terraced paddies with drawn bunds**, not a hard rectangular cut: blocks either side of a
+  clear moss walkway the player can always travel, edged by the autotile's **16 cardinal masks**
+  wired from coordinates read out of the pack's own `tiles.json` (not eyeballed). The remaining
+  31 masks of the 47-mask set encode diagonal neighbours and stay unwired — placing them wrong
+  is visible and cannot be verified here (D-009). The 16 cardinal tiles are a complete subset
+  for a rectangular block.
+- **CORRECTION, same day (`9ba1fdd`):** this first shipped describing `ta` as "cut stone" and
+  laid it out as a stone courtyard, which rendered **a cross of open water through the village**.
+  `ta` is **田, a flooded rice paddy** — measured `rgb(43,100,109)`, and the pack's readme says
+  "Shrine, **Rice Paddies** & Village Houses". I read the material NAME and inferred stone
+  instead of sampling the pixels. **L-021 failed in a new way:** the asset's SLOTS were measured
+  correctly from `tiles.json` and its COLOUR never was — slot geometry and material identity are
+  two separate facts and both must be sampled. The owner's screenshot caught it in one look,
+  which is the argument for screenshots over test counts: 377 green tests cannot see a blue tile.
+  Real cut stone exists in the same pack and is now measured — `v23_ground`,
+  `rgb(155,143,123)`–`rgb(194,180,156)`, the "Mosaic Plaza" set — for a later courtyard pass.
 - **Tile variety is DETERMINISTIC** — a per-cell integer hash, never `rand*()`, so the map
   paints identically every run (D-040 keeps the seeded RNG seam in Phase 08). The two odd
   multipliers decorrelate x from y so variants do not fall into visible diagonal stripes.
