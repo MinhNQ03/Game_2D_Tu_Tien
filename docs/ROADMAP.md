@@ -213,6 +213,13 @@ New Game path, strict `typeof()` validation at the `from_dict` boundary, a stric
 rank ladder, catalog referential integrity for declared diplomacy, and localized resource names
 in the Sect panel. Tests expanded in place; **CI still 10 gates**; no new scope.
 
+**Follow-up (D-038):** four residual issues — `clear_diplomacy()` made transactional (the
+REMOVE leg was still inverted), authored default diplomacy required to be symmetric and
+non-conflicting across the pair, a working character resolver required at the runtime boundary,
+and **test integrity**: a test method that aborts on a VM error was being reported as PASS, so
+the existing headless gate now fails on any `SCRIPT ERROR:`. Still 10 gates, no new scope.
+CI-verified green on `1dabdba`: `ran 282 test(s): 282 passed, 0 failed`.
+
 **MASTER GAME DESIGN FREEZE v2.1 (2026-10-04, D-039 — documentation only, NOT a phase):** the
 world, narrative, cultivation, combat, economy, social, map/dungeon, UI and dependency design were
 audited and frozen BEFORE the content-bearing phases begin. Thirteen documents; master index
@@ -223,12 +230,6 @@ Game (C-003), and the realm ladder, which was still the conventional Luyện Kh�
 in steering while nothing had actually been authored (C-001). **No gameplay code, no runtime
 behaviour change, no new autoload, no networking, no phase renumbering** — the engineering
 sequence below was audited (Audit W) and required no correction.
-
-**Follow-up (D-038):** four residual issues — `clear_diplomacy()` made transactional (the
-REMOVE leg was still inverted), authored default diplomacy required to be symmetric and
-non-conflicting across the pair, a working character resolver required at the runtime boundary,
-and **test integrity**: a test method that aborts on a VM error was being reported as PASS, so
-the existing headless gate now fails on any `SCRIPT ERROR:`. Still 10 gates, no new scope.
 
 ## Phase 07 — Faction / Sect Politics *(NOT STARTED)*
 Internal factions + emergent politics (`docs/SECT_SYSTEM.md` §7): `FactionState`,

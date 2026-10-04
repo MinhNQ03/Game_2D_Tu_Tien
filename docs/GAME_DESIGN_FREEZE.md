@@ -151,10 +151,20 @@ Each is a real, named consequence of resolving a contradiction — recorded here
 
 ## 8. Acceptance
 
-All 51 acceptance criteria of the freeze brief are met; all 23 audits (A–W) were run and are
-tabulated at the end of `CONTRADICTION_REGISTER.md`. No critical item remains "TBD": the only
-open questions are balance parameters (§6) and the deliberately-unanswered canon mysteries
-(`CANON_LEDGER.md` CL-15), which are open *by design* and listed with their reveal order.
+Every acceptance criterion in the freeze brief's final checklist is met, and all 23 audits (A–W)
+were run and are tabulated at the end of `CONTRADICTION_REGISTER.md`. No critical item remains
+"TBD": the only open questions are balance parameters (§6) and the deliberately-unanswered canon
+mysteries (`CANON_LEDGER.md` CL-15), which are open *by design* and listed with their reveal
+order.
+
+**Verification note.** Two claims in this freeze are worth stating precisely, because the whole
+point of a freeze is that its documents do not assert things that fail on inspection:
+- Every cross-document reference in these thirteen files was checked to resolve to a section that
+  exists. Where a rule has one owner, the other documents cite it rather than restate it (§2).
+- This freeze touched **no** `.gd`, `.tscn`, `.tres`, `project.godot` or `locale/*.csv` file. The
+  only way to verify that claim is the diff, and the only way to verify nothing regressed is CI —
+  which stayed green at 10 gates with `282 passed, 0 failed` and zero `SCRIPT ERROR:` lines across
+  the freeze commits.
 
 **DESIGN FREEZE READY · NO GAMEPLAY CODE IMPLEMENTED · NO NETWORKING IMPLEMENTED ·
 NO RUNTIME BEHAVIOR CHANGED.**
