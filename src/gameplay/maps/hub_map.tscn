@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
-[ext_resource type="TileSet" path="res://data/maps/prototype_tileset.tres" id="3_tileset"]
+[ext_resource type="TileSet" path="res://data/maps/east_asian_tileset.tres" id="3_tileset"]
 [ext_resource type="Script" path="res://src/gameplay/maps/prototype_ground.gd" id="4_ground"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern.png" id="5_lantern"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_tree.png" id="6_tree"]

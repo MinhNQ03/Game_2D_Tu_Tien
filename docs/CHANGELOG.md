@@ -8,6 +8,40 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-02 — The map floor is real art now: Verdant East Asian 16px tileset (D-045)
+The owner's complaint was that only the menu got real art while the **map, scenery and layout**
+stayed placeholder. That was correct, and my previous claim that "the pack cannot fix the map"
+was wrong — it was based on reading **one** of the **nine** asset folders supplied. The others
+included a 16px tileset built for exactly this grid.
+- **Researched all nine folders and recorded a licence verdict for each.** Imported: **Verdant
+  00 — Series Sampler** (© Core Systems Asset Factory) — *free, commercial use permitted, no
+  attribution required, may not be resold as an asset pack*; its `LICENSE.txt` is committed
+  next to the art. **Rejected on provenance:** `vectoraith_..._DEMO` (16px Chinese-medieval
+  buildings — a genuinely good fit, but **no licence file** and "DEMO" in the name),
+  `ufefftiles_v2` and `Ancient Chinese Characters Pack 1` (**no licence file**).
+  `06-art-assets.md` forbids importing an asset with unclear terms.
+- **The floor was 3 tiles.** One grass, one path, one wall, stamped flat with a single straight
+  stripe — a whole map drawn from one repeated tile is what read as bare, and no UI work could
+  fix it because the floor is most of the screen. It is now the **East Asian Village** set:
+  4 moss (`koke`) fills, 4 cut-stone (`ta`) fills, and a real stone-on-moss transition autotile.
+- **A stone courtyard with drawn edges**, not a hard rectangular cut: an avenue plus a central
+  plaza, edged by the autotile's **16 cardinal masks** wired from coordinates read out of the
+  pack's own `tiles.json` (not eyeballed). The remaining 31 masks of the 47-mask set encode
+  diagonal neighbours and stay unwired — placing them wrong is visible and cannot be verified
+  here (D-009). The 16 cardinal tiles are a complete subset for a rectangular courtyard.
+- **Tile variety is DETERMINISTIC** — a per-cell integer hash, never `rand*()`, so the map
+  paints identically every run (D-040 keeps the seeded RNG seam in Phase 08). The two odd
+  multipliers decorrelate x from y so variants do not fall into visible diagonal stripes.
+- **Generated the `.import` siblings by hand** rather than shipping half-added assets: the
+  editor had not re-scanned, and L-015 requires a texture's companions to be committed with it.
+  Both derivable values were derived, not guessed — the cache path's MD5 is of the resource-path
+  string, and the UID uses the base-34 encoding verified in L-027.
+- **Still placeholder, stated plainly:** the **player sprite** is unchanged. None of the
+  licence-clean packs contains a 16×24 four-direction tu-tiên character; the Aetheria portraits
+  are 310×560 illustrations with baked backgrounds. That needs authored art at the right spec,
+  and no amount of importing fixes it.
+- **Still not seen on screen:** Godot is not runnable here (D-009).
+
 ### 2026-10-02 — Real painted UI art, and the button legibility violation fixed (D-044)
 The owner's verdict on the build was that the UI looked cheap. D-043 fixed the structural causes;
 this fixes the **surfaces**. The Aetheria asset pack was confirmed by the owner as

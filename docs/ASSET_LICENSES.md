@@ -230,3 +230,55 @@ filtering and non-integer stretching is acceptable — there is no pixel grid to
 "nearest filter / integer scale only" rule in `06-art-assets.md` exists to protect PIXEL art
 and does not apply here. The pixel-art world/sprite/panel rules are unchanged; this tier is
 UI-only, lives in its own folder and has its own constants in `UIPalette`.
+
+---
+
+## Verdant 00 — Series Sampler (16×16 tileset) — **free, commercial use permitted** (D-045)
+
+The map floor now uses the **East Asian Village** set from this pack
+(`assets/tiles/verdant/`), which is the first tileset in the project that matches the
+**16px** world grid exactly (`06-art-assets.md`, D-022) *and* fits the tu-tiên setting.
+
+- **Pack:** Verdant 00 — Series Sampler, © 2026 **Core Systems Asset Factory**.
+  Source/support: https://csaf.itch.io
+- **Licence (quoted terms, paraphrased):** free; usable in commercial and non-commercial
+  projects on any platform, **no royalty and no attribution required**; may be modified,
+  recoloured, re-cut and combined with own art; may ship inside a distributed game.
+  **May NOT be resold or redistributed as an art/tile/sprite asset pack or asset library.**
+  No warranty. Full text committed alongside the art at `assets/tiles/verdant/LICENSE.txt`.
+  We ship it inside the game, which is exactly what the licence permits.
+- **AI disclosure (from the pack):** every tile is drawn pixel-by-pixel by the author's own
+  procedural generator (`pixel_forge`) inside a locked palette; the generator's *code* was
+  written with AI assistance. The author states **no image model, no scraped art and no
+  third-party dataset** is in the tile pipeline, and that their itch.io Generative-AI
+  Graphics flag is deliberate over-disclosure.
+- **Attribution:** not required. Credited here anyway.
+
+| # | Repo file | Source in pack | Type | Licence | Used in |
+|---|-----------|----------------|------|---------|---------|
+| T1 | `assets/tiles/verdant/v16_ground.png` (128×16 = 8 tiles) | `sheets/16x16/v16_ground.png` | tileset | free/commercial | Map floor fills: cols 0–3 `koke_1..4` (moss), cols 4–7 `ta_1..4` (cut stone) |
+| T2 | `assets/tiles/verdant/v16_ta_on_koke.png` (192×64 = 48 slots) | `sheets/16x16/autotile_v16_ta_on_koke.png` | tileset | free/commercial | Stone-on-moss transition autotile; the **16 cardinal masks** are wired, the rest stay available |
+| T3 | `assets/tiles/verdant/LICENSE.txt` | `LICENSE.txt` | licence | — | The pack's own terms, committed with the art |
+
+**Tile roles were read from the pack's machine-readable `tiles.json`, not eyeballed** — that
+is where the column layout above and the mask→slot coordinates in `prototype_ground.gd` come
+from. The pack ships a full 47-mask set; only the 16 **cardinal** masks are used, because the
+other 31 encode diagonal neighbours and placing them wrong is visible, which cannot be checked
+here (Godot is not runnable locally, D-009). The 16 cardinal tiles are a complete, consistent
+subset covering every edge and corner of a rectangular courtyard.
+
+### Packs reviewed and REJECTED on provenance (D-045)
+
+The project owner supplied nine asset folders. These three were examined and **not imported**,
+because `06-art-assets.md` forbids any asset whose licence is unclear — no licence, readme or
+terms file could be found in any of them:
+
+| Folder | What it had | Why rejected |
+|---|---|---|
+| `vectoraith_tileset_buildings_chinese_medieval_DEMO` | 16/32/48px Chinese-medieval building + terrain + water autotiles (a genuinely good fit) | **No licence file of any kind**, and "DEMO" in the pack name implies a restricted trial. The most useful rejected pack — worth revisiting if the owner can produce its terms. |
+| `ufefftiles_v2` | 31 terrain PNGs, mostly 192×64 on a 16px grid | **No licence file.** |
+| `Ancient Chinese Characters Pack 1` | 33 Han/Tang/Qing figure illustrations (420–1325px) | **No licence file.** Also not a usable sprite spec (large illustrations, not a 16×24 four-direction sheet). |
+
+Already-cleared packs from the same set: **Xianxia Pixel Pack** (CC0, live), **Foozle Lucifer
+RPG UI** and **Tiny RPG Mana Soul GUI** (CC0, recorded as supporting candidates), and the
+**Aetheria pack** (project-owned, D-044).
