@@ -3200,3 +3200,37 @@ but the linearity RATIO limit (13×) is tighter than that intent. **Not changed 
 another phase's gate to make this phase's run green would hide a real regression later. It
 needs either a ratio-only formulation, a calibration run, or an explicit "CI-class hardware
 only" marker — a decision for whoever owns the performance gates.
+### Architecture flag: gameplay CONSTRUCTS a class that lives under `src/presentation/`
+
+Raised by the Phase-11 review pass. `ProgressionRuntime.build_view()` (gameplay) returns a
+`ProgressionView` whose file is `src/presentation/progression/progression_view.gd`, and
+`MapBase` (gameplay) holds one in a field. By the letter of `03-architecture.md`
+("dependencies point downward/inward only"), **gameplay → presentation is upward.**
+
+This is **not introduced by Phase 11.** The same shape is five phases old and pervasive:
+`WorldSimRuntime.get_view() -> WorldSimView`, `CombatRuntime.combat_target_changed(view:
+CombatTargetView)`, `MapBase.set_world_sim_view/_sect_view/_politics_view/_target_view`.
+Phase 11 followed the established pattern deliberately — inventing a different seam for one
+phase would have been worse than being consistent with a questionable one.
+
+Applying L-036's test ("could this run with no scene tree at all?") says these files are **not
+presentation**: every `*View` here is a `RefCounted` holding resolved scalars and localization
+KEYS, with no `Node`, no `Color`, no `Control` and no string resolution. They are
+application-layer DTOs filed under `presentation/` because that is who READS them, not because
+of what they depend on. Nothing in the toolchain flags it — GDScript `class_name` resolution
+does not care about directories, so there is no import to look wrong (the exact invisibility
+L-036 describes).
+
+**Deliberately NOT refactored here.** Moving six view classes across five systems during a
+Phase-11 review pass is "unrelated systems were changed" — a hard stop in the phase brief, and
+a change that would touch `world_runtime`, `combat_runtime`, `map_base`, the HUD and their
+tests for zero behavioural gain. Recorded instead so it is findable and reversible, which is
+what L-027 credits D-041 for: a documented compromise gets fixed, a silent one becomes
+permanent.
+
+**For whoever picks this up:** the options are (a) accept it explicitly and write the exception
+into `03-architecture.md` + `docs/ARCHITECTURE.md` so the rule stops being contradicted by
+five phases of code, or (b) move the `*View` DTOs to an application/contracts location that
+both layers may legally depend on. Option (a) is cheap and honest; (b) is correct and costs a
+mechanical rename plus a structural test that walks the directory (never a hand-written file
+list — L-034). Either way the rule and the code must stop disagreeing (L-014).
