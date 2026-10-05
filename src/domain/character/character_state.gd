@@ -83,9 +83,20 @@ var xp: int = 0
 ## Set the authoritative cumulative XP. Clamped at 0, because XP is monotonic by design and a
 ## negative total is not a state this game has.
 ##
-## The ONLY writer is `ProgressionService.grant_xp()`. It lives here, next to the field, for
-## the same reason `set_current_hp` does: the invariant belongs with the data it constrains,
-## while the RULE that decides the new value belongs in the service.
+## THIS IS A STORAGE BOUNDARY, NOT A GAMEPLAY MUTATOR (D-055). The split is:
+##
+##   * `ProgressionService.grant_xp()` is the only **semantic progression mutation authority**
+##     — it decides what the new total should be, from the authored curve.
+##   * this setter is the only place the **invariant** (`xp >= 0`) is enforced, which is why it
+##     lives next to the field rather than in the service, exactly as `set_current_hp` does.
+##
+## So "the only thing that writes XP" is two statements, not one: the service is the only thing
+## that DECIDES a new XP value, and this is the only thing that STORES one. No gameplay,
+## runtime or presentation code may call this — `tests/unit/progression/
+## test_progression_authority.gd` walks `src/` and fails if any production file outside this
+## class and the service mutates XP. It stays public and keeps its name because GDScript has no
+## package-private, and a capability object to fake one would be more machinery than the rule
+## is worth; the structural guard is what enforces it.
 func set_total_xp(value: int) -> void:
 	xp = maxi(0, value)
 

@@ -38,7 +38,18 @@
 > interval and driven by ONE session callback for all creatures; determinism from
 > `RngService`'s `enemy_ai` stream; the **Vụ Lang** frontier mist wolf authored into the
 > field map via a spawn table; and the Phase-09 presentation debt paid (a visible swing arc
-> plus a target plaque). **Phase 11 is NOT STARTED.**
+> plus a target plaque).
+> **Phase 11 (Level/XP Progression) is IMPLEMENTED (D-054), hardened and CLOSED in D-055** —
+> the first complete player-progression slice: a kill ANNOUNCES itself
+> (`CombatRuntime.enemy_defeated`), `ProgressionRuntime` (a 7th per-session node, not an
+> autoload) pays for it exactly once through a per-spawn reward ledger, `ProgressionService`
+> writes the single stored number (`CharacterState.xp`), and **the level is DERIVED from
+> cumulative XP and the authored curve, never stored**. Combat does not know a level exists.
+> **Level is never an access gate** (C-002). D-055 added the structural guards the ownership
+> model had been asserting only in docstrings, failed `reward_id == ""` closed, and gave the
+> basic attack a HUD prompt — it had none, so the game's central verb was the one thing a
+> player could not discover from the screen.
+> **Phase 12 (Cultivation + Knowledge Core) is the next phase and is NOT STARTED.**
 >
 > **Phase 10 review pass (2026-10-05, D-053 — not a phase, no new scope):** four defects on a
 > commit already green on all ten gates, two of them found by opening the playtest captures the

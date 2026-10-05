@@ -3,9 +3,10 @@ class_name UIPromptRow
 ## UIPromptRow — Aetheria presentation (reusable control-prompt row).
 ##
 ## One control hint rendered as a graphic key badge (`UIKeyBadge`) + an action label, e.g.
-## [E] Interact or [Esc] Menu. The HUD builds TWO of these (interact + menu), so the
-## badge+label layout lives here once instead of being duplicated
-## (`08-ai-review-protocol.md` no-duplication).
+## [J] Attack or [Esc] Menu. The HUD builds FIVE of these (attack, interact, sect, politics,
+## menu), so the badge+label layout lives here once instead of being duplicated
+## (`08-ai-review-protocol.md` no-duplication). Any new prompt goes through this row — a screen
+## that assembles its own badge+label is the duplication this component exists to prevent.
 ##
 ## Pure presentation. The owner passes an already-resolved key glyph (from
 ## `InputService.get_action_display_label`) and an already-localized action text (from

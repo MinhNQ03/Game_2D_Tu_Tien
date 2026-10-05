@@ -3234,3 +3234,179 @@ five phases of code, or (b) move the `*View` DTOs to an application/contracts lo
 both layers may legally depend on. Option (a) is cheap and honest; (b) is correct and costs a
 mechanical rename plus a structural test that walks the directory (never a hand-written file
 list — L-034). Either way the rule and the code must stop disagreeing (L-014).
+---
+
+## D-055 — Phase 11 close-out hardening: enforce the ownership model, and make the attack findable
+
+**Status:** Accepted · **Phase:** 11 (close-out hardening — no new gameplay) · **Follows:**
+D-054 (Phase 11 implementation)
+
+A VERIFY → FIND → FIX → RE-VERIFY → CLEAN → DOCUMENT pass over Phase 11. Every finding below
+was checked against the file at HEAD before being touched; none were taken on description.
+
+### What was actually wrong
+
+**1. The basic attack had no prompt — the defect the OWNER found by playing.**
+Phase 11 shipped a complete `kill → XP → level → feedback` loop. The HUD advertised `T Sect`,
+`Y Politics` and `Esc Menu`, and said nothing about the verb that kills creatures and earns
+every point of XP. The action was bound (`attack` → `J`), consumed by `Player._physics_process`
+through `InputService.is_gameplay_action_just_pressed`, armed from
+`data/combat/attack_player_basic.tres`, and exercised by both the world E2E and the playtest
+harness. It was simply **undiscoverable**.
+
+**No test could have caught this, and that is the interesting part.** Every test and the whole
+playtest harness already KNOW the semantic action name and feed it directly; not one of them
+asks "how would a player find out?". This is L-029's shape — a pipeline correct end to end and
+unreachable by the person it is for — and it is why the phase protocol's real-playtest and
+visual gates exist at all.
+
+**2. Three ownership claims were asserted only in comments.**
+`ProgressionRuntime.grant_for_defeat` carried the sentence *"This is the ONLY place in the
+project that calls `grant_xp`, which is what makes 'one mutation path' CHECKABLE rather than
+aspirational"* — while nothing checked it. `CharacterState.set_total_xp` said *"The ONLY writer
+is `ProgressionService.grant_xp()`"*, also unchecked. Both happened to be TRUE; neither was
+enforced, and Phase 12 arrives next wanting to react to progression.
+
+**3. `reward_id == ""` was fail-OPEN.**
+The ledger is keyed by `String(reward_id)`, so an empty id was not "a reward with no name" — it
+was a key that every malformed defeat would SHARE. The first would be paid and would then
+occupy `""`, after which the ledger would answer "already granted" for every later malformed
+defeat: duplicate-protection reporting on a **collision** instead of on an identity.
+
+**4. `PROMPT_STRIP_RESERVE` had never been measured.**
+`TOP_PLAQUE_RESERVE` has had a measuring test since D-050, and that test exists because the
+constant was wrong five times. The bottom strip's reserve had no such test — L-034's "a named
+reserve nobody measured", still live at the other end of the screen, in the exact change that
+adds a fifth prompt to the strip it protects.
+
+**5. Four documents contradicted the code.** `ROADMAP.md` said **"Phase 11 is NOT STARTED"** in
+its global status block while a section below said `✅ IMPLEMENTED`. `GAME_FLOW.md` was dated
+"through Phase 06", still said **"Combat exists only in the Phase-02 player sandbox"** three
+phases after combat went live, listed `xp_gained` as a COMBAT event, and drew
+`LEVEL UP (XP, cảnh giới / tu luyện)` as ONE box. `TEST_PLAN.md` claimed "through Phase 08" and
+`586 tests`. And — found by grepping rather than by the brief — **`ARCHITECTURE.md` said
+"Phase 07 (Faction/Politics) is NOT STARTED"**, five phases stale, in the file
+`08-ai-review-protocol.md` instructs every change to read FIRST.
+
+### Decisions
+
+**XP authority is TWO statements, not one.** The brief's first draft asked for a rename to
+`_set_total_xp`. Rejected in favour of the supplement's own reasoning: the spelling is not the
+invariant. The split now written at both sites and enforced by a walk:
+
+| | |
+|---|---|
+| `ProgressionService.grant_xp()` | the only thing that **DECIDES** a new XP total (from the authored curve) |
+| `CharacterState.set_total_xp()` | the only thing that **STORES** one, and the only place `xp >= 0` is enforced |
+
+The setter stays public and keeps its name: GDScript has no package-private, and a capability
+object to fake one would be more machinery than the rule is worth. `src` is walked, **not**
+`tests` — tests legitimately arrange XP directly, and forbidding that would break the
+behavioural coverage that makes the rule worth having.
+
+**The guard caught a defect on its first run, and the fix was the matcher.** Asking only
+`"grant_xp(" in line` flagged `progression_service.gd` — which does not call `grant_xp`, it IS
+`grant_xp`. Widening the allow-list would have silenced a true positive class along with the
+false one, so the matcher now excludes declaration lines and that false positive is pinned as a
+test case. Both matchers also have non-vacuity tests fed the exact bypass lines a later phase
+would write, plus the innocent lines that merely mention XP (`xp_reward`, `xp_gained`,
+`xp_into_level`, a comparison, a local) — a guard with false positives gets relaxed by the next
+person who hits one, so those matter as much as the hits.
+
+**An empty reward id is rejected BEFORE the ledger is touched**, loudly (unlike a duplicate,
+which is normal and silent): an unnamed reward means the spawn path failed to mint an id, which
+is a wiring fault that would otherwise cost the player XP invisibly. All four halves are
+asserted — no XP, no `xp_gained`, no `level_changed`, **no entry** — plus a well-formed defeat
+still paying afterwards, which is what proves the rejection left the ledger USABLE rather than
+merely left the counter at zero.
+A **negative** reward is the deliberate opposite: nothing mutates, but the defeat IS recorded as
+settled. An identified defeat that was rejected is finished; an unidentified one was never a
+defeat. No new `ProgressionResult` reason was added — the service never sees reward ids, so the
+check belongs in the runtime, in the same shape as the no-session guard directly above it.
+
+**The attack prompt is ALWAYS visible, and that is a decision.** The player is armed for the
+whole session, so there is no state in which the cue would be a lie. "Show it when an enemy is
+near" was rejected: a player who has never attacked does not know the verb exists, so the cue
+would appear exactly when they are already under pressure and least able to read it. `interact`
+stays contextual because it names a target — off an exit it has no referent. It is leftmost
+because it is the only verb in the strip that changes the WORLD rather than opening a panel.
+
+**No new reserve constant was invented to make a test pass.** The strip's width bound is read
+from `ProjectSettings` (`display/window/size/viewport_width`), because under `canvas_items` +
+`expand` the layout viewport never gets NARROWER than the authored width — so that is the worst
+case for a horizontal overlap and the one value that cannot drift from the setting governing it.
+
+**The two wall-clock performance budgets were NOT touched** (D-054's debt). Loosening another
+phase's gate to make this run green would hide a real regression later.
+
+### Measured
+
+- **Suite 664 → 678 (+14), zero new failures.** 5 authority guards, 4 reward-id cases, 5 HUD
+  (4 discoverability + 1 bottom-strip measurement). No `SCRIPT ERROR`, zero leaked ObjectDB /
+  resources. All three E2E processes pass.
+- **Real-app playtest, 4 runs — vi and en × 1280x720 (16:9) and 1280x800 (16:10): 22/22 steps,
+  0 failed, 0 errors, 0 warnings in every run.** 16:10 is a genuinely different visible rect;
+  a same-aspect window would be a pure uniform scale and prove nothing.
+- **Mode B (unassisted) succeeded in all four runs:** `landed=true killed=true`, `xp 25 → 50`.
+  The player was placed once and never repositioned; `placed_once_at` reads 82–143px because
+  the creature MOVES between placement and measurement, which is itself evidence it was hunting.
+- `attack_prompt=visible attack_action=attack attack_display_key=J` in all four runs — the
+  display key is the resolved label, never a literal, so a rebind changes the evidence instead
+  of invalidating it.
+- **Measured from the captures** (vi, 16:9, worst case): prompt strip `x≈18→505`, `y≈578→640`;
+  level-up banner `y≈536→556`, centred. Banner clears the strip by ~22px and clears the player
+  (`y≈215→310`) entirely. Strip ends 135px short of the half-viewport bound its test asserts.
+
+### Known cost, recorded rather than ignored
+
+The fifth prompt widened the vi strip by roughly 105px, so the bottom-left region it occludes
+grew by that much. In the worst captured frame the gap between the strip's right edge and the
+player's swing arc was **~15px**. That is not a defect — a bottom-left strip occluding a
+world-space player is a standing property of the layout, not something D-055 introduced — but
+it is the measurable price of the new prompt, and it means **a SIXTH always-visible prompt
+cannot simply be appended.** The next one needs a real layout decision (wrap to a second row,
+or make some prompts contextual), not another `add_child`.
+
+Also observed and deliberately NOT acted on: the field map has decor props standing on flooded
+paddy tiles (visible at the left edge of the Mode-B captures). That is map content from an
+earlier phase, outside this pass's scope, and silently editing it would be the "unrelated
+systems were changed" hard stop. Flagged for whoever owns map dressing.
+
+### Future handoff — PHASE 12 CONTRACT
+
+**Phase 11 PROVIDES:** `CharacterState.xp` (the single stored progression number) ·
+`ProgressionCurveData` · `ProgressionService` (semantic authority) · `ProgressionRuntime` (7th
+sibling, per-spawn ledger) · `EnemyData.xp_reward` (the whole reward seam) ·
+`xp_gained(amount, reward_id)` · `level_changed(previous, current)` · `ProgressionView` ·
+the progression HUD row · the level-up presentation · progression unit/integration/E2E coverage ·
+Mode A + Mode B playtest checkpoints.
+
+**Phase 12 MAY CONSUME:** the derived level (`ProgressionService.level_of`) · the two
+progression events · the progression state through its owner · the `ProgressionView` seam.
+
+**Phase 12 MUST NOT:**
+- reimplement XP, or store a second level anywhere;
+- mutate XP directly — the `src/` walk will fail, and that is the point;
+- treat the HUD as authority;
+- create a second progression singleton or autoload (the budget is still 5, D-017);
+- use level as an access gate (C-002) — the service deliberately exposes no content ids, no
+  unlock list and no gate query, so it is structurally incapable of becoming one;
+- present level as cultivation, or borrow `tu vi` / `đột phá` / `cảnh giới` for the level UI;
+- **invent a new View-DTO architecture independently.** The known
+  `gameplay runtime → presentation-folder RefCounted DTO` shape is documented at the end of
+  D-054 and predates Phase 11. Follow the existing pattern; if it is to be fixed, that is ONE
+  deliberate cross-system change, not a second convention introduced alongside the first.
+
+**Multiplayer seam (unchanged):** `ProgressionRuntime.grant_for_defeat()` is public and is
+exactly where an authoritative server's "this defeat happened" message lands. A future server
+can own the progression RESULT without rewriting the domain logic, because the rule
+(`grant_xp`) is node-free and the ledger is the runtime's.
+
+### Remaining tuning parameters (content, not code)
+
+`data/progression/player_progression_curve.tres` — `min_level`, and the 20-entry `xp_to_next`
+ladder whose size IS the ceiling (level 21 at 34,545 XP). `EnemyData.xp_reward` per creature
+(the mist wolf pays 25, so one kill reaches level 2 — a deliberate first-kill payoff).
+`UIPalette`: `XP_METER_HEIGHT` 8, `LEVEL_BADGE_MIN_WIDTH` 52, `LEVEL_UP_SECONDS` 1.5,
+`LEVEL_UP_FLASH_GAIN` 2.0, `LEVEL_UP_BANNER_BOTTOM_INSET`, `PROMPT_STRIP_RESERVE` 78,
+`TOP_PLAQUE_RESERVE` 224. All are data or named tokens; none is a magic number at a call site.

@@ -849,3 +849,223 @@ func _count_class(node: Node, class_label: String) -> int:
 			n += 1
 		n += _count_class(child, class_label)
 	return n
+
+
+# === Attack discoverability (D-055-G) =======================================
+#
+# Phase 11 shipped a complete combat→XP→level loop in which the ATTACK was the one verb with
+# no cue on screen. `T Sect`, `Y Politics` and `Esc Menu` were all advertised; the action that
+# kills creatures and earns every point of XP was not. No test could see it, because every
+# test and the whole playtest harness already KNOW the semantic action name and feed it
+# directly — none of them ever asks "how would a player find out?". That is L-029's shape: a
+# pipeline that is correct end to end and unreachable by the person it is for.
+
+
+## The prompt exists, is named, and is built from the SHARED row component.
+##
+## The component matters as much as the presence: a hand-rolled badge+label inside the HUD
+## would be the duplication `UIPromptRow` exists to prevent, and it would drift from the other
+## four prompts the first time the badge style changed (the D-050 divider lesson).
+func test_the_hud_advertises_the_basic_attack_through_the_shared_prompt_row() -> void:
+	var hud := _hud()
+	var row := hud.find_child("AttackPrompt", true, false)
+	assert_not_null(row, "the HUD builds a named attack prompt")
+	if row == null:
+		free_node(hud)
+		return
+	assert_true(row is UIPromptRow,
+		("the attack prompt IS a UIPromptRow, so it inherits the badge+label treatment "
+			+ "instead of re-inventing it (got %s)") % _class_of(row))
+	assert_true(row.visible,
+		("the attack prompt is visible with no setup at all — the player is armed for the "
+			+ "whole session, so there is no state in which this cue would be a lie, and a "
+			+ "player who has never attacked cannot be taught the verb by a cue that only "
+			+ "appears once an enemy is already on them"))
+	free_node(hud)
+
+
+## The glyph comes from the SEMANTIC action via InputService, not from a literal.
+##
+## Asserted by COMPARING against what the service reports for `attack` rather than against the
+## letter "J": the point of the seam is that a rebind moves the prompt with it, and a test that
+## hard-coded the current key would have to be edited by the same rebind — which is how a
+## binding and its documentation drift apart (L-014).
+func test_the_attack_prompt_key_is_resolved_from_the_input_service() -> void:
+	var hud := _hud()
+	_use_language("en")
+	var input: Node = scene_tree.root.get_node_or_null("InputService")
+	assert_not_null(input, "the InputService autoload is live in the runner")
+	if input == null:
+		free_node(hud)
+		return
+	var expected := String(input.call("get_action_display_label", &"attack"))
+	assert_ne(expected, "", "the service resolves a display label for `attack`")
+	var all_text := _all_label_text(hud)
+	assert_true(expected in all_text,
+		("the attack prompt shows the glyph the InputService resolves for the `attack` "
+			+ "action (expected '%s'), got %s") % [expected, str(all_text)])
+	for t in all_text:
+		assert_false(String(t).contains("attack"),
+			"the raw semantic action name never reaches the screen (%s)" % t)
+		assert_false(String(t).contains("74"),
+			"nor the raw physical keycode (%s)" % t)
+	free_node(hud)
+
+
+## The action word is localized in BOTH languages and resolves to real text.
+func test_the_attack_prompt_action_word_is_localized() -> void:
+	var hud := _hud()
+	for language in ["vi", "en"]:
+		_use_language(language)
+		var expected := _localized("UI_HUD_ATTACK_ACTION")
+		assert_ne(expected, "UI_HUD_ATTACK_ACTION",
+			"the %s value is authored, not a fallback to the key" % language)
+		assert_ne(expected, "", "and it is not empty in %s" % language)
+		var all_text := _all_label_text(hud)
+		assert_true(expected in all_text,
+			("the attack prompt renders the localized word in %s (expected '%s'), got %s")
+				% [language, expected, str(all_text)])
+	_use_language("en")
+	free_node(hud)
+
+
+## STRUCTURAL: no presentation file may author a physical key for a prompt.
+##
+## WALKED, not listed (L-034). The rule being defended is the direction of the seam —
+## `semantic action -> InputService display label -> HUD`, never `HUD -> physical key`. A
+## literal is the cheap wrong thing to reach for when a prompt "just needs to say J", and it
+## breaks silently on the first rebind rather than loudly.
+##
+## Comments are stripped, so a file may still explain the rule (this project documents its
+## mistakes next to the code that made them).
+func test_no_presentation_file_hard_codes_a_physical_key_for_a_prompt() -> void:
+	var offenders: Array[String] = []
+	_scan_for_literal_keys("res://src/presentation", offenders)
+	assert_true(offenders.is_empty(),
+		("a prompt's key glyph must come from InputService.get_action_display_label, so a "
+			+ "rebind moves the prompt with it. These files author a literal instead: %s")
+			% str(offenders))
+
+
+func _scan_for_literal_keys(dir_path: String, offenders: Array[String]) -> void:
+	var dir := DirAccess.open(dir_path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		var full := "%s/%s" % [dir_path, entry]
+		if dir.current_is_dir():
+			_scan_for_literal_keys(full, offenders)
+		elif entry.ends_with(".gd"):
+			var file := FileAccess.open(full, FileAccess.READ)
+			if file != null:
+				var source := file.get_as_text()
+				file.close()
+				if _authors_a_literal_key(source):
+					offenders.append(entry)
+		entry = dir.get_next()
+	dir.list_dir_end()
+
+
+## Does this source pass a hard-coded key glyph into a prompt row?
+##
+## Matches `set_prompt("<literal>"` — the one call that puts a glyph on screen. A literal
+## there is the defect; a variable (`set_prompt(attack_key, ...)`) is the correct seam.
+func _authors_a_literal_key(source: String) -> bool:
+	var re := RegEx.new()
+	re.compile("set_prompt\\(\\s*\"")
+	for raw_line in source.split("\n"):
+		var line: String = raw_line
+		var hash_at := line.find("#")
+		if hash_at >= 0:
+			line = line.substr(0, hash_at)
+		if re.search(line) != null:
+			return true
+	return false
+
+
+# === The reserved BOTTOM strip (D-055 §6) ===================================
+
+## `PROMPT_STRIP_RESERVE` is re-measured against the POPULATED strip.
+##
+## L-034's rule is "a reserve constant must be derived from a MEASUREMENT of the thing it
+## reserves for, and a test must re-measure it". That was applied to `TOP_PLAQUE_RESERVE` and
+## never to this one — so the bottom reserve was a number nobody had checked for four phases,
+## and D-055 adds a FIFTH prompt to the strip it protects. Two things are therefore asserted:
+##
+##   1. HEIGHT — the strip must fit inside the band the side panels and the level-up banner
+##      both stop short of. The rows sit in an HBox, so a new prompt should not change the
+##      height at all; "should not" is exactly the kind of claim that is worth measuring once
+##      rather than assuming forever.
+##   2. WIDTH — this is the NEW risk the attack prompt introduces. The strip is anchored
+##      bottom-LEFT and grows RIGHT, while the level-up announcement is bottom-CENTRE. Enough
+##      prompts and the two bottom-edge elements meet. Asserting the strip stays within the
+##      left half means the collision is arithmetic rather than something to notice in a
+##      screenshot later.
+##
+## Measured with `get_combined_minimum_size()` (A15): `size` would depend on the runner's
+## window, and the minimum is what the content actually demands.
+func test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for() -> void:
+	var hud := _hud()
+	# Every prompt visible at once: interact is contextual, so without this the strip measures
+	# one row short of its widest real state — the hidden-child trap that made the TOP reserve
+	# wrong three times (L-035).
+	hud.call("set_interact_available", true)
+	# The LONGEST authored language, derived rather than guessed: vi is longer than en for
+	# every one of these words, and a reserve measured on the shorter one is wrong by exactly
+	# the amount that matters.
+	_use_language("vi")
+	await scene_tree.process_frame
+
+	var strip := hud.find_child("PromptStrip", true, false) as Control
+	assert_not_null(strip, "the prompt strip is found by name")
+	if strip == null:
+		free_node(hud)
+		return
+
+	var needed := strip.get_combined_minimum_size()
+	assert_true(float(UIPalette.PROMPT_STRIP_RESERVE) >= needed.y,
+		("PROMPT_STRIP_RESERVE (%d) must cover the populated strip's height (%d). The side "
+			+ "panels and the level-up banner both inset by this token, so a strip taller "
+			+ "than the reserve is covered by them.")
+			% [UIPalette.PROMPT_STRIP_RESERVE, int(needed.y)])
+
+	# The banner is centred, so the strip may occupy the left half and no more.
+	#
+	# The bound is the project's AUTHORED viewport width, read from ProjectSettings rather
+	# than written here as a number. That is not "authoring around one screenshot size"
+	# (A15): under `canvas_items` + `expand` the layout viewport never gets NARROWER than the
+	# authored width — a wider window scales up, a taller one grows vertically — so the
+	# authored width is the worst case for a horizontal overlap, and it is the one value that
+	# cannot drift from the setting that actually governs it.
+	var authored_width := float(
+		ProjectSettings.get_setting("display/window/size/viewport_width", 1280))
+	assert_true(needed.x < authored_width * 0.5,
+		("the populated prompt strip (%dpx wide) must stay inside the left half of the "
+			+ "authored viewport (%d), because it is anchored bottom-LEFT and grows RIGHT "
+			+ "while the level-up announcement is bottom-CENTRE — the two bottom-edge "
+			+ "elements would otherwise meet once enough prompts exist")
+			% [int(needed.x), int(authored_width)])
+
+	# And the strip really does carry all five prompts, or the measurement above is of a
+	# smaller thing than the player sees.
+	assert_eq(_prompt_rows(strip).size(), 5,
+		"all five prompts (attack, interact, sect, politics, menu) were measured")
+	free_node(hud)
+
+
+func _prompt_rows(node: Node) -> Array[UIPromptRow]:
+	var out: Array[UIPromptRow] = []
+	_collect_prompt_rows(node, out)
+	return out
+
+
+func _collect_prompt_rows(node: Node, out: Array[UIPromptRow]) -> void:
+	for child in node.get_children():
+		var row := child as UIPromptRow
+		if row != null:
+			out.append(row)
+		else:
+			# A prompt row's own children are a badge + a label, never another row.
+			_collect_prompt_rows(child, out)

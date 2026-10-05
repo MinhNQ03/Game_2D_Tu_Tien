@@ -79,6 +79,7 @@ func _run() -> void:
 	await _step_attack(map)
 	await _step_enter_field(map)
 	await _step_encounter(main)
+	await _step_natural_encounter(main)
 	await _step_return_to_menu(main)
 
 	_write_report()
@@ -222,16 +223,22 @@ func _step_attack(map: Node) -> void:
 	var after := int(target.call("get_current_health"))
 	# The hit flash lasts `UIPalette.HIT_FLASH_SECONDS`, and `_shot()` captures one frame
 	# later — so on a frame-starved machine the flash has already decayed and the screenshot
-	# shows an untouched target. The shot is still taken, but what it CAUGHT is reported
-	# rather than assumed: a capture that silently lacks the thing its name promises is worse
-	# than a missing one (L-034), and it is not a PASS condition because a real-time effect
-	# cannot be gated on frame pacing without becoming flaky.
+	# shows an untouched target. The shot is still taken, and the effect's STATE at the capture
+	# boundary is reported rather than assumed, because a capture that silently lacks the thing
+	# its name promises is worse than a missing one (L-034). It is not a PASS condition: a
+	# real-time effect cannot be gated on frame pacing without becoming flaky.
 	var shot := await _shot("08_attack")
-	# Read AFTER the shot: `_shot()` awaits a frame and then grabs the image, so the state
-	# immediately afterwards is the closest proxy for what the pixels actually show.
+	# Read AFTER the shot: `_shot()` awaits a frame and then grabs the image, so this is the
+	# state at the capture boundary.
+	#
+	# WORDING IS DELIBERATE (D-055 §15). This says the effect was ACTIVE when the frame was
+	# taken; it does NOT say the effect is visible in the pixels. Nothing here inspects an
+	# image — that is the human reviewer's job, and a tool that claimed otherwise would make
+	# the visual gate feel satisfied by a line of text.
 	var flashing := _is_flashing(target)
 	_record("08_attack", "target health drops after a real attack key",
-		"hp %d -> %d, hit-flash caught in shot=%s" % [before, after, flashing],
+		"hp %d -> %d, hit_flash_state_active_at_capture=%s [STATE EVIDENCE, not pixel]"
+			% [before, after, flashing],
 		hurt, started, shot)
 
 
@@ -387,15 +394,19 @@ func _step_encounter(main: Node) -> void:
 		"level=%d xp=%d" % [level_before, xp_before],
 		level_before >= 1 and xp_before >= 0, started, await _shot("12_pre_combat"))
 
-	# --- the player kills it with REAL attack keys ---
+	# --- MODE A: the player kills it with REAL attack keys ---
+	#
+	# MODE A is MECHANICAL / DETERMINISTIC evidence (D-055 §13). The creature keeps moving, so
+	# the player is re-placed inside reach each round; the SWING is always a real key event.
+	# This exists to prove the combat→progression mechanic REPRODUCIBLY, and it is named Mode A
+	# in the report so it is never mistaken for evidence about how the game plays. Mode B
+	# (step 17) is the player-experience half and does no repositioning at all.
 	started = Time.get_ticks_msec()
 	var start_hp := int(enemy.call("get_current_health"))
 	var attack_component := player.get_node_or_null("AttackComponent")
 	for _round in 40:
 		if bool(enemy.call("is_dead")):
 			break
-		# Re-placed inside reach each round because the creature keeps moving; the SWING
-		# itself is a real key event.
 		player.global_position = enemy.global_position - Vector2(16, 0)
 		if attack_component != null:
 			attack_component.call("set_facing", Vector2.RIGHT)
@@ -410,9 +421,12 @@ func _step_encounter(main: Node) -> void:
 	# The level-up celebration is already running by the time the kill is confirmed, so this
 	# shot is ALSO the level-up capture — taken while the banner is up rather than after it.
 	var kill_shot := await _shot("13_enemy_killed_level_up")
+	# STATE, NOT PIXELS (D-055 §15): this reports that the celebration was ACTIVE when the
+	# frame was taken. It does not inspect the image and must not be read as "the banner is
+	# visible in the PNG" — a human still has to open it.
 	var celebrating := _is_celebrating()
-	_record("13_enemy_killed", "real attack keys kill the creature",
-		"hp %d -> %d dead=%s, level-up effect caught in shot=%s" % [
+	_record("13_enemy_killed", "[MODE A] real attack keys kill the creature",
+		"hp %d -> %d dead=%s, celebration_state_active_at_capture=%s [STATE EVIDENCE]" % [
 			start_hp, int(enemy.call("get_current_health")), dead, celebrating],
 		dead, started, kill_shot)
 
@@ -467,6 +481,137 @@ func _step_encounter(main: Node) -> void:
 		still and reset, started)
 
 
+## MODE B — PLAYER EXPERIENCE (D-055 §13-14, §F).
+##
+## Mode A above proves the MECHANIC reproducibly, and it does so by teleporting the player into
+## reach before every swing. That makes it worthless as evidence about how the game PLAYS: a
+## build where the player moves at 2px/s, or where the attack has no reach, or where the HUD
+## never tells you which key swings, would pass Mode A unchanged.
+##
+## So this step answers a different question — "could a person actually do this?" — and the
+## rules are correspondingly stricter:
+##   * the player is placed ONCE, at a distance, and never moved by code again;
+##   * the approach is real `move_*` keys;
+##   * the swing is the real `attack` key, read off the HUD prompt rather than hard-coded;
+##   * the field authors TWO creatures, so this is a fresh one, not the Mode-A corpse.
+##
+## It also records the DISCOVERABILITY evidence (D-055-G): what the HUD is telling the player
+## about how to attack. `attack_display_key` is whatever `InputService` resolves — never the
+## literal "J" — so a rebind changes the evidence instead of invalidating it.
+func _step_natural_encounter(main: Node) -> void:
+	var started := Time.get_ticks_msec()
+	var combat := main.get_node_or_null("Systems/CombatRuntime")
+	var router := root.get_node_or_null("SceneRouter")
+	var map: Node = router.call("get_current_scene") if router != null else null
+	var player := _player_of(map)
+
+	# --- the discoverability half: what does the screen say? ---
+	var hud := map.get_node_or_null("GameplayHUD") if map != null else null
+	var prompt_row := hud.find_child("AttackPrompt", true, false) if hud != null else null
+	var input := root.get_node_or_null("InputService")
+	var display_key := String(input.call("get_action_display_label", &"attack")) \
+		if input != null else ""
+	var prompt_visible := prompt_row != null and bool(prompt_row.visible)
+	_record("18_attack_is_discoverable",
+		"the HUD advertises the basic attack before the player needs it",
+		"attack_prompt=%s attack_action=attack attack_display_key=%s" % [
+			"visible" if prompt_visible else "ABSENT", display_key],
+		prompt_visible and display_key != "", started,
+		await _shot("18_attack_prompt"))
+
+	# --- find a LIVING creature for the natural encounter ---
+	started = Time.get_ticks_msec()
+	var living: Node2D = null
+	if combat != null and combat.has_method("enemies"):
+		for candidate in combat.call("enemies"):
+			var node := candidate as Node2D
+			if node == null or not is_instance_valid(node):
+				continue
+			if node.has_method("is_dead") and bool(node.call("is_dead")):
+				continue
+			living = node
+			break
+	if living == null or player == null:
+		_record("19_natural_encounter",
+			"a second living creature exists for an unassisted encounter",
+			"living=%s player=%s (the field authors two; if this fails, one never spawned "
+				+ "or Mode A killed both)" % [living != null, player != null],
+			false, started)
+		return
+
+	# --- place ONCE, then never touch the position again ---
+	var approach_from := living.global_position + Vector2(96, 0)
+	player.global_position = approach_from
+	await _settle()
+	var xp_before := _progression_xp()
+	var level_before := _progression_level()
+	var start_hp := int(living.call("get_current_health"))
+
+	# Walk in with real movement keys, then swing with real attack keys. Both are polled on
+	# the observable effect rather than timed (L-016). The two are interleaved because the
+	# creature is hunting back — it closes while the player closes, which is the actual
+	# experience and the reason this cannot be a fixed script.
+	var landed := false
+	for _round in 30:
+		if bool(living.call("is_dead")):
+			break
+		var gap := player.global_position.distance_to(living.global_position)
+		if gap > 20.0:
+			# Approach: hold the direction that reduces the gap, for a few frames only, so
+			# the loop keeps re-deciding as the creature moves.
+			var towards := living.global_position - player.global_position
+			var action := &"move_left" if towards.x < 0.0 else &"move_right"
+			if absf(towards.y) > absf(towards.x):
+				action = &"move_up" if towards.y < 0.0 else &"move_down"
+			_send_key(action, true)
+			for _i in 6:
+				await process_frame
+			_send_key(action, false)
+			await process_frame
+			continue
+		_send_key(&"attack", true)
+		await process_frame
+		_send_key(&"attack", false)
+		for _i in 20:
+			await process_frame
+			if int(living.call("get_current_health")) < start_hp:
+				landed = true
+			if bool(living.call("is_dead")):
+				break
+	var killed := bool(living.call("is_dead"))
+	var shot := await _shot("19_natural_encounter")
+	_record("19_natural_encounter",
+		"[MODE B] the player closes the distance and kills with NO repositioning by code",
+		"placed_once_at=%.0fpx hp %d -> %d landed=%s killed=%s" % [
+			approach_from.distance_to(living.global_position), start_hp,
+			int(living.call("get_current_health")), landed, killed],
+		landed, started, shot)
+
+	# The reward must move again — a second payment, proving the ledger pays per SPAWN rather
+	# than once per session.
+	started = Time.get_ticks_msec()
+	var xp_after := xp_before
+	for _i in POLL_FRAMES:
+		await process_frame
+		xp_after = _progression_xp()
+		if xp_after > xp_before:
+			break
+	_record("20_natural_reward",
+		"the unassisted kill pays again (the ledger is per spawn, not per session)",
+		"xp %d -> %d (level %d -> %d) killed=%s" % [
+			xp_before, xp_after, level_before, _progression_level(), killed],
+		xp_after > xp_before if killed else true, started,
+		await _shot("20_natural_reward"))
+
+	# And the player can keep playing: movement still works after the encounter.
+	started = Time.get_ticks_msec()
+	var before_move := player.global_position
+	var moved := await _hold_action(&"move_right", func() -> bool:
+		return player.global_position.distance_to(before_move) > 1.0)
+	_record("21_play_continues", "the player can keep moving after the encounter",
+		"moved=%.1fpx" % player.global_position.distance_to(before_move), moved, started)
+
+
 func _step_return_to_menu(main: Node) -> void:
 	var started := Time.get_ticks_msec()
 	var gs := root.get_node_or_null("GameState")
@@ -474,10 +619,10 @@ func _step_return_to_menu(main: Node) -> void:
 		return gs != null and not bool(gs.call("is_session_active")))
 	var teardown: Array = main.call("get_last_teardown_order") if main.has_method(
 		"get_last_teardown_order") else []
-	_record("18_return_to_menu", "open_menu ends the session",
+	_record("22_return_to_menu", "open_menu ends the session",
 		"session_active=%s teardown=%s" % [
 			gs != null and bool(gs.call("is_session_active")), str(teardown)],
-		back, started, await _shot("18_menu"))
+		back, started, await _shot("22_menu"))
 
 
 # === Real semantic input =====================================================

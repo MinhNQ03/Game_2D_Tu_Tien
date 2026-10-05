@@ -8,7 +8,76 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
-### 2026-11-05 — Phase 11: the progression loop closes (D-054)
+### 2026-10-05 — Phase-11 close-out hardening: the guards, and the key nobody could find (D-055)
+
+No new gameplay. A close-out pass over Phase 11 that turned three documented claims into
+enforced ones, closed one fail-open hole, fixed a player-facing defect the owner found by
+playing, and resynchronised four documents that had drifted.
+
+- **The attack had no prompt.** Phase 11 shipped a complete `kill → XP → level → feedback`
+  loop in which the HUD advertised `T Sect`, `Y Politics` and `Esc Menu` — and said nothing
+  about the one verb that kills creatures and earns every point of XP. The action was bound and
+  fully wired; it was simply undiscoverable. **No test could see it**, because every test and
+  the whole playtest harness already know the semantic action name and feed it directly — none
+  of them asks "how would a player find out?". That is L-029's shape: a pipeline correct end to
+  end and unreachable by the person it is for. There is now an attack prompt, leftmost in the
+  strip (it is the only verb there that changes the WORLD rather than opening a panel), built
+  from the shared `UIPromptRow`, with its glyph resolved through
+  `InputService.get_action_display_label` so a rebind moves the prompt instead of lying. A
+  structural walk of `src/presentation` now rejects `set_prompt("<literal>"`.
+- **`PROMPT_STRIP_RESERVE` was finally measured.** `TOP_PLAQUE_RESERVE` has had a measuring
+  test since D-050; the bottom strip never did — L-034's "a named reserve nobody measured",
+  still live at the other end of the screen, in the exact phase that adds a fifth prompt to it.
+  It is now measured on BOTH axes against the populated strip: height against the reserve the
+  side panels and the level-up banner both inset by, and width against half the authored
+  viewport, because the strip grows RIGHT from the bottom-left while the announcement is
+  bottom-CENTRE and those two would eventually meet.
+- **Ownership is enforced, not just described.** `ProgressionRuntime.grant_for_defeat` carried
+  a docstring claiming one mutation path was "CHECKABLE rather than aspirational" while nothing
+  checked it. Two structural walks of `src/` now do: only the storage boundary
+  (`character_state.gd`) and the semantic authority (`progression_service.gd`) may mutate XP,
+  and only `progression_runtime.gd` may call `grant_xp` — so "paid once" rests on the ledger
+  rather than on every future caller remembering. The guard **caught a defect on its first
+  run**: the call matcher flagged the service, because it was matching the `func grant_xp(...)`
+  DECLARATION. Fixed the matcher, not the allow-list, and pinned the false positive as a test
+  case — widening an allow-list to silence a guard is how a guard stops guarding.
+- **An empty `reward_id` now fails closed.** The ledger is keyed by `String(reward_id)`, so an
+  empty id was not merely "a reward with no name": it was a key every malformed defeat would
+  SHARE. The first would have been paid and would then occupy `""`, after which the ledger would
+  answer "already granted" for every later malformed defeat — duplicate-protection reporting on
+  a collision instead of on an identity. Rejection happens before the ledger is touched: no XP,
+  no `xp_gained`, no `level_changed`, **no entry**, and a well-formed defeat still pays
+  afterwards. A NEGATIVE reward is the deliberate opposite — nothing mutates, but the defeat IS
+  recorded as settled, because an identified defeat that was rejected is finished whereas an
+  unidentified one was never a defeat.
+- **The playtest harness now has two modes, and says which is which.** Mode A (the existing
+  kill) teleports the player into reach before each swing: reproducible, and worthless as
+  evidence about how the game plays — a build where the player moves at 2px/s, or where the HUD
+  never names the attack key, passes it unchanged. **Mode B** places the player ONCE at 96px and
+  then never repositions them: real `move_*` keys to close, the real `attack` key to swing,
+  against the second authored creature while it hunts back, ending by proving the player can
+  still move. It records `attack_prompt` / `attack_action` / `attack_display_key` — the resolved
+  label, never the literal `J`.
+- **Capture wording stopped overclaiming.** `hit-flash caught in shot=true` became
+  `hit_flash_state_active_at_capture=true [STATE EVIDENCE]`, and likewise for the celebration.
+  Nothing in the tool inspects an image; the old phrasing let a state observation read as pixel
+  evidence, which is exactly how a visual gate gets treated as satisfied by a line of text.
+- **Documentation resynchronised** (each verified against the file at HEAD, not assumed):
+  `ROADMAP.md` said **"Phase 11 is NOT STARTED"** in its global status block while a section
+  further down said `✅ IMPLEMENTED`; `GAME_FLOW.md` was dated "through Phase 06" and still said
+  **"Combat exists only in the Phase-02 player sandbox"** three phases after combat went live,
+  listed `xp_gained` as a COMBAT event (which inverts the dependency and would make combat a
+  writer of permanent progression state), and drew `LEVEL UP (XP, cảnh giới / tu luyện)` as one
+  box — collapsing the two axes that `PROGRESSION_CULTIVATION_DESIGN.md` §1 forbids collapsing;
+  `TEST_PLAN.md` claimed "through Phase 08" and `586 tests`. The GAME_FLOW status block is now
+  split explicitly into CURRENT / FUTURE / HISTORICAL, because mixing them is how it came to
+  describe a sandbox that had been superseded.
+- Suite **664 → 678** (+14), zero new failures. All three E2E processes pass; no `SCRIPT ERROR`,
+  zero leaked ObjectDB/resources. The two wall-clock performance budgets remain environmental
+  debt (D-054) and were deliberately **not** touched: loosening another phase's gate to make
+  this run green would hide a real regression later.
+
+### 2026-10-05 — Phase 11: the progression loop closes (D-054)
 A kill now pays. `enemy defeat → XP → level → player feedback → keep playing` is wired end to
 end and proven in the real app by real attack keys.
 - **The level is DERIVED, not stored.** `CharacterState.xp` holds cumulative lifetime XP and is
@@ -17,8 +86,14 @@ end and proven in the real app by real attack keys.
   arranged — and a stored level can never end up contradicting stored XP in a save file (the
   D-015 duplication defect, avoided by construction; L-032's preference applied). Retuning the
   curve re-levels every character from their existing XP, with nothing to migrate.
-- **One mutator.** `ProgressionService.grant_xp()` is the only function in the repository that
-  writes XP. Combat ANNOUNCES (`enemy_defeated(reward_id, xp_reward)`) and does not pay: it
+- **One authority.** `ProgressionService` is the only **semantic progression mutation
+  authority** — the only thing that DECIDES a new XP total, from the authored curve.
+  `CharacterState.set_total_xp()` is the storage boundary that enforces the `xp >= 0` invariant
+  next to the field it constrains; it is not an independent gameplay mutation path, and since
+  D-055 a structural walk of `src/` fails if any other production file mutates XP. (This bullet
+  originally read "the only function in the repository that writes XP", which was an overclaim:
+  two functions write the field, and they do different jobs.)
+  Combat ANNOUNCES (`enemy_defeated(reward_id, xp_reward)`) and does not pay: it
   holds no progression state, does not know a level exists, and never touches the player's
   `CharacterState`.
 - **`ProgressionRuntime` is the seventh `Main/Systems` sibling** — a node, not an autoload (the
@@ -63,8 +138,10 @@ end and proven in the real app by real attack keys.
   `_prove_progression` in the world E2E that asserts the authority moved, the level derived from
   it agrees, and the HUD shows the row — after a kill driven entirely by real attack keys, with
   no `grant_xp`/`set_total_xp` shortcut anywhere in the E2E. The real-app playtest run reports
-  18/18 steps, `xp 0 → 25 (level 1 → 2)`, the level-up effect caught in the screenshot, and a
-  clean HUD afterwards.
+  18/18 steps, `xp 0 → 25 (level 1 → 2)`, the celebration ACTIVE at the capture boundary (a
+  state observation — D-055 corrected this wording, which used to claim the effect was "caught
+  in the screenshot" and so implied pixel evidence the tool never gathers), and a clean HUD
+  afterwards.
 - **Pre-existing technical debt recorded, not changed:** the two wall-clock performance budgets
   (`test_ai_budget`, `test_combat_budget`) fail on this development machine and pass on CI; the
   numbers swing 2–3× between runs on the same code. Loosening another phase's gate to make this

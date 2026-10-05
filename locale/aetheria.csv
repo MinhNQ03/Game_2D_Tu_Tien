@@ -21,6 +21,7 @@ UI_HUD_INTERACT_HINT,{key} Interact,{key} Tương tác
 UI_HUD_MENU_HINT,{key} Menu,{key} Menu
 UI_MENU_SUBTITLE,A cultivation journey,Hành trình tu tiên
 UI_MENU_SETTINGS,Settings,Thiết lập
+UI_HUD_ATTACK_ACTION,Attack,Tấn công
 UI_HUD_INTERACT_ACTION,Interact,Tương tác
 UI_HUD_MENU_ACTION,Menu,Menu
 SECT_AZURE_CLOUD_NAME,Azure Cloud Sect,Thanh Vân Tông

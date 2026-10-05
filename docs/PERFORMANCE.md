@@ -3,7 +3,7 @@
 > Performance principles + the mandatory log of every non-trivial optimization.
 > Rules summary: `.kiro/steering/05-performance-testing.md`.
 >
-## CURRENT STATUS (through Phase 08, D-048/D-049)
+## CURRENT STATUS (through Phase 11 + its D-055 close-out)
 
 - **A measured benchmark EXISTS.** `tests/performance/test_world_sim_budget.gd` measures the
   world-simulation tick loop at a representative population (200 background actors × 300
@@ -37,6 +37,23 @@
 - The other performance guards in the repo (map-transition orphan-node checks, the suite's
   leak gate) are **correctness/no-leak assertions, not tuned optimizations** — they are tests,
   and they are deliberately NOT optimization-log entries.
+- **Progression (Phase 11) added NO measurable per-frame cost, and that is by construction
+  rather than by tuning** — so it has no optimization-log entry, and inventing one would be the
+  "I think this is faster" change this document forbids. What was reviewed and verified in
+  D-055: `ProgressionRuntime` has **no** `_process`/`_physics_process` at all; the authored
+  curve is loaded ONCE per session, not per grant; the level is DERIVED by arithmetic over a
+  20-entry array rather than cached-and-invalidated; `build_view()` is called on EVENTS (map
+  arrival, `xp_gained`, `level_changed`), never per frame; `GameplayHUD._refresh_progression()`
+  runs only from a pushed view or a language change; and `LevelUpFeedback` keeps `_process`
+  **off** whenever it is idle — asserted in both directions by
+  `test_the_celebration_costs_nothing_while_idle`, because an always-on callback on a node that
+  lives for the whole session would pay for 1.5 s of effect with the entire session.
+- **Known environmental debt (D-054, unchanged):** `test_ai_budget` and `test_combat_budget`
+  assert WALL-CLOCK budgets and fail on some development machines while passing on the CI
+  runner; the numbers swing 2–3× between runs of identical code. Deliberately not "fixed" by
+  loosening the limits — that would hide a real regression. They need a ratio-only formulation,
+  a calibration run, or an explicit CI-class-hardware marker: a decision for whoever owns the
+  performance gates, not a side effect of a progression pass.
 
 ---
 

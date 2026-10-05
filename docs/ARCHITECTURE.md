@@ -6,9 +6,17 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (through Phase 06 final hardening, 2026-10-03):** Phase 05 (Relationship
+> **CURRENT STATE (through Phase 11 + its D-055 close-out hardening):** Phase 05 (Relationship
 > core + early character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is
-> **CLOSED** (D-032, hardened in D-037). Phase 07 (Faction/Politics) is **NOT STARTED**.
+> **CLOSED** (D-032, hardened in D-037). Phase 07 (Faction/Politics) is **IMPLEMENTED**
+> (D-042, hardened in D-047) — this block said "NOT STARTED" for five phases, which D-055
+> corrected; it is the file `08-ai-review-protocol.md` tells every change to read FIRST, so a
+> stale status here is the most expensive drift in the repo.
+> Phase 08 (World Simulation + the deterministic RNG seam) is **IMPLEMENTED** (D-048),
+> Phase 09 (real-time action Combat) is **IMPLEMENTED**, Phase 10 (Enemy AI) is
+> **IMPLEMENTED** (D-052, reviewed in D-053), and Phase 11 (Level/XP Progression) is
+> **IMPLEMENTED and CLOSED** (D-054, hardened in D-055).
+> **Phase 12 (Cultivation + Knowledge Core) is NOT STARTED.**
 > The live UI is the CC0 Xianxia Pixel Pack set (D-028) and the visible world/character art is
 > at the **production-foundation** tier (D-029) — both presentation-only, no gameplay/domain
 > change. The repo boots to a playable world/map slice where the player is a real Character,
@@ -63,8 +71,43 @@
 >   teardown — a failed start AND a normal return to menu — runs through ONE ordered function in
 >   `Main`, walking `SESSION_START_ORDER` backwards: Faction → Sect → Relationship → World →
 >   GameState (D-047).**
-> - Phase-02 Player Sandbox (`src/gameplay/sandbox/`) is retained for combat validation but
->   is not reachable from New Game. The `prologue_shell` is retained but no longer first.
+> - **Faction / politics (Phase 07, D-042/D-047):** `src/domain/faction/` +
+>   `src/data/factions/`, owned by a `FactionRuntime` sibling node. The SECT ROSTER remains the
+>   membership authority (D-015) — a faction defers to it rather than keeping a second answer;
+>   Faction↔Faction politics mirror transactionally into the ONE relationship graph, and a
+>   mirror with no graph installed is a PRECONDITION failure, never a skipped write that still
+>   returns success (L-030).
+> - **World Simulation (Phase 08, D-048):** `src/domain/worldsim/` with Near/Mid/Far LOD from
+>   the real `MapData.exits` graph, advanced on explicit gameplay beats by a
+>   `WorldSimulationRuntime` sibling that creates **zero** child nodes and has no `_process`.
+>   An actor's activity is DERIVED from `(tick − joined_tick, schedule)`, so a far-away actor is
+>   never behind an observed one (L-032). It also introduced the **deterministic RNG seam**
+>   (`RngService`, per-subsystem streams, D-040/C-010) that Phase 09 onward reuses, and
+>   `CharacterRegistry`.
+> - **Combat (Phase 09):** `src/domain/combat/` holds the node-free rules — a
+>   `READY → WINDUP → ACTIVE → RECOVERY` machine with data-authored timing (`AttackData`) and
+>   analytic hit resolution; `src/gameplay/components/` holds `AttackComponent`/
+>   `HurtboxComponent` and `src/gameplay/combat_hurtbox_registry.gd` holds the node collection
+>   (it lived under `domain/` until D-053 moved it — a "domain" class typed on a `Node` is an
+>   upward dependency nothing in the toolchain flags, L-036). Crits roll from
+>   `RngService.STREAM_COMBAT`. `CombatRuntime` is the sixth sibling.
+> - **Enemy AI (Phase 10, D-052/D-053):** `src/domain/ai/ai_brain.gd` is a pure state machine
+>   returning INTENTS, not vectors; `AIComponent` executes them through the same movement and
+>   attack seams the player uses, on a throttled cadence, seeded from the `enemy_ai` stream.
+>   `src/presentation/combat/damage_feedback.gd` owns the entity's whole `modulate` channel, so
+>   no gameplay entity authors a colour (asserted by a structural walk of `src/gameplay`).
+> - **Progression (Phase 11, D-054/D-055):** `CharacterState.xp` is the single stored
+>   progression number; **the level is DERIVED** by `ProgressionService` (domain, `RefCounted`,
+>   node-free) from the authored `ProgressionCurveData`. `ProgressionRuntime` is the **seventh**
+>   sibling — registered LAST in `SESSION_START_ORDER` and therefore torn down FIRST — and holds
+>   the per-spawn idempotency ledger. Combat ANNOUNCES (`enemy_defeated`) and never pays, so the
+>   dependency runs progression → combat's signal and never the reverse. Two structural walks of
+>   `src/` enforce the authority: only the storage boundary and the service may mutate XP, and
+>   only the runtime may call `grant_xp` (D-055). **Level is never an access gate** (C-002).
+> - Phase-02 Player Sandbox (`src/gameplay/sandbox/`) is retained as an isolated harness for
+>   combat validation and is not reachable from New Game — but **combat itself has been live in
+>   the real application since Phase 09**, so "the sandbox" is no longer where combat exists.
+>   The `prologue_shell` is retained but no longer first.
 > - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`;
 >   production-foundation pixel-art under `assets/` (self-made world/character, D-029) + the
 >   CC0 Xianxia UI set (`assets/ui/xianxia/`, D-028).

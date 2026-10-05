@@ -310,3 +310,88 @@ func test_a_restart_begins_from_the_characters_stored_xp() -> void:
 		+ "is the CharacterState, not the session")
 	assert_eq(int(_runtime.call("granted_count")), 0,
 		"but the per-session reward ledger starts empty")
+
+
+# --- Reward-id identity (D-055 §10-11) ---------------------------------------
+#
+# The ledger is keyed by `String(reward_id)`, so the ID IS the identity of a payment. A
+# malformed id is therefore not a cosmetic problem: an EMPTY one is a key that every malformed
+# defeat would share, so the first would be paid and would then occupy `""` and make the ledger
+# answer "already granted" for every later one. That turns duplicate-protection into a
+# collision, which is the opposite of what it is for.
+#
+# The matrix below is the whole identity contract in one place: granted once, never twice,
+# distinct ids are distinct payments, a respawn is a NEW payment, and a missing id fails closed
+# without touching anything.
+
+func test_an_empty_reward_id_is_rejected_and_grants_nothing() -> void:
+	assert_true(_start(), "session")
+	_listen()
+	_defeat(&"", 25)
+	assert_eq(_character.xp, 0,
+		"an unnamed reward pays nothing — the id is the payment's identity, and a payment "
+		+ "with no identity cannot be deduplicated")
+	assert_eq(_xp_events.size(), 0, "no xp_gained was published")
+	assert_eq(_level_events.size(), 0, "and no level_changed")
+	assert_eq(int(_runtime.call("granted_count")), 0,
+		"and the ledger was NOT touched — this is the half that matters, because an entry "
+		+ "under the empty key is what would poison every later malformed defeat")
+
+
+## The specific failure mode the guard exists for: reject-then-accept must still work.
+##
+## If the empty id had been recorded, the SECOND empty defeat would be silently swallowed as a
+## duplicate, and — worse — the ledger would be carrying an entry that corresponds to no
+## creature. Asserting a valid defeat still pays afterwards proves the rejection left the
+## ledger usable rather than merely left the counter at zero.
+func test_an_empty_reward_id_does_not_poison_the_ledger() -> void:
+	assert_true(_start(), "session")
+	_listen()
+	_defeat(&"", 25)
+	_defeat(&"", 25)
+	_defeat(&"", 25)
+	assert_eq(int(_runtime.call("granted_count")), 0, "three rejections, no entries")
+
+	_defeat(&"wolf#1", 25)
+	assert_eq(_character.xp, 25,
+		"a well-formed defeat still pays after the rejections — the ledger was not left in a "
+		+ "state where a real reward collides with a phantom one")
+	assert_eq(_xp_events.size(), 1, "exactly one payment was published")
+	assert_eq(int(_runtime.call("granted_count")), 1, "and exactly one entry exists")
+
+
+## A respawn is a NEW payment, because the id is per SPAWN and not per spawn-table row.
+##
+## `CombatRuntime` mints `instance_id#serial`, so the same creature cleared twice carries two
+## ids. Keying on the row id instead would have made the ledger a "has ever been killed" flag
+## and a re-cleared map would pay nothing — the defect the per-spawn id was chosen to avoid.
+## This is the runtime's half of that contract; `test_combat_awards_progression.gd` proves the
+## minting half against real spawns.
+func test_a_respawned_creature_pays_again_because_its_id_differs() -> void:
+	assert_true(_start(), "session")
+	_listen()
+	_defeat(&"wolf#1", 10)
+	_defeat(&"wolf#1", 10)  # same spawn announced twice: one payment
+	assert_eq(_character.xp, 10, "the same spawn pays once")
+
+	_defeat(&"wolf#2", 10)  # the respawn: a new serial, so a new identity
+	assert_eq(_character.xp, 20, "the respawn is a separate payment")
+	assert_eq(_xp_events.size(), 2, "two payments were published")
+	assert_eq(int(_runtime.call("granted_count")), 2, "two distinct entries")
+
+
+## A negative reward is content corruption, not a refund.
+##
+## The service rejects it (`REASON_NEGATIVE_AMOUNT`), and the runtime must still record the
+## defeat as handled so it is not retried on every later delivery. So the observable contract
+## is: XP unchanged, nothing published, but the ledger DOES hold the entry — which is the
+## opposite of the empty-id case, and the distinction is deliberate. An identified defeat that
+## was rejected is settled; an unidentified one was never a defeat at all.
+func test_a_negative_reward_mutates_nothing_but_is_still_settled() -> void:
+	assert_true(_start(), "session")
+	_listen()
+	_defeat(&"wolf#1", -500)
+	assert_eq(_character.xp, 0, "a negative reward never reduces the player's total")
+	assert_eq(_xp_events.size(), 0, "and publishes nothing")
+	assert_eq(int(_runtime.call("granted_count")), 1,
+		"but the defeat is recorded as settled, so a replayed delivery does not re-attempt it")

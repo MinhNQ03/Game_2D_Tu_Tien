@@ -4,7 +4,7 @@
 > Goal: **not** blind 100% coverage — strong coverage of high-risk logic, cheap smoke
 > coverage of the whole flow, and every fixed bug pinned by a regression test.
 >
-> **CURRENT STATUS (through Phase 08 + its review pass — D-048/D-049):** strategy defined;
+> **CURRENT STATUS (through Phase 11 + its D-055 hardening pass):** strategy defined;
 > runner + framework in place. The suite covers the core framework (lifecycle/scene-router/
 > input/localization/event-bus/settings), the **session lifecycle contract** (the ordered
 > teardown, D-047), the Player core (stats/health/movement/damage + player↔dummy integration),
@@ -13,16 +13,30 @@
 > bounds + follow, persistent player across 20 round trips), the Character core + the
 > **character registry**, the Relationship core, the **Sect** core, the **Faction** core, the
 > **World Simulation** core (clock, seeded RNG streams, LOD bands, determinism, resume,
-> bounded catch-up, a performance budget), and the UI/theme asset contracts — plus three
-> dedicated real-application E2E processes (app-flow, player-flow, world-flow).
+> bounded catch-up, a performance budget), **Combat** (Phase 09: the attack lifecycle's
+> frame-timing contract, hit resolution and its determinism, the gameplay components, the
+> session runtime, a performance budget), **Enemy AI** (Phase 10: the pure-domain brain, target
+> selection, leash, cadence, determinism, damage/attack feedback), **Level/XP Progression**
+> (Phase 11 — inventory in the per-phase list below), and the UI/theme asset contracts — plus
+> three dedicated
+> real-application E2E processes (app-flow, player-flow, world-flow).
 >
-> **CI runs 10 gates** (see §5) and the in-runner suite reports
-> **`ran 586 test(s): 586 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
-> ObjectDB / resources at exit** — the count is the runner's own tally, not a hand count.
-> Combat (Phase 09) is covered: the attack lifecycle's frame-timing contract, hit resolution
-> and its determinism, the gameplay components and the session runtime, a performance budget,
-> and a REAL attack key driven end to end in the world E2E. Gameplay beyond world/map
-> traversal + the social substrate + combat is added phase by phase.
+> **CI runs 10 gates** (see §5). That number is the COUNT OF CI GATES and is unrelated to the
+> number of stages in `docs/PHASE_EXECUTION_PROTOCOL.md` — the phase protocol has more review
+> stages (pre-flight → … → final review) because most of them are human review steps that no
+> CI job can run. Do not "reconcile" the two numbers.
+>
+> The in-runner suite tally is printed by the runner itself, never hand-counted, and is
+> reported in the `DECISIONS.md` entry for the change that moved it. At the D-055 close-out the
+> runner reports **`ran 678 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> ObjectDB / resources at exit**. Locally that reads `676 passed, 2 failed`: the two failures
+> are the wall-clock performance budgets (`test_ai_budget`, `test_combat_budget`), which fail on
+> some development machines and pass on the CI runner — known environmental debt recorded in
+> D-054, deliberately not "fixed" by loosening another phase's gate. **The authoritative
+> pass/fail is the CI check-run `Foundation gates (Godot 4.7)`**, which must be `success` on the
+> pushed SHA before a change is done (L-007).
+> Gameplay beyond world/map traversal + the social substrate + combat + progression is added
+> phase by phase.
 >
 > *(Historical: the same tally read `282 passed` at the Phase-06 close-out on `1dabdba`. The
 > phase notes further down are kept as written and still quote the numbers of their own time.)*
@@ -366,7 +380,65 @@ against an unmodified baseline run.
   `grant_xp`/`set_total_xp` anywhere in the E2E.
 - `tools/playtest_flow.gd` — records level + XP on EVERY step and captures
   `12_pre_combat` → `13_enemy_killed_level_up` → `14_xp_updated` → `16_post_level`, reporting
-  whether the level-up effect was actually caught in the shot.
+  the celebration's STATE at the capture boundary (see the D-055 note below).
+
+**Phase 11 close-out hardening (D-055) — the guards the ownership model had only in comments:**
+- `tests/unit/progression/test_progression_authority.gd` — **NEW.** Phase 11 asserted its
+  ownership model in three docstrings and nowhere else, including one that claimed a property
+  was "CHECKABLE rather than aspirational" while nothing checked it. Two structural walks of
+  `res://src` now enforce it: only `character_state.gd` (the storage + `xp >= 0` invariant
+  boundary) and `progression_service.gd` (the semantic authority) may MUTATE XP, and only
+  `progression_runtime.gd` may CALL `grant_xp` — so the ledger, not every caller's memory, is
+  what makes "paid once" true. `src` only, because tests legitimately arrange XP directly. The
+  allow-lists are checked to name files that EXIST, so a rename cannot quietly disable the
+  guard, and both matchers have non-vacuity tests that feed them the exact bypass lines a later
+  phase would write plus the innocent lines that merely mention XP (`xp_reward`, `xp_gained`,
+  `xp_into_level`, a comparison, a local). The call matcher's own first run FAILED on the
+  service — it was matching the `func grant_xp(...)` DECLARATION — and that false positive is
+  pinned as a test case rather than papered over by widening the allow-list.
+- `tests/unit/progression/test_progression_runtime.gd` (extended) — the reward-id IDENTITY
+  matrix. The ledger is keyed by `String(reward_id)`, so an EMPTY id is not a cosmetic problem:
+  it is a key every malformed defeat would share, and the first would be paid and then occupy
+  `""`, turning duplicate-protection into a collision. Now `reward_id == ""` fails closed on
+  all four halves — no XP, no `xp_gained`, no `level_changed`, **and no ledger entry** — and a
+  well-formed defeat still pays afterwards, which is what proves the rejection left the ledger
+  usable rather than merely left the counter at zero. Plus: a respawn pays again because its
+  serial differs, and a NEGATIVE reward mutates nothing yet IS recorded as settled — the
+  deliberate opposite of the empty-id case, because an identified defeat that was rejected is
+  finished whereas an unidentified one was never a defeat.
+- `tests/unit/presentation/test_gameplay_hud.gd` (extended) — **attack discoverability**
+  (D-055-G). Phase 11 shipped with no attack prompt at all, so the verb that earns every point
+  of XP was the only one a player could not find on screen while `T`/`Y`/`Esc` were advertised.
+  No test could see it, because every test and the whole playtest harness already KNOW the
+  action name and feed it directly. Asserted now: a named prompt exists, it IS a `UIPromptRow`
+  (not a hand-rolled badge), it is visible with no setup, its glyph EQUALS what
+  `InputService.get_action_display_label(&"attack")` resolves — compared against the service,
+  never against the letter `J`, so a rebind moves the prompt instead of breaking the test — the
+  raw action name and raw keycode never reach the screen, and the action word resolves in both
+  vi and en. A **structural walk of `src/presentation`** rejects `set_prompt("<literal>"`, which
+  pins the seam direction `semantic action → InputService → HUD`.
+- `tests/unit/presentation/test_gameplay_hud.gd` (extended) — **the bottom reserve is measured
+  at last.** `TOP_PLAQUE_RESERVE` had a measuring test since D-050; `PROMPT_STRIP_RESERVE` never
+  did, which is L-034's "a named reserve nobody measured" still live at the other end of the
+  screen — and D-055 adds a FIFTH prompt to the strip it protects. The populated strip (all five
+  prompts, interact forced visible, the longer language) is now measured on both axes: HEIGHT
+  against the reserve the side panels and the level-up banner both inset by, and WIDTH against
+  half the AUTHORED viewport width read from `ProjectSettings` — because the strip is anchored
+  bottom-LEFT and grows RIGHT while the announcement is bottom-CENTRE, so those two bottom-edge
+  elements would otherwise meet once enough prompts exist.
+- `tools/playtest_flow.gd` (extended) — **MODE A / MODE B split.** Mode A (step 13) is the
+  mechanical, reproducible proof and teleports the player into reach before each swing; it is
+  now labelled so in the report, because a build where the player moves at 2px/s or where the
+  HUD never says which key swings would pass it unchanged. **Mode B (steps 18–21) is the
+  player-experience proof:** the player is placed ONCE at 96px, then never repositioned by
+  code — the approach is real `move_*` keys, the swing is the real `attack` key, against the
+  SECOND authored creature, while it hunts back. It records the discoverability evidence
+  (`attack_prompt=visible`, `attack_action=attack`, `attack_display_key=<resolved>` — never the
+  literal `J`), asserts the unassisted kill pays AGAIN (the ledger is per spawn, not per
+  session), and ends by proving the player can still move. Capture wording was also corrected:
+  `celebration_state_active_at_capture=…` and `hit_flash_state_active_at_capture=…`, both
+  marked `[STATE EVIDENCE]`. The old phrasing ("caught in shot") claimed PIXEL evidence from a
+  STATE observation — nothing in the tool inspects an image, and a human still has to open it.
 
 **Phase 05 added Relationship + character-visual tests (high-risk: relationship state / save seam):**
 - `tests/unit/relationship/test_relationship_config.gd` — `RelationshipConfigData` validity
@@ -407,7 +479,7 @@ against an unmodified baseline run.
 **Phase 06 added Sect tests (high-risk: membership authority / diplomacy / save seam):**
 - `tests/unit/sect/test_sect_domain.gd` — the whole sect domain in one pure-RefCounted file:
   - **Data validation:** `SectTemplateData`/`SectRankData` well-formed vs. malformed (missing
-    name_key, tier < 1, self in the enemy list, duplicate/empty rank ladder) and the rank
+	name_key, tier < 1, self in the enemy list, duplicate/empty rank ladder) and the rank
 	ladder's `authority` **strictly increasing along the array** (10/20/30 valid; 10/20/20,
 	20/10/30 and 30/20/10 rejected), with `lowest_rank()`/`highest_rank()` matching the first
 	and last authored entries.
@@ -415,12 +487,12 @@ against an unmodified baseline run.
 	(the `sect_ghost` case), a self-reference, a duplicate, and an ally/enemy overlap each
 	invalidate the catalog — plus a drift guard that the SHIPPED `data/sects/sect_catalog.tres`
 	is referentially sound, so authoring a dangling reference fails the suite, not the player's
-    boot.
+	boot.
   - **State + serialization:** creation from a template, a byte-stable `to_dict`/`from_dict`
-    round trip, and fail-closed hydration (leader/elder not on the roster, negative resource,
-    out-of-range reputation, missing id).
+	round trip, and fail-closed hydration (leader/elder not on the roster, negative resource,
+	out-of-range reputation, missing id).
   - **STRICT TYPES at the hydrate boundary:** a known-good payload is proven ACCEPTED first,
-    then each case mutates exactly ONE field to a wrong type and asserts both halves of the
+	then each case mutates exactly ONE field to a wrong type and asserts both halves of the
 	contract — `from_dict` returns false AND the receiving state's snapshot is unchanged:
 	resource quantity as `"100"` / `100.0`, resource id as an int, influence as `"5"` / `5.0`,
 	reputation value as `"10"` / `10.0` / `true` and its scope as an int, a rank id or member id

@@ -1008,3 +1008,51 @@
   the file existing.
 - **Fixed:** D-054. The announcement is bottom-centre, inset by
   `PROMPT_STRIP_RESERVE + SPACE_LG`, with a test pinning the anchor and the offset.
+
+## L-039 — Every test knew the action name, so nobody noticed the player could not find the key
+- **Symptom (D-055):** Phase 11 shipped a complete `kill → XP → level → feedback` loop, green on
+  all ten gates and on CI, with a real-app playtest that killed a creature using the real
+  `attack` key. The HUD advertised `T Sect`, `Y Politics` and `Esc Menu` — and **nothing about
+  the attack**. The action was bound (`J`), read by `Player._physics_process` through
+  `InputService`, armed from authored content, and exercised by the world E2E. It was simply
+  undiscoverable: a new player had no way to learn the verb that kills creatures and earns every
+  point of XP. The OWNER found it by asking "what key do I press?", which no assertion in 678
+  tests could ask.
+- **Root cause of the blindness:** every test and the entire playtest harness **already know the
+  semantic action name** and feed it directly (`_send_key(&"attack", …)`,
+  `Input.parse_input_event`). That is correct for proving the input PIPELINE, and it structurally
+  cannot notice that the pipeline has no entrance. The harness was answering "does pressing
+  attack work?" while the unanswered question was "how would anyone know to press it?".
+- **Rule:** **a semantic action that the player is expected to use MUST be discoverable from the
+  screen, and the test for that is a different test from the one that drives it.** Two
+  assertions, not one: the E2E proves the pipeline (`attack` resolves to damage), and a
+  presentation test proves the cue (a prompt exists, through the shared row component, with its
+  glyph resolved from `InputService.get_action_display_label`). Neither substitutes for the
+  other. When adding any new player-facing action, ask explicitly: *what on screen tells them?*
+  — and if the answer is "the documentation" or "they'll try keys", that is the defect.
+- **Corollary — assert against the SERVICE, never against the letter.** The prompt test compares
+  the rendered glyph to what `InputService` resolves for the action. Hard-coding `"J"` would have
+  to be edited by the very rebind the seam exists to support, which is how a binding and its
+  documentation drift apart (L-014). Same for tooling: the playtest records
+  `attack_display_key=<resolved>`, never `attack_key=J`. And walk the presentation directory to
+  reject `set_prompt("<literal>"` — the rule being defended is the DIRECTION of the seam
+  (`semantic action → InputService → HUD`), and a literal breaks it silently on the first rebind.
+- **Also (the same pass, a different recurrence):** `TOP_PLAQUE_RESERVE` has had a measuring test
+  since D-050 — written because the constant was wrong five times — while
+  `PROMPT_STRIP_RESERVE` had none, for four phases, at the other end of the same screen.
+  **When a lesson produces a guard, ask what the SYMMETRIC case is and guard that too**; L-034's
+  rule was applied to the top strip and simply never carried to the bottom one. The measurement
+  must also cover the axis the change actually moves: a new prompt grows an `HBoxContainer`
+  HORIZONTALLY, and the strip grows right from the bottom-left corner while the level-up
+  announcement is bottom-CENTRE — so the width needed a bound as much as the height did.
+- **Also (a growth cost is a design limit, say so):** the fifth prompt widened the Vietnamese
+  strip ~105px. Measured from the capture, the worst-case gap to the player's swing arc was
+  ~15px. Not a defect, but it means **a sixth always-visible prompt cannot just be appended** —
+  record the limit next to the thing that is nearly at it, or the next person discovers it by
+  shipping a crowded screen.
+- **Fixed:** D-055. `GameplayHUD` builds an `AttackPrompt` through `UIPromptRow`, leftmost,
+  always visible during gameplay (documented per-row visibility contract); `UI_HUD_ATTACK_ACTION`
+  authored vi+en; four discoverability assertions plus a structural walk of `src/presentation`;
+  `test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for` measures the populated strip
+  on both axes; and the playtest gained a **Mode B** encounter that closes the distance with real
+  movement keys and swings with the key the HUD is showing.

@@ -193,6 +193,21 @@ func grant_for_defeat(reward_id: StringName, xp_reward: int) -> void:
 		push_error("[progression-rt] a defeat arrived with no active session; ignored")
 		return
 	var key := String(reward_id)
+	if key == "":
+		# FAIL CLOSED on a missing identity (D-055). The ledger is keyed by this string, so an
+		# empty id is not merely "a reward with no name" — it is a key that EVERY malformed
+		# defeat would share. The first one would be paid and would then occupy `""`, so the
+		# ledger would report "already granted" for every later malformed defeat and the
+		# duplicate-protection the ledger exists to provide would be reporting on a collision
+		# rather than on an identity. Rejecting before the ledger is touched keeps the
+		# contract "one distinct creature, one payment" true: no XP, no event, no entry.
+		#
+		# Loud rather than silent (unlike the duplicate branch below): a duplicate is normal
+		# and survivable, whereas an unnamed reward means the spawn path failed to mint an id,
+		# which is a wiring fault that would otherwise cost the player XP invisibly.
+		push_error("[progression-rt] a defeat arrived with an EMPTY reward id; rejected "
+			+ "(xp_reward=%d). Nothing was granted and the ledger was not touched." % xp_reward)
+		return
 	if _granted.has(key):
 		# Not an error: the whole point of the ledger is that this is survivable. Silent,
 		# because a duplicate that is correctly ignored is not a problem to report.

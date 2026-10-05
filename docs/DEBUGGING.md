@@ -4,13 +4,24 @@
 > fixed bug should leave behind a regression test (`docs/TEST_PLAN.md`) and, if it
 > revealed a pattern, an entry here.
 >
-> **CURRENT STATUS (through Phase 08, corrected in D-049):** this is the method and the
+> **CURRENT STATUS (through Phase 11 + its D-055 close-out):** this is the method and the
 > toolbox, and it is in active use — the project has diagnosed and fixed a steady stream of
 > real defects (headless Area2D/input timing, a `class_name` that failed to compile and
 > cascaded as "nonexistent function", a reversed session teardown, a fail-open mirror, a
 > `RefCounted` reference cycle leaking the test suite, a tick loop that sorted the whole cast,
-> a hydrate boundary that crashed instead of failing closed). It previously said "no gameplay
-> bugs yet", which stopped being true several phases ago.
+> a hydrate boundary that crashed instead of failing closed, a fail-OPEN empty reward id, and a
+> gameplay action with no on-screen cue). It previously said "no gameplay bugs yet", which
+> stopped being true several phases ago.
+>
+> **The two classes of defect the gates CANNOT see**, both now with worked examples:
+> - **Anything on screen.** A headless run renders nothing, so a layout, colour or
+>   discoverability defect survives a fully green pipeline. Reach for `tools/playtest_flow.gd`
+>   (real app, real input, per-step expected-vs-observed) and `tools/capture_ui.gd`, then
+>   **OPEN the output** — D-050, D-053, D-054 and D-055 each found defects that way, and
+>   generating the evidence is not reviewing it.
+> - **An invariant nothing asserts.** A rule that lives only in a docstring is a comment. When
+>   a claim is worth writing down ("X is the only writer", "no file in this layer may Y"),
+>   prefer a structural test that WALKS the directory (L-034) over trusting the sentence.
 >
 > **Where incidents are recorded:** the durable, do-not-repeat RULE goes in
 > `.kiro/steering/09-lessons-learned.md` (L-0NN) and the DECISION/context goes in

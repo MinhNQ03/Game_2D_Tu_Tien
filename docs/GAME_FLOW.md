@@ -4,36 +4,63 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> Status (through Phase 06 final hardening, 2026-10-03): Phase 05 (Relationship core + early
-> character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is **CLOSED** (D-032,
-> hardened in D-037); Phase 07 (Faction/Politics) is **IMPLEMENTED** (D-042, hardened in D-047).
-> **Sect membership is
-> LIVE in the runnable flow:** New Game enrols the player into the authored start sect
-> (Azure Cloud, at Outer Disciple) through `SectRuntime`, the in-map **HUD** carries a
-> localized sect chip, the `sect_panel` action (`T`) toggles a **Sect detail panel** (name,
-> doctrine, type/tier, your rank, reputation, influence, territory, a localized resource
-> summary), and the hub shows a sect banner. None of it displays a raw id. A relationship or
-> sect session failure now ABORTS New Game and unwinds back to the menu (D-037) instead of
-> entering a half-wired world. The
-> player is a real **Character** (one authoritative `CharacterState` bound to the Player node,
-> D-023), the in-map **HUD** shows the character's identity + map name + localized control hints,
-> and the main menu has a presentation pass. The live UI is the CC0 **Xianxia Pixel Pack** 9-slice
-> set (D-028, superseding the self-made prototype of D-024) with graphic key badges ([E]/[Esc]) —
-> a tu-tiên game UI, not default Godot controls. The visible world + player art is at the
-> **production-foundation** tier (D-029, presentation-only). The player sprite is data-driven via
-> `CharacterVisualProfileData` + `CharacterVisualComponent` (D-026), not a hard-coded sprite.
-> The runnable flow is unchanged (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
-> MENU); the start map is data-driven (`MapCatalog.start_map_id`). The menu now also offers
-> **MAIN MENU → SETTINGS → MAIN MENU** (language vi/en, D-035), and in-map the camera
-> FOLLOWS the player across maps authored larger than the screen (D-036).
+> **Status: through Phase 11 (Level/XP Progression), hardened and closed in D-055.**
+> Split three ways on purpose — the old block mixed them, which is how it came to say
+> "combat exists only in the Phase-02 sandbox" three phases after combat went live.
 >
+> ---
+>
+> **① CURRENT — what actually runs today.**
+> The runnable flow is START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD → MENU, plus
+> **MAIN MENU → SETTINGS → MAIN MENU** (language vi/en, D-035). The start map is data-driven
+> (`MapCatalog.start_map_id`) and the camera FOLLOWS the player across maps authored larger
+> than the screen (D-036).
+> - **COMBAT IS LIVE IN THE REAL APPLICATION** (Phase 09) — no longer sandbox-only. D-007 is
+>   resolved as REAL-TIME TOP-DOWN ACTION: a `READY → WINDUP → ACTIVE → RECOVERY` lifecycle
+>   with data-authored timing, analytic hit resolution against a session hurtbox registry, and
+>   crits rolled from the seeded `STREAM_COMBAT`. The player attacks with the semantic `attack`
+>   action, which the HUD now ADVERTISES as a control prompt (D-055-G).
+> - **ENEMY AI IS LIVE** (Phase 10) — two **Vụ Lang** mist wolves authored into the field map
+>   by a spawn table; a pure-domain `AiBrain` (IDLE/PATROL/ALERT/CHASE/ATTACK/RECOVER/RETURN)
+>   returning intents, executed through the same movement/attack seams the player uses, with a
+>   throttled tick and `enemy_ai`-stream determinism. They hunt, they hit back, they die.
+> - **LEVEL / XP PROGRESSION IS LIVE** (Phase 11) — a kill pays XP, XP derives a level, and the
+>   HUD shows both. See §3.8 for the exact chain and ownership.
+> - **SECT MEMBERSHIP IS LIVE** — New Game enrols the player into the authored start sect
+>   (Azure Cloud, at Outer Disciple) through `SectRuntime`; the HUD carries a localized sect
+>   chip; `sect_panel` (`T`) toggles a Sect detail panel (name, doctrine, type/tier, rank,
+>   reputation, influence, territory, a localized resource summary); the hub shows a sect
+>   banner. **Faction politics** (Phase 07, D-042/D-047) is live behind `faction_panel` (`Y`).
+>   None of it displays a raw id.
+> - **THE WORLD EVOLVES OFF-SCREEN** (Phase 08) — Near/Mid/Far LOD simulation on explicit
+>   gameplay beats, deterministic from seeded per-subsystem RNG streams.
+> - The player is a real **Character** (one authoritative `CharacterState` bound to the Player
+>   node, D-023) and the HUD shows identity + map name + localized control hints.
+> - A relationship, sect, faction or progression session failure ABORTS New Game and unwinds
+>   back to the menu (D-037/D-047/D-054) rather than entering a half-wired world.
+>
+> **② FUTURE — design target, NOT implemented.**
+> - **CẢNH GIỚI / TU LUYỆN (cultivation) is Phase 12 and does not exist yet.** Level is not
+>   cultivation; see §3.8. `MapData` has no `min_level` and never will (C-002).
+> - The branching-story / dialogue / quest / NPC flow below is the design target for later
+>   phases. The "PROLOGUE" box in §1 is a future story scene, **not** the current first
+>   gameplay scene — it is specified beat-by-beat in `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039).
+> - Inventory, equipment, pets, skills and công pháp are design-only. Keyboard bindings exist
+>   for `skill_1..4` and `dodge`, and **a binding is not a system** — nothing consumes them.
+> - Everything beyond the CURRENT list is the intended flow plus the contracts implementation
+>   must satisfy.
+>
+> **③ HISTORICAL — settled context, kept because it still explains decisions.**
 > `main.tscn` is the **bootstrap** scene (`Main → Systems / World / UI`, script
-> `src/bootstrap/main.gd`; D-010). Combat exists only in the Phase-02 player sandbox (not
-> reachable from New Game). The branching-story / dialogue / quest / NPC flow below is the
-> *design target* for later phases; the "PROLOGUE" box in §1 is a future story scene, **not**
-> the current first gameplay scene — it is now fully specified beat-by-beat in
-> `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039). Everything beyond world/map traversal remains the
-> intended flow plus the contracts implementation must satisfy.
+> `src/bootstrap/main.gd`; D-010). Phase 05 (Relationship core + early character visual
+> pipeline) is **CLOSED** (D-026); Phase 06 (Sect) is **CLOSED** (D-032, hardened in D-037).
+> The live UI is the CC0 **Xianxia Pixel Pack** 9-slice set (D-028, superseding the self-made
+> prototype of D-024) with graphic key badges — a tu-tiên game UI, not default Godot controls.
+> The visible world + player art is at the **production-foundation** tier (D-029,
+> presentation-only), and the player sprite is data-driven via `CharacterVisualProfileData` +
+> `CharacterVisualComponent` (D-026), not a hard-coded sprite. The Phase-02 **Player Sandbox**
+> still exists as a harness for isolated combat validation, but it is no longer the first scene
+> and is not how combat reaches the player.
 >
 > **ONE status block only.** This is it. Per-system implementation status lives inside each
 > §3.x contract, where it cannot be mistaken for the global state; phase state lives in
@@ -61,7 +88,9 @@ FOREST (map)            │
   ↓                     │
 COMBAT                  │
   ↓                     │
-LEVEL UP  (XP, cảnh giới / tu luyện)
+LEVEL UP  (XP / Level)  │   ← frequent, numerical, combat-derived   [LIVE, Phase 11]
+  ↓                     │
+CẢNH GIỚI / TU LUYỆN    │   ← rare, qualitative, unlocks capability [FUTURE, Phase 12]
   ↓                     │
 DUNGEON                 │
   ↓                     │
@@ -80,6 +109,15 @@ The vertical line is the **player's first-playthrough path**. The loop-back arro
 the key architectural truth: after a chapter, the game returns to the explore → quest →
 combat → progress loop with *new content*, not new systems. SAVE is drawn once for
 clarity but is a cross-cutting capability available throughout.
+
+> **The two progression boxes are two AXES, not two steps** (D-055-C). The diagram is vertical
+> because it traces one playthrough, but levelling is not a prerequisite for a breakthrough and
+> a breakthrough is not a reward for levelling. **LEVEL / XP ≠ CẢNH GIỚI / TU LUYỆN**: level is
+> the frequent numerical axis that tunes power and **is never an access gate** (C-002); cảnh
+> giới is the rare qualitative axis that gates content and capability, and a realm advance must
+> answer "what can I do now that I could not before?" with something other than a bigger
+> number. Collapsing them into one bar is forbidden by
+> `docs/PROGRESSION_CULTIVATION_DESIGN.md` §1. Only the first axis exists today.
 
 ## 1b. World & social flow (Character / Sect are CORE, not quest decoration)
 
@@ -231,25 +269,55 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Dependencies:** domain (damage rules, pure/testable) ← gameplay orchestrates;
   data (skill/equipment/enemy resources). Combat does **not** know about UI, quests, or
   save — it only emits.
-- **Events (emits):** `hit`, `damaged(target, amount)`, `enemy_died(enemy_id)`,
-  `xp_gained(amount)`, `combatant_died`.
+- **Events — IMPLEMENTED (Phase 09/10/11), corrected in D-055-D.** Combat **ANNOUNCES**; it
+  never pays and it does not know a level exists. The live contract is:
 
-### 3.8 LEVEL UP (progression: XP, level, cảnh giới, tu luyện)
+  | Owner | Emits | Listener |
+  |---|---|---|
+  | `HurtboxComponent` | `damaged(amount, is_critical)` | `DamageFeedback` (presentation) |
+  | `Enemy` | `died()` | `CombatRuntime`, `DamageFeedback` |
+  | `CombatRuntime` | `enemy_defeated(reward_id, xp_reward)` | **`ProgressionRuntime`** |
+  | `CombatRuntime` | `combat_target_changed(view)` | `WorldRuntime` → HUD |
+  | `ProgressionRuntime` | `xp_gained(amount, reward_id)` | `WorldRuntime` → HUD |
+  | `ProgressionRuntime` | `level_changed(previous, current)` | `WorldRuntime` → HUD |
+
+  **`xp_gained` is emitted by PROGRESSION, not by combat.** Earlier revisions of this section
+  listed it under combat, which inverted the dependency: it would have made combat a writer of
+  permanent progression state. `reward_id` is per **SPAWN** (`instance_id#serial`), which is
+  what lets a re-cleared map pay again instead of the ledger degrading into a "has ever been
+  killed" flag.
+  The names `hit` and `combatant_died` were design sketches and have **no implementation** —
+  the real surface is the table above.
+
+### 3.8 LEVEL UP — two distinct axes (XP/Level is LIVE; cảnh giới / tu luyện is Phase 12)
 > **The LEVEL/XP half is IMPLEMENTED (Phase 11, D-054).** The live path is
 > `enemy dies → CombatRuntime.enemy_defeated(reward_id, xp_reward) → ProgressionRuntime →
 > ProgressionService.grant_xp() → CharacterState.xp → xp_gained / level_changed → WorldRuntime
 > → MapBase → GameplayHUD`. Combat ANNOUNCES and does not pay; `ProgressionService` is the only
 > writer of XP; **the level is DERIVED from cumulative XP and the authored curve, never stored**.
-> Note the event names below predate the implementation: the defeat event is
-> `CombatRuntime.enemy_defeated`, not an EventBus `enemy_died`, and `xp_gained` is emitted by
-> the progression owner rather than by combat — combat does not know a level exists.
-> The **cảnh giới / tu luyện** half remains design-only; Phase 12 owns it.
-- **Input:** `xp_gained`, `tu_luyện` actions, breakthrough attempts.
-- **State:** XP, level, current cảnh giới + cultivation progress, unlocked skills/công
-  pháp slots. Two distinct axes (see `.kiro/steering/02-game-design.md`).
-- **Processing:** apply XP curve → level ups (fine power); accumulate cultivation →
-  breakthrough rules gate realm advances (content/capability unlocks). All in domain,
-  pure and testable.
+> The defeat event is `CombatRuntime.enemy_defeated`, not an EventBus `enemy_died` (§3.7 holds
+> the full table since D-055-D). The **cảnh giới / tu luyện** half remains design-only; Phase 12
+> owns it, and **Phase 12 must not reimplement, duplicate or replace the XP/Level axis** — see
+> the handoff contract in D-055.
+>
+> **OWNERSHIP, in one table, because this is where the next phase will look:**
+>
+> | | AXIS 1 — Level / XP (LIVE) | AXIS 2 — Cảnh giới / tu luyện (Phase 12) |
+> |---|---|---|
+> | Stored state | `CharacterState.xp` — cumulative, the ONLY stored number | `CharacterState.realm_id` + `cultivation_progress` (contract only) |
+> | Derived | **level** = f(xp, curve); never stored | — |
+> | Authority | `ProgressionService.grant_xp()` | not implemented |
+> | Content | `ProgressionCurveData` (`.tres`) | realm defs, breakthrough rules |
+> | What it does | tunes POWER, frequently | unlocks CAPABILITY and CONTENT, rarely |
+> | Gates content? | **NEVER** (C-002) | yes, that is its purpose |
+>
+- **Input:** `enemy_defeated` (live). Later: `tu_luyện` actions, breakthrough attempts.
+- **State:** XP (live, persistent) → level (live, DERIVED). Later: current cảnh giới +
+  cultivation progress, unlocked skills/công pháp slots. Two distinct axes that must not be
+  collapsed (see `.kiro/steering/02-game-design.md`).
+- **Processing:** apply the authored XP curve → level ups (fine power) — live. Later:
+  accumulate cultivation → breakthrough rules gate realm advances (content/capability
+  unlocks). All in domain, pure and testable.
 - **Design (D-039/D-040):** the frozen realm hierarchy is `docs/PROGRESSION_CULTIVATION_DESIGN.md`
   §2 (CL-02), and **level is never an access gate** (C-002). Phase 12 also lands the
   **Knowledge Core** (`KnowledgeStore`/`KnowledgeService`, its own owner, no autoload) because

@@ -29,6 +29,10 @@ const FactionPanelScript := preload("res://src/presentation/faction/faction_pane
 const LevelUpFeedbackScript := preload(
 	"res://src/presentation/progression/level_up_feedback.gd")
 
+## The basic attack (D-055-G). A SEMANTIC action name only — the physical key is resolved
+## through `InputService.get_action_display_label`, so rebinding updates the prompt and no
+## physical keycode ever appears in presentation (L-003).
+const ATTACK_ACTION := &"attack"
 const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
 const SECT_PANEL_ACTION := &"sect_panel"
@@ -87,6 +91,7 @@ var _target_linger: Timer
 ## The last target view pushed in, kept so `_refresh_text()` can re-resolve its keys on a
 ## language change without the combat session having to push again.
 var _target_view: CombatTargetView = null
+var _attack_row: UIPromptRow
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
 var _sect_row: UIPromptRow
@@ -485,7 +490,17 @@ func _build_ui() -> void:
 	prompt_box.add_theme_constant_override("separation", UIPalette.SPACE_LG)
 	prompt_panel.add_child(prompt_box)
 
+	# ATTACK LEADS THE STRIP (D-055-G). It is the only verb here that changes the WORLD rather
+	# than opening a panel, and it shipped in Phase 11 with no prompt at all — so the game's
+	# central action was the one thing a player could not discover from the screen while
+	# `T Sect` / `Y Politics` / `Esc Menu` were all advertised. Leftmost because the strip is
+	# read left-to-right from the screen corner.
+	_attack_row = PromptRowScript.new() as UIPromptRow
+	_attack_row.name = "AttackPrompt"
+	prompt_box.add_child(_attack_row)
+
 	_interact_row = PromptRowScript.new() as UIPromptRow
+	_interact_row.name = "InteractPrompt"
 	prompt_box.add_child(_interact_row)
 
 	_sect_row = PromptRowScript.new() as UIPromptRow
@@ -920,13 +935,26 @@ func _resolve(key: StringName) -> String:
 	return String(_loc.call("t", key))
 
 
-## Fill the two prompt rows from InputService display labels (never raw keycodes). The
-## interact row is hidden until the player is standing in an exit; the menu row is always on.
+## Fill the prompt rows from InputService display labels (never raw keycodes).
+##
+## VISIBILITY CONTRACT (D-055-G), deliberate and per-row rather than one rule for all:
+##   * ATTACK   — always visible. The player is armed with the basic attack for the whole
+##                session (`WorldRuntime` arms them on every map arrival from
+##                `attack_player_basic.tres`), so there is no state in which the prompt would
+##                be a lie. Showing it only "when an enemy is near" was rejected: a player who
+##                has never attacked does not know the verb exists, so the cue would appear
+##                exactly when they are already under pressure and are least able to read it.
+##   * INTERACT — contextual. It names a target ("interact with WHAT"), so off an exit it has
+##                no referent and would be noise.
+##   * SECT / POLITICS / MENU — always visible; they open a panel, which is always legal.
 func _refresh_prompts() -> void:
 	if _menu_row == null:
 		return
 	var menu_key := _display_label(OPEN_MENU_ACTION)
 	_menu_row.set_prompt(menu_key, _text("UI_HUD_MENU_ACTION"))
+	if _attack_row != null:
+		var attack_key := _display_label(ATTACK_ACTION)
+		_attack_row.set_prompt(attack_key, _text("UI_HUD_ATTACK_ACTION"))
 	_interact_row.visible = _interact_available
 	if _interact_available:
 		var interact_key := _display_label(INTERACT_ACTION)
