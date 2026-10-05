@@ -126,8 +126,10 @@ func test_palette_tokens_are_sane() -> void:
 		"title font is larger than body")
 	assert_true(UIPaletteScript.SPACE_LG > 0, "spacing tokens are positive")
 	assert_true(UIPaletteScript.NINE_PATCH_MARGIN > 0, "nine-patch margin is positive")
-	# 10 pixel-art xianxia textures + 5 painted-tier assets (D-044).
-	assert_eq(UIPaletteScript.UI_TEXTURES.size(), 15, "all UI textures are registered")
+	# 9 pixel-art xianxia textures + 5 painted-tier assets (D-044). It was 10 + 5 until D-050
+	# retired `title_divider.png` — the divider moved to the tintable ornament mask, so the
+	# jade fill is no longer a runtime texture and no longer belongs in the runtime contract.
+	assert_eq(UIPaletteScript.UI_TEXTURES.size(), 14, "all UI textures are registered")
 
 
 # --- D-041 production-foundation visual pass ---------------------------------
@@ -336,14 +338,15 @@ func test_painted_backdrop_and_portrait_resolve() -> void:
 
 # === D-050: the ornament seam is CENTRAL, and the chosen assets are what was measured ===
 
-## The divider must come from ONE factory, and both screens must use it.
+## The divider must come from ONE factory, and EVERY screen must use it.
 ##
-## This is the regression for a defect that was VISIBLE and untested: `main_menu.gd` and
-## `gameplay_hud.gd` each built their own divider `TextureRect` with their own filter, stretch
-## and size, and both stretched the jade `title_divider.png` to panel width — where it rendered
-## as a flat saturated bar and read as a PROGRESS BAR under the menu subtitle and in every
-## panel header. Duplicated styling is what allowed one wrong decision to appear twice, so the
-## guard is structural: assert that neither screen constructs a divider itself.
+## This is the regression for a defect that was VISIBLE and untested: four screens
+## (`main_menu`, `gameplay_hud`, `sect_panel`, `faction_panel`) each built their own divider
+## `TextureRect` with their own filter, stretch and size, and all of them stretched the jade
+## `title_divider.png` to panel width — where it rendered as a flat saturated bar and read as
+## a PROGRESS BAR under the menu subtitle and in every panel header. Duplicated styling is
+## what allowed one wrong decision to appear four times, so the guard is structural: assert
+## that no screen constructs a divider itself.
 func test_d050_the_divider_comes_from_one_central_factory() -> void:
 	var divider := UITheme.ornament_divider()
 	assert_not_null(divider, "the theme exposes an ornament divider factory")
@@ -362,16 +365,61 @@ func test_d050_the_divider_comes_from_one_central_factory() -> void:
 	# STRUCTURAL GUARD: no screen may build its own divider. Reading the source is the only
 	# way to assert this — a rendered divider looks the same whoever constructed it, which is
 	# precisely why the duplication survived until somebody looked at a screenshot.
-	for path in [
-		"res://src/presentation/menus/main_menu.gd",
-		"res://src/presentation/hud/gameplay_hud.gd",
-	]:
-		var source := _read_source(String(path))
-		assert_ne(source, "", "%s is readable" % String(path))
-		assert_false(source.contains("TEX_TITLE_DIVIDER"),
-			("%s must not reference the divider TEXTURE directly — it asks "
-				+ "UITheme.ornament_divider() so one edit restyles every divider in the game")
-				% String(path))
+	#
+	# IT SCANS THE WHOLE PRESENTATION LAYER RATHER THAN LISTING FILES. The first version
+	# listed `main_menu.gd` and `gameplay_hud.gd` — and PASSED while `sect_panel.gd` and
+	# `faction_panel.gd` were still building their own dividers, so the defect the test
+	# existed to catch was live in two of the four screens that had it. A guard with a
+	# hard-coded inventory only protects the files somebody remembered; a guard that walks the
+	# directory protects the ones they did not.
+	#
+	# It watches the LIVE token, not the retired one. Writing it against `TEX_TITLE_DIVIDER`
+	# would have been a guard that can only ever catch the mistake already made: the realistic
+	# regression is a new panel copying the factory BODY, which references the current
+	# ornament texture. Both source filenames are matched too, so hardcoding the path instead
+	# of the constant does not slip past. The palette (which declares the paths) and the theme
+	# (the one factory) are the only files allowed to name them.
+	var divider_tokens: Array[String] = [
+		"TEX_ORNAMENT_DIVIDER", "divider_rule.png", "title_divider.png",
+	]
+	var seam_owners: Array[String] = ["ui_palette.gd", "ui_theme.gd"]
+	var offenders: Array[String] = []
+	for path in _presentation_scripts("res://src/presentation"):
+		if seam_owners.has(path.get_file()):
+			continue
+		var source := _read_source(path)
+		assert_ne(source, "", "%s is readable" % path)
+		for token in divider_tokens:
+			if source.contains(token):
+				offenders.append("%s (%s)" % [path.get_file(), token])
+	assert_eq(str(offenders), str([]),
+		("no screen may name a divider TEXTURE — every one asks UITheme.ornament_divider(), "
+			+ "so one edit restyles every divider in the game. Offenders: %s") % str(offenders))
+
+
+## Every `.gd` under `root`, recursively. Used by the structural guards above so they cover
+## the layer rather than a remembered subset of it.
+func _presentation_scripts(root: String) -> Array[String]:
+	var out: Array[String] = []
+	var pending: Array[String] = [root]
+	while not pending.is_empty():
+		var dir_path: String = pending.pop_back()
+		var dir := DirAccess.open(dir_path)
+		if dir == null:
+			continue
+		dir.list_dir_begin()
+		var entry := dir.get_next()
+		while entry != "":
+			if entry != "." and entry != "..":
+				var full := "%s/%s" % [dir_path, entry]
+				if dir.current_is_dir():
+					pending.append(full)
+				elif entry.ends_with(".gd"):
+					out.append(full)
+			entry = dir.get_next()
+		dir.list_dir_end()
+	out.sort()
+	return out
 
 
 ## The promoted ornament assets must exist and must still be the MASKS the audit chose them

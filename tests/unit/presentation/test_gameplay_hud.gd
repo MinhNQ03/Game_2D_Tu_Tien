@@ -409,6 +409,71 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 	free_node(hud)
 
 
+## The reserved top strip must be BIG ENOUGH for the plaques it reserves for.
+##
+## `TOP_PLAQUE_RESERVE` existed and was consumed correctly, and the panels still covered the
+## plaques — because the only assertions on it were "> 0" and "the HUD mentions the token".
+## A named reserve whose VALUE nobody checks is the same defect L-028 described, one level in:
+## the arithmetic is there, but one of its inputs is a guess. The capture showed the sect
+## panel's top corner sitting over the map plaque's bottom edge and the politics panel sitting
+## over the identity plaque's affiliation tier.
+##
+## So this measures the plaques and compares. `get_combined_minimum_size()` is used rather
+## than `size`: a top-anchored content-sized plaque IS its minimum size, and the minimum is
+## computed from the content without needing a real viewport — so this does not depend on the
+## runner's window size the way an assertion on `position`/`size` would (see A15 above).
+func test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for() -> void:
+	var hud := _hud()
+	var root := _hud_root(hud)
+	if root == null:
+		free_node(hud)
+		return
+	var tallest := 0.0
+	var measured: Array[String] = []
+	for child in root.get_children():
+		var plaque := child as PanelContainer
+		# A TOP plaque: anchored to the top edge and sized by its content (anchor_bottom 0).
+		# This excludes the bottom prompt row and the two stretched side panels.
+		if plaque == null or plaque.anchor_top != 0.0 or plaque.anchor_bottom != 0.0:
+			continue
+		var height := maxf(plaque.size.y, plaque.get_combined_minimum_size().y)
+		# A minimum size reflects the text the plaque holds RIGHT NOW, so a wrapping label
+		# measured on a short string under-reports. The world-event hint is capped at
+		# `HUD_WORLD_EVENT_MAX_LINES`, so its worst case is knowable: add the lines it has
+		# not yet used. Without this the reserve would be correct for the capture that was
+		# taken and wrong for a longer localized string — the defect, one language later.
+		height += _unused_wrap_allowance(plaque)
+		measured.append("%s=%d" % [plaque.name, int(height)])
+		tallest = maxf(tallest, height)
+	assert_true(measured.size() >= 2,
+		"both top plaques (identity + map) were found and measured, got %s" % str(measured))
+	# The reserve is measured from the plaque's own top edge, which already sits at
+	# HUD_MARGIN — so the reserve covers the plaque HEIGHT, plus one margin of breathing room
+	# so a panel never butts directly against the plaque's frame.
+	assert_true(float(UIPalette.TOP_PLAQUE_RESERVE) >= tallest + float(UIPalette.HUD_MARGIN),
+		("TOP_PLAQUE_RESERVE (%d) must clear the tallest top plaque plus one margin "
+			+ "(tallest=%d + margin=%d = %d). Measured: %s") % [
+				UIPalette.TOP_PLAQUE_RESERVE, int(tallest), UIPalette.HUD_MARGIN,
+				int(tallest) + UIPalette.HUD_MARGIN, str(measured)])
+	free_node(hud)
+
+
+## Pixels a capped wrapping label inside `plaque` could still grow by: the lines its cap
+## allows minus the lines its current text uses, at the label's own measured line height.
+##
+## Returns 0 for a plaque with no capped label, so it is safe to add unconditionally. The
+## label is found by NAME, not by reaching into the HUD's private fields (which the lint rule
+## forbids across files, and rightly — a test that reads privates pins the implementation
+## rather than the contract).
+func _unused_wrap_allowance(plaque: Control) -> float:
+	var label := plaque.find_child("WorldEvent", true, false) as Label
+	if label == null or label.max_lines_visible <= 1:
+		return 0.0
+	var used := maxi(1, label.get_line_count())
+	var spare := label.max_lines_visible - used
+	return float(maxi(0, spare)) * label.get_line_height()
+
+
 ## Content longer than the bounded box must SCROLL inside it. Without a scroll container the
 ## only two outcomes are a clipped panel the player cannot read or a frame pushed off-screen —
 ## which is the defect this replaced.
@@ -555,7 +620,12 @@ func _single_container_child(node: Node) -> Node:
 	return node.get_child(0) if node.get_child_count() == 1 else null
 
 
-## Every ornamental divider strip: a TextureRect wearing the title-divider art.
+## Every ornamental divider strip: a TextureRect wearing the shared ornament rule.
+##
+## Matched by TEXTURE, not by node name: the name is cosmetic, the texture is the design
+## decision. It tracks `UIPalette.TEX_ORNAMENT_DIVIDER` (the tintable mask the HUD moved to in
+## D-050) rather than the retired jade `title_divider.png`, so this helper keeps measuring the
+## rule the HUD actually builds instead of silently finding zero strips.
 func _divider_strips(node: Node) -> Array[TextureRect]:
 	var out: Array[TextureRect] = []
 	_collect_divider_strips(node, out)
@@ -566,7 +636,7 @@ func _collect_divider_strips(node: Node, out: Array[TextureRect]) -> void:
 	for child in node.get_children():
 		var rect := child as TextureRect
 		if rect != null and rect.texture != null \
-				and rect.texture.resource_path == UIPalette.TEX_TITLE_DIVIDER:
+				and rect.texture.resource_path == UIPalette.TEX_ORNAMENT_DIVIDER:
 			out.append(rect)
 		_collect_divider_strips(child, out)
 

@@ -194,16 +194,9 @@ func _set_row(value_label: Label, caption_key: String, value_text: String) -> vo
 	value_label.text = value_text
 
 
+## Delegates to the ONE divider factory (D-050) — see `UITheme.ornament_divider`.
 func _make_divider() -> TextureRect:
-	var strip := TextureRect.new()
-	strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	strip.stretch_mode = TextureRect.STRETCH_SCALE
-	strip.custom_minimum_size = Vector2(0, 8)
-	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if ResourceLoader.exists(UIPalette.TEX_TITLE_DIVIDER):
-		strip.texture = load(UIPalette.TEX_TITLE_DIVIDER)
-	return strip
+	return UITheme.ornament_divider()
 
 
 func _make_label(font_size: int, color: Color) -> Label:

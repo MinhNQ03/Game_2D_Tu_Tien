@@ -231,9 +231,14 @@ const TEX_ORNAMENT_FRAME := ORNAMENT_DIR + "/frame_ornate.png"
 ## margin must be >= it or the corners stretch (`06-art-assets.md`).
 const ORNAMENT_FRAME_MARGIN := 8
 
-## Height the ornamental divider is drawn at. The source is 20px tall; 12 keeps it a thin
-## engraved rule rather than a band competing with the text above it.
-const ORNAMENT_DIVIDER_HEIGHT := 12
+## Height the ornamental divider is drawn at.
+##
+## The source is 20px tall, so this is an EXACT 0.5 downscale. That is deliberate and it is
+## the rule rather than a preference: `06-art-assets.md` requires integer-friendly scaling for
+## pixel UI, and the first version of this constant was 12 — a 0.6 scale, which resamples a
+## 1-bit mask onto a fractional grid and softens the very edges the mask exists to keep sharp.
+## It shipped in the same commit that cited the rule. Keep this a clean 1/1 or 1/2 of 20.
+const ORNAMENT_DIVIDER_HEIGHT := 10
 
 
 # --- B6 SEMANTIC TOKEN ALIASES (D-050) --------------------------------------
@@ -267,12 +272,33 @@ const FOCUS := COLOR_ACCENT
 const DISABLED := COLOR_SURFACE_DISABLED
 
 
-## Vertical strip at the TOP of the screen that the map/world plaque owns. A full-height side
-## panel must start below it, or it covers the place name — which is what the sect panel did
-## (found in a real capture, D-050). Reserving it in a named constant makes "a side panel must
-## not cover the plaque" arithmetic rather than something to notice in a screenshot, exactly
-## as `PROMPT_STRIP_RESERVE` does for the bottom prompt row.
-const TOP_PLAQUE_RESERVE := 104
+## Vertical strip at the TOP of the screen that the identity and map/world plaques own. A
+## full-height side panel must start below it, or it covers them — which is what the sect
+## panel did (found in a real capture, D-050). Reserving it in a named constant makes "a side
+## panel must not cover a plaque" arithmetic rather than something to notice in a screenshot,
+## exactly as `PROMPT_STRIP_RESERVE` does for the bottom prompt row.
+##
+## MEASURED, not guessed: **identity plaque 156**, **map plaque 122** (102 of current content
+## plus the second world-event line its cap allows), so the strip is the tallest, 156, plus
+## one `HUD_MARGIN` of breathing room = **174**.
+##
+## The first value here was 104 — taken from the map plaque alone — so the left-hand politics
+## panel still covered the identity plaque's affiliation tier by ~52px and the right-hand
+## sect panel cleared the map plaque by 2px. Both were plainly visible in a capture and
+## invisible to every assertion, because the only things asserted about the reserve were
+## "> 0" and "the HUD mentions the token". A named reserve is worth exactly as much as its
+## number: the value is now pinned by
+## `test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for`, which
+## re-measures both plaques, so growing a plaque fails loudly instead of quietly
+## reintroducing the overlap.
+const TOP_PLAQUE_RESERVE := 174
+
+
+## Lines the HUD's world-event hint may wrap to before it trims. The cap is what makes the
+## map plaque's height BOUNDED — the event line is the only thing in a top plaque sized by a
+## sentence, and an unbounded plaque makes `TOP_PLAQUE_RESERVE` above unknowable. Two lines
+## absorbs the +40% vi↔en growth `docs/UI_UX_BIBLE.md` requires.
+const HUD_WORLD_EVENT_MAX_LINES := 2
 
 const TEX_PANEL := UI_ASSET_DIR + "/panels/panel.png"
 const TEX_PANEL_INSET := UI_ASSET_DIR + "/panels/panel_inset.png"
@@ -283,7 +309,13 @@ const TEX_BUTTON_DISABLED := UI_ASSET_DIR + "/buttons/button_disabled.png"
 const TEX_BUTTON_FOCUS := UI_ASSET_DIR + "/buttons/button_focus.png"
 const TEX_KEY_BADGE := UI_ASSET_DIR + "/frames/key_badge.png"
 const TEX_PORTRAIT_FRAME := UI_ASSET_DIR + "/frames/portrait_frame.png"
-const TEX_TITLE_DIVIDER := UI_ASSET_DIR + "/frames/title_divider.png"
+
+# RETIRED (D-050): `frames/title_divider.png`. It had a constant here until every divider
+# moved to `UITheme.ornament_divider()` + `TEX_ORNAMENT_DIVIDER`. The constant is GONE rather
+# than kept-but-unused on purpose: a named path is an invitation, and the bug it caused
+# (a jade fill stretched to panel width, reading as a progress bar) is exactly the kind a
+# future screen would re-create by reaching for the nearest divider-shaped constant. The PNG
+# stays in the pack and in `docs/ASSET_LICENSES.md` (U10) as an unwired pack file.
 
 # --- PAINTED UI tier (Aetheria pack, project-owned, D-044) -------------------
 #
@@ -347,7 +379,7 @@ const PORTRAIT_HEAD_CROP_RATIO := 1.0
 const UI_TEXTURES := [
 	TEX_PANEL, TEX_PANEL_INSET,
 	TEX_BUTTON_NORMAL, TEX_BUTTON_HOVER, TEX_BUTTON_PRESSED, TEX_BUTTON_DISABLED,
-	TEX_BUTTON_FOCUS, TEX_KEY_BADGE, TEX_PORTRAIT_FRAME, TEX_TITLE_DIVIDER,
+	TEX_BUTTON_FOCUS, TEX_KEY_BADGE, TEX_PORTRAIT_FRAME,
 	TEX_BUTTON_PAINTED, TEX_BUTTON_PAINTED_ALT, TEX_MENU_BACKDROP,
 	TEX_PORTRAIT_MALE, TEX_PORTRAIT_FEMALE,
 ]
@@ -371,7 +403,9 @@ const PORTRAIT_MARGIN := 17         # portrait_frame.png (rosewood panel, 218x11
 #   button_normal    130x54   centre brightness 193  -> light
 #   portrait_frame   218x118  centre brightness 229  -> a light PANEL, not a small frame
 #   key_badge.png    61x61    centre ALPHA 0         -> hollow corner ornament, NOT a keycap
-#   title_divider    136x21   centre brightness 120
+#   title_divider    136x21   centre brightness 120  -> a jade FILL (retired D-050; a fill
+#                                                       stretched to panel width reads as a
+#                                                       progress bar, not as a rule)
 # Consequences, enforced by `UITheme`:
 #   * Every text token in this file is LIGHT, so a surface that carries text must be DARK ->
 #     `panel_stylebox()` uses the INSET (dark) texture. Light `panel.png` behind light text

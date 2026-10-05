@@ -93,16 +93,10 @@ func _build() -> void:
 	_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	header.add_child(_title)
 
-	# Ornamental divider under the section title, matching the menu's title treatment so the
-	# two screens read as one design language (D-041).
-	_divider = TextureRect.new()
-	_divider.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_divider.stretch_mode = TextureRect.STRETCH_SCALE
-	_divider.custom_minimum_size = Vector2(0, 8)
-	_divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if ResourceLoader.exists(UIPalette.TEX_TITLE_DIVIDER):
-		_divider.texture = load(UIPalette.TEX_TITLE_DIVIDER)
+	# Ornamental divider under the section title, from the ONE theme factory (D-050) so this
+	# panel and the menu genuinely read as one design language instead of each approximating
+	# it. Four screens used to build this themselves, at three different heights.
+	_divider = UITheme.ornament_divider()
 	box.add_child(_divider)
 
 	# LEVEL 2 — primary identity. The sect's own name is the thing the player came to read,

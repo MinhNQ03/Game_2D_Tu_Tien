@@ -127,6 +127,9 @@ func _build_ui() -> void:
 	# WHO I BELONG TO (sect chip) below it. Before D-041 the sect lines were just two more
 	# entries in the same column as the title, so the two kinds of identity blurred together.
 	var identity_panel := _panel()
+	# Named so a layout assertion can report WHICH plaque is wrong. The reserve test used to
+	# print `@PanelContainer@5822=156`, which names nothing a reader can act on.
+	identity_panel.name = "IdentityPlaque"
 	identity_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	identity_panel.position = Vector2(UIPalette.HUD_MARGIN, UIPalette.HUD_MARGIN)
 	root.add_child(identity_panel)
@@ -250,6 +253,7 @@ func _build_ui() -> void:
 	# the player's sense of WHERE they are, which the UI bible ranks as primary orientation
 	# information — it should look authored, not like a debug readout.
 	var map_panel := _panel()
+	map_panel.name = "MapPlaque"
 	map_panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	map_panel.position = Vector2(-UIPalette.HUD_MARGIN, UIPalette.HUD_MARGIN)
 	map_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -289,10 +293,19 @@ func _build_ui() -> void:
 	# +40% string length for vi↔en must not clip (`docs/UI_UX_BIBLE.md`), and this line is the
 	# longest thing in a narrow plaque, so it wraps rather than widening the panel.
 	_world_event_label.custom_minimum_size = Vector2(UIPalette.HUD_MAP_PANEL_WIDTH, 0)
+	# BOUNDED, not free-growing. This is the only label in a top plaque whose height depends on
+	# a sentence, so without a cap the plaque has no maximum height — and a plaque with no
+	# maximum height makes `TOP_PLAQUE_RESERVE` unknowable, which is how the side panels came
+	# to overlap it in the first place. Two lines absorbs the +40% localization growth the UI
+	# bible requires; past that the line trims rather than pushing the plaque into the
+	# playfield, because growing over the map is worse than losing the tail of a hint.
+	_world_event_label.max_lines_visible = UIPalette.HUD_WORLD_EVENT_MAX_LINES
+	_world_event_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	map_body.add_child(_world_event_label)
 
 	# --- Bottom-left: control-prompt panel (graphic key badges) -------------------
 	var prompt_panel := _panel()
+	prompt_panel.name = "PromptStrip"
 	prompt_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	prompt_panel.position = Vector2(UIPalette.HUD_MARGIN, -UIPalette.HUD_MARGIN)
 	prompt_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN

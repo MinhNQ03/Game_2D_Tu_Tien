@@ -28,6 +28,7 @@ const SETTLE_FRAMES := 12
 var _out_dir := "user://ui_captures"
 var _language := "vi"
 var _written: Array[String] = []
+var _failed := false
 
 
 func _initialize() -> void:
@@ -100,32 +101,55 @@ func _run() -> void:
 		if hud != null:
 			await _shot("06_hub_hud")
 			# The side panels are the densest UI in the game and the likeliest to clip, so
-			# each is captured OPEN rather than trusted.
+			# each is captured OPEN rather than trusted. A failed toggle writes NO file:
+			# a missing capture is honest, a closed-panel capture named `07_sect_panel`
+			# is not.
+			var sect_opened := true
 			if hud.has_method("is_sect_panel_open") and not bool(
 					hud.call("is_sect_panel_open")):
-				_toggle_panel(hud, "_sect_panel")
-			await _settle()
-			await _shot("07_sect_panel")
-			_toggle_panel(hud, "_faction_panel")
-			await _settle()
-			await _shot("08_faction_panel")
+				sect_opened = _toggle_panel(hud, "_sect_panel")
+			if sect_opened:
+				await _settle()
+				await _shot("07_sect_panel")
+			if _toggle_panel(hud, "_faction_panel"):
+				await _settle()
+				await _shot("08_faction_panel")
 
 	print("[capture] wrote %d file(s) to %s" % [_written.size(), _out_dir])
 	for name in _written:
 		print("[capture]   %s" % name)
 	main.get_parent().remove_child(main)
 	main.free()
-	quit(0)
+	# A capture run that skipped a state is a FAILED run, not a partial success — the caller
+	# (a human, or a future CI visual gate) must be able to tell from the exit code.
+	quit(1 if _failed else 0)
 
 
 ## Toggle a HUD side panel by property name. The HUD owns its panels privately and exposes
 ## only `is_*_open()`, so the capture harness flips `visible` directly — acceptable HERE
 ## because this is a build-time tool whose entire job is to look at presentation, and the
 ## alternative (feeding real key events) adds input-timing flakiness to a screenshot.
-func _toggle_panel(hud: Node, property: String) -> void:
+## Returns false (loud) if the panel could not be found or did not change state.
+##
+## Failing loudly matters more here than it looks: if the HUD renames the field, a silent
+## no-op would still write a file called `07_sect_panel.png` — with the panel CLOSED. A
+## capture that quietly lies is worse than a missing capture, because the whole point of these
+## files is to be the evidence a human reviews.
+func _toggle_panel(hud: Node, property: String) -> bool:
 	var panel: Variant = hud.get(property)
-	if panel is Control:
-		(panel as Control).visible = not (panel as Control).visible
+	if not (panel is Control):
+		push_error(("[capture] HUD has no Control '%s' — the capture would have written a "
+			+ "screenshot named after a panel it never opened") % property)
+		_failed = true
+		return false
+	var control := panel as Control
+	var before := control.visible
+	control.visible = not before
+	if control.visible == before:
+		push_error("[capture] '%s' did not change visibility" % property)
+		_failed = true
+		return false
+	return true
 
 
 func _settle() -> void:
@@ -139,12 +163,14 @@ func _shot(shot_name: String) -> void:
 	var image := root.get_texture().get_image()
 	if image == null:
 		push_error("[capture] viewport produced no image for '%s'" % shot_name)
+		_failed = true
 		return
 	var size := root.get_visible_rect().size
 	var file := "%s/%s_%dx%d_%s.png" % [
 		_out_dir, _language, int(size.x), int(size.y), shot_name]
 	if image.save_png(file) != OK:
 		push_error("[capture] could not write %s" % file)
+		_failed = true
 		return
 	_written.append(file.get_file())
 

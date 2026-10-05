@@ -775,3 +775,56 @@
   serialization entry points; `activity_of` guards on `is_usable()`. Regressions in
   `tests/unit/worldsim/test_world_sim_service.gd` tests 22-24, each verified to fail against the
   pre-fix code.
+
+## L-034 — A named reserve nobody measured, and a structural guard with a hand-written file list
+- **Symptom (D-050 review pass):** three defects, all introduced by the very commit that cited
+  the rules they broke, and all found by *looking at a capture* rather than by any assertion.
+  1. `UIPalette.TOP_PLAQUE_RESERVE` existed, was consumed correctly by both side panels, and
+     was **104** — while the plaques it reserves for measure **identity 156** and **map 122**.
+     So the left politics panel covered the identity plaque's affiliation tier by ~52px and the
+     right sect panel cleared the map plaque by 2px. The only assertions on the constant were
+     `> 0` and "the HUD source mentions the token": the arithmetic L-028 asked for was all
+     there, and one of its inputs was a guess.
+  2. The structural guard "no screen builds its own divider" **listed two files** —
+     `main_menu.gd` and `gameplay_hud.gd` — and passed while `sect_panel.gd` and
+     `faction_panel.gd` were still building their own, at a third height. The defect was live
+     in two of the four screens that had it, and the commit message claimed one factory.
+  3. The guard also watched the **retired** token (`TEX_TITLE_DIVIDER`), i.e. it could only
+     ever catch the mistake already made. The realistic regression is a new panel copying the
+     factory BODY, which names the CURRENT texture.
+  Plus a near miss of the same shape: the HUD test helper that collects divider strips matched
+  on the OLD texture path, so after the HUD moved it would have found zero strips — caught
+  only because a sibling assertion required `>= 2`.
+- **Rule:** **a reserve/limit constant must be derived from a MEASUREMENT of the thing it
+  reserves for, and a test must re-measure it.** `assert_true(RESERVE > 0)` and "the source
+  mentions the token" assert that somebody thought about it, not that the number is right.
+  Measure with `get_combined_minimum_size()` rather than `size` so the assertion does not
+  depend on the runner's window. Corollaries:
+  - **A reserve is unknowable while the thing it reserves for can grow without bound.** The
+    map plaque held an autowrapping sentence with no line cap, so it had no maximum height.
+    Cap it (`max_lines_visible` + ellipsis overrun) so the worst case exists, and have the test
+    add the lines the cap allows but the current text does not use — otherwise the number is
+    right for the capture that was taken and wrong one language later.
+  - **A structural source guard must WALK the directory, never list files.** A hand-written
+    inventory only protects the files somebody remembered. And point it at the LIVE token (plus
+    the raw filenames, so hardcoding the path does not slip past), excluding only the files
+    that legitimately own the seam — the declaring palette and the one factory.
+  - **Retire a superseded constant, do not leave it unused.** A named path is an invitation:
+    the next screen reaches for the nearest divider-shaped constant and re-creates the bug. Drop
+    it from the runtime contract list too (a list documented as "every runtime texture" must not
+    contain one nothing loads), and update the provenance row to say UNWIRED rather than leaving
+    a "where used" that is now fiction.
+- **Also (tooling):** a capture/report tool must **fail loudly and exit non-zero** when it could
+  not reach the state it is about to name. The harness flipped a panel by private field name and
+  ignored the result, so a renamed field would still have written `07_sect_panel.png` with the
+  panel closed. A capture that quietly lies is worse than a missing one, because the file's
+  entire job is to be the evidence a human reviews.
+- **Also (process):** these were found by the mandatory review pass on a commit that was already
+  green on all 10 gates, by opening the screenshots the commit itself had produced. Generating
+  the evidence is not reviewing it.
+- **Fixed:** D-050 review pass. `TOP_PLAQUE_RESERVE` 104 -> 174 with the measurement recorded
+  next to it; `HUD_WORLD_EVENT_MAX_LINES` caps the one unbounded label; the plaques are NAMED so
+  the assertion can say which one is wrong; `test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for`
+  re-measures both; the divider guard walks `src/presentation` and watches the live token;
+  `sect_panel`/`faction_panel` call `UITheme.ornament_divider()`; `TEX_TITLE_DIVIDER` retired;
+  `capture_ui.gd` reports and exits non-zero.
