@@ -347,7 +347,6 @@ func test_real_world_map_flow() -> void:
 		var sim_hud := _find_gameplay_hud(router.get_current_scene())
 		if sim_hud != null:
 			var sim_text := _all_label_text(sim_hud)
-			var date_shown := false
 			for t in sim_text:
 				var line := String(t)
 				assert_false(line.contains("WORLDSIM_"),
@@ -356,9 +355,24 @@ func test_real_world_map_flow() -> void:
 					"no raw actor id leaks into the HUD (%s)" % line)
 				assert_false(line.contains("{year}") or line.contains("{subject}"),
 					"no unsubstituted placeholder leaks into the HUD (%s)" % line)
-				if line.contains("1"):
-					date_shown = true
-			assert_true(date_shown, "the HUD shows a world date line (got %s)" % str(sim_text))
+			# Found BY NAME, not by "some label contains a 1" — the first version of this
+			# check was satisfied by any label anywhere that happened to contain a digit,
+			# which is the kind of assertion that passes forever after the feature breaks.
+			var date_label := _find_label_named(sim_hud, "WorldDate")
+			var event_label := _find_label_named(sim_hud, "WorldEvent")
+			assert_not_null(date_label, "the HUD has a world-date label")
+			assert_not_null(event_label, "and a world-event label")
+			if date_label != null:
+				assert_true(date_label.visible, "the date line is shown during a session")
+				assert_ne(date_label.text, "", "and carries text")
+				# It must be a localized SENTENCE, not a bare number dump.
+				assert_true(date_label.text.length() > 4,
+					"the date reads as a localized line, not a bare value (got '%s')"
+						% date_label.text)
+			if event_label != null:
+				assert_true(event_label.visible, "the event line is shown")
+				assert_ne(event_label.text, "",
+					"and names what the world last did (the feed is non-empty by now)")
 
 	await scene_tree.process_frame
 	await scene_tree.process_frame
@@ -489,6 +503,19 @@ func _find_gameplay_hud(map: Node) -> Node:
 	if map == null:
 		return null
 	return map.get_node_or_null("GameplayHUD")
+
+
+## The first `Label` named `label_name` anywhere under `node`, or null. Finding a label by NAME
+## is what makes an assertion about it specific: "some label contains a digit" is satisfied by
+## any other label on screen and would keep passing after the feature it checks has broken.
+func _find_label_named(node: Node, label_name: String) -> Label:
+	if node is Label and node.name == label_name:
+		return node as Label
+	for child in node.get_children():
+		var found := _find_label_named(child, label_name)
+		if found != null:
+			return found
+	return null
 
 
 ## Every Label's text anywhere under `node` (recursive) — for asserting rendered UI content.

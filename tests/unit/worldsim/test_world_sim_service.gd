@@ -949,3 +949,103 @@ func test_21_the_sim_cache_follows_the_record() -> void:
 	assert_true(service.verify_character_caches(), "sync rebuilds the cache FROM the record")
 	assert_eq(int(elder.sim_state.get("band", -1)), ActorScript.Band.NEAR,
 		"and the record's value won")
+
+
+# === 22-24. Review-pass regressions (found by reading the code back) ========
+
+## An UNCONSTRUCTED state must FAIL CLOSED at its serialization boundary, not crash.
+##
+## Found in the D-048 review pass, not by a test: `WorldSimulationState.new()` (rather than
+## `create()`) leaves a null clock, and both `from_dict` and `to_dict` dereferenced it. That is
+## a VM error, which ABORTS the caller instead of returning — so a corrupt or unexpected load
+## would have taken the whole save path down rather than rejecting one block (the L-033 class).
+## It matters because `new()` + `from_dict()` is exactly the shape `SaveService` (P-23) will
+## want, so this path is on the critical route for a feature that does not exist yet.
+## The contract, stated precisely — because the first version of this test asserted the WRONG
+## thing (that a structurally-valid payload should be rejected) and the code was right:
+##   * `to_dict()` on a never-hydrated bare state -> an empty snapshot, reported loudly;
+##   * `from_dict(junk)` -> false, with EXECUTION CONTINUING (the actual regression);
+##   * `from_dict(a real snapshot)` -> true and fully usable, because that IS the pattern
+##     `SaveService` will use and it must not require a pre-built clock.
+func test_22_an_unconstructed_state_fails_closed_instead_of_crashing() -> void:
+	# Serializing before any hydrate: an empty snapshot, not a null dereference.
+	var never_hydrated: WorldSimulationState = StateScript.new()
+	assert_eq(str(never_hydrated.to_dict()), str({}),
+		"serializing a never-hydrated state yields an empty snapshot, not a crash")
+
+	# Malformed payloads are rejected. The real assertion is that the METHOD KEEPS RUNNING:
+	# before the fix, the line below raised a VM error that aborted this test entirely, which
+	# the runner then reported as PASS because it only counts recorded failures (L-026/L-033).
+	var bare: WorldSimulationState = StateScript.new()
+	assert_false(bare.from_dict("not a dict"), "a non-dict payload is rejected")
+	assert_false(bare.from_dict({"schema": StateScript.SCHEMA_VERSION + 99}),
+		"an unknown schema is rejected")
+	assert_false(bare.from_dict({"schema": StateScript.SCHEMA_VERSION,
+		"world_clock": {"tick": "3"}}), "a malformed clock is rejected")
+	assert_false(bare.from_dict({"schema": StateScript.SCHEMA_VERSION, "rng_seed": -1}),
+		"an unusable seed is rejected")
+	assert_eq(bare.tick(), 0, "and the state is untouched + still inspectable afterwards")
+	assert_eq(bare.actor_count(), 0, "with nothing in it")
+
+	# A REAL snapshot hydrates into a bare state and leaves it fully usable — the
+	# `new()` + `from_dict()` route P-23 needs.
+	var service := _world(_catalog())
+	if service == null:
+		return
+	service.advance_ticks(6)
+	var snapshot := service.get_state().to_dict()
+	var restored: WorldSimulationState = StateScript.new()
+	assert_true(restored.from_dict(snapshot),
+		"a complete snapshot hydrates into an UNCONSTRUCTED state (no pre-built clock needed)")
+	assert_eq(restored.tick(), service.get_state().tick(), "the tick survives")
+	assert_eq(restored.actor_count(), service.get_state().actor_count(), "the cast survives")
+	assert_not_null(restored.clock(), "it now has a clock")
+	assert_not_null(restored.rng(), "and a seeded RNG seam")
+	assert_eq(str(restored.to_dict()), str(snapshot),
+		"and it round-trips byte-identically from there")
+
+
+## A hydrate must not require the receiver to already hold a calendar: the payload carries its
+## own. Asserted by hydrating a snapshot into a bare state and getting the SAME derived date.
+func test_23_a_snapshot_hydrates_into_a_bare_state() -> void:
+	var service := _world(_catalog())
+	if service == null:
+		return
+	service.advance_ticks(9)
+	var snapshot := service.get_state().to_dict()
+	var source_tick := service.get_state().tick()
+	var source_day := service.get_state().clock().day_of_season()
+
+	var fresh: WorldSimulationState = StateScript.create(
+		ClockScript.new(1, 1, 1, 1), RngServiceScript.new(1), 4)
+	assert_not_null(fresh, "a differently-calendared state builds")
+	if fresh == null:
+		return
+	assert_true(fresh.from_dict(snapshot), "the snapshot hydrates into it")
+	assert_eq(fresh.tick(), source_tick, "the tick survives")
+	assert_eq(fresh.clock().day_of_season(), source_day,
+		"and the CALENDAR came from the snapshot, so the derived date agrees even though the "
+		+ "receiver was built with a different one")
+	assert_eq(fresh.actor_count(), service.get_state().actor_count(), "the cast survives")
+
+
+## The `sim_state` drift check is EXACT, including extra keys. The simulation owns the whole
+## field, so another system writing into it is drift — and a subset comparison (the first
+## implementation) accepted it silently.
+func test_24_an_injected_sim_state_key_counts_as_drift() -> void:
+	var service := _world(_catalog())
+	if service == null:
+		return
+	var elder: CharacterState = _registry.get_character(ELDER)
+	assert_true(service.verify_character_caches(), "the caches start consistent")
+
+	var tampered: Dictionary = elder.sim_state.duplicate()
+	tampered["written_by_someone_who_does_not_own_this_field"] = 42
+	elder.sim_state = tampered
+	assert_false(service.verify_character_caches(),
+		("an EXTRA key in sim_state is drift — the simulation owns the whole field, so a "
+			+ "subset comparison would silently accept another system writing into it"))
+	service.sync_character_caches()
+	assert_true(service.verify_character_caches(), "and sync restores sole ownership")
+	assert_false(elder.sim_state.has("written_by_someone_who_does_not_own_this_field"),
+		"the injected key is gone (the record is rebuilt, not merged into)")

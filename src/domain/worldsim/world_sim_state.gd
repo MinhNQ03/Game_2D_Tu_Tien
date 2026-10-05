@@ -31,6 +31,11 @@ class_name WorldSimulationState
 ## happen to be present.
 const SCHEMA_VERSION := 1
 
+## Fallback calendar unit for an UNCONSTRUCTED state being hydrated (see `from_dict`). Mirrors
+## `WorldClock.MIN_UNIT`; named here so the fallback is explicit at the call site rather than a
+## bare `1`.
+const MIN_CALENDAR_UNIT := 1
+
 var _clock: WorldClock = null
 var _rng: RngService = null
 
@@ -311,6 +316,14 @@ func log_capacity() -> int:
 ## block (`world_clock`, `pending_transitions`, `rng_seed`) so the documented shape and the
 ## real one cannot drift apart (L-014).
 func to_dict() -> Dictionary:
+	# An unconstructed state (`new()` rather than `create()`) has no clock or RNG to serialize.
+	# Report and return an empty snapshot rather than dereferencing null: a serializer that
+	# CRASHES takes the whole save with it, while an empty block is visibly wrong and
+	# recoverable (the same reasoning as the hydrate guard in `from_dict`).
+	if _clock == null or _rng == null:
+		push_error("[worldsim] to_dict on an unconstructed state (use WorldSimulationState."
+			+ "create()); returning an empty snapshot")
+		return {}
 	var actors := {}
 	for instance_id in actor_ids_sorted():
 		var actor: WorldSimActor = _actors[String(instance_id)]
@@ -348,9 +361,22 @@ func from_dict(data: Variant) -> bool:
 
 	# Clock + RNG are hydrated into FRESH objects: hydrating the live ones in place would
 	# leave a half-restored clock behind if the RNG payload turned out to be malformed.
-	var staged_clock := WorldClock.new(
-		_clock.ticks_per_hour(), _clock.hours_per_day(),
-		_clock.days_per_season(), _clock.seasons_per_year())
+	#
+	# The staged clock inherits the LIVE calendar as its starting values when there is one, so
+	# a payload that omits the calendar keeps the session's rather than collapsing to 1/1/1/1
+	# — but it must NOT require one. An unconstructed state (`WorldSimulationState.new()`
+	# rather than `create()`) has a null `_clock`, and dereferencing it here raised a VM error
+	# that ABORTED the caller instead of returning false: a hydrate boundary that crashes
+	# instead of failing closed, which is exactly the shape L-033 records. `SaveService`
+	# (P-23) will naturally want `new()` + `from_dict()`, so this path has to survive it.
+	var staged_clock: WorldClock = null
+	if _clock != null:
+		staged_clock = WorldClock.new(
+			_clock.ticks_per_hour(), _clock.hours_per_day(),
+			_clock.days_per_season(), _clock.seasons_per_year())
+	else:
+		staged_clock = WorldClock.new(
+			MIN_CALENDAR_UNIT, MIN_CALENDAR_UNIT, MIN_CALENDAR_UNIT, MIN_CALENDAR_UNIT)
 	if not staged_clock.from_dict(dict.get("world_clock", null)):
 		push_error("[worldsim] state from_dict: malformed world_clock")
 		return false

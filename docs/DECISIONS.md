@@ -2426,3 +2426,58 @@ exits with **0 leaked ObjectDB / 0 resources in use**, and all 10 gates green �
 runs. Every new guard was proven able to FAIL by temporarily reverting the behaviour it
 protects: the E2E's five world-simulation assertions all failed when the arrival beat was
 disconnected, which is what distinguishes them from assertions that merely pass.
+
+### D-048 review pass (same phase, recorded because it found real defects)
+
+The `08-ai-review-protocol.md` gates were run as an ADVERSARIAL READ-BACK of the Phase-08 code
+after it was already green. Three defects that 474 passing tests had not caught:
+
+1. **`WorldSimulationState.from_dict()` CRASHED on an unconstructed state.**
+   `WorldSimulationState.new()` (rather than `create()`) leaves a null `_clock`, and `from_dict`
+   seeded its staged clock from `_clock.ticks_per_hour()` — a VM error, which ABORTS the caller
+   instead of returning false. `to_dict()` had the same shape. This is on the critical path for
+   a feature that does not exist yet: `new()` + `from_dict()` is exactly what `SaveService`
+   (P-23) will do, so the save path would have died on the first unexpected payload instead of
+   rejecting one block. Fixed: the staged clock inherits the live calendar only when there IS
+   one, `to_dict` reports and returns `{}`. **Confirmed by observation, not by reasoning** — the
+   probe printed `Nonexistent function 'ticks_per_hour' in base 'Nil'`.
+2. **The `sim_state` drift check tolerated EXTRA keys.** `matches_sim_state_cache` compared only
+   the keys it expected, so another system writing an unrelated key into a field the simulation
+   solely owns was silently accepted. The useful question is "is this cache mine and untouched",
+   not "do the values I care about agree". Fixed: the comparison includes the key count.
+3. **`activity_of()` null-checked the state but not the catalog**, leaving a path where a
+   non-null state and a null catalog crashed rather than reported. Fixed: it guards on
+   `is_usable()`, like every other public method.
+
+A fourth finding was a defect in a TEST, not in the code: the E2E's "the HUD shows a world
+date" check was satisfied by *any* label anywhere containing a digit. It now finds the label by
+NAME and asserts visibility and content — the first version would have kept passing after the
+feature broke, which is the L-026 failure mode wearing different clothes.
+
+A fifth was my own wrong expectation: the first regression test asserted that a bare state must
+REJECT a structurally-valid payload. The code was right and the test was wrong — `new()` +
+`from_dict(a real snapshot)` must SUCCEED, because that is the pattern being enabled. Recorded
+because "the test failed so the code is wrong" is not an inference.
+
+**Regressions added:** `test_world_sim_service.gd` tests 22-24. All three were verified to FAIL
+against the pre-fix code — and defect 1's regression is a good demonstration of why the
+`SCRIPT ERROR:` gate (D-038) exists: with the guard removed the runner reported the test as
+**PASS** (the method aborted before recording anything) and only the gate's log scan caught it.
+
+### Standing observation, not a Phase-08 defect: domain signals have no production consumers
+
+A grep across `src/` shows that **no domain-service signal in this project is connected to
+anywhere in production code** — not `relationship_changed` (Phase 05), not
+`member_joined`/`influence_changed`/`diplomacy_changed` (Phase 06), not `politics_changed`
+(Phase 07), and not Phase 08's `world_tick`/`world_event_triggered`/`actor_state_changed`/
+`actor_band_changed`. Every one is emitted and consumed only by tests; presentation is fed by
+PUSHED read-only views instead.
+
+This sits in tension with L-005 ("add a signal only when a real producer AND a real consumer
+exist now"), and the tension is **project-wide and pre-existing**, so it is recorded here as an
+observation rather than fixed inside Phase 08 — changing the convention for one subsystem would
+make it inconsistent with four others. Two things keep it from being pure speculation: the
+signals are the documented substrate the later phases subscribe to (B17 asked for these by
+name), and each has a test consumer asserting its payload and emission ORDER, which is what
+makes it a verified contract rather than an unexercised declaration. **If the convention is
+ever revisited, it should be revisited for all five subsystems at once.**

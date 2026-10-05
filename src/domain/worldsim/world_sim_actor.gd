@@ -169,8 +169,14 @@ func sim_state_cache() -> Dictionary:
 ## True when `cache` matches what this record would write. Used by the service's
 ## post-condition check, so a drifted cache is REPORTED rather than silently trusted — the
 ## same discipline `SectService.verify_character_cache()` applies to membership.
+## The comparison is EXACT, including the key count. The simulation owns the whole `sim_state`
+## field, so an extra key is drift too — somebody writing to a field they do not own — and a
+## subset check would silently accept it. That is the difference between "the values I care
+## about agree" and "this cache is mine and untouched", and only the second is a useful answer.
 func matches_sim_state_cache(cache: Dictionary) -> bool:
 	var expected := sim_state_cache()
+	if cache.size() != expected.size():
+		return false
 	for key in expected:
 		if not cache.has(key) or cache[key] != expected[key]:
 			return false

@@ -755,11 +755,23 @@
   bug. The parse-check gate runs before the suite in CI and would have named the file first,
   which is exactly why it is ordered that way — but the suite must not be *capable* of hanging
   on input the gate before it is meant to catch.
-- **Also:** the same class bit twice in one phase. `CharacterRegistry.hydrate` passed a payload
-  row straight to `CharacterState.from_dict`, whose parameter is statically typed `Dictionary` —
-  so a non-dictionary row was a VM error (aborting the caller) instead of a rejection. **At a
-  hydrate boundary, type-check a nested value BEFORE handing it to a statically-typed
-  parameter**, or the fail-closed path crashes instead of failing closed. Caught by the
-  `SCRIPT ERROR:` gate (D-038), which is the gate that exists for precisely this.
+- **Also:** the same class bit THREE times in one phase. (a) `CharacterRegistry.hydrate` passed
+  a payload row straight to `CharacterState.from_dict`, whose parameter is statically typed
+  `Dictionary` — so a non-dictionary row was a VM error (aborting the caller) instead of a
+  rejection. (b) `WorldSimulationState.from_dict`/`to_dict` dereferenced a null `_clock` when
+  the object had been built with `new()` instead of its `create()` factory. (c) `activity_of()`
+  null-checked one of the two fields it dereferenced. **At a hydrate/serialize boundary,
+  type-check a nested value BEFORE handing it to a statically-typed parameter, and null-check
+  EVERY field the method dereferences — not just the first one** — or the fail-closed path
+  crashes instead of failing closed. The second one mattered most: `new()` + `from_dict()` is
+  the pattern a future `SaveService` will use, so the crash sat on the critical path of a
+  feature that did not exist yet and no existing test could reach it.
+- **The tell that this class is present:** a class with a `create()`/factory that validates, and
+  a `new()` that does not. Anything public on such a class must survive being called on the
+  `new()` form — write one test that does exactly that, because every OTHER test will naturally
+  use the factory and none of them will ever touch the broken path.
 - **Fixed:** D-048. `tests/run_tests.gd` checks `can_instantiate()` and reports the file;
-  `CharacterRegistry.hydrate` type-checks each row first.
+  `CharacterRegistry.hydrate` type-checks each row; `WorldSimulationState` guards both
+  serialization entry points; `activity_of` guards on `is_usable()`. Regressions in
+  `tests/unit/worldsim/test_world_sim_service.gd` tests 22-24, each verified to fail against the
+  pre-fix code.

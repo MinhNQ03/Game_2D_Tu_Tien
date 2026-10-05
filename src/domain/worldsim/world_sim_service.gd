@@ -438,7 +438,13 @@ func _apply_event(event: WorldSimEventData, magnitude: int) -> bool:
 ## transition can be detected; a read that went through it would be stale for FAR actors and
 ## would make the answer depend on the player's travel history.
 func activity_of(instance_id: StringName) -> int:
-	var actor := _state.get_actor(instance_id) if _state != null else null
+	# `is_usable()`, not just a `_state` null-check: the lookup below also dereferences the
+	# CATALOG, so guarding one and not the other left a path where a non-null state and a null
+	# catalog crashed instead of reporting.
+	if not is_usable():
+		push_error("[worldsim] activity_of: the service is not usable")
+		return WorldSimScheduleData.Activity.RESTING
+	var actor := _state.get_actor(instance_id)
 	if actor == null:
 		push_error("[worldsim] activity_of: '%s' is not a simulated actor" % instance_id)
 		return WorldSimScheduleData.Activity.RESTING
