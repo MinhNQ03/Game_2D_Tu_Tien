@@ -356,6 +356,10 @@ func _is_token_inset(inset: float) -> bool:
 		float(UIPalette.HUD_MARGIN),
 		float(UIPalette.HUD_MARGIN + UIPalette.SIDE_PANEL_WIDTH),
 		float(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE),
+		# D-050: a side panel clears the strip the top plaque owns. Listed as a TOKEN SUM
+		# rather than as a number, which is the whole point of this helper — it accepts
+		# insets that are composed of layout tokens and rejects hand-typed literals.
+		float(UIPalette.HUD_MARGIN + UIPalette.TOP_PLAQUE_RESERVE),
 	]
 	return allowed.has(absf(inset))
 
@@ -382,8 +386,15 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 		if panel.anchor_top != 0.0 or panel.anchor_bottom != 1.0:
 			continue
 		side_panels += 1
-		assert_eq(int(panel.offset_top), UIPalette.HUD_MARGIN,
-			"a side panel starts one margin below the top edge")
+		# D-050 moved this boundary deliberately: a side panel now starts below the strip the
+		# top-right map/world plaque owns, because at one screen margin it sat in the SAME
+		# region and the sect panel covered the place name completely (visible the first time
+		# the panel was captured open). The contract is still "pinned to a screen anchor by a
+		# named token", which is what this test exists to protect — only the token changed.
+		assert_eq(int(panel.offset_top),
+			UIPalette.HUD_MARGIN + UIPalette.TOP_PLAQUE_RESERVE,
+			("a side panel starts one margin below the top edge PLUS the reserved plaque "
+				+ "strip, so it cannot cover the place name (D-050)"))
 		# It must STOP SHORT of the bottom, leaving the reserved prompt strip clear.
 		assert_eq(int(panel.offset_bottom),
 			-(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE),

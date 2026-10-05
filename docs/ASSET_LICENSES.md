@@ -305,3 +305,73 @@ terms file could be found in any of them:
 Already-cleared packs from the same set: **Xianxia Pixel Pack** (CC0, live), **Foozle Lucifer
 RPG UI** and **Tiny RPG Mana Soul GUI** (CC0, recorded as supporting candidates), and the
 **Aetheria pack** (project-owned, D-044).
+
+---
+
+## UI source-pack AUDIT (D-050) — measured, not eyeballed
+
+The D-050 brief mandates `AUDIT → CHOOSE → THEME → SCREENS`, with the audit covering visual
+language, licence, pixel density and completeness. It was run with
+**`tools/measure_ui_assets.py --audit`**, a new build-time tool that reports each texture's
+pixel size, centre alpha, centre brightness, border-band width and a verdict. That matters
+because `06-art-assets.md`/L-021 require those four facts to be MEASURED before any colour or
+layout decision rests on them, and until now the measuring was done by hand once per art pass.
+
+### What the measurements said
+
+| Family | Licence | Measured | Verdict |
+|---|---|---|---|
+| Xianxia `panel_inset.png` | CC0 | 216×117, centre brightness **15**, border 24 | **The best text surface in the repo.** Stays the dark well. |
+| Xianxia `panel.png` | CC0 | 218×118, brightness **231** | LIGHT plate — already correctly demoted to accent-only (D-034). Unchanged. |
+| Xianxia `button_*.png` | CC0 | 130×54, brightness **202 / 217 / 138** | LIGHT. **Confirmed already unused** by `UITheme` — D-044 switched the button family to the painted jade plate (brightness **28**). The claim in steering checks out; these files remain in the repo but nothing renders them. |
+| Xianxia `key_badge.png` | CC0 | 61×61, centre alpha **0** | HOLLOW ornament, not a keycap — D-034's drawn chip stands. |
+| Aetheria painted buttons | project-owned | 245×90, brightness **28** | DARK, correct, keep. |
+| Foozle Lucifer RPG UI | **CC0 1.0** | `Generic/` icon buttons are **16×16**; dark western-fantasy language | **REFERENCE ONLY, not promoted.** The 16×16 icon density is incompatible with a 1280–1920px menu, and the pack's visual language is western fantasy (already classified "B — supporting only", D-028). Unchanged by this audit. |
+| **Kenney Fantasy UI Borders** | **CC0 1.0** | **1-bit monochrome MASKS**, 48×48 / 96×96, 32 variants × 6 families, border band **4 or 8 px** | **PROMOTED (3 files).** See below. |
+
+### Why the Kenney pack won the ornament slot
+
+Every file in it measured as a **MASK** — 1-bit monochrome, pure white, 18–41% coverage — and
+that is the single most useful property in the whole audit. A monochrome mask is **tintable**,
+so ONE texture becomes antique gold, jade or crimson through `modulate` alone. That makes a
+semantic colour change a `UIPalette` edit instead of a new set of art per state, which is
+exactly what the B8 asset-replacement test asks for. A pre-coloured frame cannot do that.
+
+It is used as **ORNAMENT, never as a text surface**: `frame_ornate` has centre alpha 0, so a
+framed panel is still the dark `panel_inset` well with the gold frame drawn *around* it.
+Pairing the two preserves the inset's measured legibility rather than replacing it with
+something brighter.
+
+**The reader had to be extended to see any of this.** The pack ships 1-bit PNGs, which the
+first version of the tool refused outright ("only 8-bit channels supported"). Auditing a
+candidate pack from its preview image instead of its pixels is the mistake L-021 exists to
+prevent, so the tool now expands sub-byte bit depths. The mask/surface distinction was added
+for the same reason: calling a white mask a "LIGHT surface — not for light-only text" is true
+of its pixels and completely misleading about its use.
+
+### Promoted to runtime — THREE files, not the pack (B3)
+
+| Runtime path | Source | Licence | Used for |
+|---|---|---|---|
+| `assets/ui/kenney_borders/divider_rule.png` | `Double/Divider/divider-002.png` | CC0 1.0 | the ornamental divider (`UITheme.ornament_divider`) |
+| `assets/ui/kenney_borders/divider_fade.png` | `Double/Divider Fade/divider-fade-004.png` | CC0 1.0 | a fading rule, where a divider must not collide with a frame |
+| `assets/ui/kenney_borders/frame_ornate.png` | `Double/Border/panel-border-000.png` | CC0 1.0 | the ornate 9-slice frame (`UITheme.ornament_frame`), margin 8 from the measured border |
+
+- **Name · source · URL:** Fantasy UI Borders (1.0) · Kenney · `www.kenney.nl`
+- **Licence:** **CC0 1.0** — personal, educational and commercial use; modification and
+  redistribution permitted. Crediting "Kenney" is *requested, not required*; the project
+  credits it here and will in the in-game credits.
+- **Attribution file:** `assets/ui/kenney_borders/LICENSE.txt` (copied verbatim with the
+  assets, per the "do not delete licence/attribution material" rule).
+- **Reference copy retained** at `docs/design_refs/ui/source_packs/second_pack/` — the full
+  pack stays reference-only; only the three files above are referenced by runtime UI.
+- **Modification made:** none to the pixels. They are **tinted at runtime** via `modulate`
+  from `UIPalette`, which CC0 permits and which is the entire reason they were chosen.
+
+### Re-running this audit when a new pack arrives
+
+`python3 tools/measure_ui_assets.py --audit` (the known families) or
+`python3 tools/measure_ui_assets.py <dir>` (a candidate). `--selftest` first: the tool has a
+12-check selftest covering the framed/hollow/mask/light-plate cases, because an asset-measuring
+tool that has silently stopped measuring correctly is worse than no tool — it would launder a
+bad assumption as a measurement.

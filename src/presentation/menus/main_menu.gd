@@ -99,15 +99,11 @@ func _build_ui() -> void:
 	_subtitle.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
 	box.add_child(_subtitle)
 
-	# Ornamental divider under the title treatment.
-	_divider = TextureRect.new()
-	_divider.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_divider.stretch_mode = TextureRect.STRETCH_SCALE
-	_divider.custom_minimum_size = Vector2(0, 10)
-	_divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if ResourceLoader.exists(UIPalette.TEX_TITLE_DIVIDER):
-		_divider.texture = load(UIPalette.TEX_TITLE_DIVIDER)
+	# Ornamental divider under the title treatment — from the ONE theme factory (D-050).
+	# This screen used to build its own, and so did the HUD; the duplicated construction had
+	# already produced a visible bug (the stretched jade divider rendered as a flat saturated
+	# bar and read as a PROGRESS BAR directly under the subtitle).
+	_divider = UITheme.ornament_divider()
 	box.add_child(_divider)
 
 	# One deliberate gap between the title treatment and the action column, so the plaque
@@ -188,7 +184,12 @@ func _build_backdrop() -> void:
 	# LINEAR, not nearest: this is PAINTED art, not pixel art. Nearest would stair-step the
 	# soft cloud gradients and the fine gold detail (`UIPalette` painted-tier note).
 	scene.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# COVERED, not CENTERED (D-050). The painted backdrop is 310x330 — portrait-ish — so
+	# centring it on a 16:9 screen left hard black bars down both sides across roughly 40% of
+	# the width, which read as an unfinished application. COVERED fills the screen and crops
+	# the overflow, which is what a backdrop is for. Found by looking at a real capture; no
+	# assertion could see it.
+	scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	scene.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	scene.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE

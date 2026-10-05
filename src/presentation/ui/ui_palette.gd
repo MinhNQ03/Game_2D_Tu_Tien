@@ -196,6 +196,84 @@ const FOCUS_BORDER := 2
 
 const UI_ASSET_DIR := "res://assets/ui/xianxia"
 
+# --- Kenney Fantasy UI Borders (CC0) — the ORNAMENT family (D-050) ----------
+#
+# Promoted from the reference pack after the AUDIT in `tools/measure_ui_assets.py --audit`.
+# Exactly three textures were promoted, not the pack (B3: no source-pack dumping).
+#
+# WHY THESE AND NOT THE PACK'S PANELS: every file in this family measured as a **MASK** —
+# 1-bit monochrome, pure white, 18-41% coverage. That is the most valuable property in the
+# whole audit. A monochrome mask is TINTABLE, so ONE texture becomes antique gold, jade or
+# crimson by `modulate` alone, which means a semantic colour change is a `UIPalette` edit
+# rather than new art for every state (the B8 asset-replacement test). A pre-coloured frame
+# could not do that.
+#
+# They are ORNAMENT, never a text surface: `frame_ornate` has centre alpha 0 (there is no fill
+# to put text on), so a framed panel is still the dark `panel_inset` well with this drawn
+# AROUND it. Pairing a frame with the well instead of replacing the well is what keeps the
+# measured legibility of the inset (centre brightness 15 — the best text surface in the repo).
+const ORNAMENT_DIR := "res://assets/ui/kenney_borders"
+
+## 192x20 monochrome rule, 41% coverage, no border band — the ornamental divider. Replaces the
+## stretched jade `title_divider.png`, which rendered as a flat saturated bar and read as a
+## PROGRESS BAR under the menu subtitle and in every panel header (found by looking at a real
+## capture, D-050; no assertion could have seen it).
+const TEX_ORNAMENT_DIVIDER := ORNAMENT_DIR + "/divider_rule.png"
+
+## 192x28 monochrome rule whose ends fade — for a divider that must not collide with a frame.
+const TEX_ORNAMENT_DIVIDER_FADE := ORNAMENT_DIR + "/divider_fade.png"
+
+## 96x96 monochrome frame, centre alpha 0, measured border band 8px — the ornate 9-slice
+## frame drawn around a dark well.
+const TEX_ORNAMENT_FRAME := ORNAMENT_DIR + "/frame_ornate.png"
+
+## 9-slice margin for `TEX_ORNAMENT_FRAME`. The border band MEASURED 8px at 96x96; the patch
+## margin must be >= it or the corners stretch (`06-art-assets.md`).
+const ORNAMENT_FRAME_MARGIN := 8
+
+## Height the ornamental divider is drawn at. The source is 20px tall; 12 keeps it a thin
+## engraved rule rather than a band competing with the text above it.
+const ORNAMENT_DIVIDER_HEIGHT := 12
+
+
+# --- B6 SEMANTIC TOKEN ALIASES (D-050) --------------------------------------
+#
+# The names `docs/UI_UX_BIBLE.md` and the D-050 brief use, bound to the colours this palette
+# already defines. They are ALIASES, deliberately — introducing a second set of colour values
+# would create exactly the two-sources-of-truth problem this file exists to prevent. What they
+# add is a vocabulary a screen can read semantically ("this is danger") instead of
+# descriptively ("this is crimson"), so a future accent change is one edit here.
+
+## Deep ink ground — the darkest surface in the language.
+const INK_DEEP := COLOR_BACKGROUND_DEEP
+## The standard text-bearing surface (measured brightness 15 via `panel_inset.png`).
+const INK_SURFACE := COLOR_SURFACE
+## A lifted surface, for a row that must read as selected/active.
+const INK_SURFACE_ALT := COLOR_SURFACE_HOVER
+## Antique gold — STRUCTURE and ornament: frames, dividers, titles. Never body text.
+const GOLD_PRIMARY := COLOR_TITLE
+## Gold at low alpha — ornament that must frame without competing.
+const GOLD_SECONDARY := COLOR_ORNAMENT
+## Jade — INTERACTION and positive action.
+const JADE_ACCENT := COLOR_ACCENT
+## Cyan-leaning interaction, for a focused/hovered interactive edge.
+const CYAN_INTERACTION := COLOR_BADGE_BORDER
+## Crimson — DANGER and destructive/exit actions ONLY. Never decoration.
+const CRIMSON_DANGER := COLOR_CRIMSON
+const TEXT_PRIMARY := COLOR_TEXT
+const TEXT_SECONDARY := COLOR_TEXT_MUTED
+const TEXT_MUTED := COLOR_TEXT_DISABLED
+const FOCUS := COLOR_ACCENT
+const DISABLED := COLOR_SURFACE_DISABLED
+
+
+## Vertical strip at the TOP of the screen that the map/world plaque owns. A full-height side
+## panel must start below it, or it covers the place name — which is what the sect panel did
+## (found in a real capture, D-050). Reserving it in a named constant makes "a side panel must
+## not cover the plaque" arithmetic rather than something to notice in a screenshot, exactly
+## as `PROMPT_STRIP_RESERVE` does for the bottom prompt row.
+const TOP_PLAQUE_RESERVE := 104
+
 const TEX_PANEL := UI_ASSET_DIR + "/panels/panel.png"
 const TEX_PANEL_INSET := UI_ASSET_DIR + "/panels/panel_inset.png"
 const TEX_BUTTON_NORMAL := UI_ASSET_DIR + "/buttons/button_normal.png"

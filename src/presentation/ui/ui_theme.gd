@@ -293,6 +293,53 @@ static func corner_ornament() -> Texture2D:
 	return load(UIPalette.TEX_KEY_BADGE) as Texture2D
 
 
+## THE ornamental divider. One factory, consumed by every screen that needs a rule (D-050).
+##
+## It replaces duplicated construction in `main_menu.gd` and `gameplay_hud.gd`, which each
+## built their own `TextureRect` with their own filter/stretch/size choices — a B6/B7
+## violation that had already produced a visible bug: both stretched the jade
+## `title_divider.png` to panel width, where it rendered as a flat saturated bar and read as a
+## PROGRESS BAR sitting under the menu subtitle. The source is now a monochrome MASK tinted
+## with `GOLD_SECONDARY`, so the divider is gold structure rather than a jade fill, and
+## changing every divider in the game is one constant here.
+##
+## `width_fills` makes the rule span its parent (a panel header); passing false keeps it at
+## its natural width (a centred ornament under a title).
+static func ornament_divider(width_fills: bool = true) -> TextureRect:
+	var strip := TextureRect.new()
+	strip.name = "OrnamentDivider"
+	# Pixel-art mask: NEAREST, and it is scaled on one axis only (`06-art-assets.md`).
+	strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	strip.stretch_mode = TextureRect.STRETCH_SCALE
+	strip.custom_minimum_size = Vector2(0, UIPalette.ORNAMENT_DIVIDER_HEIGHT)
+	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL if width_fills \
+		else Control.SIZE_SHRINK_CENTER
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The tint IS the design decision: a white mask becomes antique-gold ornament.
+	strip.modulate = UIPalette.GOLD_SECONDARY
+	if ResourceLoader.exists(UIPalette.TEX_ORNAMENT_DIVIDER):
+		strip.texture = load(UIPalette.TEX_ORNAMENT_DIVIDER)
+	return strip
+
+
+## The ornate 9-slice frame drawn AROUND a dark well (never instead of it — the frame's centre
+## alpha is 0, so it carries no text surface of its own). Tinted gold from one constant.
+static func ornament_frame() -> NinePatchRect:
+	var frame := NinePatchRect.new()
+	frame.name = "OrnamentFrame"
+	frame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var margin := UIPalette.ORNAMENT_FRAME_MARGIN
+	frame.patch_margin_left = margin
+	frame.patch_margin_right = margin
+	frame.patch_margin_top = margin
+	frame.patch_margin_bottom = margin
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.modulate = UIPalette.GOLD_PRIMARY
+	if ResourceLoader.exists(UIPalette.TEX_ORNAMENT_FRAME):
+		frame.texture = load(UIPalette.TEX_ORNAMENT_FRAME)
+	return frame
+
+
 ## The painted menu backdrop scene, or null if absent.
 static func menu_backdrop() -> Texture2D:
 	if not ResourceLoader.exists(UIPalette.TEX_MENU_BACKDROP):

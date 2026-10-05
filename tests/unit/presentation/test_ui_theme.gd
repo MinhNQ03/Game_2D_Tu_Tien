@@ -332,3 +332,106 @@ func test_painted_backdrop_and_portrait_resolve() -> void:
 	if female != null:
 		assert_ne(female.atlas.resource_path, atlas.atlas.resource_path,
 			"the two portrait variants are different source art")
+
+
+# === D-050: the ornament seam is CENTRAL, and the chosen assets are what was measured ===
+
+## The divider must come from ONE factory, and both screens must use it.
+##
+## This is the regression for a defect that was VISIBLE and untested: `main_menu.gd` and
+## `gameplay_hud.gd` each built their own divider `TextureRect` with their own filter, stretch
+## and size, and both stretched the jade `title_divider.png` to panel width — where it rendered
+## as a flat saturated bar and read as a PROGRESS BAR under the menu subtitle and in every
+## panel header. Duplicated styling is what allowed one wrong decision to appear twice, so the
+## guard is structural: assert that neither screen constructs a divider itself.
+func test_d050_the_divider_comes_from_one_central_factory() -> void:
+	var divider := UITheme.ornament_divider()
+	assert_not_null(divider, "the theme exposes an ornament divider factory")
+	assert_true(divider is TextureRect, "it is a TextureRect")
+	assert_eq(divider.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+		"pixel-art ornament is NEAREST filtered (06-art-assets)")
+	# The tint IS the design decision: a white mask becomes antique-gold ornament, so a
+	# semantic colour change is one palette constant rather than new art.
+	assert_eq(divider.modulate, UIPalette.GOLD_SECONDARY,
+		"it is tinted from the palette's gold token, not left white")
+	assert_not_null(divider.texture, "and it actually carries the ornament texture")
+	assert_eq(divider.custom_minimum_size.y, float(UIPalette.ORNAMENT_DIVIDER_HEIGHT),
+		"its height comes from the palette")
+	divider.free()
+
+	# STRUCTURAL GUARD: no screen may build its own divider. Reading the source is the only
+	# way to assert this — a rendered divider looks the same whoever constructed it, which is
+	# precisely why the duplication survived until somebody looked at a screenshot.
+	for path in [
+		"res://src/presentation/menus/main_menu.gd",
+		"res://src/presentation/hud/gameplay_hud.gd",
+	]:
+		var source := _read_source(String(path))
+		assert_ne(source, "", "%s is readable" % String(path))
+		assert_false(source.contains("TEX_TITLE_DIVIDER"),
+			("%s must not reference the divider TEXTURE directly — it asks "
+				+ "UITheme.ornament_divider() so one edit restyles every divider in the game")
+				% String(path))
+
+
+## The promoted ornament assets must exist and must still be the MASKS the audit chose them
+## for. A pack update that replaced them with pre-coloured art would silently break the tint
+## seam: the frame would stop responding to `UIPalette`, and nothing else would notice.
+func test_d050_the_promoted_ornament_assets_are_present() -> void:
+	for path in [
+		UIPalette.TEX_ORNAMENT_DIVIDER,
+		UIPalette.TEX_ORNAMENT_DIVIDER_FADE,
+		UIPalette.TEX_ORNAMENT_FRAME,
+	]:
+		assert_true(ResourceLoader.exists(String(path)),
+			"the promoted ornament asset '%s' exists in runtime assets" % String(path))
+	# The frame's 9-slice margin must be >= its MEASURED border band (8px), or the corners
+	# stretch — the `content_margin >= texture_margin` rule applied to a NinePatch.
+	assert_true(UIPalette.ORNAMENT_FRAME_MARGIN >= 8,
+		"the frame's patch margin (%d) is at least its measured 8px border band"
+			% UIPalette.ORNAMENT_FRAME_MARGIN)
+	var frame := UITheme.ornament_frame()
+	assert_not_null(frame, "the theme exposes an ornament frame factory")
+	assert_eq(frame.patch_margin_left, UIPalette.ORNAMENT_FRAME_MARGIN,
+		"and nine-patches it from the palette constant on every side")
+	assert_eq(frame.modulate, UIPalette.GOLD_PRIMARY, "tinted gold from the palette")
+	frame.free()
+
+
+## A full-height side panel must start BELOW the strip the top plaque owns, or it covers the
+## place name — which the sect panel was doing, completely, until a capture showed it. Pinning
+## the arithmetic means the collision cannot come back by someone retuning a margin.
+func test_d050_side_panels_clear_the_top_plaque_strip() -> void:
+	assert_true(UIPalette.TOP_PLAQUE_RESERVE > 0,
+		"a reserved top strip exists for the map/world plaque")
+	var source := _read_source("res://src/presentation/hud/gameplay_hud.gd")
+	assert_true(source.contains("TOP_PLAQUE_RESERVE"),
+		("the HUD's side-panel bounds must consume TOP_PLAQUE_RESERVE, so 'a panel must not "
+			+ "cover the plaque' is arithmetic rather than something to spot in a screenshot"))
+
+
+## The semantic token aliases the UI bible uses must resolve, and DANGER must stay distinct
+## from interaction — colour is never the only carrier of meaning, but when it carries any, it
+## must not collide.
+func test_d050_semantic_tokens_are_distinct() -> void:
+	assert_ne(UIPalette.CRIMSON_DANGER, UIPalette.JADE_ACCENT,
+		"danger and interaction are different colours")
+	assert_ne(UIPalette.GOLD_PRIMARY, UIPalette.JADE_ACCENT,
+		"structure and interaction are different colours")
+	assert_ne(UIPalette.TEXT_PRIMARY, UIPalette.TEXT_SECONDARY,
+		"primary and secondary text differ")
+	# Every text token is LIGHT, which is why a text-bearing surface must measure dark.
+	for token in [UIPalette.TEXT_PRIMARY, UIPalette.TEXT_SECONDARY]:
+		var luminance: float = 0.299 * token.r + 0.587 * token.g + 0.114 * token.b
+		assert_true(luminance > 0.4,
+			"the text palette is light (luma %.2f), which is the premise the surface "
+				% luminance + "brightness limit protects")
+
+
+func _read_source(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var text := file.get_as_text()
+	file.close()
+	return text

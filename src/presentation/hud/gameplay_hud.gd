@@ -364,7 +364,13 @@ func _bound_side_panel(panel: Control, on_left: bool) -> void:
 	else:
 		panel.offset_left = -(UIPalette.HUD_MARGIN + UIPalette.SIDE_PANEL_WIDTH)
 		panel.offset_right = -UIPalette.HUD_MARGIN
-	panel.offset_top = UIPalette.HUD_MARGIN
+	# Start BELOW the top plaque strip, not at the screen margin (D-050). A full-height side
+	# panel anchored at `HUD_MARGIN` occupies the same region as the top-right map/world
+	# plaque, and the sect panel was covering the place name completely — visible the moment
+	# the panel was captured open, invisible to every test. Reserving the strip by name makes
+	# "a side panel must not cover the plaque" arithmetic, the same way
+	# `PROMPT_STRIP_RESERVE` protects the prompt row at the bottom.
+	panel.offset_top = UIPalette.HUD_MARGIN + UIPalette.TOP_PLAQUE_RESERVE
 	# Stop short of the bottom so the control prompts are never covered (the reserved strip).
 	panel.offset_bottom = -(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE)
 	# A bounded box must not be re-expanded by its own minimum size.
@@ -425,16 +431,12 @@ func _panel() -> PanelContainer:
 ## plain `TextureRect`, not a NinePatchRect: the divider is DECOR with no interior to protect,
 ## and scaling a 136x21 strip along one axis is exactly what the art is for. If the texture is
 ## missing the node simply draws nothing — the layout gap stays, so nothing jumps.
+## Delegates to the ONE divider factory (D-050). It used to build its own `TextureRect` with
+## its own filter/stretch/size, and so did the main menu — duplicated styling that had already
+## produced a visible bug (the stretched jade divider read as a progress bar in every panel
+## header). The HUD now asks the theme, like it asks for every other style.
 func _divider_strip() -> TextureRect:
-	var strip := TextureRect.new()
-	strip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	strip.stretch_mode = TextureRect.STRETCH_SCALE
-	strip.custom_minimum_size = Vector2(0, DIVIDER_HEIGHT)
-	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if ResourceLoader.exists(UIPalette.TEX_TITLE_DIVIDER):
-		strip.texture = load(UIPalette.TEX_TITLE_DIVIDER)
-	return strip
+	return UITheme.ornament_divider()
 
 
 # --- Owner-pushed view state -------------------------------------------------
