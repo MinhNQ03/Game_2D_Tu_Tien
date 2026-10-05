@@ -2700,3 +2700,67 @@ vi/en × 16:9 / 16:10, and each filename records the viewport actually rendered.
 - `UI_TEXTURES` drops to 14 entries and now means what it says (every RUNTIME texture).
 - `tools/measure_ui_assets.py` and `tools/capture_ui.gd` are the two reusable gates this pass
   leaves behind: one measures assets before they are wired, the other shows what shipped.
+
+---
+
+## D-051 — Phase-09 combat documentation close-out, and the ANALYTIC HURTBOX MODEL named
+**Status:** Accepted · **Phase:** post-09 hygiene · **Scope:** DOCUMENTATION ONLY — no
+gameplay, scene, resource, UI-runtime, autoload or networking change
+
+### What was stale, and the pattern again
+
+`COMBAT_DESIGN.md` opened with *"Nothing here is implemented. Combat today exists only as the
+Phase-02 sandbox."* — true when written, false the moment Phase 09 shipped, and still on the
+page. Same class as D-049: a document mixing "what we froze" with "what exists" has no safe way
+to be updated, so the status rots while the design stays correct.
+
+The fix is the same structural one: a `§0 CURRENT STATUS` block that marks each item
+**IMPLEMENTED / NOT IMPLEMENTED**, and per-item markers inline where a frozen verb is partly
+built (`basic attack` implemented, `defensive action` design-only). A section with no marker is
+design, stated once at the top rather than guessed at per paragraph.
+
+### RNG ownership, corrected
+
+`COMBAT_DESIGN.md` §10 predicted combat would "introduce the seeded seam in its own phase".
+Overtaken: **Phase 08 introduced it** (`RngService`/`RngStream`, D-040/C-010) and **Phase 09
+consumes `RngService.STREAM_COMBAT`**. Combat added no RNG architecture of its own.
+`CONTRADICTION_REGISTER.md` C-010 and the dependency matrix already recorded this correctly —
+only the combat doc had the old prediction, which is exactly why the audit read all three.
+
+The preserved properties are now written down per item: one seed per run, subsystem-scoped
+streams that START independently, injectable (the service refuses to run unseeded), replayable
+(one draw per HIT, asserted), no global `rand*()`, and save-compatible (seed + per-stream
+position, since a seed alone only reproduces from the beginning).
+
+### The ANALYTIC HURTBOX MODEL is now a named model (§10a)
+
+Hit resolution is `AttackComponent → CombatHurtboxRegistry → CombatService → DamageRules →
+HurtboxComponent`. No `Area2D`, no `HITBOX`/`HURTBOX` layer bits; a target is a point plus a
+radius, an attack a reach plus an arc.
+
+Naming it matters because the TERMINOLOGY invites the wrong implementation. The reasons are
+recorded in the order they actually mattered: deterministic headless testing (L-016/L-017 — an
+Area2D overlap does not fire reliably in the `-s` runner, so hit detection built on it cannot be
+E2E-tested at all), reliable E2E, controlled performance (PERF-002, ~0.42 µs per candidate),
+future authoritative multiplayer (resolution is a pure function and needs no scene), and
+sufficient accuracy on a 16px grid.
+
+**Explicitly: do not revert to Area2D to match the words.** Add shape-accurate overlap when
+something needs it, with its consumer, without removing the analytic path.
+
+### COMBAT PRESENTATION DEBT, recorded rather than fixed here (§10b)
+
+Audited against the real build: the four lifecycle states are **not visually distinguishable**.
+Attack produces no swing, flash, impact or recovery pause — only a number changing. The state
+machine is correct and invisible, which fails `COMBAT_DESIGN.md` §1 ("hour 1: hitting feels
+good; threats are readable") and the §7 rule that a telegraph is learned language.
+
+It is DEBT, not a design change: the design already requires readable timing. Part A changed no
+code; the fix is owned by the Phase-10 presentation package.
+
+### Consequences
+
+- A reader can now tell design from build in the combat doc without checking git history.
+- The RNG story has one owner and one seed, stated in the doc that previously contradicted it.
+- The analytic model cannot be "fixed" into Area2D by someone pattern-matching on terminology.
+- Presentation debt is tracked where the design lives, so it cannot be lost between phases.
