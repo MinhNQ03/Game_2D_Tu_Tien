@@ -480,8 +480,15 @@ func test_d050_the_backdrop_button_and_scroll_body_come_from_the_theme() -> void
 	probe_panel.free()
 
 	# STRUCTURAL: no screen constructs any of these seams itself.
+	#
+	# `ProgressBar.new()` is in the list because of a documentation claim that turned out to be
+	# false: `UI_UX_BIBLE.md` §8b says a screen that builds its own seam fails a structural
+	# test, and that was true of the divider, backdrop, button and scroll body but NOT of the
+	# gauge, which was only covered by a COUNT assertion in the HUD test. Writing the claim
+	# down is what exposed the gap; the token closes it rather than softening the sentence.
 	var tokens: Array[String] = [
 		"BackdropGradient", "Vignette", "MENU_BUTTON_WIDTH", "ScrollContainer.new()",
+		"ProgressBar.new()",
 	]
 	var offenders: Array[String] = []
 	for path in _presentation_scripts("res://src/presentation"):

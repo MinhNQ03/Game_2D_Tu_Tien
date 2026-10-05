@@ -241,6 +241,53 @@ The sect panel already is exactly this shape. The screens differ in *content and
 language. Risks to watch at Phase 25: density creep on the HUD, icon reuse for different
 concepts, and colour-only meaning.
 
+## 8b. Maintainability of the UI foundation (D-050 deliverable)
+
+What it costs to change this UI, stated as facts that were CHECKED rather than as intentions.
+Each claim below is either enforced by a named test or was verified by grep at the time of
+writing; where something is *not* as tidy as it sounds, that is said instead of smoothed over.
+
+**Changing the look of a thing is one edit.** The five shared seams each have exactly one
+factory in `UITheme` — `build_backdrop(parent)`, `menu_button(role)`, `ornament_divider()`,
+`scroll_body(parent)`, `vitals_gauge()` — and a screen that builds its own fails a structural
+test that WALKS `src/presentation` (`test_d050_the_divider_comes_from_one_central_factory`,
+`test_d050_the_backdrop_button_and_scroll_body_come_from_the_theme`). So restyling every
+divider, every menu button or every scrolling panel in the game is a change in one function.
+
+**No screen names a colour, and no screen names an asset path.** Verified: zero `Color(`
+literals anywhere in `src/presentation` outside `ui_palette.gd`/`ui_theme.gd`, and zero
+`res://assets` strings outside `ui_palette.gd`. Colour arrives as a semantic ROLE
+(`ROLE_PRIMARY`/`SECONDARY`/`DANGER`) or a palette token; geometry arrives as a named layout
+token. That is what makes a retheme a palette edit rather than a sweep.
+
+**Swapping the art is four named roots, not one — and that is deliberate.** `UI_ASSET_DIR`
+(pixel xianxia), `ORNAMENT_DIR` (tintable Kenney masks), `PAINTED_UI_DIR` (painted tier) and
+`PORTRAIT_DIR` all live in `ui_palette.gd`, and they are separate **because the tiers do not
+share rules**: pixel art is nearest-filtered and integer-scaled, painted art is LINEAR and may
+stretch (`06-art-assets.md`). Collapsing them into one directory would be tidier to describe
+and would lose the distinction that keeps gold filigree from stair-stepping. Changing the pack
+for a tier means editing that tier's constants plus the per-slot 9-slice margins beside them.
+
+**Adding a screen inherits the foundation by construction.** Call `UITheme.build_backdrop(self)`
+and `UITheme.menu_button(role)` and the screen already has the composition, the interaction
+states, the focus handling and the key prompts. The settings screen is the worked example of
+what happens otherwise: it predated the factories, so it shipped as a plaque on a flat void
+with three untinted buttons — not a decision, just construction nobody copied.
+
+**The limits, stated plainly:**
+- A **tier added to a measured container** (the HUD plaques) requires updating
+  `TOP_PLAQUE_RESERVE` *and* the test fixture that populates it. The reserve is derived from a
+  measurement, not computed at runtime, so it is the one number a new tier can invalidate —
+  and a hidden child measures as zero, which is how it was wrong four times (L-035).
+- **Only one gauge exists**, and the rule that permits it is that combat owns health. A second
+  gauge for mana/XP/realm is still forbidden until a system owns that value (§4), and the
+  gauge COUNT is asserted so adding one fails loudly.
+- **The key chip is drawn, not asset-backed** (`key_badge.png` measures centre alpha 0 — it is
+  a corner ornament). Swap it back the day real keycap art lands.
+- **Visual regressions are caught by a human looking at `tools/capture_ui.gd` output**, not by
+  a test. There is no image-diff gate, so "run the captures and look" is a required step of
+  any UI change, not an optional nicety (§3b).
+
 ## 9. What this document does NOT do
 
 No screens are implemented, no runtime UI code is changed, and no asset is added. Phase 25 is
