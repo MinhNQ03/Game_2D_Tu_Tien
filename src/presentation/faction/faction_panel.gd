@@ -59,26 +59,9 @@ func _ready() -> void:
 
 func _build() -> void:
 	# The panel is a BOUNDED box on the screen edge (`GameplayHUD._bound_side_panel`), so its
-	# content must scroll rather than stretch the frame: three factions of detail is taller
-	# than a phone screen, and content that outgrows its frame pushes the 9-slice border
-	# off-screen, which is what made this panel render with no visible plate at all.
-	# `follow_focus` so keyboard navigation cannot select a row that is scrolled out of sight.
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# Explicit STOP: the panel itself and every label in it are MOUSE_FILTER_IGNORE, and this
-	# is the ONE node in the subtree that must actually receive input — otherwise the wheel
-	# passes straight through and the content can be clipped with no way to reach it.
-	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(scroll)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	# Fill the scroll viewport's width so the value rows and the divider span the panel
-	# instead of shrink-wrapping their text.
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(box)
+	# content scrolls inside the frame — from the ONE scroll-body factory (D-050), which also
+	# reserves the gutter that keeps the scrollbar off this panel's value column.
+	var box := UITheme.scroll_body(self)
 
 	_title = _make_label(UIPalette.FONT_SIZE_SUBTITLE, UIPalette.COLOR_TITLE)
 	box.add_child(_title)

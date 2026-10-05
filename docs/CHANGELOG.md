@@ -8,6 +8,44 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-05 — UI production foundation (D-050)
+
+Presentation only — no gameplay rule, domain state, input semantic, autoload or networking
+change.
+
+Every defect below was found by **looking at screenshots of the running game**, not by a test.
+A capture harness (`tools/capture_ui.gd`) now boots the real app in a real window and writes
+the actual viewport for eight UI states, in both languages, at two aspect ratios.
+
+- **Four shared seams, one factory each, in `UITheme`** — `ornament_divider()`,
+  `build_backdrop()`, `menu_button(role)`, `scroll_body()`. Each has a structural guard that
+  WALKS `src/presentation` instead of listing files; the first version listed two files and
+  passed while two other screens still had the defect it existed to catch. The duplication's
+  consequences were all visible on screen: four hand-rolled dividers at three heights, a
+  settings screen that was a plaque on a flat void with three untinted buttons, and a
+  scrollbar drawn over the value column in BOTH side panels.
+- **`TOP_PLAQUE_RESERVE` 104 → 198, measured.** The side panels covered both top plaques. The
+  value is now derived from the plaques (identity 180, map 154) and re-measured by a test that
+  fills them through the HUD's public setters — a **bare** HUD measures ~25px short, because a
+  hidden child contributes nothing to a container's minimum size. The world-event hint is
+  capped at two lines with ellipsis, so the plaque has a maximum height at all.
+- **The painted backdrop is cropped past its measured 21-column flat dead margin**, which
+  `KEEP_ASPECT_COVERED` had been scaling into an ~87px bar of near-black down the left of the
+  menu. A test re-derives the margin from the pixels, so a re-export fails loudly.
+- **The HUD portrait is visible.** `portrait_frame.png` was measured at centre brightness 229
+  in D-034 — an opaque light panel — and was nine-patched OVER the portrait, painting a cream
+  plate across the face for two phases. It now uses the hollow `frame_ornate.png`.
+- **Localization:** the `en` subtitle said *"A tu tiên journey"*; the active language in
+  Settings was marked `> English <` (untranslatable ASCII, and the only carrier of the state)
+  and is now a localized template plus the PRIMARY button role.
+- **The capture harness refuses to lie:** it verifies the active language against
+  `Localization` (every `vi_*.png` in the first run was in English, because boot applies the
+  SAVED language) and writes no file for a panel that did not open. Exits non-zero either way.
+- **Retired** `UIPalette.TEX_TITLE_DIVIDER`; `UI_TEXTURES` is 14 entries and now means every
+  RUNTIME texture. `docs/ASSET_LICENSES.md` U10 is marked UNWIRED.
+- Recorded as **L-034** in steering and **D-050** in `DECISIONS.md`, including what was
+  deliberately NOT changed (the measured-dark painted button family stays).
+
 ### 2026-10-05 — Phase-08 documentation close-out (D-049)
 
 Documentation only — no gameplay, scene, resource, UI-runtime, autoload or networking change.

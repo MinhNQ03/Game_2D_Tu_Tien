@@ -68,12 +68,17 @@ func _exit_tree() -> void:
 
 
 func _build_ui() -> void:
-	var fill := ColorRect.new()
-	fill.name = "Background"
-	fill.color = UIPalette.COLOR_BACKGROUND
-	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(fill)
+	# The SAME composed backdrop the menu wears, from the one builder (D-050). This screen
+	# used to paint a flat `COLOR_BACKGROUND` fill, so the game had one composed screen and
+	# one void — not because anybody chose that, but because the composition lived inside
+	# `main_menu.gd` and was only reachable by copying it.
+	#
+	# A full backdrop rather than a translucent scrim over the menu: the menu's plaque is a
+	# different height, so leaving it visible underneath put a second plaque frame around this
+	# one and left the covered screen's title and Quit label legible around the edges. This is
+	# a SCREEN in navigation terms — Main opens it, Main closes it, Back returns — so it is
+	# composed like one.
+	UITheme.build_backdrop(self)
 
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -82,7 +87,7 @@ func _build_ui() -> void:
 
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.panel_stylebox())
-	panel.custom_minimum_size = Vector2(420, 0)
+	panel.custom_minimum_size = Vector2(UIPalette.MENU_PANEL_WIDTH, 0)
 	center.add_child(panel)
 
 	var box := VBoxContainer.new()
@@ -105,7 +110,11 @@ func _build_ui() -> void:
 	# One button per SUPPORTED language, read from the service so this screen never holds a
 	# second copy of the language list (`07-localization.md`: adding a language is data).
 	for code in _supported_languages():
-		var button := _make_button()
+		# Built through the ONE menu-button factory (D-050), so this screen wears the same
+		# plate, size and interaction states as the menu. It used to roll its own bare
+		# `Button` at a hand-typed width with no role, which is why all three actions here
+		# rendered as identical untinted plates.
+		var button := UITheme.menu_button(UITheme.ROLE_SECONDARY)
 		button.pressed.connect(_on_language_chosen.bind(code))
 		box.add_child(button)
 		_language_buttons[code] = button
@@ -115,16 +124,9 @@ func _build_ui() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(spacer)
 
-	_back_button = _make_button()
+	_back_button = UITheme.menu_button(UITheme.ROLE_SECONDARY)
 	_back_button.pressed.connect(_on_back)
 	box.add_child(_back_button)
-
-
-func _make_button() -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(340, 0)
-	button.focus_mode = Control.FOCUS_ALL
-	return button
 
 
 ## Supported codes from the Localization service, or a safe literal pair if the service is
@@ -150,11 +152,22 @@ func _refresh_text() -> void:
 		var button: Button = _language_buttons[code]
 		var key: String = String(LANGUAGE_LABEL_KEYS.get(code, ""))
 		var label := String(_loc.call("t", key)) if key != "" else String(code)
-		# The active language is marked in TEXT, not by colour alone, so the current choice
-		# is readable regardless of theme or colour vision.
-		# Disabling the active one would drop it out of the focus order, so it stays
-		# pressable (re-selecting is a harmless no-op) and is marked in TEXT instead.
-		button.text = "> %s <" % label if code == active else label
+		# TWO carriers for "this is the language in use", neither of them sufficient alone:
+		#   * TEXT — a localized template, not the `> x <` ASCII brackets this used to print.
+		#     Brackets are not a visual language, they shifted the label off-centre, and they
+		#     are untranslatable punctuation wrapped around a translated name.
+		#   * ROLE — the active button is promoted to PRIMARY, the same treatment New Game
+		#     gets on the menu, so the choice is visible at a glance too.
+		# Disabling the active one would drop it out of the focus order, so it stays pressable
+		# (re-selecting is a harmless no-op).
+		# Explicitly typed: `code` comes out of a Dictionary as Variant, so `code == active`
+		# is a Variant comparison and `:=` would infer Variant — which this project promotes
+		# to a compile error (L-020).
+		var is_active: bool = String(code) == active
+		button.text = String(_loc.call("t_args", "UI_SETTINGS_LANGUAGE_ACTIVE",
+			{"language": label})) if is_active else label
+		UITheme.apply_button_role(button,
+			UITheme.ROLE_PRIMARY if is_active else UITheme.ROLE_SECONDARY)
 
 
 func _on_language_chosen(code: String) -> void:

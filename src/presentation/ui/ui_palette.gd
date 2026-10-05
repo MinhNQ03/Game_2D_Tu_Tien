@@ -278,20 +278,27 @@ const DISABLED := COLOR_SURFACE_DISABLED
 ## panel must not cover a plaque" arithmetic rather than something to notice in a screenshot,
 ## exactly as `PROMPT_STRIP_RESERVE` does for the bottom prompt row.
 ##
-## MEASURED, not guessed: **identity plaque 156**, **map plaque 122** (102 of current content
-## plus the second world-event line its cap allows), so the strip is the tallest, 156, plus
-## one `HUD_MARGIN` of breathing room = **174**.
+## MEASURED on a POPULATED HUD, and confirmed against the running game: the identity plaque
+## is **180** tall and the map plaque **154**, so the strip is the tallest, 180, plus one
+## `HUD_MARGIN` of breathing room for the frame's corner ornaments (which are drawn OUTSIDE
+## the control's rect) = **198**.
 ##
-## The first value here was 104 — taken from the map plaque alone — so the left-hand politics
-## panel still covered the identity plaque's affiliation tier by ~52px and the right-hand
-## sect panel cleared the map plaque by 2px. Both were plainly visible in a capture and
-## invisible to every assertion, because the only things asserted about the reserve were
-## "> 0" and "the HUD mentions the token". A named reserve is worth exactly as much as its
-## number: the value is now pinned by
-## `test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for`, which
-## re-measures both plaques, so growing a plaque fails loudly instead of quietly
-## reintroducing the overlap.
-const TOP_PLAQUE_RESERVE := 174
+## Three wrong values preceded it, each wrong for a different reason worth remembering:
+##   * **104** — taken from the map plaque alone, so the left-hand politics panel covered the
+##     identity plaque's affiliation tier by ~52px.
+##   * **174** — measured on a BARE HUD. A hidden child contributes nothing to a container's
+##     minimum size, and both plaques hide content until a view arrives (the affiliation tier
+##     until a sect view, the world-time lines until a world-sim view), so the plaques
+##     measured a tier short of the ones on screen.
+##   * both were asserted only as "> 0" and "the HUD mentions the token", which is why
+##     neither was caught by a test.
+##
+## The value is now pinned by
+## `test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for`, which fills
+## the plaques through the HUD's public setters (with the LONGEST localized world-event
+## string, derived from the authored set) before measuring — so growing a plaque, or adding a
+## longer translation, fails loudly instead of quietly reintroducing the overlap.
+const TOP_PLAQUE_RESERVE := 198
 
 
 ## Lines the HUD's world-event hint may wrap to before it trims. The cap is what makes the
@@ -341,6 +348,27 @@ const TEX_BUTTON_PAINTED := PAINTED_UI_DIR + "/buttons/button_jade.png"
 
 ## A violet variant of the same plate, for a role that must read as clearly apart.
 const TEX_BUTTON_PAINTED_ALT := PAINTED_UI_DIR + "/buttons/button_violet.png"
+
+## Width reserved on the right of a scrolling panel so its vertical scrollbar never sits on
+## the content. Godot draws the scrollbar OVER a `ScrollContainer`'s child rather than taking
+## layout space from it, so without this a right-aligned value column runs underneath it and
+## the last character of every number is obscured — which is how both HUD side panels
+## shipped. Consumed once, by `UITheme.scroll_body()`.
+const SCROLLBAR_GUTTER := 14
+
+## Flat dead margin down the LEFT edge of the painted backdrop, in source pixels.
+##
+## MEASURED, per column, over the full height: columns 0-20 have a luminance range of <= 5
+## levels (uniform fill, mean 21.6), column 21 is the first with real variation, and the
+## painting's cliffs are fully present from column 22. Scaled to cover a 1280x720 screen
+## those columns become ~87px of flat near-black down the left side, which reads as the
+## backdrop having failed to load rather than as art.
+##
+## `UITheme.menu_backdrop()` crops it. Fixing it in the THEME rather than by re-exporting the
+## PNG keeps the asset byte-identical to the file recorded in `docs/ASSET_LICENSES.md`, and
+## "flat dead margin" is a property of the art that is worth stating in code where the next
+## person can see the number.
+const MENU_BACKDROP_DEAD_LEFT_PX := 21
 
 ## The painted menu backdrop: cloud peaks over a dark navy ground. MEASURED 310x330, and its
 ## own background navy is deliberately close to COLOR_BACKGROUND_DEEP so the scene can sit

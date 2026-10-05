@@ -133,6 +133,39 @@ pixel-art rule, it is a legibility rule: any surface carrying this project's lig
 palette must measure below it. D-034 enforced it for panels and missed the buttons, which sat at
 202 for four phases. When you wire ANY new surface that carries text, measure its centre
 brightness and add the assertion.
+### Four shared UI seams, and the ornament tier (D-050 — live)
+
+- The visual language is assembled by **four factories in `UITheme`, one each**:
+  `build_backdrop(parent)`, `menu_button(role)`, `ornament_divider()`, `scroll_body(parent)`.
+  **A screen must not assemble any of them itself** — a structural test walks
+  `src/presentation` and fails if it does. This exists because construction that lived inside
+  `main_menu.gd` meant the settings screen had a flat void and three untinted buttons, and
+  because four screens each hand-rolled a divider at three different heights.
+- The ornament slot is the **CC0 Kenney Fantasy UI Borders** set (`assets/ui/kenney_borders/`,
+  3 promoted files). Every file in it measured as a **1-bit monochrome MASK**, which is why it
+  won: one texture becomes gold / jade / crimson by `modulate` from `UIPalette`, so a semantic
+  colour change is a palette constant rather than new art. A pre-coloured frame cannot do that.
+  `ORNAMENT_DIVIDER_HEIGHT` must stay a clean 1/1 or 1/2 of the 20px source — a 0.6 resample of
+  a 1-bit mask softens the very edges the mask exists to keep sharp.
+- **`frames/title_divider.png` is RETIRED** (no constant, not in `UI_TEXTURES`). It is a jade
+  FILL, measured centre brightness 120: stretched to panel width it rendered a flat saturated
+  bar that read as a **progress bar**. It stays in the pack as an unwired file; do not re-wire
+  it as a rule.
+- **`frames/portrait_frame.png` is not a frame.** D-034 measured its centre at brightness 229 —
+  an opaque light panel — so nine-patching it OVER a portrait paints a plate across the face
+  (which shipped for two phases). A FRAME must have a transparent centre: use
+  `frame_ornate.png` (measured centre alpha 0) via `UITheme.ornament_frame()`.
+- **The painted backdrop is cropped before use.** `cloud_peaks.png` carries a measured
+  21-column flat dead margin down its left edge; `KEEP_ASPECT_COVERED` scales that into an
+  ~87px bar of near-black. `UITheme.menu_backdrop()` crops it with an `AtlasTexture` and a test
+  re-derives the margin from the pixels, so a re-export fails loudly instead of quietly.
+- **Measuring tooling is part of the asset workflow**, not a one-off:
+  `tools/measure_ui_assets.py --audit` reports size / centre alpha / centre brightness for every
+  UI asset, and `tools/capture_ui.gd` boots the real app in a real window and writes the real
+  viewport for every UI state in both languages at two **aspect ratios** (a same-aspect window
+  is a pure uniform scale under `canvas_items` + `expand`, so two pixel counts prove nothing).
+  Run both before claiming an art or layout change is done — and then LOOK at the output.
+
 - **Single source of truth for UI tokens + asset paths**: `src/presentation/ui/ui_palette.gd`
   (colors, type scale, spacing, texture paths, per-slot 9-slice margins) → `ui_theme.gd` builds
   the shared `Theme` → `MainMenu` / `GameplayHUD` / future screens consume it. Swapping the art

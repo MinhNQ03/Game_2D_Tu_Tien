@@ -724,6 +724,10 @@ func _on_settings_pressed() -> void:
 	_settings = screen
 	get_node(CONTAINER_UI).add_child(_settings)
 	_settings.connect("close_requested", _on_settings_closed)
+	# The menu is HIDDEN, not dimmed. Settings composes its own full backdrop (D-050), so it
+	# is a screen rather than a translucent overlay — leaving the menu visible underneath put
+	# a second plaque frame around the settings plaque and left the menu's title and Quit
+	# label legible around its edges.
 	if _menu != null and is_instance_valid(_menu):
 		_menu.visible = false
 
@@ -743,6 +747,9 @@ func _on_settings_closed() -> void:
 ## Is the settings screen currently open? (for tests)
 func is_settings_open() -> bool:
 	return _settings != null and is_instance_valid(_settings)
+
+
+
 
 
 func _on_quit_pressed() -> void:

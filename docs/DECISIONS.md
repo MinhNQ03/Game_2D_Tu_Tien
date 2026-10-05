@@ -2551,3 +2551,89 @@ can manufacture work.
 
 **No Phase-09 content was added to any document by this package.** Phase 09 remains NOT
 STARTED, which the roadmap and test plan both state.
+
+---
+
+## D-050 — UI production foundation: four shared seams, and measurements instead of assumptions
+**Status:** Accepted · **Phase:** post-08 UI pass · **Scope:** PRESENTATION ONLY — no gameplay
+rule, no domain state, no input semantics, no new autoload, no networking
+
+### What this package actually found
+
+The UI was already asset-backed, tokenised and tested (D-028 / D-034 / D-041 / D-044), and the
+tests were green. Then a display turned out to be available (L-031), a capture harness was
+built, and **every defect below was found by looking at the resulting screenshots** — none of
+them by an assertion, and several of them in code written by the same commit that cited the
+rule it broke. That is the finding worth recording; the fixes are secondary.
+
+| Defect, as seen on screen | Root cause |
+|---|---|
+| Every `vi_*.png` was in ENGLISH | `Main._boot` applies the SAVED language, so the harness setting it before boot was silently undone. The filename named a state the file was not in. |
+| The English subtitle read *"A tu tiên journey"* | A Vietnamese phrase in the `en` column. |
+| An ~87px bar of flat near-black down the left of the menu | The painted backdrop has a **measured 21-column flat dead margin**; `KEEP_ASPECT_COVERED` scaled it up with everything else. |
+| The settings screen was a plaque on a flat void | The composed backdrop lived inside `main_menu.gd`. The game's other full screen could only have it by copying sixty lines, so it did without. |
+| Its three actions were identical untinted plates | Same shape: the role-styled button factory also lived in `main_menu.gd`, so settings rolled a bare `Button` at a hand-typed `Vector2(340, 0)` with no role. |
+| `> English <` marked the active language | Untranslatable ASCII punctuation wrapped around a translated name, pushing the label off-centre, and the ONLY carrier of the state. |
+| The HUD portrait slot was an empty cream plate | `portrait_frame.png` was MEASURED at centre brightness 229 in D-034 — an opaque light panel. Nine-patched OVER the portrait it painted a plate across the face. The measurement was on record; the consequence of drawing an opaque centre over something was never drawn from it. |
+| Side panels covered both top plaques | `TOP_PLAQUE_RESERVE` was 104 while the plaques measure 180 and 154. |
+| The panels' value columns ran under the scrollbar | Godot draws the scrollbar OVER the content. Both panels built the `ScrollContainer` themselves, so both had it. |
+| Panel headers showed a flat green bar | Four screens built their own divider from the jade `title_divider.png`, a FILL stretched to panel width. |
+
+### The decision
+
+**1. Four shared seams, each with exactly one factory in `UITheme`, each with a structural
+guard that WALKS `src/presentation` rather than listing files.**
+`ornament_divider()` · `build_backdrop(parent)` · `menu_button(role)` · `scroll_body(parent)`.
+The guard walking the directory is not a detail: the first version listed two files and passed
+while two other screens still had the defect it existed to catch.
+
+**2. A reserve/limit constant must be DERIVED from a measurement of the thing it reserves for,
+and a test must re-measure it.** `TOP_PLAQUE_RESERVE` went 104 → 174 → **198** before it was
+right, and the two wrong values are instructive:
+- 104 measured one of the two plaques.
+- 174 measured a BARE HUD — and **a hidden child contributes nothing to a container's minimum
+  size**, so both plaques measured a tier short of the ones on screen (the affiliation tier
+  appears with a sect view, the world-time lines with a world-sim view).
+The test now fills the plaques through the HUD's **public setters**, using the **longest
+localized world-event string derived from the authored set**, then measures. The world-event
+hint is capped at `HUD_WORLD_EVENT_MAX_LINES` with ellipsis overrun, because a reserve is
+unknowable while its subject can grow without bound.
+
+**3. An asset is measured before layout or colour decisions are built on it** (L-021, extended):
+the backdrop's dead margin is a named constant that a test re-derives from the pixels, and the
+portrait slot now uses `frame_ornate.png` (measured centre alpha 0 — a real frame) instead of a
+measured-opaque panel.
+
+**4. A tool that produces evidence must fail loudly and exit non-zero** when it could not reach
+the state it is about to name. `capture_ui.gd` verifies the active language against
+`Localization` and refuses to write files named after a language they are not in; a panel
+toggle that does not change state writes no file at all.
+
+**5. Resolution coverage means ASPECT RATIOS, not pixel counts.** The project stretches with
+`canvas_items` + `expand`, so a window at 16:9 is a pure uniform scale of the authored
+1280x720 viewport — 1600x900 next to 1280x720 produces two identical images. The matrix is
+vi/en × 16:9 / 16:10, and each filename records the viewport actually rendered.
+
+### What was deliberately NOT done
+
+- **The painted button family was not replaced.** It measures 28 (dark), carries light text
+  legibly, and the capture confirms it reads. Churning working, measured art for taste is not
+  a production-foundation improvement.
+- **Settings was not made a translucent modal.** It was tried: the menu's plaque is a
+  different height, so a second plaque frame appeared around the settings plaque and the
+  covered screen's title and Quit label stayed legible around its edges. It is a SCREEN in
+  navigation terms, so it is composed like one and the menu is hidden behind it.
+- **The 32 capture PNGs are not committed** (~15MB). The harness is committed and
+  deterministic; `tools/capture_ui.gd` regenerates the whole matrix in four commands. A
+  reviewable artifact that can be rebuilt on demand does not need to be in git history.
+- **`TEX_TITLE_DIVIDER` was retired, not kept-but-unused.** A named path is an invitation to
+  re-create the bug; the PNG stays in the pack with its `ASSET_LICENSES` row marked UNWIRED.
+
+### Consequences
+
+- Adding a screen gets the backdrop, the button, the divider and a scrolling body for free, and
+  cannot quietly diverge: the structural guards fail if it builds its own.
+- Restyling any of the four is one edit in `UITheme`/`UIPalette`.
+- `UI_TEXTURES` drops to 14 entries and now means what it says (every RUNTIME texture).
+- `tools/measure_ui_assets.py` and `tools/capture_ui.gd` are the two reusable gates this pass
+  leaves behind: one measures assets before they are wired, the other shows what shipped.

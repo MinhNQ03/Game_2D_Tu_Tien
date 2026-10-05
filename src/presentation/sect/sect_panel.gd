@@ -58,21 +58,10 @@ func _ready() -> void:
 
 func _build() -> void:
 	# Scrolls inside its bounded box for the same reason the politics panel does: this panel is
-	# anchored to the screen edges now, and a long doctrine or a large resource list on a short
-	# screen (a phone in landscape) must scroll rather than push the 9-slice frame off-screen.
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# The one node in this subtree that must receive input (everything else is IGNORE), or the
-	# wheel passes through and clipped content becomes unreachable.
-	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(scroll)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(box)
+	# anchored to the screen edges, and a long doctrine or a large resource list on a short
+	# screen must scroll rather than push the 9-slice frame off-screen. From the ONE
+	# scroll-body factory (D-050), gutter included.
+	var box := UITheme.scroll_body(self)
 
 	# Header: emblem + title.
 	var header := HBoxContainer.new()

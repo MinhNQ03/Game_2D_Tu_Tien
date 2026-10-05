@@ -12,8 +12,20 @@ extends SceneTree
 ## NO assertion catches (D-034's four simultaneous HUD failures were all invisible to tests).
 ##
 ## USAGE (needs a display; do NOT pass --headless)
-##     godot --path . --resolution 1920x1080 -s res://tools/capture_ui.gd -- vi out/dir
-##     godot --path . --resolution 1280x720  -s res://tools/capture_ui.gd -- en out/dir
+##     godot --path . --resolution 1280x720 -s res://tools/capture_ui.gd -- vi out/dir
+##     godot --path . --resolution 1280x800 -s res://tools/capture_ui.gd -- en out/dir
+##
+## VARY THE ASPECT RATIO, NOT JUST THE PIXEL COUNT. The project stretches with
+## `canvas_items` + `expand`, so a window at the SAME aspect as the authored 1280x720 is a
+## pure uniform scale: the viewport the UI is laid out in stays 1280x720 and every control
+## keeps the same relationship to every other one. Capturing 1600x900 next to 1280x720
+## therefore proves nothing about layout — it produces two identical images at different
+## sizes. A different aspect (e.g. 1280x800, 16:10) genuinely changes the visible rect, which
+## is where anchors, reserved strips and bounded boxes can actually break.
+##
+## The window manager may also refuse a window larger than the desktop, which silently gives
+## a different viewport than requested — which is why each filename records the viewport the
+## frame was ACTUALLY rendered at, not the resolution that was asked for.
 ##
 ## It is a BUILD-TIME TOOL: nothing in the game depends on it, and it is excluded from the
 ## shipped game the same way `gen_prototype_assets.py` is.
@@ -42,12 +54,22 @@ func _initialize() -> void:
 
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
-	var loc := root.get_node_or_null("Localization")
-	if loc != null:
-		loc.call("set_language", _language)
 
 	var main: Node = (load(MAIN_SCENE) as PackedScene).instantiate()
 	root.add_child(main)
+	await _settle()
+
+	# LANGUAGE IS SET AFTER BOOT, ON PURPOSE, AND VERIFIED.
+	#
+	# `Main._boot` applies the language saved in `SettingsStore`, so setting it before
+	# `add_child` is silently undone — which is how every `vi_*.png` in the first capture run
+	# came out in ENGLISH. The filename named a language the screenshot was not in: the same
+	# lying-artifact failure as a screenshot named after a panel that never opened, and worse,
+	# because a reviewer comparing vi against en would have been comparing en against en.
+	# Boot first, then switch, then verify, then let the UI rebuild from `language_changed`.
+	if not _apply_language():
+		quit(1)
+		return
 	await _settle()
 
 	var ui: Node = main.get_node_or_null("UI")
@@ -123,6 +145,29 @@ func _run() -> void:
 	# A capture run that skipped a state is a FAILED run, not a partial success — the caller
 	# (a human, or a future CI visual gate) must be able to tell from the exit code.
 	quit(1 if _failed else 0)
+
+
+## Switch the live `Localization` to the requested language and CONFIRM it took.
+##
+## Goes through the owning service (L-003) and checks the observable result rather than the
+## return value alone, because `set_language` also returns true when the code was already
+## active — so only reading back `get_language()` proves the screenshots about to be written
+## are in the language their filenames claim.
+func _apply_language() -> bool:
+	var loc := root.get_node_or_null("Localization")
+	if loc == null:
+		push_error("[capture] no /root/Localization — cannot guarantee the capture language")
+		_failed = true
+		return false
+	loc.call("set_language", _language)
+	var active := String(loc.call("get_language"))
+	if active != _language:
+		push_error(("[capture] asked for '%s' but Localization is on '%s' — refusing to "
+			+ "write files named after a language they are not in") % [_language, active])
+		_failed = true
+		return false
+	print("[capture] language confirmed: %s" % active)
+	return true
 
 
 ## Toggle a HUD side panel by property name. The HUD owns its panels privately and exposes

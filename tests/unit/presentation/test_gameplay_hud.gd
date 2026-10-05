@@ -10,6 +10,8 @@ const StateScript := preload("res://src/domain/character/character_state.gd")
 const TemplateScript := preload("res://src/data/characters/character_template_data.gd")
 const StatBlockScript := preload("res://src/data/stats/stat_block.gd")
 const SectPanelScript := preload("res://src/presentation/sect/sect_panel.gd")
+const EventDataScript := preload("res://src/data/worldsim/world_sim_event_data.gd")
+const LocalizationScript := preload("res://src/infrastructure/localization.gd")
 
 
 func _hud() -> Node:
@@ -418,12 +420,19 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 ## panel's top corner sitting over the map plaque's bottom edge and the politics panel sitting
 ## over the identity plaque's affiliation tier.
 ##
-## So this measures the plaques and compares. `get_combined_minimum_size()` is used rather
-## than `size`: a top-anchored content-sized plaque IS its minimum size, and the minimum is
-## computed from the content without needing a real viewport — so this does not depend on the
-## runner's window size the way an assertion on `position`/`size` would (see A15 above).
+## It measures a POPULATED HUD, which is the part that is easy to get wrong. A hidden child
+## contributes nothing to a container's minimum size, and the map plaque hides its world-time
+## lines until a world-sim view arrives — so a bare HUD measures a plaque ~50px shorter than
+## the one on screen, and a reserve derived from it is wrong in exactly the direction that
+## causes the overlap. Every plaque is therefore filled with real content first.
+##
+## `get_combined_minimum_size()` rather than `size`: a top-anchored content-sized plaque IS
+## its minimum size, and the minimum comes from the content without needing a real viewport,
+## so this does not depend on the runner's window the way `position`/`size` would (A15 above).
 func test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for() -> void:
 	var hud := _hud()
+	_populate_plaques(hud)
+	await scene_tree.process_frame
 	var root := _hud_root(hud)
 	if root == null:
 		free_node(hud)
@@ -437,12 +446,6 @@ func test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for(
 		if plaque == null or plaque.anchor_top != 0.0 or plaque.anchor_bottom != 0.0:
 			continue
 		var height := maxf(plaque.size.y, plaque.get_combined_minimum_size().y)
-		# A minimum size reflects the text the plaque holds RIGHT NOW, so a wrapping label
-		# measured on a short string under-reports. The world-event hint is capped at
-		# `HUD_WORLD_EVENT_MAX_LINES`, so its worst case is knowable: add the lines it has
-		# not yet used. Without this the reserve would be correct for the capture that was
-		# taken and wrong for a longer localized string — the defect, one language later.
-		height += _unused_wrap_allowance(plaque)
 		measured.append("%s=%d" % [plaque.name, int(height)])
 		tallest = maxf(tallest, height)
 	assert_true(measured.size() >= 2,
@@ -458,20 +461,78 @@ func test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for(
 	free_node(hud)
 
 
-## Pixels a capped wrapping label inside `plaque` could still grow by: the lines its cap
-## allows minus the lines its current text uses, at the label's own measured line height.
+## Fill every top plaque with real content, so a measurement reflects the screen the player
+## sees rather than a bare HUD.
 ##
-## Returns 0 for a plaque with no capped label, so it is safe to add unconditionally. The
-## label is found by NAME, not by reaching into the HUD's private fields (which the lint rule
-## forbids across files, and rightly — a test that reads privates pins the implementation
-## rather than the contract).
-func _unused_wrap_allowance(plaque: Control) -> float:
-	var label := plaque.find_child("WorldEvent", true, false) as Label
-	if label == null or label.max_lines_visible <= 1:
-		return 0.0
-	var used := maxi(1, label.get_line_count())
-	var spare := label.max_lines_visible - used
-	return float(maxi(0, spare)) * label.get_line_height()
+## Goes through the HUD's PUBLIC setters — the same ones the runtimes push through — so the
+## test cannot drift from how the HUD is actually fed, and never touches its private fields.
+func _populate_plaques(hud: Node) -> void:
+	hud.call("set_character", _player_state())
+	hud.call("set_map_name", &"UI_MAP_HUB_NAME")
+	# The affiliation tier is HIDDEN until a membership view arrives, and a hidden child
+	# contributes nothing to a container's minimum — so without this the identity plaque
+	# measures a tier short of the one on screen.
+	var sect := SectMembershipView.new()
+	sect.is_member = true
+	sect.sect_name_key = &"SECT_AZURE_CLOUD_NAME"
+	sect.rank_name_key = &"SECT_RANK_OUTER_DISCIPLE"
+	sect.reputation = 45
+	hud.call("set_sect_view", sect)
+	var view := WorldSimView.new()
+	view.available = true
+	view.year = 1
+	view.season = 1
+	view.day = 1
+	# An event is present in any live session after the first tick, and it is the one line in
+	# a top plaque that can wrap — so the measured plaque must include it, at its LONGEST.
+	view.last_event_kind_key = _longest_event_kind_key()
+	view.last_event_magnitude = 1
+	view.last_event_tick = 1
+	hud.call("set_world_sim_view", view)
+
+
+## The event-kind key whose text is longest across every supported language.
+##
+## DERIVED, not picked: the kinds are a closed authored set, so the worst case is knowable
+## instead of guessable, and a new kind (or a longer translation of an existing one) is
+## included automatically. Hard-coding one kind would measure whichever one somebody happened
+## to type, and a later CSV edit could quietly make a different kind the tallest.
+func _longest_event_kind_key() -> StringName:
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	var keys: Array = EventDataScript.KIND_NAME_KEYS
+	if loc == null or keys.is_empty():
+		return StringName(keys[0]) if not keys.is_empty() else &""
+	var original := String(loc.call("get_language"))
+	var best: StringName = StringName(keys[0])
+	var best_length := -1
+	for language in LocalizationScript.SUPPORTED_LANGUAGES:
+		loc.call("set_language", String(language))
+		for key in keys:
+			var length := String(loc.call("t", String(key))).length()
+			if length > best_length:
+				best_length = length
+				best = StringName(key)
+	loc.call("set_language", original)
+	return best
+
+
+## The world-event hint must be CAPPED, which is what gives the map plaque a maximum height
+## and therefore makes `TOP_PLAQUE_RESERVE` knowable at all. Without a cap, a longer localized
+## string wraps to a third line and walks the plaque down into the side panels again.
+func test_world_event_hint_is_capped_so_the_plaque_has_a_maximum_height() -> void:
+	var hud := _hud()
+	var label := hud.find_child("WorldEvent", true, false) as Label
+	assert_not_null(label, "the map plaque carries the world-event hint")
+	if label == null:
+		free_node(hud)
+		return
+	assert_eq(label.max_lines_visible, UIPalette.HUD_WORLD_EVENT_MAX_LINES,
+		"the hint wraps to at most HUD_WORLD_EVENT_MAX_LINES lines")
+	assert_eq(int(label.text_overrun_behavior), int(TextServer.OVERRUN_TRIM_ELLIPSIS),
+		"and trims past the cap rather than pushing the plaque into the playfield")
+	assert_true(label.autowrap_mode != TextServer.AUTOWRAP_OFF,
+		"it wraps rather than widening the plaque (the cap only means anything if it wraps)")
+	free_node(hud)
 
 
 ## Content longer than the bounded box must SCROLL inside it. Without a scroll container the

@@ -176,20 +176,18 @@ func _build_ui() -> void:
 	_portrait.visible = _portrait.texture != null
 	portrait_well.add_child(_portrait)
 
-	# The frame, drawn OVER the portrait. A NinePatchRect, not a TextureRect:
-	# `portrait_frame.png` is 218x118 (measured, D-034) and a TextureRect reports its whole
-	# texture as its minimum size, which is what pushed a giant empty rosewood plate over the
-	# identity text.
-	var portrait_frame := NinePatchRect.new()
-	portrait_frame.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait_frame.patch_margin_left = UIPalette.PORTRAIT_MARGIN
-	portrait_frame.patch_margin_right = UIPalette.PORTRAIT_MARGIN
-	portrait_frame.patch_margin_top = UIPalette.PORTRAIT_MARGIN
-	portrait_frame.patch_margin_bottom = UIPalette.PORTRAIT_MARGIN
+	# The frame, drawn OVER the portrait — and it must be a HOLLOW one, which is why this is
+	# `UITheme.ornament_frame()` and no longer `portrait_frame.png`.
+	#
+	# D-034 MEASURED `portrait_frame.png` at centre brightness 229: it is an opaque light
+	# PANEL, not a frame. Nine-patching it over the portrait therefore painted a cream plate
+	# straight across the face, and the identity plaque shipped for two phases showing an
+	# empty slot that read as a missing asset — the measurement was on record and the
+	# consequence of drawing an opaque centre OVER something was not drawn from it.
+	# `frame_ornate.png` measures centre alpha 0, so it frames without covering (L-021).
+	var portrait_frame := UITheme.ornament_frame()
 	portrait_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if ResourceLoader.exists(UIPalette.TEX_PORTRAIT_FRAME):
-		portrait_frame.texture = load(UIPalette.TEX_PORTRAIT_FRAME)
 	portrait_well.add_child(portrait_frame)
 
 	var identity_text := VBoxContainer.new()
@@ -293,12 +291,11 @@ func _build_ui() -> void:
 	# +40% string length for vi↔en must not clip (`docs/UI_UX_BIBLE.md`), and this line is the
 	# longest thing in a narrow plaque, so it wraps rather than widening the panel.
 	_world_event_label.custom_minimum_size = Vector2(UIPalette.HUD_MAP_PANEL_WIDTH, 0)
-	# BOUNDED, not free-growing. This is the only label in a top plaque whose height depends on
-	# a sentence, so without a cap the plaque has no maximum height — and a plaque with no
-	# maximum height makes `TOP_PLAQUE_RESERVE` unknowable, which is how the side panels came
-	# to overlap it in the first place. Two lines absorbs the +40% localization growth the UI
-	# bible requires; past that the line trims rather than pushing the plaque into the
-	# playfield, because growing over the map is worse than losing the tail of a hint.
+	# CAPPED, so the plaque has a maximum height at all. This is the only label in a top
+	# plaque sized by a sentence, and an unbounded plaque makes `TOP_PLAQUE_RESERVE`
+	# unknowable — which is how the side panels came to overlap it. Two lines absorbs the
+	# +40% vi<->en growth the UI bible requires; past that the line trims, because growing
+	# over the playfield is worse than losing the tail of a passive hint.
 	_world_event_label.max_lines_visible = UIPalette.HUD_WORLD_EVENT_MAX_LINES
 	_world_event_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	map_body.add_child(_world_event_label)

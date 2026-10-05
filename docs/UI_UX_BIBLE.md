@@ -92,6 +92,50 @@ screen: the menu used every right colour and still read as a widget floating in 
   role distinctness, reserved-crimson, backdrop layering, divider stretch, margin uniformity,
   tier ordering, and no-unbound-gauges.
 
+## 3b. Shared seams and looking at the screen (added in D-050 — binding)
+
+§3a added composition rules. These are the rules that came out of actually **looking at the
+running game** for the first time, which found nine defects in a UI that was asset-backed,
+tokenised, and green on 481 tests. Nothing here is a taste judgement; each line is a defect
+that shipped.
+
+- **Construction that lives in one screen is construction the next screen does without.** Four
+  pieces of the visual language are now ONE factory each in `UITheme` —
+  `build_backdrop(parent)`, `menu_button(role)`, `ornament_divider()`, `scroll_body(parent)` —
+  and a screen that assembles any of them itself fails a structural test. When the backdrop
+  and the button lived inside `main_menu.gd`, the game's other full screen had a flat void and
+  three untinted buttons: not a decision, just sixty lines nobody copied.
+- **A structural guard WALKS the directory; it never lists files.** The first divider guard
+  named two screens and passed while two others still had the defect it existed to catch. A
+  hard-coded inventory protects only the files somebody remembered.
+- **A reserve or limit constant is DERIVED from a measurement of what it reserves for, and a
+  test re-measures it.** `assert_true(RESERVE > 0)` asserts that somebody thought about it.
+  `TOP_PLAQUE_RESERVE` was wrong twice (104, then 174) while passing its tests.
+- **Measure a POPULATED screen.** A hidden child contributes nothing to a container's minimum
+  size, so a bare HUD measures plaques ~25px shorter than the ones on screen. Fill a screen
+  through its PUBLIC setters before measuring it, with the **longest localized string derived
+  from the authored set** — not a string somebody picked.
+- **A reserve is unknowable while its subject can grow without bound.** Any label in a fixed
+  region that is sized by a sentence gets `max_lines_visible` + ellipsis overrun. Growing over
+  the playfield is worse than losing the tail of a passive hint.
+- **A scrollbar is drawn OVER content, not beside it.** A scrolling panel reserves
+  `SCROLLBAR_GUTTER` on the right, or its right-aligned value column runs underneath it.
+- **State is never carried by ASCII decoration.** `> English <` is untranslatable punctuation
+  wrapped around a translated name, it pushes the label off-centre, and it was the only carrier
+  of the state. Use a localized template AND a role change — two carriers, per §4.
+- **A screen is composed like a screen; a modal is composed like a modal.** Settings replaces
+  the menu in navigation terms, so it gets its own full backdrop. Shown as a translucent
+  overlay instead, the covered screen's differently-sized plaque produced a second frame around
+  it and left its title and Quit label legible around the edges.
+- **Look at the screenshots. Generating the evidence is not reviewing it.** `tools/capture_ui.gd`
+  boots the real app in a real window and writes the real viewport for every UI state, in both
+  languages, at two **aspect ratios** — not two pixel counts, since `canvas_items` + `expand`
+  makes a same-aspect window a pure uniform scale. Mockups and editor screenshots do not count.
+- **A tool that produces evidence fails loudly and exits non-zero when it could not reach the
+  state it is about to name.** The harness verifies the active language against `Localization`
+  and writes no file for a panel that did not open. A capture that quietly lies is worse than a
+  missing one, because the file's whole job is to be what a human reviews.
+
 ## 4. Information hierarchy (frozen)
 
 - **Panel hierarchy:** world → HUD overlay → contextual panel → modal. A modal owns input while

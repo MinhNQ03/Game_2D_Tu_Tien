@@ -65,7 +65,11 @@ func _exit_tree() -> void:
 
 
 func _build_ui() -> void:
-	_build_backdrop()
+	# The composed backdrop comes from the ONE builder in `UITheme` (D-050). It used to be
+	# ~60 lines of layer construction here, which is why the settings screen — the only other
+	# full screen in the game — had a flat near-black fill instead: the composition was
+	# reachable only by copying it.
+	UITheme.build_backdrop(self)
 
 	# --- Centered framed plaque ----------------------------------------------------
 	var center := CenterContainer.new()
@@ -140,137 +144,16 @@ func _build_ui() -> void:
 	actions.add_child(_quit_button)
 
 
-## The presentation-only menu backdrop (D-041, A2/A7).
-##
-## Before this, the menu was a small plaque on a flat near-black `ColorRect`, which read as a
-## Godot Control floating in a void. The fix is composition, not content: a deep ink ground,
-## a vertical gradient that gives the screen a horizon, a restrained radial vignette, and
-## four corner ornaments.
-##
-## Deliberately built from code-generated gradients plus ONE existing texture: no new asset,
-## so no provenance question (`06-art-assets.md`), and no per-frame cost — a
-## `GradientTexture2D` rasterises once and is then a static draw. It carries no gameplay: no
-## collision, no player, no WorldRuntime, no state (A7).
-func _build_backdrop() -> void:
-	var fill := ColorRect.new()
-	fill.name = "Background"
-	fill.color = UIPalette.COLOR_BACKGROUND_DEEP
-	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(fill)
-
-	var sky := TextureRect.new()
-	sky.name = "BackdropGradient"
-	sky.texture = UITheme.backdrop_gradient()
-	# The gradient is a smooth ramp, so it is the one UI texture that must NOT be nearest-
-	# filtered: at 16x256 stretched full-screen, nearest would show visible banding steps.
-	sky.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	sky.stretch_mode = TextureRect.STRETCH_SCALE
-	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(sky)
-
-	# The painted scene (D-044) — what finally makes this a composed screen rather than a
-	# plaque on a gradient.
-	#
-	# It is CENTRED and aspect-preserved at ~88% of the screen height, NOT stretched to cover
-	# the viewport. Stretching a 310x330 painting to fill 1280x720+ is a 4x+ upscale and goes
-	# visibly soft; centring it is only ~1.9x. The reason that works seamlessly is measured:
-	# the artwork's own background navy is deliberately close to COLOR_BACKGROUND_DEEP, so the
-	# surrounding fill reads as a continuation of the painting instead of as a border around it.
-	var scene := TextureRect.new()
-	scene.name = "BackdropScene"
-	scene.texture = UITheme.menu_backdrop()
-	# LINEAR, not nearest: this is PAINTED art, not pixel art. Nearest would stair-step the
-	# soft cloud gradients and the fine gold detail (`UIPalette` painted-tier note).
-	scene.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	# COVERED, not CENTERED (D-050). The painted backdrop is 310x330 — portrait-ish — so
-	# centring it on a 16:9 screen left hard black bars down both sides across roughly 40% of
-	# the width, which read as an unfinished application. COVERED fills the screen and crops
-	# the overflow, which is what a backdrop is for. Found by looking at a real capture; no
-	# assertion could see it.
-	scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	scene.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	scene.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	scene.visible = scene.texture != null
-	add_child(scene)
-
-	var vignette := TextureRect.new()
-	vignette.name = "Vignette"
-	vignette.texture = UITheme.vignette_gradient()
-	vignette.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	vignette.stretch_mode = TextureRect.STRETCH_SCALE
-	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(vignette)
-
-	_build_corner_ornaments()
-
-
-## Four corner ornaments framing the screen. Uses `key_badge.png` for what D-034 measured it
-## to actually be — a hollow CORNER ORNAMENT (centre alpha 0), not the keycap Phase 06 had
-## pressed it into service as. Each copy is flipped so the piece points outward.
-func _build_corner_ornaments() -> void:
-	var tex := UITheme.corner_ornament()
-	if tex == null:
-		return
-	var corners := [
-		{"name": "OrnamentTL", "preset": Control.PRESET_TOP_LEFT, "h": false, "v": false},
-		{"name": "OrnamentTR", "preset": Control.PRESET_TOP_RIGHT, "h": true, "v": false},
-		{"name": "OrnamentBL", "preset": Control.PRESET_BOTTOM_LEFT, "h": false, "v": true},
-		{"name": "OrnamentBR", "preset": Control.PRESET_BOTTOM_RIGHT, "h": true, "v": true},
-	]
-	for corner in corners:
-		var piece := TextureRect.new()
-		piece.name = String(corner["name"])
-		piece.texture = tex
-		piece.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		# EXPAND_IGNORE_SIZE or the rect reports the whole 61x61 texture as its minimum and
-		# `custom_minimum_size` silently does nothing (D-034 / L-021).
-		piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		piece.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		piece.custom_minimum_size = Vector2(UIPalette.ORNAMENT_PX, UIPalette.ORNAMENT_PX)
-		piece.size = Vector2(UIPalette.ORNAMENT_PX, UIPalette.ORNAMENT_PX)
-		piece.flip_h = bool(corner["h"])
-		piece.flip_v = bool(corner["v"])
-		piece.modulate = UIPalette.COLOR_ORNAMENT
-		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		piece.set_anchors_preset(int(corner["preset"]) as Control.LayoutPreset)
-		piece.offset_left = UIPalette.HUD_MARGIN if not bool(corner["h"]) \
-			else -(UIPalette.ORNAMENT_PX + UIPalette.HUD_MARGIN)
-		piece.offset_top = UIPalette.HUD_MARGIN if not bool(corner["v"]) \
-			else -(UIPalette.ORNAMENT_PX + UIPalette.HUD_MARGIN)
-		piece.offset_right = piece.offset_left + UIPalette.ORNAMENT_PX
-		piece.offset_bottom = piece.offset_top + UIPalette.ORNAMENT_PX
-		add_child(piece)
-
-
 ## A uniformly sized menu button (so the column lines up) wearing the shared theme, with its
 ## semantic ROLE applied centrally (`UITheme.role_*`) — this screen names no colour.
+##
+## Delegates to the ONE menu-button factory (D-050). The construction used to live here, and
+## the settings screen grew its own unstyled copy because of it.
 func _make_menu_button(role: String) -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(
-		UIPalette.MENU_BUTTON_WIDTH, UIPalette.BUTTON_HEIGHT)
-	button.focus_mode = Control.FOCUS_ALL
-	# The button plate is PAINTED art (D-044), so it is filtered LINEAR like the backdrop —
-	# nearest would stair-step its gold filigree at this non-integer scale.
-	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	button.add_theme_color_override("font_color", UITheme.role_font_color(role))
-	button.self_modulate = UITheme.role_modulate(role)
-	# Hover lifts the role tint rather than swapping the texture, so the authored pixel art
-	# is never replaced — only modulated (A14).
-	button.mouse_entered.connect(_on_button_hover.bind(button, role, true))
-	button.mouse_exited.connect(_on_button_hover.bind(button, role, false))
-	button.focus_entered.connect(_on_button_hover.bind(button, role, true))
-	button.focus_exited.connect(_on_button_hover.bind(button, role, false))
-	return button
+	return UITheme.menu_button(role)
 
 
-func _on_button_hover(button: Button, role: String, active: bool) -> void:
-	if not is_instance_valid(button):
-		return
-	button.self_modulate = UITheme.role_modulate(role, active)
+
 
 
 func _refresh_text() -> void:

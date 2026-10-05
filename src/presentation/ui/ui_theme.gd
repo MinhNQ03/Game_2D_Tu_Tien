@@ -30,8 +30,9 @@ const ROLE_SECONDARY := "secondary"
 ## Leaving / destroying (Quit). Crimson — reserved, never decorative.
 const ROLE_DANGER := "danger"
 
-## Per-role modulation applied to the button texture. `Color(1,1,1)` means "leave the art
-## exactly as authored", which is why SECONDARY is the untinted baseline.
+## Metadata key the role is stored under on a button built by `menu_button`.
+const ROLE_META := &"ui_role"
+
 ## Per-role modulation applied to the button plate. `Color(1,1,1)` means "leave the art
 ## exactly as authored", which is why SECONDARY is the untinted baseline.
 ##
@@ -59,6 +60,208 @@ static func role_font_color(role: String) -> Color:
 			return UIPalette.COLOR_CRIMSON_HOVER
 		_:
 			return UIPalette.COLOR_TEXT
+
+
+## THE composed screen backdrop, built into `parent` (D-041 A2/A7, centralised in D-050).
+##
+## A deep ink ground, a vertical gradient that gives the screen a horizon, the painted scene,
+## a restrained radial vignette, and four corner ornaments. Before the composition existed a
+## screen was a small plaque on a flat near-black fill, which read as a Godot Control floating
+## in a void.
+##
+## It lives HERE, not in `main_menu.gd`, because it was in `main_menu.gd`: the settings screen
+## is the only other full screen in the game and it had a flat `ColorRect` instead, since the
+## composition was reachable only by copying sixty lines. The same reason the divider and the
+## menu button are single factories (B6/B7).
+##
+## Built from code-generated gradients plus existing textures: no new asset, so no provenance
+## question (`06-art-assets.md`), and no per-frame cost — a `GradientTexture2D` rasterises
+## once and is then a static draw. It carries no gameplay: no collision, no player, no
+## runtime, no state (A7). Every layer ignores the mouse so none of them can eat a click
+## meant for the screen's controls.
+static func build_backdrop(parent: Control) -> void:
+	var fill := ColorRect.new()
+	fill.name = "Background"
+	fill.color = UIPalette.COLOR_BACKGROUND_DEEP
+	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(fill)
+
+	var sky := TextureRect.new()
+	sky.name = "BackdropGradient"
+	sky.texture = backdrop_gradient()
+	# The gradient is a smooth ramp, so it is the one UI texture that must NOT be nearest-
+	# filtered: at 16x256 stretched full-screen, nearest would show visible banding steps.
+	sky.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	sky.stretch_mode = TextureRect.STRETCH_SCALE
+	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(sky)
+
+	# The painted scene (D-044) — what makes this a composed screen rather than a gradient.
+	#
+	# COVERED, not CENTERED (D-050). The painting is 310x330 — portrait-ish — so centring it
+	# on a 16:9 screen left hard black bars down both sides across roughly 40% of the width,
+	# which read as an unfinished application. COVERED fills the screen and crops the
+	# overflow, which is what a backdrop is for. Found by looking at a real capture; no
+	# assertion could see it. `menu_backdrop()` also crops the painting's own flat dead left
+	# margin, which COVERED would otherwise stretch into an ~87px bar of near-black.
+	var scene := TextureRect.new()
+	scene.name = "BackdropScene"
+	scene.texture = menu_backdrop()
+	# LINEAR, not nearest: this is PAINTED art, not pixel art. Nearest would stair-step the
+	# soft cloud gradients and the fine gold detail (`UIPalette` painted-tier note).
+	scene.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	scene.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	scene.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	scene.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scene.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scene.visible = scene.texture != null
+	parent.add_child(scene)
+
+	var vignette := TextureRect.new()
+	vignette.name = "Vignette"
+	vignette.texture = vignette_gradient()
+	vignette.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	vignette.stretch_mode = TextureRect.STRETCH_SCALE
+	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(vignette)
+
+	_build_corner_ornaments(parent)
+
+
+## Four corner ornaments framing the screen. Uses `key_badge.png` for what D-034 measured it
+## to actually be — a hollow CORNER ORNAMENT (centre alpha 0), not the keycap Phase 06 had
+## pressed it into service as. Each copy is flipped so the piece points outward.
+static func _build_corner_ornaments(parent: Control) -> void:
+	var tex := corner_ornament()
+	if tex == null:
+		return
+	var corners := [
+		{"name": "OrnamentTL", "preset": Control.PRESET_TOP_LEFT, "h": false, "v": false},
+		{"name": "OrnamentTR", "preset": Control.PRESET_TOP_RIGHT, "h": true, "v": false},
+		{"name": "OrnamentBL", "preset": Control.PRESET_BOTTOM_LEFT, "h": false, "v": true},
+		{"name": "OrnamentBR", "preset": Control.PRESET_BOTTOM_RIGHT, "h": true, "v": true},
+	]
+	for corner in corners:
+		var piece := TextureRect.new()
+		piece.name = String(corner["name"])
+		piece.texture = tex
+		piece.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		# EXPAND_IGNORE_SIZE or the rect reports the whole 61x61 texture as its minimum and
+		# `custom_minimum_size` silently does nothing (D-034 / L-021).
+		piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		piece.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		piece.custom_minimum_size = Vector2(UIPalette.ORNAMENT_PX, UIPalette.ORNAMENT_PX)
+		piece.size = Vector2(UIPalette.ORNAMENT_PX, UIPalette.ORNAMENT_PX)
+		piece.flip_h = bool(corner["h"])
+		piece.flip_v = bool(corner["v"])
+		piece.modulate = UIPalette.COLOR_ORNAMENT
+		piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		piece.set_anchors_preset(int(corner["preset"]) as Control.LayoutPreset)
+		piece.offset_left = UIPalette.HUD_MARGIN if not bool(corner["h"]) \
+			else -(UIPalette.ORNAMENT_PX + UIPalette.HUD_MARGIN)
+		piece.offset_top = UIPalette.HUD_MARGIN if not bool(corner["v"]) \
+			else -(UIPalette.ORNAMENT_PX + UIPalette.HUD_MARGIN)
+		piece.offset_right = piece.offset_left + UIPalette.ORNAMENT_PX
+		piece.offset_bottom = piece.offset_top + UIPalette.ORNAMENT_PX
+		parent.add_child(piece)
+
+
+## THE scrolling body of a bounded side panel. Returns the `VBoxContainer` rows go into.
+##
+## One factory because both side panels built this identically — scroll mode, `follow_focus`,
+## the `MOUSE_FILTER_STOP` that L-028 had to learn the hard way — and because they both had
+## the same defect: the vertical scrollbar is drawn OVER the content, so a right-aligned value
+## column ran underneath it and the last character of every number was obscured. The gutter
+## below reserves the scrollbar's width once, for every panel that will ever have one.
+static func scroll_body(parent: Control) -> VBoxContainer:
+	# A bounded box means content must scroll rather than stretch the frame: content that
+	# outgrows its frame pushes the 9-slice border off-screen, which is what made a side
+	# panel render with no visible plate at all (L-028). `follow_focus` so keyboard
+	# navigation cannot select a row that is scrolled out of sight.
+	var scroll := ScrollContainer.new()
+	scroll.name = "ScrollBody"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Explicit STOP: a panel and its labels are MOUSE_FILTER_IGNORE for click-through, and
+	# this is the ONE node in the subtree that must receive input — otherwise the wheel passes
+	# straight through and clipped content becomes unreachable (L-028).
+	scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	parent.add_child(scroll)
+
+	# The gutter that keeps the scrollbar off the text.
+	var gutter := MarginContainer.new()
+	gutter.name = "ScrollGutter"
+	gutter.add_theme_constant_override("margin_right", UIPalette.SCROLLBAR_GUTTER)
+	gutter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gutter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scroll.add_child(gutter)
+
+	var box := VBoxContainer.new()
+	box.name = "Rows"
+	box.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	# Fill the scroll viewport's width so value rows and dividers span the panel instead of
+	# shrink-wrapping their text.
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gutter.add_child(box)
+	return box
+
+
+## THE menu button. One factory for every full-width menu action, in any screen (D-050).
+##
+## It replaces two divergent copies: `main_menu.gd` built a role-styled, palette-sized,
+## LINEAR-filtered button with hover/focus lift, while `settings_menu.gd` built a bare
+## `Button` at a hand-typed `Vector2(340, 0)` with no role at all — so the settings screen's
+## three actions rendered as three identical untinted plates and the player could not tell the
+## active language, the inactive one and "Back" apart by anything but their words. Same class
+## of defect as the four hand-rolled dividers: duplicated construction let one screen quietly
+## miss the design language.
+##
+## The hover/focus lift is wired HERE rather than in each screen, so a screen never has to
+## remember the four signals, and a new screen gets the interaction states for free (A14).
+static func menu_button(role: String) -> Button:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(
+		UIPalette.MENU_BUTTON_WIDTH, UIPalette.BUTTON_HEIGHT)
+	button.focus_mode = Control.FOCUS_ALL
+	# The plate is PAINTED art (D-044), so LINEAR — nearest would stair-step its gold
+	# filigree at this non-integer scale.
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	apply_button_role(button, role)
+	# The role is read from the button at hover time, NOT bound into the callable. A role can
+	# change after construction (the settings screen promotes the active language to PRIMARY),
+	# and a bound role would leave the hover lift tinting with the role the button used to
+	# have — the hover state and the resting state would disagree.
+	for signal_name in ["mouse_entered", "focus_entered"]:
+		button.connect(signal_name, _on_role_button_lift.bind(button, true))
+	for signal_name in ["mouse_exited", "focus_exited"]:
+		button.connect(signal_name, _on_role_button_lift.bind(button, false))
+	return button
+
+
+## Re-apply a role to an existing button, and remember it on the button.
+##
+## Exists because a role can legitimately CHANGE at runtime: the settings screen promotes
+## whichever language is active to PRIMARY, which is how "this is the one in use" is carried
+## visually as well as in words.
+static func apply_button_role(button: Button, role: String) -> void:
+	button.set_meta(ROLE_META, role)
+	button.add_theme_color_override("font_color", role_font_color(role))
+	button.self_modulate = role_modulate(role)
+
+
+## The role a `menu_button` is currently wearing (SECONDARY for anything not built here).
+static func button_role(button: Button) -> String:
+	return String(button.get_meta(ROLE_META, ROLE_SECONDARY))
+
+
+static func _on_role_button_lift(button: Button, active: bool) -> void:
+	if not is_instance_valid(button):
+		return
+	button.self_modulate = role_modulate(button_role(button), active)
 
 
 ## Build the shared foundation Theme. Styles base `Button` + `Label` so any Button/Label
@@ -344,7 +547,22 @@ static func ornament_frame() -> NinePatchRect:
 static func menu_backdrop() -> Texture2D:
 	if not ResourceLoader.exists(UIPalette.TEX_MENU_BACKDROP):
 		return null
-	return load(UIPalette.TEX_MENU_BACKDROP) as Texture2D
+	var source := load(UIPalette.TEX_MENU_BACKDROP) as Texture2D
+	if source == null:
+		return null
+	# The painting carries a FLAT DEAD MARGIN down its left edge, so it is cropped before it
+	# is used — `MENU_BACKDROP_DEAD_LEFT_PX`, measured, not estimated. Uncropped and scaled to
+	# cover a 16:9 screen that margin becomes a ~90px bar of flat near-black down the left of
+	# the menu, which reads as the backdrop failing to load. Like the portrait crop below this
+	# is an `AtlasTexture`: a view onto the same texture, not a second copy in memory.
+	var dead := float(UIPalette.MENU_BACKDROP_DEAD_LEFT_PX)
+	if dead <= 0.0 or dead >= float(source.get_width()):
+		return source
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source
+	atlas.region = Rect2(
+		dead, 0.0, float(source.get_width()) - dead, float(source.get_height()))
+	return atlas
 
 
 ## A head-and-shoulders crop of a painted standing portrait, as an `AtlasTexture`.

@@ -422,6 +422,80 @@ func _presentation_scripts(root: String) -> Array[String]:
 	return out
 
 
+## The other three shared seams — the composed backdrop, the role-styled menu button and the
+## scrolling panel body — must also come from the theme, and no screen may re-roll any of them.
+##
+## Same guard shape as the divider, for the same reason and with the same history. The backdrop
+## and the button lived inside `main_menu.gd`, and the consequence was not hypothetical: the
+## settings screen had a flat `ColorRect` where the menu had a painted composition, and three
+## bare untinted `Button`s where the menu had role-styled plates, so the game's two full
+## screens did not look like the same product. The scroll body lived in both side panels, which
+## meant both of them also had its defect — the scrollbar drawn over the value column.
+## Construction that lives in one screen is construction the next screen will either copy
+## (defects included) or do without.
+func test_d050_the_backdrop_button_and_scroll_body_come_from_the_theme() -> void:
+	var probe := Control.new()
+	UITheme.build_backdrop(probe)
+	for layer_name in ["Background", "BackdropGradient", "BackdropScene", "Vignette"]:
+		assert_not_null(probe.get_node_or_null(layer_name),
+			"the backdrop builder adds the %s layer" % layer_name)
+	probe.free()
+
+	var button := UITheme.menu_button(UITheme.ROLE_PRIMARY)
+	assert_not_null(button, "the theme exposes a menu-button factory")
+	assert_eq(button.custom_minimum_size,
+		Vector2(UIPalette.MENU_BUTTON_WIDTH, UIPalette.BUTTON_HEIGHT),
+		"its size comes from the palette, not from a hand-typed Vector2")
+	assert_eq(UITheme.button_role(button), UITheme.ROLE_PRIMARY,
+		"it remembers its role, so a hover lift tints with the CURRENT role")
+	# A role can change after construction (the settings screen promotes the active
+	# language), so re-applying must move both carriers, not just the colour.
+	UITheme.apply_button_role(button, UITheme.ROLE_SECONDARY)
+	assert_eq(UITheme.button_role(button), UITheme.ROLE_SECONDARY,
+		"re-applying a role updates what the button reports")
+	assert_eq(button.self_modulate, UITheme.role_modulate(UITheme.ROLE_SECONDARY),
+		"and re-tints the plate to the new role")
+	button.free()
+
+	# The scrolling panel body is the third seam both side panels had built identically — and
+	# both had inherited the same defect from it, a scrollbar drawn over the value column.
+	var probe_panel := Control.new()
+	var rows := UITheme.scroll_body(probe_panel)
+	assert_not_null(rows, "the scroll-body factory returns the row container")
+	var scroll := probe_panel.get_node_or_null("ScrollBody") as ScrollContainer
+	assert_not_null(scroll, "it adds a ScrollContainer")
+	if scroll != null:
+		# The one node in the subtree that must receive input, or the wheel passes through
+		# and clipped content is unreachable (L-028).
+		assert_eq(scroll.mouse_filter, Control.MOUSE_FILTER_STOP,
+			"the scroll container accepts input even though its panel ignores it")
+		assert_true(scroll.follow_focus,
+			"keyboard focus cannot land on a row scrolled out of sight")
+	var gutter := probe_panel.get_node_or_null("ScrollBody/ScrollGutter") as MarginContainer
+	assert_not_null(gutter, "and a gutter container")
+	if gutter != null:
+		assert_eq(gutter.get_theme_constant("margin_right"), UIPalette.SCROLLBAR_GUTTER,
+			("the gutter reserves the scrollbar's width, so a right-aligned value column "
+				+ "is never drawn underneath it"))
+	probe_panel.free()
+
+	# STRUCTURAL: no screen constructs any of these seams itself.
+	var tokens: Array[String] = [
+		"BackdropGradient", "Vignette", "MENU_BUTTON_WIDTH", "ScrollContainer.new()",
+	]
+	var offenders: Array[String] = []
+	for path in _presentation_scripts("res://src/presentation"):
+		if path.get_file() == "ui_theme.gd" or path.get_file() == "ui_palette.gd":
+			continue
+		var source := _read_source(path)
+		for token in tokens:
+			if source.contains(token):
+				offenders.append("%s (%s)" % [path.get_file(), token])
+	assert_eq(str(offenders), str([]),
+		("a screen must ask UITheme.build_backdrop()/menu_button() rather than assembling "
+			+ "either itself. Offenders: %s") % str(offenders))
+
+
 ## The promoted ornament assets must exist and must still be the MASKS the audit chose them
 ## for. A pack update that replaced them with pre-coloured art would silently break the tint
 ## seam: the frame would stop responding to `UIPalette`, and nothing else would notice.
@@ -446,12 +520,16 @@ func test_d050_the_promoted_ornament_assets_are_present() -> void:
 	frame.free()
 
 
-## A full-height side panel must start BELOW the strip the top plaque owns, or it covers the
-## place name — which the sect panel was doing, completely, until a capture showed it. Pinning
-## the arithmetic means the collision cannot come back by someone retuning a margin.
+## A full-height side panel must start BELOW the strip the top plaques own, or it covers them
+## — which both panels were doing until a capture showed it. This is the STRUCTURAL half:
+## the HUD must consume the token rather than typing an inset. The token's VALUE is a
+## different question and this test cannot answer it; `test_gameplay_hud.gd`'s
+## `test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for` measures the
+## plaques and asserts the number clears them. Both halves are needed: this one passed for a
+## reserve of 104 that was 70px too small (L-034).
 func test_d050_side_panels_clear_the_top_plaque_strip() -> void:
 	assert_true(UIPalette.TOP_PLAQUE_RESERVE > 0,
-		"a reserved top strip exists for the map/world plaque")
+		"a reserved top strip exists for the identity + map/world plaques")
 	var source := _read_source("res://src/presentation/hud/gameplay_hud.gd")
 	assert_true(source.contains("TOP_PLAQUE_RESERVE"),
 		("the HUD's side-panel bounds must consume TOP_PLAQUE_RESERVE, so 'a panel must not "
@@ -474,6 +552,69 @@ func test_d050_semantic_tokens_are_distinct() -> void:
 		assert_true(luminance > 0.4,
 			"the text palette is light (luma %.2f), which is the premise the surface "
 				% luminance + "brightness limit protects")
+
+
+## The menu backdrop must be cropped past the painting's flat dead margin.
+##
+## The constant is not taken on trust: this MEASURES the art the same way the audit did and
+## asserts the constant still matches it, so a re-export of the painting with a different
+## margin fails here instead of putting a ~90px bar of flat near-black down the left of the
+## main menu — which is what shipped, and which reads as the backdrop having failed to load.
+## Deriving the number from the pixels is the L-029 rule: never author a count beside the
+## data it counts.
+func test_d050_the_menu_backdrop_is_cropped_past_its_dead_margin() -> void:
+	var source := load(UIPalette.TEX_MENU_BACKDROP) as Texture2D
+	assert_not_null(source, "the painted backdrop loads")
+	if source == null:
+		return
+	var image := source.get_image()
+	assert_not_null(image, "and yields an image to measure")
+	if image == null:
+		return
+	if image.is_compressed():
+		image.decompress()
+	var flat_columns := _flat_left_columns(image)
+	assert_true(flat_columns > 0,
+		"the measurement works at all (found %d flat columns)" % flat_columns)
+	assert_eq(UIPalette.MENU_BACKDROP_DEAD_LEFT_PX, flat_columns,
+		("MENU_BACKDROP_DEAD_LEFT_PX (%d) must equal the painting's MEASURED flat left "
+			+ "margin (%d). If the art changed, change the constant to the measurement.") % [
+				UIPalette.MENU_BACKDROP_DEAD_LEFT_PX, flat_columns])
+
+	# And the theme must actually apply it: an atlas view starting past the margin.
+	var backdrop := UITheme.menu_backdrop()
+	assert_not_null(backdrop, "the theme exposes a backdrop texture")
+	var atlas := backdrop as AtlasTexture
+	assert_not_null(atlas,
+		"it is an AtlasTexture (a view onto the same texture), not the raw painting")
+	if atlas == null:
+		return
+	assert_eq(int(atlas.region.position.x), UIPalette.MENU_BACKDROP_DEAD_LEFT_PX,
+		"the crop starts exactly past the dead margin")
+	assert_eq(int(atlas.region.size.x),
+		image.get_width() - UIPalette.MENU_BACKDROP_DEAD_LEFT_PX,
+		"and keeps every remaining column of painted content")
+	assert_eq(int(atlas.region.size.y), image.get_height(),
+		"the crop is horizontal only — the top and bottom edges carry real content")
+
+
+## Number of leading columns that are a FLAT fill (uniform to within `FLAT_LUMA_RANGE`), i.e.
+## painted dead margin rather than art. Stops at the first column with real variation.
+func _flat_left_columns(image: Image) -> int:
+	# A painted column of real art varies by 100+ levels over the height; a dead margin
+	# measured <= 5. The threshold sits far from both, so it is not a knife edge.
+	const FLAT_LUMA_RANGE := 8.0
+	var height := image.get_height()
+	for x in image.get_width():
+		var lowest := 2.0
+		var highest := -1.0
+		for y in height:
+			var luma := image.get_pixel(x, y).get_luminance()
+			lowest = minf(lowest, luma)
+			highest = maxf(highest, luma)
+		if (highest - lowest) * 255.0 > FLAT_LUMA_RANGE:
+			return x
+	return 0
 
 
 func _read_source(path: String) -> String:

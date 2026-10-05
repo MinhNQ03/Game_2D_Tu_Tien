@@ -17,7 +17,7 @@
 > dedicated real-application E2E processes (app-flow, player-flow, world-flow).
 >
 > **CI runs 10 gates** (see §5) and the in-runner suite reports
-> **`ran 482 test(s): 482 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> **`ran 486 test(s): 486 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
 > ObjectDB / resources at exit** — the count is the runner's own tally, not a hand count.
 > Gameplay beyond world/map traversal + the social substrate is added phase by phase; combat
 > is Phase 09 and is **not started**.
