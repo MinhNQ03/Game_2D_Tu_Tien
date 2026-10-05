@@ -41,6 +41,7 @@ var _active_zone: MapExitZone = null   # which zone set _active_exit (for exit t
 var _hud: GameplayHUD = null           # presentation overlay (name/map/hints); owned here
 var _sect_view: SectMembershipView = null  # cached read-only sect view (Phase 06); pushed in
 var _politics_view: SectPoliticsView = null  # cached read-only politics view (Phase 07)
+var _world_sim_view: WorldSimView = null  # cached read-only world-sim view (Phase 08)
 var _camera: Camera2D = null           # this map's camera; follows the player (D-036)
 var _follow_target: Node2D = null      # the player node the camera tracks (resolved lazily)
 
@@ -118,6 +119,14 @@ func set_politics_view(view: SectPoliticsView) -> void:
 	_politics_view = view
 	if _hud != null:
 		_hud.set_politics_view(view)
+
+
+## Push the read-only world-simulation view (world time + the last world event) into the HUD
+## (Phase 08). Same cache-and-forward contract as the two views above.
+func set_world_sim_view(view: WorldSimView) -> void:
+	_world_sim_view = view
+	if _hud != null:
+		_hud.set_world_sim_view(view)
 
 
 # --- Camera (data-driven limits from MapData.bounds; shared zoom baseline) ---
@@ -348,6 +357,9 @@ func _refresh_hud() -> void:
 	# Same for the politics view (Phase 07).
 	if _politics_view != null:
 		_hud.set_politics_view(_politics_view)
+	# And the world-simulation view (Phase 08).
+	if _world_sim_view != null:
+		_hud.set_world_sim_view(_world_sim_view)
 
 
 ## Read the authoritative player CharacterState from the player realized in this map (or null

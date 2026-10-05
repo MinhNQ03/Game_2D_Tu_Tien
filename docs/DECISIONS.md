@@ -2258,3 +2258,171 @@ all three E2E processes — now runs locally in about three minutes. **CI remain
 the workflow on GitHub" is no longer a constraint, and a CI-only failure is no longer the only
 way to learn something is broken. The on-screen result is still unverifiable without a
 screenshot: headless runs render nothing.
+
+---
+
+## D-048 — Phase 08: a deterministic world simulation, and the RNG seam it was always going to need
+**Status:** Accepted · **Phase:** 08 (World Simulation) · **Introduces:** the deterministic
+stream-scoped RNG seam frozen in D-040 / C-010 · **Adds:** `CharacterRegistry` (the piece
+`CHARACTER_SYSTEM.md` §10 listed as missing) · **No new autoload** (D-017 budget still 5)
+
+### The shape
+
+Five layers, in the project's existing direction of dependency:
+
+```
+data        WorldSimScheduleData · WorldSimActorData · WorldSimEventData · WorldSimCatalog
+domain      RngStream · RngService · WorldClock · WorldSimActor · WorldSimulationState
+            · WorldSimulationService          (+ CharacterRegistry, under domain/character)
+gameplay    WorldSimulationRuntime            (a node under Main/Systems, the 5th sibling)
+presentation WorldSimView  + two muted lines in the existing HUD plaque
+content     data/worldsim/ (3 schedules, 3 actors, 4 events) + 3 NPC character templates
+```
+
+### The decisions worth recording
+
+**1. An actor's activity is DERIVED, not stepped.** It is a pure function of
+`(world_tick − joined_tick, schedule)`. Stepping a phase index per tick looks equivalent and is
+not: it makes state depend on HOW OFTEN an actor was stepped, which under LOD is fatal, because
+not stepping FAR actors is the entire cost saving. Deriving it means NEAR, MID and FAR compute
+the same answer, promotion cannot lose or invent state, and the band controls only how often the
+simulation LOOKS. Every other LOD property in the phase falls out of this one choice.
+
+**2. Our own 32-bit mixer, not `RandomNumberGenerator`.** The engine RNG is per-instance (so it
+would satisfy "no global `rand*()`") and even exposes `state` for save/restore. Rejected for one
+reason: the generator's state is part of our SAVE FORMAT (`SAVE_FORMAT.md` §3b), and storing an
+engine-internal blob would tie a player's world to an implementation detail we do not control
+and cannot migrate. The implementation is a Weyl counter through the `lowbias32` finalizer: nine
+lines, every intermediate masked to 32 bits so nothing overflows, `>>` only ever applied to
+non-negative values (the classic portability trap in hand-rolled 64-bit PRNGs, avoided by
+construction), and the whole state is one integer. `next_below` uses Lemire's multiply-shift
+rather than `%`, because modulo bias toward low values would otherwise be baked into every
+seeded world forever.
+
+**3. Streams are generic; only ONE stream id is named.** The matrix (§4c) lists the future
+combat/AI/loot streams, but a constant for a stream nothing draws from is the speculative
+surface L-005 forbids. `stream(StringName)` takes any id; `STREAM_WORLD_SIM` is the only
+constant, and P-09 adds `STREAM_COMBAT` in the file that draws from it. Stream separation is a
+property of CONSTRUCTION, not of discipline: each stream's starting state is derived by folding
+its id through the same mixer, so two ids under one seed are unrelated sequences rather than one
+sequence read at two offsets.
+
+**4. A degenerate probability still consumes a draw.** `next_chance(0)` and `next_chance(100)`
+both advance the stream. Otherwise editing a tuning value to 0 would shift every later draw —
+the same cross-contamination per-stream state exists to prevent, reintroduced inside one stream.
+
+**5. Time passes on EXPLICIT gameplay beats, never on a timer.** No `_process`, no
+`_physics_process`, no `Timer`, no wall-clock read anywhere in the subsystem; a test reads the
+SOURCE to keep it that way, because the cheapest way to betray this design is a `_process` that
+"just" accumulates delta, and no behavioural test would notice. Only the map-arrival beat is
+wired, because hub ↔ field is the only gameplay beat that currently exists; both tick costs are
+authored on the catalog so later phases add beats as data.
+
+**6. Events mutate through the OWNING service.** `SectService.adjust_influence`,
+`FactionService.adjust_influence`, `RelationshipService.apply_delta`. The tests prove the real
+path was used by observing what only the owner does — the value stops at the owner's ceiling,
+and the relationship service wrote bounded history the simulation does not implement. An event
+that wrote `SectState.influence` directly would be D-015's defect from a new direction.
+
+**7. All edge creation happens at PREPARATION time.** A tick cannot abort halfway (the clock has
+moved and a draw is spent), so `prepare_events()` validates every authored event against the
+LIVE stores and ensures its edge before any time passes. A missing owner service is a start
+failure, not a skipped step — D-047's rule, applied one phase later.
+
+**8. The magnitude is drawn BEFORE the application is attempted.** If a failed application
+skipped the draw, a content bug in one event would change how far the stream had advanced and
+therefore every later event in the world: a local mistake with global, invisible consequences.
+
+**9. `CharacterRegistry` lands here, owned by `WorldRuntime`.** A world simulation with one
+character in it is not a world, so Phase 08 is the phase that implies the registry
+`CHARACTER_SYSTEM.md` §10 recorded as missing. It is owned by the world coordinator (which
+already owned the only character there was) rather than by the simulation, because a simulation
+that owned the whole cast would be the "universal state holder" shape B2 rules out. Its arrival
+also FIXED something: `Main` had been satisfying the sect and faction services' resolver seam
+with two hand-written closures that each knew about exactly one character — correct while the
+player was the only character, and wrong the moment the world gained a cast, since the services
+would have rejected characters that demonstrably existed.
+
+**10. `CharacterState.sim_state` is a DERIVED CACHE of the simulation's record.**
+`CHARACTER_SYSTEM.md` §5 reserves that field for the simulation; the authority is the
+`WorldSimActor`. Same relationship, and same `verify_*`/`sync_*` discipline, that `SectService`
+has with `CharacterState.sect_id` (D-015). A drifted cache is reported, never trusted.
+
+**11. Catch-up is bounded and lossless.** Overflow becomes carry-over debt drained on later
+calls. A test asserts the equivalence that makes a bound legitimate: `a + b` ticks produce the
+identical world to `a+b` at once — otherwise how fast the player travelled would change world
+history.
+
+**12. The HUD shows the world date and WHAT KIND of thing moved, not WHOSE.** Naming the subject
+needs a content-id → localization-key lookup for sects, factions and characters alike; the
+faction side has `template_for`, the sect side keeps its templates private, and characters have
+no name lookup until P-17. Adding a public accessor purely to label a feed line is not worth it
+yet, and printing the raw id is forbidden. The player can still see that the world moved without
+them, which is the return on the system (`SOCIAL_DESIGN.md` §7). Band counts and stream
+positions are deliberately absent from the view: B18 forbids exposing debug internals.
+
+### One public API added elsewhere
+`RelationshipService.has_dimension()` — a read-only query so a caller can validate a dimension
+id BEFORE any time passes. `apply_delta`'s `false` cannot be told apart from the legitimate
+"no effect, already clamped", so a caller that must fail closed up front had no way to ask.
+Added with its first real consumer, not speculatively.
+
+### Found and fixed while building this
+- **A measured performance defect in my own code.** The per-tick loop derived its observed set
+  by filtering `actors_sorted()`, which sorts the WHOLE cast — `O(cast · log cast)` per tick,
+  i.e. the exact cost LOD exists to remove, inside the code implementing LOD. The budget test
+  caught it (3.57× for a 10× FAR population) and an incremental index fixed it (1.0×, 50 ms →
+  12 ms). Logged as **PERF-001** — the first entry in that log, and it exists because the test
+  was written before the code was called done.
+- **The test runner hung forever on an unloadable test file.** A script with a parse error still
+  `load()`s as a non-null `GDScript`; calling `new()` on it is a VM error that ABORTS `_run`, so
+  `quit()` was never reached and the headless process hung until the job timed out. One mistyped
+  line cost a 15-minute timeout. `run_tests.gd` now checks `can_instantiate()` and fails in
+  seconds with the file named.
+- **`CharacterRegistry.hydrate` could crash instead of failing closed.** It passed a row
+  straight to `CharacterState.from_dict`, whose parameter is statically typed `Dictionary` — so a
+  non-dictionary row was a VM error (which aborts) rather than a rejection. Caught by the
+  `SCRIPT ERROR:` gate (D-038). The row's type is now checked first.
+
+### Rejected
+- **A `WorldCharacterState`.** A parallel character model would be a second answer to "who is
+  this person", kept in sync with the first forever. B9 forbids it and `CHARACTER_SYSTEM.md` §1
+  is explicit that the player is a Character like any other.
+- **An RNG autoload.** `03-architecture.md` lists `RNG` among the anticipated singletons, but
+  D-017 freezes the budget and the matrix §5 already says the seam is not an autoload. A global
+  RNG would also make determinism untestable: two tests in one process would share a sequence.
+- **Authoring the world seed in the catalog.** The seed belongs to a RUN, not to content — two
+  players must get different worlds from the same catalog.
+- **A real-time tick driver.** Even a single float accumulator in `_process` would make the
+  world's history depend on frame pacing and un-advanceable by a future server
+  (`MULTIPLAYER_PLAN.md` §7 lists exactly this). Explicit beats cost nothing and are testable.
+- **Succession / schism / coup / war resolution.** `SOCIAL_DESIGN.md` §5 describes them as rules
+  over this substrate; shipping them now would be a political system with no quest, dialogue or
+  NPC phase to surface it.
+- **A generic "simulation framework".** B23 is explicit, and the four activities + three event
+  kinds cover every seam the phase needed to prove. Both vocabularies are CLOSED so growing
+  them costs a code change plus a localization key.
+
+### Honest limitations
+- **The shipped two-map world has no FAR actors**, because hub and field are adjacent. All three
+  bands are exercised by unit tests against a three-map graph, and the E2E asserts the census
+  the shipped world should actually have. FAR becomes reachable with the third map.
+- **Nothing renders the cast.** The simulated elder, disciple and scout exist, keep routines and
+  move faction influence, but the player cannot see or meet them — NPC presentation is P-17.
+  Their character templates and visual profiles are wired, so that phase is content plus a
+  spawner, not a redesign.
+- **The on-screen HUD lines have not been seen.** A headless run renders nothing (so the two
+  muted lines under the place name are asserted structurally and by the no-raw-id E2E check
+  only); only a screenshot from the owner can confirm the composition.
+- **Deferred balance values, named rather than silently chosen:** the calendar (1 tick = 1 hour,
+  12-hour day, 30-day season, 4 seasons), `ticks_per_map_transition = 6`,
+  `catch_up_budget_ticks = 64`, `event_log_capacity = 16`, and every event's magnitude range.
+  All are authored data in one resource and all are tuning, not architecture.
+
+### Verification
+`gdscript_lint` clean (129 files), parse/compile clean, **471 tests passed / 0 failed**, suite
+exits with **0 leaked ObjectDB / 0 resources in use**, and all 10 gates green — run LOCALLY
+(D-009 no longer holds, see the process note in D-047) as well as being the same commands CI
+runs. Every new guard was proven able to FAIL by temporarily reverting the behaviour it
+protects: the E2E's five world-simulation assertions all failed when the arrival beat was
+disconnected, which is what distinguishes them from assertions that merely pass.

@@ -688,3 +688,78 @@
   headless run renders nothing, so a layout/art claim still needs a screenshot from the owner.
 - **Fixed:** D-047 (process note). The local gate mirror lives outside the repo (L-009: no
   scratch files in the tree).
+
+## L-032 — A derived value beats a stepped one, and a performance CLAIM must be measured by a test that can fail
+- **Symptom A (Phase 08, D-048 — a trap avoided, recorded because it is the whole design):** the
+  obvious way to advance a background character's routine is to step a phase index each tick.
+  It is also wrong under LOD, and the wrongness is invisible until late: stepping makes an
+  actor's state depend on HOW OFTEN it was stepped, and *not stepping far-away actors is the
+  entire point of LOD*. A stepped FAR actor falls behind; promoting it then either loses
+  simulated time or needs a catch-up loop whose result depends on the player's travel history —
+  so the same save, played with different routes, yields different worlds.
+- **Rule A:** **when a value can be DERIVED from state you already keep, derive it — do not step
+  it in parallel.** Here the activity is a pure function of `(tick − joined_tick, schedule)`, so
+  NEAR/MID/FAR all compute the same answer, the LOD band controls only how often the system
+  LOOKS (never what it sees), and promotion/demotion is lossless by construction rather than by
+  a careful catch-up. Keep a cached copy ONLY if you need to detect a CHANGE, and then say so at
+  the field and treat it as a cache (the D-015 authority/cache shape), never as the answer: the
+  public read must go to the derived function, or a far-away actor's reported state silently
+  depends on when it was last visited. Test the property directly — "a FAR actor's value equals
+  an observed actor's on the same input at every tick" — not just that promotion "works".
+- **Symptom B (same phase):** the per-tick loop needed the NEAR+MID actors and obtained them by
+  FILTERING a sorted list of the whole cast. That is `O(cast · log cast)` **per tick** — the
+  exact cost LOD exists to eliminate, sitting inside the code that implements LOD. Nothing was
+  functionally wrong; every test passed; a comment above it said the loop was `O(observed)`.
+  The budget test caught it: with the observed set held constant at 10, a 10× larger FAR
+  population cost **3.57×** more per tick (50 ms vs 14 ms for 300 ticks). An incremental index
+  fixed it — 12 ms for both, scaling factor **1.0×**.
+- **Rule B:** **write the performance test BEFORE declaring the feature done, and make it a
+  RELATIVE assertion against the build itself.** An absolute millisecond budget on shared CI
+  hardware is a flaky test that gets deleted; a ratio ("10× more background actors must not cost
+  3× more per tick") fails on any machine and names the architectural claim it is defending.
+  Keep a generous absolute ceiling alongside it, whose only job is to catch an accidental
+  quadratic. And note the shape of the bug: a comment asserting a complexity is not a complexity
+  — **if the architecture's selling point is a cost model, the cost model needs an assertion, or
+  the first refactor will quietly revert it.** When an index is introduced for this, make it
+  DERIVED and rebuild it on hydrate rather than serializing it, and funnel the mutation that
+  maintains it through ONE method (here `set_actor_band`), so the index cannot go stale behind
+  somebody's back.
+- **Also (a degenerate tuning value must still consume its draw):** `next_chance(0)` and
+  `next_chance(100)` both advance the RNG stream. If they short-circuited, editing a probability
+  to 0 or 100 would shift every subsequent draw in that stream — the same cross-subsystem
+  contamination that per-stream state exists to prevent, reintroduced INSIDE one stream. The
+  general rule: **a deterministic sequence's position must depend on the CALLS made, never on
+  the VALUES configured.**
+- **Also (draw before you apply):** when a random magnitude feeds an operation that can be
+  rejected, draw it FIRST and unconditionally. If a failed application skipped the draw, a
+  content bug in one event would change how far the stream had advanced and therefore every
+  later random outcome in the world — a local mistake with global, invisible consequences.
+- **Fixed:** D-048 / PERF-001. `WorldSimActor`'s derived activity, `WorldSimulationState`'s
+  incremental `_observed` index + `set_actor_band()`, and
+  `tests/performance/test_world_sim_budget.gd`.
+
+## L-033 — A test file that fails to PARSE hung the whole runner until the CI job timed out
+- **Symptom (Phase 08):** one bad line in a new test file (`runtime is CanvasItem`, which the
+  compiler rejects because the type is statically known) made that file fail to parse. `load()`
+  still returned a non-null `GDScript`, so `run_tests.gd` called `script.new()` on it, which
+  raised `Invalid call. Nonexistent function 'new' in base 'GDScript'` — a GDScript **VM**
+  error, which ABORTS the running function. `_run()` died before reaching `quit()`, so the
+  headless `SceneTree` never exited and the process hung. Locally that burned a 15-minute
+  timeout; in CI it would have burned the job's whole budget, and the eventual log would have
+  shown a timeout rather than a parse error.
+- **Rule:** **`load()` succeeding is not the same as a script being usable — check
+  `can_instantiate()` before calling `new()`.** More generally, in a custom headless runner,
+  every path out of the run loop must reach `quit()`: GDScript has no try/catch (D-004), so any
+  VM error between the loop and the exit converts a one-line mistake into a hang, which is a far
+  worse failure mode than a red test because it looks like infrastructure rather than like a
+  bug. The parse-check gate runs before the suite in CI and would have named the file first,
+  which is exactly why it is ordered that way — but the suite must not be *capable* of hanging
+  on input the gate before it is meant to catch.
+- **Also:** the same class bit twice in one phase. `CharacterRegistry.hydrate` passed a payload
+  row straight to `CharacterState.from_dict`, whose parameter is statically typed `Dictionary` —
+  so a non-dictionary row was a VM error (aborting the caller) instead of a rejection. **At a
+  hydrate boundary, type-check a nested value BEFORE handing it to a statically-typed
+  parameter**, or the fail-closed path crashes instead of failing closed. Caught by the
+  `SCRIPT ERROR:` gate (D-038), which is the gate that exists for precisely this.
+- **Fixed:** D-048. `tests/run_tests.gd` checks `can_instantiate()` and reports the file;
+  `CharacterRegistry.hydrate` type-checks each row first.

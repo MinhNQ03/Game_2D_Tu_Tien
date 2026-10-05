@@ -248,3 +248,104 @@ func test_authored_faction_content_is_fully_localized() -> void:
 			checked += 1
 	assert_true(checked > 0, "the authored catalog actually declares keys to check")
 	free_node(loc)
+
+
+## Phase 08 (D-048): the world-simulation chrome keys exist in BOTH languages.
+##
+## A fixed list for the CHROME (the activity/band/event-kind vocabularies and the HUD lines),
+## plus the two drift guards below for the CONTENT. The vocabularies are read from the enums'
+## own key tables rather than retyped here, so adding an `Activity` or an event `Kind` without
+## adding its CSV rows fails HERE instead of showing a player a raw `WORLDSIM_*` token.
+func test_phase08_world_sim_keys_exist_in_both_languages() -> void:
+	var loc := _make()
+	var keys: Array[String] = [
+		"UI_HUD_WORLD_DATE", "UI_HUD_WORLD_EVENT_ROSE", "UI_HUD_WORLD_EVENT_FELL",
+		"UI_HUD_WORLD_QUIET",
+	]
+	# Derived from the closed vocabularies, so the list cannot fall behind the enums.
+	for ordinal in WorldSimScheduleData.Activity.size():
+		keys.append(String(WorldSimScheduleData.activity_name_key(int(ordinal))))
+	for ordinal in WorldSimActor.Band.size():
+		keys.append(String(WorldSimActor.band_name_key(int(ordinal))))
+	for ordinal in WorldSimEventData.Kind.size():
+		keys.append(String(WorldSimEventData.kind_name_key(int(ordinal))))
+	assert_true(keys.size() >= 14,
+		"the derived list actually picked up the vocabularies (got %d keys)" % keys.size())
+	for key in keys:
+		assert_true(loc.has_key(key), "world-sim key '%s' exists in the table" % key)
+		loc.set_language("en")
+		assert_ne(loc.t(key), key, "en value present for '%s'" % key)
+		loc.set_language("vi")
+		assert_ne(loc.t(key), key, "vi value present for '%s'" % key)
+	free_node(loc)
+
+
+## The HUD's world-date and world-event lines are SENTENCES with substitutions, so each must
+## actually consume its placeholder in both languages.
+##
+## Asserting only that the key resolves would pass for a translation that dropped `{year}` —
+## the player would then see a date with no date in it, which no key-existence check can catch
+## (`07-localization.md`: never build a sentence by concatenation, and never ship a template
+## whose parameter is missing).
+func test_phase08_world_sim_sentences_consume_their_placeholders() -> void:
+	var loc := _make()
+	for language in ["en", "vi"]:
+		loc.set_language(String(language))
+		var date := String(loc.call("t_args", "UI_HUD_WORLD_DATE",
+			{"year": 7, "season": 2, "day": 13}))
+		for token in ["{year}", "{season}", "{day}"]:
+			assert_false(date.contains(String(token)),
+				"[%s] the date line substituted %s (got '%s')"
+					% [String(language), String(token), date])
+		for value in ["7", "2", "13"]:
+			assert_true(date.contains(String(value)),
+				"[%s] the date line actually SHOWS the value %s (got '%s')"
+					% [String(language), String(value), date])
+		for template in ["UI_HUD_WORLD_EVENT_ROSE", "UI_HUD_WORLD_EVENT_FELL"]:
+			var line := String(loc.call("t_args", String(template), {"subject": "XYZZY"}))
+			assert_false(line.contains("{subject}"),
+				"[%s] '%s' substituted its subject (got '%s')"
+					% [String(language), String(template), line])
+			assert_true(line.contains("XYZZY"),
+				"[%s] '%s' actually shows the subject (got '%s')"
+					% [String(language), String(template), line])
+	free_node(loc)
+
+
+## Every localization key in AUTHORED world-simulation content must resolve in BOTH languages.
+##
+## A drift guard, not a fixed list: it reads the shipped world-sim catalog and follows each
+## actor to its character template, so adding somebody to the living world without adding their
+## CSV rows fails the suite instead of surfacing a raw `CHARACTER_*` token the first time a
+## later phase renders them.
+func test_authored_world_sim_content_is_fully_localized() -> void:
+	var loc := _make()
+	var cat := load("res://data/worldsim/world_sim_catalog.tres") as WorldSimCatalog
+	assert_not_null(cat, "the authored world-sim catalog loads")
+	if cat == null:
+		free_node(loc)
+		return
+	var checked := 0
+	for actor in cat.actors_sorted():
+		if actor.character_template == null:
+			continue
+		var template := actor.character_template
+		# `name_key` is required of every character; the rest are optional per template, so
+		# they are only checked when authored — an absent title is legitimate, an absent
+		# TRANSLATION of an authored title is not.
+		var required: Array[StringName] = [template.name_key]
+		for optional in [template.title_key, template.origin_key, template.motivation_key]:
+			if StringName(optional) != &"":
+				required.append(StringName(optional))
+		for key in required:
+			var text := String(key)
+			assert_true(loc.has_key(text),
+				"actor '%s' uses key '%s', which must be in the table" % [actor.id, text])
+			loc.set_language("en")
+			assert_ne(loc.t(text), text, "en value present for '%s'" % text)
+			loc.set_language("vi")
+			assert_ne(loc.t(text), text, "vi value present for '%s'" % text)
+			checked += 1
+	assert_true(checked >= 3,
+		"the guard actually inspected authored content (checked %d keys)" % checked)
+	free_node(loc)

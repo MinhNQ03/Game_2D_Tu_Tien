@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WorldSimActorData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/data/worldsim/world_sim_actor_data.gd" id="1_actor"]
+[ext_resource type="Resource" path="res://data/characters/npc_disciple_lin.tres" id="2_character"]
+[ext_resource type="Resource" path="res://data/worldsim/schedule_disciple_drill.tres" id="3_schedule"]
+
+[resource]
+script = ExtResource("1_actor")
+id = &"actor_disciple_lin"
+character_template = ExtResource("2_character")
+schedule = ExtResource("3_schedule")
+home_map_id = &"map_field"
+sect_id = &"sect_azure_cloud"
+sect_rank_id = &"rank_inner"
+faction_id = &"faction_azure_open_road"

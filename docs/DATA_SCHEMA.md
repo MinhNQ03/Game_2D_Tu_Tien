@@ -326,12 +326,65 @@ attitude_toward_player: int           # scalar (data, not hard-coded)
 attitudes_toward_factions: Dictionary # { other_faction_id -> scalar }
 ```
 
-### WorldSimState (serialized) — see `docs/WORLD_SIMULATION.md`
+### World simulation DATA (`schedule_*` / `actor_*` / `wevent_*`) — IMPLEMENTED, D-048
 ```
-world_clock: int                      # coarse tick count / in-game time
-pending_transitions: Array            # scheduled state changes to apply on catch-up
-rng_seed: int                         # deterministic background simulation
+WorldSimScheduleData (schedule_*)     # a cyclic background routine
+  id
+  phases: Array[Dictionary]           # [{ activity: int ordinal, ticks: int > 0 }]
+                                      # Activity is CLOSED: TRAINING/MISSION/RETURNING/RESTING
+
+WorldSimActorData (actor_*)           # one authored background character the world simulates
+  id                                  # ALSO the CharacterState.instance_id (one identity)
+  character_template: CharacterTemplateData   # required — a real Character, not a second model
+  schedule: WorldSimScheduleData      # required — the activity is a pure function of it
+  home_map_id: StringName             # -> MapData.id; drives the LOD band
+  sect_id, sect_rank_id               # both or neither; enrolled THROUGH SectService (D-015)
+  faction_id                          # optional; requires sect_id (a faction is inside a sect)
+
+WorldSimEventData (wevent_*)          # one recurring world event
+  id                                  # also the scheduling key, so it must be unique
+  kind                                # CLOSED: SECT_INFLUENCE/FACTION_INFLUENCE/
+                                      #         RELATIONSHIP_SHIFT — one per owning service
+  target_id                           # sect id | faction id | first character endpoint
+  secondary_id, dimension             # RELATIONSHIP_SHIFT only; REFUSED on the other kinds
+  first_tick: int > 0                 # tick 0 would fire before the world advanced at all
+  period_ticks: int >= 0              # 0 = fire once
+  magnitude_min, magnitude_max        # INCLUSIVE, may be negative; [0,0] is invalid
+                                      # (an event that cannot be felt is cost without content)
+
+WorldSimCatalog                       # the whole authored simulation + its tuning
+  ticks_per_hour, hours_per_day, days_per_season, seasons_per_year   # the calendar (data)
+  ticks_per_map_transition, ticks_on_session_start                   # the explicit beats
+  catch_up_budget_ticks                                              # the load-spike cap
+  schedules, actors, events
+  event_log_capacity                  # bounds the player-facing feed inside the save
 ```
+> No world seed is authored: the seed belongs to a RUN (hashed `GameState.run_id`), not to
+> content, so two players get different worlds from the same catalog.
+
+### WorldSimState (serialized) — the REAL shape, D-048
+```
+schema: int                           # this block's own version (migration-independent)
+world_clock: { tick, ticks_per_hour, hours_per_day, days_per_season, seasons_per_year }
+                                      # the CALENDAR travels with the tick, or retuning the
+                                      # catalog would silently change a save's in-world date
+rng_seed: int                         # the world seed
+rng_streams: { stream_id -> { state, draws } }    # REQUIRED: a seed alone only reproduces a
+                                      # world from tick 0 (SAVE_FORMAT §3b)
+pending_transitions: Array            # [{ due_tick, event_id }], sorted by (due_tick, id);
+                                      # a recurring event's NEXT due tick is computed when it
+                                      # fires, so it cannot be re-derived from the catalog
+carry_over_ticks: int                 # promised-but-unspent simulation time (bounded catch-up)
+actors: { instance_id -> { instance_id, schedule_id, location_map_id,
+                           joined_tick, band, activity } }
+                                      # joined_tick is the ORIGIN of the derived activity
+event_log: Array                      # bounded feed [{ tick, event_id, kind, target_id,
+                                      #                 magnitude }]
+event_log_capacity: int
+```
+> `CharacterState.sim_state` is a DERIVED CACHE of the matching `actors` row (band + activity +
+> location), in the same relationship `sect_id` has with the sect roster (D-015). The record
+> wins; the simulation reports drift rather than trusting the cache.
 
 > Save sections for the above (`characters`, `relationships`, `sects`, `world_sim`) are
 > listed in `docs/SAVE_FORMAT.md`. All references are ids/instance_ids so saves survive

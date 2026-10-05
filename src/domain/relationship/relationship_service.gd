@@ -38,6 +38,21 @@ func set_rules(rule_lookup: Dictionary) -> void:
 	_rules = rule_lookup
 
 
+## Does the installed config define `dimension`?
+##
+## A read-only query so a CALLER can validate a dimension id it holds BEFORE any time passes,
+## instead of discovering it mid-mutation. `apply_delta` already fails loud on an unknown
+## dimension, but its `false` return cannot be told apart from the legitimate "no effect, the
+## value was already clamped at a bound" — so a caller that must fail closed up front has no
+## way to ask. Added with its first real consumer (`WorldSimulationService.prepare_events`,
+## Phase 08), not speculatively (L-005); the config object itself stays private so this
+## remains the only question callers can ask about it.
+func has_dimension(dimension: StringName) -> bool:
+	if _config == null:
+		return false
+	return _config.has_dimension(dimension)
+
+
 # --- Edge creation (the ONLY way an edge is born) ---------------------------
 
 ## Create an edge with id `edge_id` between `from_ep` and `to_ep`. For a symmetric edge the

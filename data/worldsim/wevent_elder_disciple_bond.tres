@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WorldSimEventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/worldsim/world_sim_event_data.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"wevent_elder_disciple_bond"
+kind = 2
+target_id = &"actor_elder_shen"
+secondary_id = &"actor_disciple_lin"
+dimension = &"respect"
+first_tick = 6
+period_ticks = 18
+magnitude_min = 1
+magnitude_max = 4

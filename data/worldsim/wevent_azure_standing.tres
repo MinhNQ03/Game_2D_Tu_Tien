@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WorldSimEventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/worldsim/world_sim_event_data.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"wevent_azure_standing"
+kind = 0
+target_id = &"sect_azure_cloud"
+secondary_id = &""
+dimension = &""
+first_tick = 10
+period_ticks = 48
+magnitude_min = -3
+magnitude_max = 4

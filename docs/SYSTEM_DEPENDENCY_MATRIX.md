@@ -33,9 +33,10 @@
 | **Character** | DONE | `CharacterState` + template | identity/stats/realm/sect cache (persistent); view (presentation) | templates, domain events | `character_*` | template data | own | Data | Relationship, Sect, Combat, Quest, Story | `CharacterTemplateData`, `OriginData` (P-20) | yes | HUD, character screen | server owns characters | **High** |
 | **Relationship** | DONE | `RelationshipService` / `RelationshipStore` | edge graph incl. bounded history (persistent) | domain events, authored rules | `relationship_changed` | config, rules | own | Character ids | Sect diplomacy, Dialogue, Quest, Story, Economy | `RelationshipConfigData`, `RelationshipRuleData` | yes | relationship screen (P-17+) | server owns the social graph | **High** |
 | **Sect** | DONE | `SectService` / `SectStore` | roster/resources/territory/reputation/diplomacy (persistent) | membership + economy intents, catalog | `member_*`, `diplomacy_changed`, … | templates, Relationship store | own + `CharacterState` sect cache (derived, D-015) | Relationship (**hard**, D-037), Character | Faction, Quest, Story, Economy, Map access | `SectTemplateData`, `SectRankData`, `SectCatalog` | yes (P-23) | HUD chip, sect panel | server owns sects | **High** |
-| **Faction / politics** | P-07 | `FactionState` + a faction service | influence/attitudes/goals/members (persistent) | sect state, relationships, sim ticks | `faction_shift` | Sect, Relationship | own | Sect, Relationship | World Sim, Quest, Story, Map access | faction data on sect templates | yes | faction UI (P-07) | server resolves politics | **High** |
-| **World Simulation** | P-08 | a world-sim service | clock, per-actor sim state, pending transitions, **RNG stream state** (persistent) | clock ticks, schedules, events | `world_tick`, `world_event_triggered` | Character, Sect, Faction, Relationship | their state via owners | all social systems + **it INTRODUCES the deterministic RNG seam (C-010, first consumer)** | Quest, Story, Economy, Map, **Combat (reuses the seam)** | schedules, event data | yes | world-event surface (P-20) | server advances the world | **High** |
-| **Deterministic RNG** | **P-08** (introduced with World Sim) | the run/world seed + per-subsystem streams | world seed + each stream's position (persistent) | a seed, a stream id | deterministic values | — | own stream state | — | **World Sim (P-08)**, Combat (P-09), Enemy AI (P-10), Economy drops, Dungeon | — | yes (seed + stream state) | never | server owns the seed | **High** |
+| **Faction / politics** | DONE | `FactionService` / `FactionStore` | influence/goals/members/declared politics (persistent) | sect roster, relationship graph, sim ticks | `member_*`, `leader_changed`, `influence_changed`, `politics_changed` | Sect roster (authority, D-015), Relationship store | own + `CharacterState.faction_id` cache | Sect (**hard**), Relationship (**hard**, D-047), Character | World Sim, Quest, Story, Map access | `FactionTemplateData`, `FactionGoalData`, `FactionCatalog` | yes (P-23) | faction panel (D-042) | server resolves politics | **High** |
+| **World Simulation** | DONE | `WorldSimulationService` / `WorldSimulationState` | clock, per-actor sim state (band/routine/location/`joined_tick`), pending event queue, carry-over debt, bounded event feed, **RNG stream state** (persistent) | explicit gameplay beats, schedules, scheduled events | `world_tick`, `world_event_triggered`, `actor_state_changed`, `actor_band_changed` | `CharacterRegistry`, Sect, Faction, Relationship | own + `CharacterState.sim_state` (derived cache, D-015 shape); everything else **via its owner's service** | Character registry, Sect, Faction, Relationship + **it INTRODUCED the deterministic RNG seam (C-010, first consumer)** | Quest, Story, Economy, Map, **Combat (reuses the seam)** | `WorldSimScheduleData`, `WorldSimActorData`, `WorldSimEventData`, `WorldSimCatalog` | yes | world date + last-event lines in the HUD (D-048); chronicle (P-20) | server advances the world | **High** |
+| **Deterministic RNG** | **DONE** (introduced with World Sim, D-048) | `RngService` + `RngStream` (injected, **not** an autoload) | world seed + each stream's position **and draw count** (persistent) | a seed, a stream id | deterministic values | — | own stream state | — | **World Sim (P-08)**, Combat (P-09), Enemy AI (P-10), Economy drops, Dungeon | — | yes (seed + per-stream state) | never | server owns the seed | **High** |
+| **Character registry** | **DONE** (D-048) | `CharacterRegistry` (owned by `WorldRuntime`) | `instance_id -> CharacterState` (persistent) | characters built from templates | — (no rules, no signals) | — | own collection only ("who exists") | Character | Sect, Faction, World Sim — all take their resolver from it | `CharacterTemplateData` | yes (`characters.by_instance_id`) | no | server owns the population | Med |
 | **Map / World** | DONE | `WorldRuntime` + `MapCatalog` | active map, player instance (runtime); location (persistent) | map data, exits, transitions | `map_entered/exited` | `MapData` | `GameState` location | SceneRouter, Character | Dungeon, Quest, Economy, Combat | `MapData`, `MapExit`, `MapCatalog` | location | map/atlas UI | server owns world placement | Med |
 | **Combat** | P-09 | a pure-domain damage resolver | combatant runtime state; **no persistent state of its own** | **combat command (intent)**, stats, technique/equipment mods | `hit`, `damaged`, `enemy_died`, `xp_gained` | Character, Equipment, Technique, `DATA_SCHEMA` formula | nothing directly | Character, Data, **the RNG seam established in P-08** (own stream) | Progression, Quest, Economy, Boss | `SkillData`, `EnemyData` | no (derived) | combat HUD (P-09) | **command intent + server resolves** | **High** |
 | **Enemy AI** | P-10 | `AIComponent` | AI runtime only | perception, spawn tables | movement/attack intents | Map, Character | own runtime | Combat, Map | Dungeon, Boss | `EnemyData`, spawn tables | no | no | server-authoritative AI | Med |
@@ -145,6 +146,26 @@ seeded replay, a regression test and (later) a server-advanced world all possibl
 
 Deliberately NOT frozen: class names, the stream-id vocabulary, the generator algorithm, and the
 serialized shape of stream state — those belong to the implementing phase.
+
+**IMPLEMENTED in P-08 (D-048).** The decisions that were left open are now made:
+- **Classes:** `RngService` (the seam, holding the world seed) + `RngStream` (one stream).
+  Injected `RefCounted`s, not an autoload.
+- **Stream ids:** `stream(StringName)` is generic and only `STREAM_WORLD_SIM` is named as a
+  constant — a constant for a stream nothing draws from would be the speculative surface L-005
+  forbids, so P-09 adds `STREAM_COMBAT` in the file that draws from it.
+- **Algorithm:** a 32-bit Weyl counter through the `lowbias32` finalizer. Chosen over the
+  engine's `RandomNumberGenerator` for ONE reason — the generator's state is part of our save
+  format (§3b below), and an engine-internal state blob would tie a player's world to an
+  implementation detail we cannot migrate.
+- **Serialized shape:** `{ world_seed, streams: { stream_id -> { state, draws } } }`. The draw
+  count is not needed to reproduce the sequence; it is kept because it is the one number that
+  makes a determinism failure diagnosable — it distinguishes "a different value was drawn" from
+  "a different NUMBER of values was drawn" (an extra call somewhere), which is the exact failure
+  per-stream state exists to prevent.
+- **Isolation is structural, not disciplinary:** each stream's starting state is derived by
+  folding its id through the same mixer, so two ids under one seed are unrelated sequences
+  rather than one sequence read at two offsets. A test drains one stream 1000 times and asserts
+  another moves by zero values.
 
 ## 5. Cross-cutting invariants
 

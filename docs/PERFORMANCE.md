@@ -111,9 +111,39 @@ Template:
 - Links:     commit / test / DECISIONS entry
 ```
 
-> No entries yet — gameplay exists (Player + World/Map) but no profiler benchmark has been
-> run, so there is nothing *measured* to log. Correctness/no-leak guards (e.g. the
-> map-transition orphan-node assertions) are tests, not optimization-log entries.
+### PERF-001 — the world-simulation tick loop sorted the WHOLE cast every tick  (2026-10-05)
+
+- **Problem:** the per-tick loop needs the OBSERVED (NEAR+MID) actors. `WorldSimulationState`
+  derived that set by filtering `actors_sorted()`, which sorts every actor id — so each tick
+  was `O(cast · log cast)` in the size of the whole background population. That is exactly the
+  `O(whole cast)` per-tick cost LOD exists to eliminate, reintroduced inside the code that
+  implements LOD.
+- **Cause:** found by the budget test in `tests/performance/test_world_sim_budget.gd`, which
+  holds the observed set CONSTANT at 10 and varies only the FAR population. A tenfold FAR cast
+  cost **3.57×** more per tick — not the ~10× of a naive full-cast walk (most of the per-actor
+  body was correctly skipped), but unmistakably driven by the far population, which it must not
+  be at all. The sort was the whole difference.
+- **Solution:** `WorldSimulationState` now maintains an incremental `_observed` index (a set of
+  instance ids), updated by `add_actor()` and by the new `set_actor_band()` — which becomes the
+  ONLY sanctioned way to change a band, so the index cannot go stale. `observed_actors_sorted()`
+  sorts the observed set only. The index is DERIVED, so `from_dict()` rebuilds it rather than
+  serializing it (a serialized index could disagree with the bands it indexes).
+- **Impact:** 300 ticks, 10 observed actors in both runs —
+  - cast of 20: **14 ms → 12 ms**
+  - cast of 200: **50 ms → 12 ms**
+  - scaling factor for a 10× larger FAR population: **3.57× → 1.0×**
+  The per-tick cost is now independent of the background population, which is the property the
+  architecture claims.
+- **Measured:** `tests/performance/test_world_sim_budget.gd` (headless, `Time.get_ticks_msec`
+  around `advance_ticks(300)`, synthetic catalog so N is controllable), run locally on Godot
+  4.7-stable headless. The test prints the figures above and keeps both a relative scaling
+  assertion (≤ 3× for a 10× cast) and a generous absolute ceiling (4000 ms), so a regression
+  fails on any hardware rather than only on fast hardware.
+- **Links:** D-048 (Phase 08), `docs/WORLD_SIMULATION.md` §6, L-032.
+
+> This is the FIRST entry in this log, and it is here because the budget test was written
+> before the code was declared done and then failed. That is the intended order
+> (`§1 Measure first`): the optimization is a response to a measurement, not to a hunch.
 
 ## 5. Relationship to tests
 
@@ -132,3 +162,25 @@ rather than during play. See `docs/TEST_PLAN.md`.
 > only changes the frame index on a facing change — no per-frame texture load or node creation.
 > No numbers were profiled; this is design discipline (`§1 Measure first`), so the optimization
 > log (§4) stays empty.
+
+> **Phase 08 note (D-048) — the discipline behind PERF-001.** The world simulation runs with
+> **zero per-frame cost**: `WorldSimulationRuntime` has no `_process`, no `_physics_process`, no
+> `Timer` and no wall-clock read, and a regression test reads the SOURCE to keep it that way
+> (the cheapest way to betray the design is a `_process` that "just" accumulates delta).
+> Simulated time passes on EXPLICIT gameplay beats — session start and the player arriving in a
+> map — at an authored tick cost. Consequences worth recording:
+> - **Background characters are not nodes, in any band.** A cast of 200 simulated for 300 ticks
+>   creates ZERO nodes (asserted by `Performance.OBJECT_NODE_COUNT`, and in the real application
+>   by `WorldSimulationRuntime.get_child_count() == 0` after 20 map transitions). "No `_process`
+>   on background actors" is true because there are no background actors to put one on.
+> - **An actor's activity is DERIVED** from `(tick, schedule)`, not stepped per tick, so a FAR
+>   actor costs nothing until something asks about it — and asking is `O(1)`.
+> - **Per-tick work is `O(observed + due events)`** (PERF-001), and the event queue is sorted,
+>   so taking the due events is a prefix walk rather than a scan.
+> - **Catch-up is BOUNDED** by an authored `catch_up_budget_ticks`; the overflow becomes
+>   deterministic carry-over debt drained on later calls, so returning to a long-abandoned world
+>   cannot stall on a thousand ticks in one frame. Nothing is dropped — processing `a + b` ticks
+>   is asserted identical to processing `a+b` at once.
+> - **The map-neighbour index for the MID band is built ONCE per session**, not per arrival.
+> - **The world-event feed is capped** by `event_log_capacity`, like `RelationshipEdge.history`,
+>   so it cannot grow without limit inside a save.

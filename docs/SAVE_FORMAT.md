@@ -76,9 +76,18 @@ SaveFile:
   sects:                                      # core system — docs/SECT_SYSTEM.md
     by_id: Dictionary                         # sect_id -> SectState (incl. FactionState[])
   world_sim:                                  # core system — docs/WORLD_SIMULATION.md
-    world_clock: int
-    pending_transitions: Array
+    # IMPLEMENTED (D-048). `WorldSimulationState.to_dict()` produces exactly this block; the
+    # full field list is in docs/DATA_SCHEMA.md. The §3b requirement below is SATISFIED here:
+    # `rng_streams` carries each stream's position, not just the seed.
+    schema: int
+    world_clock: { tick, ticks_per_hour, hours_per_day, days_per_season, seasons_per_year }
     rng_seed: int
+    rng_streams: Dictionary                   # stream_id -> { state, draws }
+    pending_transitions: Array                # [{ due_tick, event_id }]
+    carry_over_ticks: int                     # unspent simulation time; dropping it loses world time
+    actors: Dictionary                        # instance_id -> per-actor simulation tier
+    event_log: Array
+    event_log_capacity: int
   world:
     map_states: Dictionary                    # per-map persistent bits (opened chests, cleared, ...)
   rng:
@@ -116,6 +125,21 @@ or a re-derivable `(seed, stream_id, draw_count)` triple; the field names; and w
 sits in the file. Those are decided by the phase that implements the RNG seam (**P-08**) and the
 phase that implements persistence (**P-23**) — this section only guarantees they will not be
 *forgotten*.
+
+> **SETTLED by P-08 (D-048) for the simulation's half.** Stream state is a **32-bit counter plus
+> a draw count**, written as `rng_streams: { stream_id -> { state, draws } }` inside the
+> `world_sim` block above (the counter alone reproduces the sequence; the draw count is kept
+> because it is the one number that makes a determinism failure diagnosable — it distinguishes
+> "a different value was drawn" from "a different NUMBER of values was drawn"). A deliberately
+> hand-rolled mixer was chosen over the engine's `RandomNumberGenerator` for exactly the reason
+> this section exists: the generator's state is part of the save format, and an engine-internal
+> state blob would tie a player's world to an implementation detail we do not control and cannot
+> migrate. The **resume contract is now asserted by test**:
+> `save → load → advance K ticks` produces the identical world to `advance K ticks` on a run that
+> never stopped. Besides the stream positions it needs three more things the sketch above did not
+> name — the **pending event queue** (a recurring event's next due tick is computed when it
+> fires), the **carry-over tick debt**, and each actor's **`joined_tick`**. P-23 still owns the
+> file-level format, versioning and migration.
 
 Also in scope of the same requirement: the **Knowledge Core**'s acquired-id set is persistent
 domain state owned by `KnowledgeService`/`KnowledgeStore` (CL-14), so it serializes like any other

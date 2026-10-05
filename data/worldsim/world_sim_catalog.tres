@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="WorldSimCatalog" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/data/worldsim/world_sim_catalog.gd" id="1_catalog"]
+[ext_resource type="Resource" path="res://data/worldsim/schedule_elder_rounds.tres" id="2_sched_elder"]
+[ext_resource type="Resource" path="res://data/worldsim/schedule_disciple_drill.tres" id="3_sched_disciple"]
+[ext_resource type="Resource" path="res://data/worldsim/schedule_scout_patrol.tres" id="4_sched_scout"]
+[ext_resource type="Resource" path="res://data/worldsim/actor_elder_shen.tres" id="5_actor_elder"]
+[ext_resource type="Resource" path="res://data/worldsim/actor_disciple_lin.tres" id="6_actor_disciple"]
+[ext_resource type="Resource" path="res://data/worldsim/actor_scout_ko.tres" id="7_actor_scout"]
+[ext_resource type="Resource" path="res://data/worldsim/wevent_azure_standing.tres" id="8_ev_sect"]
+[ext_resource type="Resource" path="res://data/worldsim/wevent_terrace_drill.tres" id="9_ev_faction"]
+[ext_resource type="Resource" path="res://data/worldsim/wevent_elder_disciple_bond.tres" id="10_ev_bond"]
+[ext_resource type="Resource" path="res://data/worldsim/wevent_frontier_friction.tres" id="11_ev_friction"]
+
+[resource]
+script = ExtResource("1_catalog")
+ticks_per_hour = 1
+hours_per_day = 12
+days_per_season = 30
+seasons_per_year = 4
+ticks_per_map_transition = 6
+ticks_on_session_start = 0
+catch_up_budget_ticks = 64
+schedules = [ExtResource("2_sched_elder"), ExtResource("3_sched_disciple"), ExtResource("4_sched_scout")]
+actors = [ExtResource("5_actor_elder"), ExtResource("6_actor_disciple"), ExtResource("7_actor_scout")]
+events = [ExtResource("8_ev_sect"), ExtResource("9_ev_faction"), ExtResource("10_ev_bond"), ExtResource("11_ev_friction")]
+event_log_capacity = 16

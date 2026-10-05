@@ -46,7 +46,8 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"FactionRuntime", &"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
+	&"WorldSimulationRuntime", &"FactionRuntime", &"SectRuntime", &"RelationshipRuntime",
+	&"WorldRuntime", &"GameState",
 ]
 
 
@@ -137,6 +138,46 @@ func test_real_world_map_flow() -> void:
 		# The C-003 guard: Phase 07 enrols nobody, so the player holds no political identity.
 		assert_eq(faction_runtime.call("get_player_instance_id"), &"player",
 			"the faction session knows the player (for the view only)")
+
+	# Phase 08 (World Simulation): the fifth sibling. It is started LAST (it reads all four
+	# subsystems above) and must be ended FIRST, which §7b asserts against the real trace.
+	var sim_runtime := _find_world_sim_runtime(main)
+	assert_not_null(sim_runtime, "WorldSimulationRuntime exists under Main/Systems")
+	var sim_runtime_id := -1
+	var sim_tick_at_start := -1
+	if sim_runtime != null:
+		sim_runtime_id = sim_runtime.get_instance_id()
+		assert_true(sim_runtime.call("is_session_active"),
+			"WorldSimulationRuntime session active after New Game")
+		assert_eq(_count_named("WorldSimulationRuntime"), 0,
+			"WorldSimulationRuntime is NOT an autoload (not under /root)")
+		# THE "no entity nodes" GUARANTEE, in the real application: a simulated cast costs
+		# zero nodes in every band (`docs/WORLD_SIMULATION.md` §2/§6).
+		assert_eq(sim_runtime.get_child_count(), 0,
+			"the world simulation spawned NO nodes for its cast")
+		var sim_state: WorldSimulationState = sim_runtime.call("get_state")
+		assert_not_null(sim_state, "the simulation exposes its state")
+		if sim_state != null:
+			assert_true(sim_state.actor_count() >= 2,
+				"the authored cast is simulated (got %d)" % sim_state.actor_count())
+			sim_tick_at_start = sim_state.tick()
+			# Arriving in the hub is the one explicit beat, and Main pushes it right after
+			# starting the session — so the world has already moved off tick 0.
+			assert_true(sim_tick_at_start > 0,
+				"arriving in the hub advanced the world clock (got tick %d)"
+					% sim_tick_at_start)
+			# The cast is in the SHARED character registry, not a private copy.
+			var registry: CharacterRegistry = world_runtime.call("get_character_registry")
+			assert_not_null(registry, "WorldRuntime owns the shared character registry")
+			if registry != null:
+				assert_true(registry.count() >= 3,
+					"the registry holds the player AND the simulated cast (got %d)"
+						% registry.count())
+				assert_true(registry.has(&"player"), "including the player")
+				for sim_actor in sim_state.actors_sorted():
+					assert_true(registry.has(sim_actor.instance_id),
+						"simulated actor '%s' has a CharacterState in the SHARED registry"
+							% sim_actor.instance_id)
 
 	# Phase 06 final hardening (§3): the FORBIDDEN combination is "lifecycle RUNNING + a live
 	# world + a character carrying a sect id + an INACTIVE sect session" — a running game whose
@@ -273,6 +314,52 @@ func test_real_world_map_flow() -> void:
 		assert_eq(gs.call("get_current_map_id"), StringName(now_key),
 			"round %d: GameState map id matches router" % i)
 		assert_false(router.call("is_transitioning"), "round %d: router not stuck" % i)
+	# --- 6b. THE WORLD MOVED WHILE THE PLAYER TRAVELLED (Phase 08) ---------------
+	# This is the payoff assertion for the whole phase: 20 real map transitions are 20 real
+	# gameplay beats, so simulated time must have passed and the world must have DONE
+	# something — without a single node having been spawned for the cast.
+	if sim_runtime != null and sim_tick_at_start >= 0:
+		var sim_state_after: WorldSimulationState = sim_runtime.call("get_state")
+		assert_not_null(sim_state_after, "the simulation is still live after the round trips")
+		if sim_state_after != null:
+			assert_true(sim_state_after.tick() > sim_tick_at_start,
+				("the world clock advanced across %d map transitions (%d -> %d): simulated "
+					+ "time passes on real gameplay beats, not on a timer")
+					% [ROUND_TRIPS, sim_tick_at_start, sim_state_after.tick()])
+			assert_true(sim_state_after.event_log().size() > 0,
+				"and the world actually DID something while the player travelled")
+			# Bands followed the player. The shipped world is two ADJACENT maps, so the cast
+			# is NEAR/MID and nobody is FAR — asserted as the census it should be rather than
+			# as a hopeful ">= 0".
+			var census := sim_state_after.band_census()
+			assert_eq(census[WorldSimActor.Band.NEAR] + census[WorldSimActor.Band.MID],
+				sim_state_after.actor_count(),
+				("every actor is NEAR or MID in the shipped two-map world, because both maps "
+					+ "are adjacent; FAR becomes reachable when a third, non-adjacent map is "
+					+ "authored (census %s)") % str(census))
+			assert_true(census[WorldSimActor.Band.NEAR] > 0,
+				"and somebody is in the player's own map")
+		assert_eq(sim_runtime.get_child_count(), 0,
+			"still ZERO nodes for the simulated cast after %d transitions" % ROUND_TRIPS)
+		assert_eq(sim_runtime.get_instance_id(), sim_runtime_id,
+			"and it is the SAME WorldSimulationRuntime instance (survives map swaps)")
+		# The HUD renders the world date, localized, with no raw id or token leaking.
+		var sim_hud := _find_gameplay_hud(router.get_current_scene())
+		if sim_hud != null:
+			var sim_text := _all_label_text(sim_hud)
+			var date_shown := false
+			for t in sim_text:
+				var line := String(t)
+				assert_false(line.contains("WORLDSIM_"),
+					"no raw world-sim localization key leaks into the HUD (%s)" % line)
+				assert_false(line.contains("actor_"),
+					"no raw actor id leaks into the HUD (%s)" % line)
+				assert_false(line.contains("{year}") or line.contains("{subject}"),
+					"no unsubstituted placeholder leaks into the HUD (%s)" % line)
+				if line.contains("1"):
+					date_shown = true
+			assert_true(date_shown, "the HUD shows a world date line (got %s)" % str(sim_text))
+
 	await scene_tree.process_frame
 	await scene_tree.process_frame
 	var after: float = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
@@ -307,6 +394,14 @@ func test_real_world_map_flow() -> void:
 			"FactionRuntime session ended on return to menu")
 		assert_null(faction_runtime.call("get_store"),
 			"FactionRuntime dropped its store on session end")
+	# And the world simulation, which is ended FIRST of all five.
+	if sim_runtime != null and is_instance_valid(sim_runtime):
+		assert_false(sim_runtime.call("is_session_active"),
+			"WorldSimulationRuntime session ended on return to menu")
+		assert_null(sim_runtime.call("get_state"),
+			"and it dropped its simulation state")
+		assert_eq(sim_runtime.call("get_player_map_id"), &"",
+			"and cleared the player's location")
 
 	# --- 7b. THE TEARDOWN ORDER ITSELF (D-047) ----------------------------------
 	# This is the assertion the Phase-07 defect needed: `_on_return_to_menu()` had drifted to
@@ -375,6 +470,16 @@ func _find_faction_runtime(main: Node) -> Node:
 		return null
 	for child in systems.get_children():
 		if child is FactionRuntime:
+			return child
+	return null
+
+
+func _find_world_sim_runtime(main: Node) -> Node:
+	var systems := main.get_node_or_null("Systems")
+	if systems == null:
+		return null
+	for child in systems.get_children():
+		if child is WorldSimulationRuntime:
 			return child
 	return null
 

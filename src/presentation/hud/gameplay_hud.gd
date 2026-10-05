@@ -58,6 +58,9 @@ var _sect_view: SectMembershipView = null  # read-only sect view (Phase 06); may
 var _name_label: Label
 var _title_label: Label
 var _map_label: Label
+## World time + the last world event (Phase 08). Two muted lines under the place name.
+var _world_date_label: Label
+var _world_event_label: Label
 var _portrait: TextureRect
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
@@ -75,6 +78,7 @@ var _sect_panel: SectPanel
 # having one cover the other.
 var _faction_panel: FactionPanel
 var _politics_view: SectPoliticsView = null  # read-only politics view; may be null
+var _world_sim_view: WorldSimView = null  # read-only world-sim view (Phase 08); may be null
 # The full-rect Control every HUD element hangs off. Held so the safe-area inset can be
 # re-applied on a viewport change without rebuilding the HUD.
 var _root: Control = null
@@ -263,6 +267,29 @@ func _build_ui() -> void:
 	map_body.add_child(_map_label)
 
 	map_body.add_child(_divider_strip())
+
+	# World time + the last thing the world did on its own (Phase 08). It belongs UNDER the
+	# place name because both answer orientation questions — "where am I" and "when is it" —
+	# and the UI bible ranks orientation as primary. Two muted hint lines, not a panel of its
+	# own: the player should be able to notice that the world moved without them
+	# (`SOCIAL_DESIGN.md` §7) without a readout competing with the playfield for attention.
+	_world_date_label = Label.new()
+	_world_date_label.name = "WorldDate"
+	_world_date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_world_date_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_world_date_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
+	map_body.add_child(_world_date_label)
+
+	_world_event_label = Label.new()
+	_world_event_label.name = "WorldEvent"
+	_world_event_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_world_event_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_world_event_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
+	_world_event_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# +40% string length for vi↔en must not clip (`docs/UI_UX_BIBLE.md`), and this line is the
+	# longest thing in a narrow plaque, so it wraps rather than widening the panel.
+	_world_event_label.custom_minimum_size = Vector2(UIPalette.HUD_MAP_PANEL_WIDTH, 0)
+	map_body.add_child(_world_event_label)
 
 	# --- Bottom-left: control-prompt panel (graphic key badges) -------------------
 	var prompt_panel := _panel()
@@ -458,6 +485,14 @@ func set_politics_view(view: SectPoliticsView) -> void:
 		_faction_panel.set_view(view)
 
 
+## Push the read-only world-simulation view (Phase 08). The owner (MapBase, fed by
+## WorldRuntime→WorldSimulationRuntime) rebuilds + pushes this on map arrival and after the
+## world has ticked — NOT per frame.
+func set_world_sim_view(view: WorldSimView) -> void:
+	_world_sim_view = view
+	_refresh_world_sim()
+
+
 ## Semantic `sect_panel` / `faction_panel` intent toggles the matching panel. Driven through
 ## InputService (gated to GAMEPLAY context) — never a raw keycode (L-003). Read + handle
 ## locally, then mark the input handled; no scene teardown happens here so this is a safe
@@ -500,7 +535,40 @@ func _refresh() -> void:
 	_title_label.visible = _title_key != &""
 	_map_label.text = _resolve(_map_name_key)
 	_refresh_sect_chip()
+	_refresh_world_sim()
 	_refresh_prompts()
+
+
+## Render world time + the last world event from the read-only view (Phase 08).
+##
+## With no simulation the two lines are HIDDEN rather than blanked: an empty label still
+## occupies its row in the plaque, so blanking would leave a gap that reads as a broken layout.
+##
+## The event line names WHAT KIND of thing moved and WHICH WAY, never the subject and never a
+## raw id (see `WorldSimView`'s note on why the subject has to wait for a phase that can name
+## things). The magnitude's SIGN picks the verb, so vi and en each read as a sentence instead
+## of as "influence +3", which would need no translation and convey less.
+func _refresh_world_sim() -> void:
+	if _world_date_label == null or _world_event_label == null:
+		return
+	if _world_sim_view == null or not _world_sim_view.available:
+		_world_date_label.visible = false
+		_world_event_label.visible = false
+		return
+	_world_date_label.visible = true
+	_world_date_label.text = _text_args("UI_HUD_WORLD_DATE", {
+		"year": _world_sim_view.year,
+		"season": _world_sim_view.season,
+		"day": _world_sim_view.day,
+	})
+	_world_event_label.visible = true
+	if not _world_sim_view.has_last_event():
+		_world_event_label.text = _text("UI_HUD_WORLD_QUIET")
+		return
+	var subject := _resolve(_world_sim_view.last_event_kind_key)
+	var template := "UI_HUD_WORLD_EVENT_ROSE" if _world_sim_view.last_event_magnitude >= 0 \
+		else "UI_HUD_WORLD_EVENT_FELL"
+	_world_event_label.text = _text_args(template, {"subject": subject})
 
 
 ## Render the compact sect chip from the read-only view (localized; never a raw id). A null
@@ -565,6 +633,15 @@ func _text(key: String) -> String:
 	if _loc == null:
 		return key
 	return String(_loc.call("t", key))
+
+
+## Localized text with `{placeholder}` substitution (`Localization.t_args`). Used for the
+## world date + event lines, which are SENTENCES with numbers in them — building them by
+## concatenation would break grammar across languages (`07-localization.md`).
+func _text_args(key: String, args: Dictionary) -> String:
+	if _loc == null:
+		return key
+	return String(_loc.call("t_args", key, args))
 
 
 func _on_language_changed(_language_code: String) -> void:

@@ -79,6 +79,18 @@ func _run() -> void:
 			failures.append("%s — could not load script" % file_path)
 			continue
 
+		# A script with a PARSE ERROR still loads as a non-null `GDScript` — it simply cannot
+		# be instantiated. Calling `new()` on it raises "Nonexistent function 'new' in base
+		# 'GDScript'", which is a VM error: it ABORTS `_run`, so `quit()` is never reached and
+		# the headless process HANGS until the CI job times out instead of failing in seconds.
+		# One mistyped line in one test file used to cost a whole job that way.
+		if not script.can_instantiate():
+			failed += 1
+			failures.append(("%s — loaded but cannot be instantiated (a parse/compile error "
+				+ "in the test file itself; run the parse-check gate for the reason)")
+				% file_path)
+			continue
+
 		var test_case: Object = script.new()
 		if not _is_test_case(test_case):
 			failed += 1

@@ -53,6 +53,17 @@ var _catalog: Dictionary = {}        # map_id(StringName) -> MapData
 var _start_map_id: StringName = &""  # data-driven start map, read from the catalog (D-023)
 var _player: Node = null             # the persistent per-session Player
 var _player_character: CharacterState = null  # the player's ONE authoritative state (D-023)
+## The session's character population (Phase 08). The player is registered here at spawn, and
+## `WorldSimulationRuntime` adds its authored cast to the SAME collection — so "who exists in
+## this world" has one answer and every service that needs a character resolver gets the same
+## one (`docs/CHARACTER_SYSTEM.md` §10; before this, the bootstrap hand-wrote two closures
+## that each knew about the player only).
+##
+## It lives here rather than in the simulation because the world coordinator already owned the
+## only character there was; moving it into the simulation would have made the simulation the
+## de-facto owner of the whole cast, which is the "universal state holder" shape that subsystem
+## must not take.
+var _characters: CharacterRegistry = null
 var _active_map: Node = null         # the currently loaded map scene (owned by SceneRouter)
 var _session_active: bool = false
 
@@ -72,6 +83,7 @@ func start_session() -> bool:
 	if not _load_catalog():
 		return false
 	_register_scenes()
+	_characters = CharacterRegistry.new()
 	if not _spawn_player():
 		push_error("[world] failed to spawn player; aborting session")
 		end_session()
@@ -97,6 +109,9 @@ func end_session() -> void:
 	# BEFORE end_session; the runtime reference is cleared here (RefCounted is freed when the
 	# last reference goes).
 	_player_character = null
+	if _characters != null:
+		_characters.clear()
+	_characters = null
 	_active_map = null
 	if _router != null:
 		_router.call("clear_current_scene")
@@ -124,9 +139,28 @@ func get_player_character() -> CharacterState:
 	return _player_character
 
 
+## The session's character population (or null before a session starts).
+##
+## The sect, faction and world-simulation sessions all take their character resolver from
+## this ONE collection, so a character that exists is resolvable by every service rather than
+## by whichever closure happened to capture it (Phase 08).
+func get_character_registry() -> CharacterRegistry:
+	return _characters
+
+
 ## The currently loaded map scene (or null). For tests/coordinator wiring.
 func get_active_map() -> Node:
 	return _active_map
+
+
+## A COPY of the session's `map_id -> MapData` lookup (empty before a session starts).
+##
+## Handed to the world simulation, which needs the map GRAPH to compute LOD bands ("one hop
+## from the player" is a `MapData.exits` question). A copy, so a consumer cannot edit the
+## session's catalog; the `MapData` resources inside are shared and read-only by convention,
+## exactly as they are for the active map.
+func get_map_lookup() -> Dictionary:
+	return _catalog.duplicate()
 
 
 # --- Map catalog (data-driven; D-022) ---------------------------------------
@@ -178,6 +212,13 @@ func _spawn_player() -> bool:
 	_player_character = CharacterState.create_from_template(template, PLAYER_INSTANCE_ID)
 	if _player_character == null:
 		push_error("[world] failed to build player CharacterState from template")
+		return false
+	# The player is a Character like any other (`CHARACTER_SYSTEM.md` §1), so they go in the
+	# same registry the simulated cast does. Failing here is fatal: an unregistered player
+	# would be invisible to every service's character resolver, so the sect session could not
+	# enrol them even though they demonstrably exist.
+	if _characters == null or not _characters.add(_player_character):
+		push_error("[world] failed to register the player in the character registry")
 		return false
 
 	_player = PlayerScene.instantiate()
@@ -268,8 +309,50 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# And the politics of that sect (Phase 07), read from the FactionRuntime sibling — same
 	# optional, null-safe, forward-a-read-only-view contract.
 	_push_politics_view_to_active_map()
+	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
+	# which simulated time passes, and it is announced from here because this is where "the
+	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
+	# below reflects the ticks this arrival just caused.
+	_notify_world_sim_arrival(map_id)
+	_push_world_sim_view_to_active_map()
 	# The old scene was freed by the router's _free_current_scene(); nothing to do here.
 	return true
+
+
+## Tell the world simulation the player arrived in `map_id` (Phase 08).
+##
+## Null-safe at every hop, like the sect/politics pushes: no WorldSimulationRuntime or no
+## session simply means no simulated time passes. WorldRuntime stays simulation-agnostic
+## beyond reporting the arrival — it does not know what a tick is, how many the arrival costs
+## (that is authored on the sim catalog) or what the simulation does with them.
+func _notify_world_sim_arrival(map_id: StringName) -> void:
+	var sim := _find_world_sim_runtime()
+	if sim == null:
+		return
+	sim.call("on_player_arrived", map_id)
+
+
+## Push the read-only world-simulation view into the active map's HUD (Phase 08).
+func _push_world_sim_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_world_sim_view"):
+		return
+	var sim := _find_world_sim_runtime()
+	if sim == null:
+		return
+	_active_map.call("set_world_sim_view", sim.call("get_view"))
+
+
+## Locate the WorldSimulationRuntime among this node's siblings under Main/Systems (or null).
+## Same direct-sibling lookup as the sect/faction ones: no `/root`, no deep walk, resolved once
+## per transition rather than per frame.
+func _find_world_sim_runtime() -> Node:
+	var parent := get_parent()
+	if parent == null:
+		return null
+	for sibling in parent.get_children():
+		if sibling is WorldSimulationRuntime:
+			return sibling
+	return null
 
 
 ## Push the player's sect view into the CURRENT map's HUD (Phase 06). Public so the
@@ -286,6 +369,15 @@ func refresh_active_map_sect_view() -> void:
 ## once immediately afterwards.
 func refresh_active_map_politics_view() -> void:
 	_push_politics_view_to_active_map()
+
+
+## Announce the player's CURRENT map to the world simulation and push the resulting view
+## (Phase 08). Public for the same reason the two refreshes above are: the hub map is already
+## loaded and the player already placed by the time `Main` starts the simulation session, so
+## the in-transition notification was a no-op and `Main` calls this once immediately after.
+func refresh_active_map_world_sim_view() -> void:
+	_notify_world_sim_arrival(get_current_map_id())
+	_push_world_sim_view_to_active_map()
 
 
 ## Find the optional FactionRuntime sibling and push the read-only politics view of the

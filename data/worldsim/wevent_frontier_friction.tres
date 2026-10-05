@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="WorldSimEventData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/worldsim/world_sim_event_data.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"wevent_frontier_friction"
+kind = 2
+target_id = &"actor_disciple_lin"
+secondary_id = &"actor_scout_ko"
+dimension = &"rivalry"
+first_tick = 8
+period_ticks = 30
+magnitude_min = 1
+magnitude_max = 3

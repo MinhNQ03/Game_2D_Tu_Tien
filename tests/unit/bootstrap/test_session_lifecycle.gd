@@ -32,7 +32,8 @@ const MAIN_SOURCE_PATH := "res://src/bootstrap/main.gd"
 ## The frozen teardown order, written out as a literal rather than derived, so this file says
 ## what the contract IS instead of only saying "the reverse of whatever start happens to be".
 const EXPECTED_TEARDOWN := [
-	&"FactionRuntime", &"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
+	&"WorldSimulationRuntime", &"FactionRuntime", &"SectRuntime", &"RelationshipRuntime",
+	&"WorldRuntime", &"GameState",
 ]
 
 ## subsystem name -> the script that implements its session. Pairing them here is what makes
@@ -42,6 +43,7 @@ const SUBSYSTEM_SCRIPTS := {
 	"RelationshipRuntime": "res://src/gameplay/world/relationship_runtime.gd",
 	"SectRuntime": "res://src/gameplay/world/sect_runtime.gd",
 	"FactionRuntime": "res://src/gameplay/world/faction_runtime.gd",
+	"WorldSimulationRuntime": "res://src/gameplay/world/world_sim_runtime.gd",
 }
 
 ## How the bootstrap actually ends a session: the runtimes are duck-typed (`Node`-typed
@@ -55,15 +57,19 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 4, "four per-session subsystems (got %s)" % str(order))
+	assert_eq(order.size(), 5, "five per-session subsystems (got %s)" % str(order))
 	assert_eq(order[0], &"WorldRuntime",
-		"the world session is first: it owns the player CharacterState everything else reads")
+		"the world session is first: it owns the character registry everything else resolves "
+		+ "through, and the player's CharacterState")
 	assert_eq(order[1], &"RelationshipRuntime",
-		"the relationship graph is second: sect + faction diplomacy mirror into it")
+		"the relationship graph is second: sect, faction and world-sim events all land in it")
 	assert_eq(order[2], &"SectRuntime",
 		"the sect session is third: it needs the player state AND the graph")
 	assert_eq(order[3], &"FactionRuntime",
-		"the faction session is last: it reads the sect store AND the graph (D-042)")
+		"the faction session is fourth: it reads the sect store AND the graph (D-042)")
+	assert_eq(order[4], &"WorldSimulationRuntime",
+		"the world simulation is last: it reads ALL FOUR — the character registry, the sect "
+		+ "service, the faction service and the relationship graph (Phase 08)")
 	assert_eq(MainScript.SESSION_OWNER_STEP, &"GameState",
 		"the lifecycle owner is ended after every subsystem, never before")
 

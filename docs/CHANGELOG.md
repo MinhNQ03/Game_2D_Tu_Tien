@@ -8,6 +8,79 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-05 — Phase 08: the world evolves on its own, deterministically (D-048)
+
+The world now moves while the player is elsewhere, and it moves the same way every time from
+the same seed. **No new autoload** (budget still 5), no networking, no per-frame cost.
+
+- **The deterministic RNG seam lands** (the shape D-040/C-010 froze; Phase 08 is its first real
+  consumer). One world seed fans out into named streams via `RngService`/`RngStream`.
+  **Stream isolation is a property of construction, not of discipline** — each stream's start is
+  derived by folding its id through the mixer, so 1000 draws on the world stream move another
+  stream by exactly zero values, which is asserted. The seed comes from the RUN (hashed
+  `run_id`), never from the clock.
+- **Our own 32-bit mixer rather than `RandomNumberGenerator`**, for one reason: the generator's
+  state is part of the SAVE FORMAT, and an engine-internal state blob would tie a player's world
+  to an implementation detail we cannot migrate. Weyl counter + `lowbias32`; everything masked
+  to 32 bits so nothing overflows and `>>` never touches a negative value. `next_below` uses
+  multiply-shift, not `%`, so modulo bias is not baked into every seeded world forever.
+- **A world clock that is advanced EXPLICITLY.** No `_process`, no `_physics_process`, no
+  `Timer`, no wall-clock read anywhere in the subsystem — and a test reads the SOURCE to keep it
+  that way, because the cheapest way to betray this design is a `_process` that "just"
+  accumulates delta. Time passes on gameplay beats (session start, arriving in a map) at authored
+  tick costs. The calendar is data; the date is derived from one stored integer.
+- **LOD: Near / Mid / Far, from the real map graph.** The band is derived from the player's
+  position (own map → NEAR, one exit away → MID, else FAR), never authored.
+- **The one decision everything else rests on: an actor's activity is DERIVED**, a pure function
+  of `(tick − joined_tick, schedule)`, not stepped per tick. Stepping looks equivalent and is
+  not — it would make state depend on how often an actor was stepped, and not stepping FAR
+  actors is the whole saving. So FAR and NEAR compute the same answer, and a test asserts a FAR
+  actor is never behind an observed one on the same routine.
+- **Background characters are not nodes, in any band.** 200 actors × 300 ticks creates ZERO
+  nodes, and the real application reports zero children after 20 map transitions.
+- **Events mutate through the OWNING service** — `SectService.adjust_influence`,
+  `FactionService.adjust_influence`, `RelationshipService.apply_delta`. The tests prove it by
+  observing what only the owner does: the value stops at the owner's ceiling, and the
+  relationship service wrote bounded history the simulation does not implement. **All edge
+  creation happens at preparation time**, never inside a tick, and a missing owner service is a
+  start failure rather than a skipped step (D-047's rule, one phase on).
+- **Save-resumable, and asserted as such:** `save → load → advance K` produces the identical
+  world to `advance K` on a run that never stopped. That needs four things a seed alone does not
+  carry — stream positions, the pending queue, the carry-over debt, each actor's `joined_tick`.
+  A pending event due at or before the restored tick is REFUSED rather than fired late or
+  dropped.
+- **Catch-up is bounded and loses nothing.** Overflow becomes carry-over debt drained on later
+  calls, and `a + b` ticks are asserted to produce the identical world to `a+b` at once.
+- **`CharacterRegistry` arrives** (the piece `CHARACTER_SYSTEM.md` §10 listed as missing), owned
+  by `WorldRuntime`. It also fixed something: `Main` had been satisfying the sect and faction
+  resolver seam with two closures that each knew about exactly one character — fine while the
+  player was the only one, wrong the moment the world gained a cast.
+- **`CharacterState.sim_state` is a derived cache** of the simulation's record, with the same
+  `verify`/`sync` discipline `SectService` applies to `sect_id` (D-015). Drift is reported.
+- **Content is data:** 3 routines, 3 actors (an elder, an inner disciple, a frontier scout, each
+  enrolled into Thanh Vân Tông and a faction through the owning services) and 4 recurring events,
+  all localized vi + en. Adding a person to the living world is a `.tres` plus a catalog line.
+- **UI:** two muted lines under the HUD place name — the world date and what kind of thing last
+  moved, in which direction. Not the subject's name: that needs an id→key lookup no phase can
+  do yet, and printing a raw id is forbidden. No band counts or stream positions (B18).
+- **PERF-001, the first entry in the optimization log** — and it exists because the budget test
+  was written before the code was called done, and failed. The per-tick loop was deriving its
+  observed set by sorting the WHOLE cast: `O(cast · log cast)` per tick, the exact cost LOD
+  exists to remove, inside the code implementing LOD. A 10× FAR population cost 3.57× more per
+  tick. An incremental index fixed it: **50 ms → 12 ms** for 200 actors × 300 ticks, scaling
+  factor **3.57× → 1.0×**.
+- **Fixed: the test runner hung forever on an unloadable test file.** A parse-error script still
+  `load()`s as a non-null `GDScript`; calling `new()` on it is a VM error that aborts `_run`, so
+  `quit()` was never reached and the process hung until the job timed out. One mistyped line cost
+  a 15-minute timeout. The runner now checks `can_instantiate()` and fails in seconds, naming
+  the file.
+- **471 tests passed / 0 failed**, 0 leaks at exit, all 10 gates green. Every new guard was
+  proven able to fail — the E2E's five world-simulation assertions all failed when the arrival
+  beat was disconnected.
+- **Honest limits:** the shipped two-map world has no FAR actors (hub and field are adjacent, so
+  FAR arrives with the third map; all three bands are covered by unit tests); nothing renders the
+  cast yet (NPC presentation is P-17); and the HUD lines have not been seen on screen.
+
 ### 2026-10-05 — Phase-07 hardening: a reversed teardown and a fail-OPEN politics mirror (D-047)
 
 Two lifecycle/invariant holes that a green CI could not see, plus a leak it was exiting 0 on.

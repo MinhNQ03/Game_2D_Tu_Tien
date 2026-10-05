@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CharacterTemplateData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/characters/character_template_data.gd" id="1_template"]
+[ext_resource type="Resource" path="res://data/stats/npc_stats.tres" id="2_stats"]
+
+[resource]
+script = ExtResource("1_template")
+id = &"char_elder_shen"
+name_key = &"CHARACTER_ELDER_SHEN_NAME"
+title_key = &"CHARACTER_ELDER_SHEN_TITLE"
+gender = 1
+portrait_ref = ""
+sprite_set_ref = "res://data/characters/visual/elder_visual.tres"
+origin_key = &"CHARACTER_ELDER_SHEN_ORIGIN"
+bloodline_key = &""
+age = 214
+age_category = 4
+profession = 0
+starting_realm = &""
+starting_technique_ids = []
+base_stats = ExtResource("2_stats")
+default_traits = [&"PROUD", &"CAUTIOUS"]
+motivation_key = &"CHARACTER_ELDER_SHEN_MOTIVATION"
+default_goals = []
+default_sect_id = &"sect_azure_cloud"
+default_faction_id = &""
+schedule_ref = &"schedule_elder_rounds"

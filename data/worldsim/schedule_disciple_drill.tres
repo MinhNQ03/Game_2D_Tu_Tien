@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WorldSimScheduleData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/worldsim/world_sim_schedule_data.gd" id="1_schedule"]
+
+[resource]
+script = ExtResource("1_schedule")
+id = &"schedule_disciple_drill"
+phases = [{
+"activity": 0,
+"ticks": 8
+}, {
+"activity": 3,
+"ticks": 4
+}]

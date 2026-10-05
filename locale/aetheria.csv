@@ -93,3 +93,29 @@ UI_FACTION_PANEL_YOUR_SIDE,Your side,Phe của bạn
 UI_FACTION_PANEL_NO_SIDE,You have taken no side.,Bạn chưa chọn phe nào.
 UI_FACTION_PANEL_RELATION_ALLIED,Allied with your side,Đồng minh với phe bạn
 UI_FACTION_PANEL_RELATION_RIVAL,Rival of your side,Đối đầu với phe bạn
+CHARACTER_ELDER_SHEN_NAME,Shen Buqi,Thẩm Bất Kỳ
+CHARACTER_ELDER_SHEN_TITLE,Elder of the Azure Terrace,Trưởng lão Thanh Đài
+CHARACTER_ELDER_SHEN_ORIGIN,Born on Azure Peak,Sinh ra tại Thanh Vân Phong
+CHARACTER_ELDER_SHEN_MOTIVATION,Keep the covenant intact,Giữ cho Thiên Khế nguyên vẹn
+CHARACTER_DISCIPLE_LIN_NAME,Lin Yue,Lâm Nguyệt
+CHARACTER_DISCIPLE_LIN_TITLE,Inner Disciple,Nội môn đệ tử
+CHARACTER_DISCIPLE_LIN_ORIGIN,Taken in from Cloud Vale,Được nhận từ Vân Cốc
+CHARACTER_DISCIPLE_LIN_MOTIVATION,Prove the open road is not heresy,Chứng minh con đường mở không phải tà đạo
+CHARACTER_SCOUT_KO_NAME,Ko Than,Kha Thản
+CHARACTER_SCOUT_KO_TITLE,Frontier Scout,Trinh sát biên thùy
+CHARACTER_SCOUT_KO_ORIGIN,Hired out of the wild frontier,Được thu nhận từ Hoang Vực
+CHARACTER_SCOUT_KO_MOTIVATION,Be paid what the risk is worth,Được trả đúng với rủi ro phải nhận
+WORLDSIM_ACTIVITY_TRAINING,Training,Tu luyện
+WORLDSIM_ACTIVITY_MISSION,On a mission,Đang làm nhiệm vụ
+WORLDSIM_ACTIVITY_RETURNING,Returning,Đang trở về
+WORLDSIM_ACTIVITY_RESTING,Resting,Nghỉ ngơi
+WORLDSIM_BAND_NEAR,Nearby,Ở gần
+WORLDSIM_BAND_MID,In the region,Trong vùng
+WORLDSIM_BAND_FAR,Far away,Ở xa
+WORLDSIM_EVENT_SECT_INFLUENCE,Sect standing,Thanh thế tông môn
+WORLDSIM_EVENT_FACTION_INFLUENCE,Faction sway,Thế lực phe phái
+WORLDSIM_EVENT_RELATIONSHIP_SHIFT,Ties between people,Quan hệ giữa người với người
+UI_HUD_WORLD_DATE,"Yr {year} · Season {season} · Day {day}","Năm {year} · Mùa {season} · Ngày {day}"
+UI_HUD_WORLD_EVENT_ROSE,"{subject} rose","{subject} tăng lên"
+UI_HUD_WORLD_EVENT_FELL,"{subject} fell","{subject} giảm xuống"
+UI_HUD_WORLD_QUIET,The world is quiet.,Thế gian đang yên ắng.

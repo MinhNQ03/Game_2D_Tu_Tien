@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CharacterTemplateData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/characters/character_template_data.gd" id="1_template"]
+[ext_resource type="Resource" path="res://data/stats/npc_stats.tres" id="2_stats"]
+
+[resource]
+script = ExtResource("1_template")
+id = &"char_disciple_lin"
+name_key = &"CHARACTER_DISCIPLE_LIN_NAME"
+title_key = &"CHARACTER_DISCIPLE_LIN_TITLE"
+gender = 2
+portrait_ref = ""
+sprite_set_ref = "res://data/characters/visual/cultivator_f_visual.tres"
+origin_key = &"CHARACTER_DISCIPLE_LIN_ORIGIN"
+bloodline_key = &""
+age = 23
+age_category = 3
+profession = 0
+starting_realm = &""
+starting_technique_ids = []
+base_stats = ExtResource("2_stats")
+default_traits = [&"LOYAL"]
+motivation_key = &"CHARACTER_DISCIPLE_LIN_MOTIVATION"
+default_goals = []
+default_sect_id = &"sect_azure_cloud"
+default_faction_id = &""
+schedule_ref = &"schedule_disciple_drill"

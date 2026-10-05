@@ -56,6 +56,14 @@ const SECT_RUNTIME_SCRIPT := "res://src/gameplay/world/sect_runtime.gd"
 ## standing actually lives). It is therefore ended FIRST on an unwind.
 const FACTION_RUNTIME_SCRIPT := "res://src/gameplay/world/faction_runtime.gd"
 
+## PHASE 08 (World Simulation): the per-session world simulation lives in a
+## `WorldSimulationRuntime` node under `Main/Systems` — the FIFTH sibling, also NOT an autoload
+## (the D-017 budget stays at 5). It is started LAST because it reads ALL FOUR subsystems
+## before it: the character registry (its cast are real `CharacterState`s), the sect store +
+## service (its actors enrol, its events move sect influence), the faction service, and the
+## relationship graph. It is therefore ended FIRST on every teardown.
+const WORLD_SIM_RUNTIME_SCRIPT := "res://src/gameplay/world/world_sim_runtime.gd"
+
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
 ## are therefore always present when Main actually runs (real app, the runtime boot smoke,
@@ -87,6 +95,7 @@ const REQUIRED_AUTOLOADS := [
 ## constant is what makes the two orders incapable of drifting apart again.
 const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
+	&"WorldSimulationRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -103,6 +112,8 @@ var _relationship: Node = null
 var _sect: Node = null
 # FactionRuntime (per-session faction domain), under Systems (Phase 07).
 var _faction: Node = null
+# WorldSimulationRuntime (per-session world simulation), under Systems (Phase 08).
+var _world_sim: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -175,8 +186,11 @@ func _boot() -> void:
 	# Phase 06). Idle until New Game.
 	_create_sect_runtime()
 
-	# And the FactionRuntime (Phase 07), the last subsystem in the dependency chain.
+	# And the FactionRuntime (Phase 07).
 	_create_faction_runtime()
+
+	# And the WorldSimulationRuntime (Phase 08), now the last link in the dependency chain.
+	_create_world_sim_runtime()
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -267,6 +281,22 @@ func _create_faction_runtime() -> void:
 	_faction.name = "FactionRuntime"
 	_faction.set_script(faction_script)
 	get_node(CONTAINER_SYSTEMS).add_child(_faction)
+
+
+## Instantiate the WorldSimulationRuntime subsystem under Systems (Phase 08). Same shape as
+## the other four: a script-created node, not an autoload, not a scene.
+func _create_world_sim_runtime() -> void:
+	if _world_sim != null and is_instance_valid(_world_sim):
+		return
+	var sim_script: Script = load(WORLD_SIM_RUNTIME_SCRIPT)
+	if sim_script == null:
+		push_error("[boot] failed to load WorldSimulationRuntime script: %s"
+			% WORLD_SIM_RUNTIME_SCRIPT)
+		return
+	_world_sim = Node.new()
+	_world_sim.name = "WorldSimulationRuntime"
+	_world_sim.set_script(sim_script)
+	get_node(CONTAINER_SYSTEMS).add_child(_world_sim)
 
 
 ## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
@@ -368,6 +398,17 @@ func _on_new_game_pressed() -> void:
 		_unwind_failed_session()
 		return
 
+	# Start the world-simulation session (Phase 08) LAST: it reads all four subsystems above.
+	# Also FATAL — the simulation writes `CharacterState.sim_state` for its whole cast and
+	# enrols that cast into sects and factions through their services, so a failed start could
+	# otherwise leave a running game whose background population is half-registered: on sect
+	# rosters, but with no simulation owning what they are doing. Same class of orphaned state
+	# the sect and faction sessions guard against.
+	if not _start_world_sim_session():
+		push_error("[main] world simulation session failed to start; returning to menu")
+		_unwind_failed_session()
+		return
+
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
@@ -434,6 +475,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _sect
 		&"FactionRuntime":
 			return _faction
+		&"WorldSimulationRuntime":
+			return _world_sim
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -475,14 +518,19 @@ func _start_sect_session() -> bool:
 			+ "CharacterState to enroll")
 		return false
 	var player_id: StringName = player_character.instance_id
-	# Resolver: the ONLY character this session knows is the player (no CharacterRegistry yet,
-	# §11). It returns the player's CharacterState for the player's id, else null — so the
-	# service rejects enrolling any non-existent character and never invents one (§10).
-	var resolver := func(cid: StringName) -> CharacterState:
-		if cid == player_id:
-			return player_character
-		return null
-	if not bool(_sect.call("start_session", rel_service, resolver, player_id)):
+	# Resolver: the session's ONE character registry (Phase 08). It returns the authoritative
+	# `CharacterState` for any id that exists and null otherwise, so the service rejects
+	# enrolling a non-existent character and never invents one (§10).
+	#
+	# It used to be a closure that knew about the player and nothing else, which was correct
+	# while the player was the only character in the world. The moment the world gained a cast
+	# that would have made the sect service reject characters that demonstrably existed — so
+	# the resolver now comes from the collection that actually answers "who exists".
+	var registry := _character_registry()
+	if registry == null:
+		push_error("[main] cannot start sect session: WorldRuntime has no character registry")
+		return false
+	if not bool(_sect.call("start_session", rel_service, registry.resolver(), player_id)):
 		return false
 	# The hub map loaded during world start_session (BEFORE the sect session existed), so push
 	# the now-available sect view into the already-active map's HUD.
@@ -536,12 +584,14 @@ func _start_faction_session() -> bool:
 			+ "CharacterState")
 		return false
 	var player_id: StringName = player_character.instance_id
-	var resolver := func(cid: StringName) -> CharacterState:
-		if cid == player_id:
-			return player_character
-		return null
+	# The SAME registry-backed resolver the sect session uses (see `_start_sect_session`).
+	var registry := _character_registry()
+	if registry == null:
+		push_error("[main] cannot start faction session: WorldRuntime has no character "
+			+ "registry")
+		return false
 	if not bool(_faction.call(
-			"start_session", sect_store, rel_service, resolver, player_id)):
+			"start_session", sect_store, rel_service, registry.resolver(), player_id)):
 		return false
 	# Same reason as the sect refresh above: the hub map was already loaded before this
 	# session existed, so push the now-available politics view into its HUD.
@@ -549,6 +599,96 @@ func _start_faction_session() -> bool:
 			and _world.has_method("refresh_active_map_politics_view"):
 		_world.call("refresh_active_map_politics_view")
 	return true
+
+
+## Start the WorldSimulationRuntime session (Phase 08).
+##
+## Hands over the four things the simulation READS and never duplicates — the character
+## registry (its cast are real `CharacterState`s), the sect service (its actors enrol through
+## it and its events move sect influence through it), the faction service, and the shared
+## `RelationshipService` — plus the session's map lookup, because the LOD band is a map-graph
+## question and a domain service has no business loading the map catalog.
+##
+## THE WORLD SEED is derived from the run id rather than from the clock: a run must reproduce
+## its own world on every load (`docs/SAVE_FORMAT.md` §3b) while two different runs must get
+## different worlds, and `MULTIPLAYER_PLAN.md` §7 lists wall-clock-seeded simulation as a
+## corner-painting risk. Hashing the run id gives both properties with no randomness at all.
+##
+## Returns TRUE only when the simulation session is actually live. Every prerequisite the
+## caller cannot see from outside is reported here rather than quietly skipped, because New
+## Game treats a simulation failure as fatal and must not proceed on a half-wired world.
+func _start_world_sim_session() -> bool:
+	if _world_sim == null or not is_instance_valid(_world_sim):
+		push_error("[main] cannot start world simulation: WorldSimulationRuntime missing")
+		return false
+	var registry := _character_registry()
+	if registry == null:
+		push_error("[main] cannot start world simulation: WorldRuntime has no character "
+			+ "registry to put its cast in")
+		return false
+	var sect_service: SectService = null
+	if _sect != null and is_instance_valid(_sect):
+		sect_service = _sect.call("get_service")
+	if sect_service == null:
+		push_error("[main] cannot start world simulation: no SectService (sect session not "
+			+ "running), so its actors could not enrol and sect influence would have no owner")
+		return false
+	var faction_service: FactionService = null
+	if _faction != null and is_instance_valid(_faction):
+		faction_service = _faction.call("get_service")
+	if faction_service == null:
+		push_error("[main] cannot start world simulation: no FactionService (faction session "
+			+ "not running)")
+		return false
+	var rel_service: RelationshipService = null
+	if _relationship != null and is_instance_valid(_relationship):
+		rel_service = _relationship.call("get_service")
+	if rel_service == null:
+		push_error("[main] cannot start world simulation: no RelationshipService (graph "
+			+ "session not running) for its relationship events to apply through")
+		return false
+	var map_lookup: Dictionary = {}
+	if _world != null and is_instance_valid(_world):
+		map_lookup = _world.call("get_map_lookup")
+	if map_lookup.is_empty():
+		push_error("[main] cannot start world simulation: WorldRuntime exposed no map "
+			+ "catalog, so no LOD band could be computed")
+		return false
+
+	if not bool(_world_sim.call("start_session",
+			registry, sect_service, faction_service, rel_service, map_lookup,
+			_world_seed_for_run())):
+		return false
+	# The hub map was loaded during the WORLD session, before this one existed, so the
+	# arrival beat and the first view push both happened with no simulation listening. Tell
+	# it where the player already is and populate the HUD — same pattern as the sect and
+	# politics refreshes above.
+	if _world != null and is_instance_valid(_world) \
+			and _world.has_method("refresh_active_map_world_sim_view"):
+		_world.call("refresh_active_map_world_sim_view")
+	return true
+
+
+## The world seed for the current run: a stable hash of the run id, or the simulation's own
+## documented default when no run id is available. Never time-based (see
+## `_start_world_sim_session`).
+func _world_seed_for_run() -> int:
+	var gs := _game_state()
+	if gs == null:
+		return WorldSimulationRuntime.DEFAULT_WORLD_SEED
+	var run_id := String(gs.call("get_run_id"))
+	if run_id == "":
+		return WorldSimulationRuntime.DEFAULT_WORLD_SEED
+	# `hash()` is deterministic for a given string within an engine version, and the mask
+	# keeps it inside the 32-bit range the RNG seam accepts.
+	return hash(run_id) & RngStream.MASK_32
+
+
+## The session's character registry (or null before the world session starts).
+func _character_registry() -> CharacterRegistry:
+	if _world == null or not is_instance_valid(_world):
+		return null
+	return _world.call("get_character_registry")
 
 
 ## The NORMAL end of a session (the player asked to go back to the menu).

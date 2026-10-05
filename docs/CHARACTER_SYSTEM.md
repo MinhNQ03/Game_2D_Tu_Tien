@@ -17,9 +17,24 @@
 > `sync_character_cache()`. The **sect ROSTER is the authority**: on any disagreement the
 > roster wins, and nothing outside the sect domain may set these two fields.
 >
-> **What is still design only:** NPC authoring at scale, goals/secrets-driven behaviour,
-> off-screen life-state evolution (`docs/WORLD_SIMULATION.md`), and the character registry
-> implied by a multi-character world (Phase 07+).
+> **The character registry EXISTS (Phase 08, D-048).** `CharacterRegistry`
+> (`src/domain/character/character_registry.gd`) is the session's `instance_id -> CharacterState`
+> collection, owned by `WorldRuntime`, and the single source of the
+> `(StringName) -> CharacterState` resolver that `SectService`, `FactionService` and
+> `WorldSimulationService` all take. It owns only "who exists" — it has no rules and emits no
+> signals — and it refuses to REPLACE a live `CharacterState`, because two live answers to "who
+> is this character" is the defect it exists to prevent. It maps directly onto
+> `docs/SAVE_FORMAT.md`'s `characters.by_instance_id`.
+>
+> **`sim_state` is LIVE and owned by the world simulation (Phase 08).** §5's `schedule_ref` +
+> `sim_state` fields now carry real meaning: `sim_state` is a DERIVED CACHE of the simulation's
+> own `WorldSimActor` record (band + activity + location), in exactly the relationship
+> `sect_id` has with the sect roster (D-015) — the record wins, and drift is reported by
+> `WorldSimulationService.verify_character_caches()` rather than trusted.
+>
+> **What is still design only:** NPC authoring at scale, goals/secrets-driven behaviour, and NPC
+> PRESENTATION — the Phase-08 cast exists, keeps routines and moves faction influence, but
+> nothing renders or talks to them yet (Phase 17).
 
 ## 1. Why Character is core
 

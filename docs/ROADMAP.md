@@ -20,8 +20,12 @@
 > `b3c98cc`, all 9 gates green at the time; **final hardening D-037**, see below).
 > **Phase 07 (Faction/Politics) is IMPLEMENTED (D-042)** — faction domain + deterministic politics
 > rules + the first usable Faction UI; the §7 standings-representation question is pinned to
-> relationship edges. **Hardened in D-047** (see below). **Phase 08 (World Simulation) is NOT
-> STARTED.**
+> relationship edges. **Hardened in D-047** (see below).
+> **Phase 08 (World Simulation) is IMPLEMENTED (D-048)** — the world now evolves on explicit
+> gameplay beats, deterministically from a seeded per-subsystem RNG stream, with Near/Mid/Far
+> LOD, zero nodes for the background cast and zero per-frame work. It also introduced the
+> deterministic RNG seam (D-040/C-010) that Phase 09 onward reuses, and `CharacterRegistry`.
+> **Phase 09 (Combat) is NOT STARTED.**
 >
 > **Phase 07 hardening (2026-10-05, D-047 — not a phase, no new scope):** two lifecycle/invariant
 > holes a green CI could not see. (1) The normal return-to-menu had drifted to tearing the session
@@ -288,15 +292,37 @@ place plus one new bootstrap test file; **CI still 10 gates**; no new scope.
 **NOT verified:** no runtime screenshot of the faction panel exists — a headless run renders
 nothing, so on-screen composition is still asserted structurally and by the gates only.
 
-## Phase 08 — World Simulation *(+ the deterministic RNG seam)*
-LOD simulation (`docs/WORLD_SIMULATION.md`): Near real-time / Far abstract; schedule/tick/
-event/state-transition drivers; promotion/demotion; seeded determinism; save-resumable.
-**This phase INTRODUCES the deterministic RNG seam** (D-040 / C-010): one run/world seed fanning
+## Phase 08 — World Simulation *(IMPLEMENTED — D-048)* *(+ the deterministic RNG seam)*
+LOD simulation (`docs/WORLD_SIMULATION.md`): Near/Mid/Far from the real `MapData.exits` graph;
+schedule/clock/event/state-transition drivers; promotion/demotion; seeded determinism;
+save-resumable. Shipped as data (`WorldSimScheduleData`/`WorldSimActorData`/`WorldSimEventData`/
+`WorldSimCatalog`), domain (`RngStream`/`RngService`/`WorldClock`/`WorldSimActor`/
+`WorldSimulationState`/`WorldSimulationService` + `CharacterRegistry`), runtime
+(`WorldSimulationRuntime`, the 5th node under `Main/Systems`, started LAST and ended FIRST), and
+a minimal HUD surface (world date + the last world event).
+**This phase INTRODUCED the deterministic RNG seam** (D-040 / C-010): one run/world seed fanning
 out into per-subsystem streams, injectable, no autoload, no global `rand*()`
-(`docs/SYSTEM_DEPENDENCY_MATRIX.md` §4c). It is the first genuine consumer, so it owns the
-introduction; later phases reuse it.
-**Exit:** seeded K-tick run reproduces identical state; promotion/demotion loses no
-persistent state; save mid-sim + load resumes; catch-up within budget; perf test passes.
+(`docs/SYSTEM_DEPENDENCY_MATRIX.md` §4c). Stream isolation is a property of CONSTRUCTION — each
+stream's start is derived from `(seed, stream_id)` — and is asserted: 1000 draws on one stream
+move another by zero values. Later phases reuse the seam (`stream(id)` is generic; only
+`STREAM_WORLD_SIM` is named, so P-09 adds `STREAM_COMBAT` where it draws from it).
+**The decision everything rests on:** an actor's activity is a PURE FUNCTION of
+`(tick − joined_tick, schedule)`, not a stepped index — so NEAR/MID/FAR compute the same answer,
+the band controls only how often the simulation LOOKS, and promotion is lossless by
+construction. Zero per-frame work anywhere (guarded by a source-reading test); zero nodes for
+the cast in ANY band; events mutate through `SectService`/`FactionService`/`RelationshipService`
+and never touch their state directly.
+**Exit (MET):** a seeded K-tick run reproduces an identical world twice and a different seed
+produces a different one; `save → load → advance K` == `advance K`; FAR → MID → NEAR → MID → FAR
+preserves the record and a FAR actor is never behind an observed one; `a + b` ticks == `a+b`
+ticks with the clock exactly as old as the time it was given; a malformed snapshot leaves the
+simulation byte-identical; 200 actors × 300 ticks creates zero nodes and a 10× FAR population
+does not change the per-tick cost (**PERF-001**); and the real application advances the world
+across 20 map transitions with a non-empty event feed and no raw id in the HUD.
+**NOT verified:** the HUD's two new lines have not been seen on screen (a headless run renders
+nothing). **Honest gaps:** the shipped two-map world has no FAR actors (hub and field are
+adjacent; FAR arrives with the third map, and all three bands are covered by unit tests), and
+nothing renders the simulated cast yet — NPC presentation is P-17.
 
 ## Phase 09 — Combat
 Single documented damage formula (domain, pure), Hitbox/Hurtbox, basic attack. **Consumes the

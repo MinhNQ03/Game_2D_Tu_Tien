@@ -438,3 +438,89 @@ is CI.
   locals with concrete receiver types, assert that the fixture actually carries its data, and
   pin the reported validation REASON so a silently-empty fixture can no longer satisfy a
   negative assertion.
+
+**Phase 08 (D-048) — World Simulation + the deterministic RNG seam:**
+- `tests/unit/worldsim/test_rng_seam.gd` — the three properties the seam exists for.
+  **Reproducible:** the same state yields the same SEQUENCE (not just the same first value), and
+  the mixer is a pure function that avalanches on adjacent inputs. **Stream-isolated:** 1000
+  draws on the world stream move another stream by **zero** values — the regression that matters,
+  because without it a bug fix in combat would silently change every later world roll and nothing
+  would error; also that two stream ids under one seed START apart, so they are unrelated
+  sequences rather than one sequence read at two offsets, and that asking for a stream twice
+  returns the SAME advancing object rather than restarting it. **Resumable:** a serialized stream
+  continues where it stopped (restoring only the seed would replay the world's first N rolls),
+  the whole seam round-trips byte-stably, and ten malformed payloads are REJECTED with the seam
+  left byte-identical. Plus: every raw draw stays inside the 32-bit window (so `>>` never touches
+  a negative value), both ends of an inclusive range are REACHABLE (an off-by-one in the
+  multiply-shift would make the top value impossible and no range check would notice), and a
+  degenerate 0%/100% chance STILL consumes a draw — otherwise editing a probability to zero
+  would shift every later draw in that stream.
+- `tests/unit/worldsim/test_world_clock.gd` — monotonic (advancing by 0 or backwards is
+  REJECTED, not a silent no-op), explicit (no wall clock anywhere), and the derived date checked
+  at every boundary: tick 0 is hour 0 / day 1 / year 1, the last tick before midnight is still
+  day 1, the hour advances WITHIN a day, and season and year roll over. The snapshot carries the
+  CALENDAR alongside the tick — asserted by restoring into a clock built with a different
+  calendar — because otherwise retuning `ticks_per_hour` would silently change a save's in-world
+  date.
+- `tests/unit/worldsim/test_world_sim_data.gd` — schedule/actor/event/catalog validation, each
+  negative case differing from a known-good fixture in exactly one field. The one that matters
+  most: **the activity is a PURE FUNCTION of elapsed ticks**, including that a full cycle returns
+  to the start (a routine frozen on one value would pass every single-sample assertion — L-029).
+  Also: a zero-tick phase can never be observed; kind-specific event fields are REFUSED where
+  they are meaningless (an authored field that does nothing is a trap); a `[0,0]` magnitude is
+  invalid because an event that cannot be felt is cost without content; an actor using a schedule
+  the catalog does not LIST is rejected because nothing could audit it; and four drift guards
+  over the SHIPPED content — the catalog is valid, every actor's home map exists in the real map
+  catalog, every actor's sect/rank/faction resolves in the real sect and faction catalogs (with
+  the faction's parent sect matching), and the calendar is coherent with the routines and the
+  catch-up budget.
+- `tests/unit/worldsim/test_world_sim_service.gd` — the engine, against REAL sect, faction and
+  relationship services (a stubbed owner would let these pass while the real composition was
+  broken). **Determinism:** two runs from one seed produce an identical *fingerprint* — the
+  simulation snapshot PLUS sect influence, faction influence, the relationship dimension and its
+  history length, and every character's `sim_state` — and a different seed produces a different
+  one, and the world demonstrably MOVED (a simulation that did nothing would also be
+  "identical"). **Resume:** `save → load → advance 9` equals `advance 7 then 9` unbroken.
+  **Catch-up:** a request beyond the budget is deferred, the debt drains first on the next call,
+  the clock ends exactly as old as the time it was given, and `5+1+12` ticks produce the
+  identical world to `18` at once. **LOD:** all three bands come from the map graph; the per-tick
+  working set is NEAR+MID only; FAR → MID → NEAR → MID → FAR keeps the SAME record with identical
+  routine, location and `joined_tick` and no actor duplicated; and a FAR actor is never behind an
+  observed one on the same routine, with promotion landing on the value it already should have
+  had. **Mutation through owners:** influence stops at the OWNER's ceiling, and the relationship
+  service wrote bounded history the simulation does not implement — which is what proves the
+  authoritative path was used. **Fail-closed:** an event naming a non-existent sect, an
+  unconfigured dimension, a stranger as an endpoint, or a missing owner service all REFUSE to
+  build the world; thirteen malformed snapshots leave the simulation byte-identical, including a
+  pending event due in the PAST (firing it late or dropping it would both change the world).
+- `tests/unit/worldsim/test_world_sim_runtime.gd` — the per-session owner against the SHIPPED
+  content. It is a plain Node and NOT an autoload; **a source-reading guard** asserts the file
+  contains no `_process`/`_physics_process`/`Timer`/`Time.get_*`/`randi`/`randf` (a behavioural
+  test cannot distinguish "has no `_process`" from "has one that did not matter here", and a
+  real-time driver would make the world non-reproducible); the shipped world STARTS with its
+  cast in the shared registry and on the authoritative sect roster, creating **zero child
+  nodes**; a second start is an idempotent no-op; five missing-dependency cases and an invalid
+  seed each leave NO observable session (L-025); arriving in a map advances the world by exactly
+  the authored cost and moves the bands with the player; and `end_session` clears everything, is
+  repeatable, and leaves the NODE alive.
+- `tests/unit/character/test_character_registry.gd` — a duplicate is REFUSED rather than
+  replacing a live `CharacterState` (and the ORIGINAL object is still the one answered with);
+  iteration is sorted, not insertion-ordered; the resolver answers for the WHOLE population —
+  including a character added AFTER it was handed out, which the world simulation relies on —
+  and hydrate is atomic with the population byte-identical after every rejection.
+- `tests/performance/test_world_sim_budget.gd` — the budget that **found a real defect before
+  the code shipped** (PERF-001): with the observed set held constant at 10, a 10× larger FAR
+  population cost 3.57× more per tick, because the per-tick loop was sorting the whole cast. It
+  keeps a relative scaling assertion (≤ 3× for a 10× cast — an `O(cast)` loop shows ~10×) so it
+  fails on any hardware, plus a deliberately generous absolute ceiling, and asserts that 200
+  actors × 300 ticks creates **zero nodes**.
+- `tests/e2e/world_flow_case.gd` (extended) — in the real application: a
+  `WorldSimulationRuntime` exists under `Main/Systems`, is NOT an autoload, is session-active,
+  spawned **zero** nodes, and is the SAME instance across all 20 hub↔field round trips; the
+  simulated cast is in the SHARED `CharacterRegistry` alongside the player; **the world clock
+  advanced across those 20 transitions and the event feed is non-empty** (simulated time passes
+  on real gameplay beats, not on a timer); the band census is the one the shipped two-map world
+  should have; the HUD shows a world date and leaks no raw `WORLDSIM_*` key, no `actor_*` id and
+  no unsubstituted `{placeholder}`; and the session is ended FIRST of all five on return to
+  menu, with its state dropped. All five of these were verified to FAIL when the arrival beat
+  was disconnected.

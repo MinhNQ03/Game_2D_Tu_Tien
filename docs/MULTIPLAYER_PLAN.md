@@ -158,3 +158,36 @@ would own, and Phase 05 keeps it replication-friendly WITHOUT any networking:
 - **No SceneTree/UI/network dependency** in the domain layer; the observable surface is a
   plain domain signal.
 No RPC/MultiplayerAPI/replication/authority code is added. This is seam hygiene only.
+
+## Phase 08 seam update (D-048) — world-sim + RNG are now clean authoritative seams
+
+The two §2 rows that were still aspirational ("World-event / sim state" and the seeded RNG under
+§3) are implemented, and implemented in the shape a Stage-2 server would want. **No networking
+code was added.** What changed, against the §7 risk list:
+
+- **"World simulation using wall-clock time or unseeded RNG — breaks determinism and makes a
+  server-advanced world impossible to keep in sync."** This risk is now closed by construction
+  AND guarded by tests. The subsystem contains no `_process`, no `_physics_process`, no `Timer`
+  and no wall-clock read — a test reads the SOURCE to keep it that way. Time advances only when
+  something explicitly says so (`advance_ticks(n)`), which is precisely the shape an
+  authoritative server needs: the server decides when the world moves, and the amount is an
+  integer it can replicate.
+- **Seeded, stream-scoped, serializable randomness.** One world seed per RUN fans out into named
+  streams whose positions are persisted. A server could hold the seed (clients never need it)
+  and replay or verify any stretch of world evolution; a client that was handed results could
+  not drift, because there is nothing local for it to roll.
+- **The authoritative world state is plain data, keyed by stable ids.** The clock, each actor's
+  simulation tier, the pending event queue and the carry-over debt are serializable with no
+  Node, no scene and no presentation reference — so the same `to_dict()` that feeds a save
+  would feed a server's storage or a state delta.
+- **Commands, not mutations, across every boundary it touches.** The simulation changes sect
+  influence, faction influence and relationship dimensions by CALLING the owning service, never
+  by writing their state. That is already the "authority validates and resolves" shape of §4:
+  a server would run the same three calls and clients would receive the resulting events.
+- **`CharacterRegistry` makes the population a seam too.** "Who exists" is now one serializable
+  collection keyed by `instance_id` rather than a closure that captured whichever character a
+  call site happened to know about — which is what a server owning the cast requires.
+
+**Still explicitly not done, and still not wanted yet:** no `MultiplayerAPI`, no RPC, no
+replication, no authority split, no latency/prediction design (§5). The audit that decides
+whether any of it happens is Phase 32.
