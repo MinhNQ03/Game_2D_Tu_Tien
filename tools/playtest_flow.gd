@@ -235,6 +235,72 @@ func _step_attack(map: Node) -> void:
 		hurt, started, shot)
 
 
+## The live `ProgressionRuntime`, or null before a session exists.
+func _progression() -> Node:
+	var main := root.get_node_or_null("Main")
+	if main == null:
+		return null
+	return main.get_node_or_null("Systems/ProgressionRuntime")
+
+
+## The player's current level as the RUNTIME reports it, or -1 outside a session. Read through
+## the view, which is the same thing the HUD reads — so a disagreement between the report and
+## the screen is impossible by construction.
+func _progression_level() -> int:
+	var progression := _progression()
+	if progression == null or not bool(progression.call("is_session_active")):
+		return -1
+	var view: ProgressionView = progression.call("build_view")
+	return view.level if view.available else -1
+
+
+## The player's cumulative XP from the AUTHORITATIVE CharacterState, or -1 outside a session.
+##
+## Read from the authority rather than from the view on purpose: the view carries
+## progress-within-a-level, and the thing worth recording in a playtest log is the total that
+## actually persists.
+func _progression_xp() -> int:
+	var progression := _progression()
+	if progression == null or not bool(progression.call("is_session_active")):
+		return -1
+	var character: CharacterState = progression.call("get_character")
+	return character.xp if character != null else -1
+
+
+## Is the HUD's level-up celebration running right now?
+##
+## Used the same way `_is_flashing` is: a screenshot named `level_up` that was taken after the
+## effect decayed shows an ordinary HUD, and a capture that silently lacks the thing its name
+## promises is worse than a missing one (L-034). So what the shot CAUGHT is reported rather
+## than assumed, and it is not a pass condition — a real-time effect cannot be gated on frame
+## pacing without becoming flaky.
+func _is_celebrating() -> bool:
+	var router := root.get_node_or_null("SceneRouter")
+	var map: Node = router.call("get_current_scene") if router != null else null
+	var hud := _find_hud(map)
+	if hud == null:
+		return false
+	var effect: Object = hud.call("level_up_feedback")
+	if effect == null:
+		return false
+	return bool(effect.call("is_celebrating"))
+
+
+## The `GameplayHUD` in a map's tree, or null.
+func _find_hud(node: Node) -> Node:
+	if node == null:
+		return null
+	if node is GameplayHUD:
+		return node
+	for child in node.get_children():
+		# Explicitly typed: a recursive call's return type is not yet resolved, so `:=` would
+		# infer Variant and fail the warning-as-error compile (GD001 / L-020).
+		var found: Node = _find_hud(child)
+		if found != null:
+			return found
+	return null
+
+
 ## Is this entity wearing a damage flash right now? False when it carries no `DamageFeedback`,
 ## which is a legitimate scene rather than an error.
 func _is_flashing(entity: Node) -> bool:
@@ -311,6 +377,16 @@ func _step_encounter(main: Node) -> void:
 	_record("11_enemy_hunts", "the creature notices the player and hunts",
 		"state=%s" % state, hunting, started, hunt_shot)
 
+	# --- the progression baseline, BEFORE the kill (Phase 11) ---
+	# Captured as its own step so the report has an explicit "pre-combat" row to compare the
+	# post-kill one against, and so a screenshot exists of the HUD before anything changed.
+	started = Time.get_ticks_msec()
+	var xp_before := _progression_xp()
+	var level_before := _progression_level()
+	_record("12_pre_combat_progression", "the HUD shows a level/XP row before the fight",
+		"level=%d xp=%d" % [level_before, xp_before],
+		level_before >= 1 and xp_before >= 0, started, await _shot("12_pre_combat"))
+
 	# --- the player kills it with REAL attack keys ---
 	started = Time.get_ticks_msec()
 	var start_hp := int(enemy.call("get_current_health"))
@@ -331,9 +407,52 @@ func _step_encounter(main: Node) -> void:
 			if bool(enemy.call("is_dead")):
 				break
 	var dead := bool(enemy.call("is_dead"))
-	_record("12_enemy_killed", "real attack keys kill the creature",
-		"hp %d -> %d dead=%s" % [start_hp, int(enemy.call("get_current_health")), dead],
-		dead, started, await _shot("12_enemy_killed"))
+	# The level-up celebration is already running by the time the kill is confirmed, so this
+	# shot is ALSO the level-up capture — taken while the banner is up rather than after it.
+	var kill_shot := await _shot("13_enemy_killed_level_up")
+	var celebrating := _is_celebrating()
+	_record("13_enemy_killed", "real attack keys kill the creature",
+		"hp %d -> %d dead=%s, level-up effect caught in shot=%s" % [
+			start_hp, int(enemy.call("get_current_health")), dead, celebrating],
+		dead, started, kill_shot)
+
+	# --- THE REWARD: XP and level must have moved, through the real chain ---
+	#
+	# Polled over a bounded number of frames rather than read immediately: the grant happens
+	# on the death signal, and the HUD is refreshed from the resulting event, so the observable
+	# effect is a frame or two behind the kill (L-016 — poll the effect, do not bet on a frame).
+	#
+	# NOTHING here calls a progression mutator. The XP asserted was earned by the attack keys
+	# fired above; faking it would make this step evidence of nothing (§29).
+	started = Time.get_ticks_msec()
+	var xp_after := xp_before
+	for _i in POLL_FRAMES:
+		await process_frame
+		xp_after = _progression_xp()
+		if xp_after > xp_before:
+			break
+	var level_after := _progression_level()
+	_record("14_xp_updated", "the kill granted XP to the authoritative CharacterState",
+		"xp %d -> %d (level %d -> %d)" % [xp_before, xp_after, level_before, level_after],
+		xp_after > xp_before, started, await _shot("14_xp_updated"))
+	_record("15_level_up", "the player levelled from the first authored kill",
+		"level %d -> %d" % [level_before, level_after],
+		level_after > level_before, started)
+
+	# --- AFTER the celebration: the HUD must be clean again ---
+	#
+	# The one assertion that catches an effect which never terminates — a banner still on
+	# screen, or a badge left permanently lit, after the event is over.
+	started = Time.get_ticks_msec()
+	for _i in POLL_FRAMES:
+		await process_frame
+		if not _is_celebrating():
+			break
+	var still_celebrating := _is_celebrating()
+	_record("16_post_level", "the level-up effect terminated and the HUD is clean",
+		"celebrating=%s level=%d xp=%d" % [
+			still_celebrating, _progression_level(), _progression_xp()],
+		not still_celebrating, started, await _shot("16_post_level"))
 
 	# --- the corpse stops acting ---
 	started = Time.get_ticks_msec()
@@ -342,7 +461,7 @@ func _step_encounter(main: Node) -> void:
 		await process_frame
 	var still := enemy.global_position.distance_to(resting) < 0.01
 	var reset := String(enemy.call("ai_state_name")) == "IDLE"
-	_record("13_corpse_inert", "a dead creature stops moving and thinking",
+	_record("17_corpse_inert", "a dead creature stops moving and thinking",
 		"moved=%.2fpx state=%s" % [
 			enemy.global_position.distance_to(resting), enemy.call("ai_state_name")],
 		still and reset, started)
@@ -355,10 +474,10 @@ func _step_return_to_menu(main: Node) -> void:
 		return gs != null and not bool(gs.call("is_session_active")))
 	var teardown: Array = main.call("get_last_teardown_order") if main.has_method(
 		"get_last_teardown_order") else []
-	_record("14_return_to_menu", "open_menu ends the session",
+	_record("18_return_to_menu", "open_menu ends the session",
 		"session_active=%s teardown=%s" % [
 			gs != null and bool(gs.call("is_session_active")), str(teardown)],
-		back, started, await _shot("14_menu"))
+		back, started, await _shot("18_menu"))
 
 
 # === Real semantic input =====================================================
@@ -533,6 +652,13 @@ func _record(
 		"shot": shot,
 		"map": _map_id(),
 		"ui": _ui_state(),
+		# Progression state on EVERY step, not only the progression ones (Phase 11).
+		# The brief asks for XP/level before and after; recording it on every step gives that
+		# for free from any two adjacent rows, and it also answers the question that is
+		# actually hard to debug afterwards — "when did this number change?" — without having
+		# to guess which step to instrument.
+		"level": _progression_level(),
+		"xp": _progression_xp(),
 	})
 
 
@@ -559,9 +685,10 @@ func _write_report() -> void:
 	print("output=%s" % _out_dir)
 	print("")
 	for entry in _steps:
-		print("[%s] %-18s %6dms  map=%-10s ui=%-20s" % [
+		print("[%s] %-28s %6dms  map=%-10s ui=%-20s lv=%-3s xp=%-6s" % [
 			"PASS" if bool(entry["ok"]) else "FAIL", entry["step"], int(entry["msec"]),
-			entry["map"], entry["ui"]])
+			entry["map"], entry["ui"], str(entry.get("level", -1)),
+			str(entry.get("xp", -1))])
 		print("       expected: %s" % entry["expected"])
 		print("       observed: %s" % entry["observed"])
 		if String(entry["shot"]) != "":

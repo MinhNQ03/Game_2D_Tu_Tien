@@ -42,6 +42,7 @@ var _hud: GameplayHUD = null           # presentation overlay (name/map/hints); 
 var _sect_view: SectMembershipView = null  # cached read-only sect view (Phase 06); pushed in
 var _politics_view: SectPoliticsView = null  # cached read-only politics view (Phase 07)
 var _world_sim_view: WorldSimView = null  # cached read-only world-sim view (Phase 08)
+var _progression_view: ProgressionView = null  # cached read-only level/XP view (Phase 11)
 var _camera: Camera2D = null           # this map's camera; follows the player (D-036)
 var _follow_target: Node2D = null      # the player node the camera tracks (resolved lazily)
 
@@ -272,6 +273,27 @@ func _validate_exit_zones(map_data: MapData) -> void:
 ## Where WorldRuntime parents the persistent player. Falls back to self if no PlayerHost.
 ## Forward a read-only combat-target view to this map's HUD (Phase 10). Same
 ## forward-a-view-and-own-nothing contract as the sect / politics / world-sim setters.
+## Forward a read-only progression view to this map's HUD (Phase 11). Same
+## forward-a-view-and-own-nothing contract as the setters above.
+##
+## CACHED, for the same reason the sect and politics views are: walking into another map
+## builds a fresh HUD, and without the cache the level/XP row would silently empty until the
+## next kill. `refresh_hud()` re-applies it.
+func set_progression_view(view: ProgressionView) -> void:
+	_progression_view = view
+	if _hud != null:
+		_hud.set_progression_view(view)
+
+
+## Ask this map's HUD to play its one-shot level-up celebration (Phase 11).
+##
+## A pass-through, deliberately: the map does not decide what a level-up looks like and holds
+## no animation state. `WorldRuntime` reports the event, the HUD owns the effect.
+func celebrate_level_up(level: int) -> void:
+	if _hud != null:
+		_hud.celebrate_level_up(level)
+
+
 func set_target_view(view: CombatTargetView) -> void:
 	if _hud != null:
 		_hud.set_target_view(view)
@@ -417,6 +439,9 @@ func _refresh_hud() -> void:
 	# Same for the politics view (Phase 07).
 	if _politics_view != null:
 		_hud.set_politics_view(_politics_view)
+	# And the player's level/XP (Phase 11), so a new map's HUD does not start blank.
+	if _progression_view != null:
+		_hud.set_progression_view(_progression_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

@@ -235,6 +235,15 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   `xp_gained(amount)`, `combatant_died`.
 
 ### 3.8 LEVEL UP (progression: XP, level, cảnh giới, tu luyện)
+> **The LEVEL/XP half is IMPLEMENTED (Phase 11, D-054).** The live path is
+> `enemy dies → CombatRuntime.enemy_defeated(reward_id, xp_reward) → ProgressionRuntime →
+> ProgressionService.grant_xp() → CharacterState.xp → xp_gained / level_changed → WorldRuntime
+> → MapBase → GameplayHUD`. Combat ANNOUNCES and does not pay; `ProgressionService` is the only
+> writer of XP; **the level is DERIVED from cumulative XP and the authored curve, never stored**.
+> Note the event names below predate the implementation: the defeat event is
+> `CombatRuntime.enemy_defeated`, not an EventBus `enemy_died`, and `xp_gained` is emitted by
+> the progression owner rather than by combat — combat does not know a level exists.
+> The **cảnh giới / tu luyện** half remains design-only; Phase 12 owns it.
 - **Input:** `xp_gained`, `tu_luyện` actions, breakthrough attempts.
 - **State:** XP, level, current cảnh giới + cultivation progress, unlocked skills/công
   pháp slots. Two distinct axes (see `.kiro/steering/02-game-design.md`).

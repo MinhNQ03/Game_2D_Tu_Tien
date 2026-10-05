@@ -2336,7 +2336,7 @@ Five layers, in the project's existing direction of dependency:
 ```
 data        WorldSimScheduleData · WorldSimActorData · WorldSimEventData · WorldSimCatalog
 domain      RngStream · RngService · WorldClock · WorldSimActor · WorldSimulationState
-            · WorldSimulationService          (+ CharacterRegistry, under domain/character)
+			· WorldSimulationService          (+ CharacterRegistry, under domain/character)
 gameplay    WorldSimulationRuntime            (a node under Main/Systems, the 5th sibling)
 presentation WorldSimView  + two muted lines in the existing HUD plaque
 content     data/worldsim/ (3 schedules, 3 actors, 4 events) + 3 NPC character templates
@@ -3021,3 +3021,182 @@ UX 4 → 5 and READABILITY 4 → 5: both scores cited the two defects fixed here
 hit; a plaque that never cleared). VISUAL stays at **3** — the remaining gap is a death
 animation and impact particles, which belong to whichever phase owns combat VFX, and one
 creature is still one creature.
+---
+
+## D-054 — Phase 11: level/XP progression, with the LEVEL DERIVED rather than stored
+
+**Status:** Accepted · **Phase:** 11 (Progression) · **Depends on:** Phase 09 (Combat) for the
+defeat event, Phase 10 (Enemy AI) for something to defeat, Phase 04 for `CharacterState`
+
+### The decision that shaped everything else
+
+**`CharacterState.xp` holds CUMULATIVE lifetime XP, and there is no stored level anywhere.**
+The level is derived on demand from (XP, authored curve) by `ProgressionService.level_of()`.
+
+The alternative — a `level` field stepped alongside an "XP toward the next level" field — was
+rejected, and the reasons are structural rather than stylistic:
+
+- **Atomicity becomes free.** A commit writes ONE integer, so there is no window in which XP
+  has been updated and level has not. A half-committed progression state is not something this
+  code has to avoid; it is something it cannot express. Compare L-025, where a multi-field
+  session starter had to be restructured to get the same guarantee.
+- **Two numbers cannot disagree.** A stored level is a second source of truth that every future
+  path touching XP must maintain, and the first one that forgets writes a save whose level
+  contradicts its XP. This project already removed exactly that shape of duplication once
+  (D-015, sect membership) and recorded the general preference in L-032.
+- **Monotonicity is inherent.** XP only increases and the derivation is monotonic, so level can
+  never go down. No guard needed.
+- **A balance patch re-levels everyone consistently.** Retuning the curve re-derives every
+  character's level from their stored XP, with nothing to migrate. A test asserts this.
+
+**The accepted cost:** `CharacterState` alone cannot answer "what level am I" — it needs the
+curve. That is deliberate: the curve is content, the question is a domain question, and the
+domain service is where domain questions belong. The derivation walks ~20 steps and runs on an
+XP CHANGE, never per frame.
+
+### The authority contract
+
+| | |
+|---|---|
+| **STATE** | `CharacterState.xp` (cumulative). The only stored progression number. |
+| **OWNER** | `CharacterState`, persistent tier, in `to_dict`/`from_dict`. |
+| **MUTATOR** | `ProgressionService.grant_xp()` — the ONLY function in the repo that writes it. |
+| **READERS** | `ProgressionRuntime` (builds view + events); presentation via `ProgressionView`. |
+| **EVENTS** | `xp_gained(amount, reward_id)`, `level_changed(previous, current)` — emitted by the RUNTIME, never by the domain. |
+| **PERSISTENCE** | `CharacterState` serialization; level re-derived on load. |
+| **UI** | reads the DTO. The HUD holds no progression truth and mutates nothing. |
+
+### The mutation path
+
+```
+enemy dies  →  CombatRuntime.enemy_defeated(reward_id, xp_reward)
+            →  ProgressionRuntime.grant_for_defeat()   [idempotency ledger]
+            →  ProgressionService.grant_xp()           [validate → compute → commit]
+            →  ProgressionResult
+            →  xp_gained / level_changed
+            →  WorldRuntime  →  MapBase  →  GameplayHUD
+```
+
+Combat ANNOUNCES; it does not pay. It holds no progression state, does not know a level
+exists, and has no reference to the player's `CharacterState`. Having combat call a progression
+API instead would point the dependency the wrong way and put permanent character state behind
+a per-session system — the three things §5 of the phase brief and `03-architecture.md` both
+forbid.
+
+### A seventh `Main/Systems` sibling, and why it is justified
+
+`ProgressionRuntime` is a node under `Main/Systems`, **not** an autoload (the budget stays
+frozen at five, D-017). It is registered LAST in `SESSION_START_ORDER` because it reads the
+player's `CharacterState` (world session) and listens to combat — so it is torn down FIRST,
+disconnecting before its emitter disappears and before the state it grants into is freed.
+
+It is a runtime rather than a free service because something has to own the curve, the
+subscription, and the decision about which events an outcome deserves — and all three have a
+session lifetime. A global one would survive a return to the menu holding the previous run's
+service and ledger.
+
+### Threshold semantics, pinned
+
+`xp_to_next[i]` is the **incremental** cost from level `min_level + i` to the next. The
+maximum level is a **data fact** (`min_level + xp_to_next.size()`), never a code constant:
+extending the range is appending array entries. At the ceiling a grant is REJECTED with
+`REASON_AT_CEILING` rather than accumulating toward a level that cannot arrive — a gauge
+filling toward nothing is the kind of lie `UI_UX_BIBLE.md` forbids.
+
+The authored player curve is 20 steps beginning `20, 45, 80, 130, …`. **One mist wolf (25 XP)
+reaches level 2**, deliberately: the first level-up is where the player learns the loop exists,
+and a test pins that relationship between the authored reward and the authored first step.
+
+### Multi-level gain emits ONE event (§14's required decision)
+
+A grant crossing three thresholds emits `level_changed(1, 4)` once, not three times. The
+intermediate levels were never states the character was in — the commit is a single integer —
+so emitting a sequence would invite a listener to react to a state that never existed (a future
+"reach level 3" trigger firing mid-grant for a player who went 1 → 4).
+
+### Idempotency: two guards, different jobs
+
+The reward identity is **per SPAWN**, not per spawn-table row: `CombatRuntime` composes
+`instance_id#serial` from a monotonic counter that advances in table order (deterministic, so a
+seeded session stays reproducible). Keyed on the row id alone, the ledger would silently have
+become a "this row has ever been killed" flag and a re-cleared field would pay nothing.
+
+- `CombatRuntime._announced` stops a double EMISSION for one creature; cleared on despawn, so
+  it is bounded by the living population.
+- `ProgressionRuntime._granted` stops a double GRANT however the event arrived — the
+  authority's guard, and the one §9 is about.
+
+### The UI: XP must not be confusable with HP
+
+They sit one above the other in the same plaque, so the separation is on three INDEPENDENT
+channels, none of which is only colour (`UI_UX_BIBLE.md` §4):
+**hue** (gold progression vs jade vitals — the palette's own vocabulary, where gold already
+means structure and attainment), **weight** (8px vs 14px, so XP reads as subordinate), and
+**text** (each meter writes its own numbers with a localized caption).
+
+The LEVEL badge sits beside the character's name, because §23 ranks "level must be easy to
+identify" first and a number under two gauges is not at a glance. A width floor keeps the
+plaque from twitching on level-up.
+
+**`TOP_PLAQUE_RESERVE` moved 212 → 224**, re-derived by the existing measuring test. That is
+the fifth time it has moved and the fifth time the cause was content added to a plaque — the
+intended workflow, since the number is produced by a test that fills every plaque through the
+public setters and fails with the measurement in its message.
+
+### Vocabulary: level does not borrow cultivation words
+
+Vietnamese uses **Cấp / Kinh nghiệm (KN) / Thăng cấp**, never *tu vi*, *đột phá* or *cảnh
+giới*. This is a design constraint, not a translation preference: §1 of
+`PROGRESSION_CULTIVATION_DESIGN.md` forbids collapsing the two axes, and the fastest way to
+break that in practice is for the UI to call a level-up a breakthrough — telling the player
+they are the same thing in the only place they actually look. Phase 12 owns those words. A test
+asserts the reserved vocabulary stays out of the progression strings in both languages.
+
+### The level-up effect
+
+An explicit clock with a public `advance(delta)`, **not** a `Tween` — the established pattern
+(`DamageFeedback`, `CharacterVisualComponent`) and for the stated reason: a tween cannot be
+stepped from a headless test, so an effect built on one can only be asserted by waiting on real
+frames. `_process` is off whenever nothing is running. The effect owns the transient banner as
+well as the badge tint, so every part of the celebration starts and stops in one place; a
+banner whose visibility had two owners would eventually be left on screen after a cancellation.
+
+### Rejected
+
+- **Level as any kind of access gate.** C-002 and `02-game-design.md` forbid it. The service
+  exposes no content ids, no unlock list and no gate query, which makes it structurally
+  incapable of becoming one. `MapData` still has no `min_level`.
+- **Level dressed up as cultivation.** `ProgressionView` carries no realm-shaped field, so
+  there is nothing to be tempted into filling with a level.
+- **A `ProgressionState` keyed by instance id.** XP is 1:1 with a `CharacterState`; a parallel
+  store for a one-to-one relationship is the D-015 defect again.
+- **A reward framework.** The reward is ONE authored field on `EnemyData`. No reward table, no
+  formula, no `if enemy_id == …`.
+- **Lifetime-total XP in the view, and a `levels_gained` field on the event.** No current
+  consumer (L-005).
+- **A character registry + resolver in `start_session`.** The player is the only progression
+  subject that exists; a resolver would be generality with no second caller.
+
+### Verification
+
+Gates run LOCALLY first (L-031), then CI as the authority. Suite **586 → 664 tests**; the only
+failures are two PRE-EXISTING wall-clock performance budgets that are machine-dependent (see
+the technical-debt note below) and which fail identically on the unmodified baseline.
+
+The screen-space positioning rule the banner defect produced is recorded as **L-038** in
+`.kiro/steering/09-lessons-learned.md`. This entry was rebased onto `b683767` (the D-053
+corpse-tint follow-up), which touches `ui_palette.gd` and the same four docs; the full gate set
+was re-run on the MERGED tree rather than on either side alone.
+
+### Technical debt discovered (not introduced here)
+
+`tests/performance/test_ai_budget.gd` and `tests/performance/test_combat_budget.gd` assert
+**wall-clock** budgets in µs/ms. On this development machine they fail; on the CI runner they
+pass. Measured across repeated runs the numbers swing 2–3× (e.g. 54 → 143 µs per enemy for the
+same code), and the failures move between the two files — so the variance is machine load, not
+algorithmic. Their own docstrings already anticipate this ("a tight millisecond budget on
+shared CI hardware is a flaky test that gets deleted rather than a guard that gets respected"),
+but the linearity RATIO limit (13×) is tighter than that intent. **Not changed here**: loosening
+another phase's gate to make this phase's run green would hide a real regression later. It
+needs either a ratio-only formulation, a calibration run, or an explicit "CI-class hardware
+only" marker — a decision for whoever owns the performance gates.

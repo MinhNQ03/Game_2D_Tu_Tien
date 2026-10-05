@@ -18,3 +18,4 @@ attack = ExtResource("4_attack")
 engage_distance = 22.0
 visual_profile = ExtResource("5_vis")
 spawn_category = &"field"
+xp_reward = 25

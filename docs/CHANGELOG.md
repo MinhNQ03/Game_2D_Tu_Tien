@@ -8,6 +8,68 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-11-05 — Phase 11: the progression loop closes (D-054)
+A kill now pays. `enemy defeat → XP → level → player feedback → keep playing` is wired end to
+end and proven in the real app by real attack keys.
+- **The level is DERIVED, not stored.** `CharacterState.xp` holds cumulative lifetime XP and is
+  the ONLY stored progression number; `ProgressionService.level_of()` derives the level from it
+  and the authored curve. A commit therefore writes ONE integer — atomicity is free rather than
+  arranged — and a stored level can never end up contradicting stored XP in a save file (the
+  D-015 duplication defect, avoided by construction; L-032's preference applied). Retuning the
+  curve re-levels every character from their existing XP, with nothing to migrate.
+- **One mutator.** `ProgressionService.grant_xp()` is the only function in the repository that
+  writes XP. Combat ANNOUNCES (`enemy_defeated(reward_id, xp_reward)`) and does not pay: it
+  holds no progression state, does not know a level exists, and never touches the player's
+  `CharacterState`.
+- **`ProgressionRuntime` is the seventh `Main/Systems` sibling** — a node, not an autoload (the
+  budget stays at five). Registered LAST, so it is torn down FIRST and stops listening before
+  its emitter and the state it grants into are freed. Verified in the real app: the observed
+  teardown is `Progression → Combat → WorldSim → Faction → Sect → Relationship → World →
+  GameState`.
+- **The curve is content.** `ProgressionCurveData` authors incremental per-level costs; the
+  maximum level is a DATA fact (`min_level + steps`), never a code constant, so extending the
+  range is appending array entries. Boundary validation rejects an empty id, a non-positive
+  step, a DECREASING curve (a plateau is legal) and a `min_level` below 1 — and reports every
+  problem at once.
+- **At the ceiling a grant is REJECTED** with a named reason rather than accumulating toward a
+  level that cannot arrive, and the meter reads COMPLETE instead of `0 / 0`.
+- **Multi-level gain emits ONE `level_changed`.** A grant crossing three thresholds reports
+  `(1, 4)` once — the intermediate levels were never states the character was in, so a listener
+  must not be able to observe them.
+- **Idempotency** is keyed on a per-SPAWN reward id (`instance_id#serial`, deterministic in
+  table order). Keyed on the table row alone it would have silently become a "has ever been
+  killed" flag and a re-cleared field would have paid nothing — an integration test covers
+  exactly that.
+- **The UI**: a gold `Cấp N` badge beside the character's name and a thinner gold XP meter under
+  the jade health gauge. XP is separated from HP on three independent channels — hue, weight and
+  written text — because they sit one above the other in the same plaque and colour may never
+  be the only carrier of meaning. `TOP_PLAQUE_RESERVE` re-derived 212 → **224** by the existing
+  measuring test.
+- **Vocabulary**: `Cấp / Kinh nghiệm (KN) / Thăng cấp` — never *tu vi*, *đột phá* or *cảnh
+  giới*. Level is not cultivation, and the fastest way to break that rule in practice is for
+  the UI to call a level-up a breakthrough. A test asserts the reserved words stay out, in both
+  languages.
+- **The level-up celebration** is an explicit clock with a public `advance(delta)`, not a
+  `Tween` (a tween cannot be stepped headless), `_process` off when idle, cancellable, and it
+  owns its transient banner so every part of the effect starts and stops in one place.
+- **A visual defect found by looking at a capture, not by a test:** the banner was anchored to
+  the exact screen centre — which is where the camera keeps the player — so it printed straight
+  across the character's body. Nudging it up from the centre did NOT fix it, and that is the
+  part worth remembering: `MapBase` clamps the camera to the map limits, so near an edge the
+  player is not at the centre and not a fixed distance from it. The banner is now bottom-centre,
+  inset by `PROMPT_STRIP_RESERVE + SPACE_LG`, which makes "cannot collide" arithmetic rather
+  than a hope. Recorded as **L-038**.
+- **Evidence.** Suite **586 → 664** tests; all three E2E processes pass, including a new
+  `_prove_progression` in the world E2E that asserts the authority moved, the level derived from
+  it agrees, and the HUD shows the row — after a kill driven entirely by real attack keys, with
+  no `grant_xp`/`set_total_xp` shortcut anywhere in the E2E. The real-app playtest run reports
+  18/18 steps, `xp 0 → 25 (level 1 → 2)`, the level-up effect caught in the screenshot, and a
+  clean HUD afterwards.
+- **Pre-existing technical debt recorded, not changed:** the two wall-clock performance budgets
+  (`test_ai_budget`, `test_combat_budget`) fail on this development machine and pass on CI; the
+  numbers swing 2–3× between runs on the same code. Loosening another phase's gate to make this
+  phase's run green would hide a real regression later — see D-054 for the options.
+
 ### 2026-10-05 — Phase-10 review pass: you can now see yourself being hit (D-053)
 
 Four defects the review pass found on a commit that was already green on all ten gates and on

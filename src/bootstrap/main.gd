@@ -64,6 +64,7 @@ const FACTION_RUNTIME_SCRIPT := "res://src/gameplay/world/faction_runtime.gd"
 ## relationship graph. It is therefore ended FIRST on every teardown.
 const WORLD_SIM_RUNTIME_SCRIPT := "res://src/gameplay/world/world_sim_runtime.gd"
 const COMBAT_RUNTIME_SCRIPT := "res://src/gameplay/world/combat_runtime.gd"
+const PROGRESSION_RUNTIME_SCRIPT := "res://src/gameplay/world/progression_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -99,9 +100,14 @@ const REQUIRED_AUTOLOADS := [
 ## after both — and therefore end FIRST, before the seam it borrowed and the entities it
 ## points at are gone. Ending it first is also what lets it cancel a swing in flight before
 ## the nodes it would resolve against are freed.
+## ProgressionRuntime is now last (Phase 11), after Combat, for the same reason Combat was
+## after the simulation: it READS the player's `CharacterState` (realized by the world
+## session) and LISTENS to `CombatRuntime.enemy_defeated`. Starting last means ending FIRST,
+## so it disconnects from the signal before its emitter is torn down and stops being able to
+## grant XP into a `CharacterState` the world session is in the middle of freeing.
 const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
-	&"WorldSimulationRuntime", &"CombatRuntime",
+	&"WorldSimulationRuntime", &"CombatRuntime", &"ProgressionRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -123,6 +129,10 @@ var _world_sim: Node = null
 # CombatRuntime (per-session combat seam: service + hurtbox registry), under Systems
 # (Phase 09).
 var _combat: Node = null
+
+# ProgressionRuntime (per-session level/XP seam: the authored curve + the one service that
+# mutates XP), under Systems (Phase 11).
+var _progression: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -201,6 +211,9 @@ func _boot() -> void:
 	# And the WorldSimulationRuntime (Phase 08), now the last link in the dependency chain.
 	_create_world_sim_runtime()
 	_create_combat_runtime()
+	# And the ProgressionRuntime (Phase 11), which reads the world's player and listens to
+	# combat — so it is created last and started last.
+	_create_progression_runtime()
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -325,6 +338,23 @@ func _create_combat_runtime() -> void:
 	get_node(CONTAINER_SYSTEMS).add_child(_combat)
 
 
+## Instantiate the ProgressionRuntime subsystem under Systems (Phase 11). Same shape as the
+## other six: a script-created node, not an autoload (the budget stays frozen at five —
+## D-017), and idle until New Game starts a session.
+func _create_progression_runtime() -> void:
+	if _progression != null and is_instance_valid(_progression):
+		return
+	var progression_script: Script = load(PROGRESSION_RUNTIME_SCRIPT)
+	if progression_script == null:
+		push_error("[boot] failed to load ProgressionRuntime script: %s"
+			% PROGRESSION_RUNTIME_SCRIPT)
+		return
+	_progression = Node.new()
+	_progression.name = "ProgressionRuntime"
+	_progression.set_script(progression_script)
+	get_node(CONTAINER_SYSTEMS).add_child(_progression)
+
+
 ## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
 ## nothing but reports loudly on any required failure (lifecycle rejection, scene load),
 ## leaving the app in a reported-broken state rather than a silently half-shown menu.
@@ -445,6 +475,16 @@ func _on_new_game_pressed() -> void:
 		_unwind_failed_session()
 		return
 
+	# Start the progression session (Phase 11) LAST: it reads the player's CharacterState and
+	# subscribes to combat's defeat announcement, so both must already exist. Also FATAL, for
+	# the same reason as the others — a running game whose progression session failed is one
+	# where every kill silently pays nothing, which looks like a balance problem rather than a
+	# wiring failure and is therefore worse than refusing to start (L-025).
+	if not _start_progression_session():
+		push_error("[main] progression session failed to start; returning to menu")
+		_unwind_failed_session()
+		return
+
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
@@ -515,6 +555,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _world_sim
 		&"CombatRuntime":
 			return _combat
+		&"ProgressionRuntime":
+			return _progression
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -743,6 +785,43 @@ func _start_combat_session() -> bool:
 	if _world != null and is_instance_valid(_world) \
 			and _world.has_method("arm_active_map_combat"):
 		_world.call("arm_active_map_combat", _combat)
+	return true
+
+
+## Start the ProgressionRuntime session (Phase 11).
+##
+## Hands over the two things progression needs and nothing more: the player's authoritative
+## `CharacterState` (the subject whose XP it owns) and the live `CombatRuntime` (the publisher
+## whose defeats fund it). It loads the authored curve itself, because which curve is in play
+## is content, not a bootstrap decision.
+##
+## Returns TRUE only when progression is actually live and listening. Every prerequisite the
+## caller cannot see from outside is reported here rather than quietly skipped, because New
+## Game treats a progression failure as fatal: a session where kills pay nothing is a game
+## that looks balanced-wrong instead of broken, which is the harder bug to find.
+func _start_progression_session() -> bool:
+	if _progression == null or not is_instance_valid(_progression):
+		push_error("[main] cannot start progression: ProgressionRuntime missing")
+		return false
+	if _combat == null or not is_instance_valid(_combat):
+		push_error("[main] cannot start progression: CombatRuntime missing, so no defeat "
+			+ "could ever fund XP")
+		return false
+	var player_character: CharacterState = null
+	if _world != null and is_instance_valid(_world):
+		player_character = _world.call("get_player_character")
+	if player_character == null:
+		push_error("[main] cannot start progression: WorldRuntime has no player "
+			+ "CharacterState to own progression for")
+		return false
+	if not bool(_progression.call("start_session", player_character, _combat)):
+		return false
+	# The hub map's HUD was built during the WORLD session, before this runtime existed, so
+	# it is still showing no progression row. Push the now-available view — the same
+	# after-the-fact refresh the sect, politics and world-sim views each need.
+	if _world != null and is_instance_valid(_world) \
+			and _world.has_method("refresh_active_map_progression_view"):
+		_world.call("refresh_active_map_progression_view")
 	return true
 
 

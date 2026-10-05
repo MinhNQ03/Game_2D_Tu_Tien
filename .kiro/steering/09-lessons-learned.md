@@ -976,3 +976,35 @@
   the two-carrier assertion in `tests/unit/presentation/test_damage_feedback.gd`; the real-scene
   wiring pinned in `tests/integration/test_enemy_encounter.gd`; the flash-caught report in
   `tools/playtest_flow.gd`. Each guard was verified to FAIL against the pre-fix code.
+
+## L-038 — A screen-space element cannot be kept clear of a camera-FOLLOWED subject by an offset
+- **Symptom (D-054, Phase 11):** the level-up announcement was a `Label` anchored
+  `PRESET_CENTER`, which read beautifully in the mock and printed **straight across the
+  player's body** in the real build — because the camera follows the player, so the centre of
+  the screen IS the character. The first fix nudged it up by a named 72px constant. That did
+  not work either, and the reason is the useful part: `MapBase` CLAMPS the camera to the map
+  limits, so near a map edge the player is NOT at the screen centre and is not a fixed distance
+  from it. An offset from the centre therefore does not move the banner off the player, it
+  only changes WHERE the collision happens. Both versions were found by opening a playtest
+  capture; no assertion in the suite could see either, because the player lives in world space
+  and the banner lives in screen space.
+- **Rule:** **a HUD element must be positioned in a band the HUD OWNS, never relative to
+  something the camera moves.** If an element must not collide with the player, anchor it to a
+  screen edge and inset it by the existing reserve tokens (`PROMPT_STRIP_RESERVE`,
+  `TOP_PLAQUE_RESERVE`) — then "it cannot overlap" is arithmetic that holds at every resolution
+  and every camera clamp, which is exactly the reasoning those tokens already encode for the
+  side panels. Reach for world-space floating text only when the element is genuinely ABOUT a
+  world position (a damage number over a specific enemy), and then it belongs in the map's
+  presentation layer, not in the screen-space HUD.
+- **Corollary for the test:** a test cannot see this collision, so do not pretend to assert it.
+  Assert the STRUCTURAL property that makes it impossible — the element is edge-anchored and
+  its offset clears the named reserve — and assert the OFFSET rather than the anchor, since
+  `set_anchors_preset` preserves the existing rect and correct anchors prove nothing about
+  where a control actually is (L-028).
+- **Also (process):** this is the second Phase-11 defect that only a capture could reveal, after
+  `TOP_PLAQUE_RESERVE` needing its fifth re-measurement. Both were caught because the phase ran
+  the real-app playtest harness and then OPENED the screenshots. A capture that is produced and
+  not looked at is worth nothing — `08-ai-review-protocol.md`'s visual gate is not satisfied by
+  the file existing.
+- **Fixed:** D-054. The announcement is bottom-centre, inset by
+  `PROMPT_STRIP_RESERVE + SPACE_LG`, with a test pinning the anchor and the offset.

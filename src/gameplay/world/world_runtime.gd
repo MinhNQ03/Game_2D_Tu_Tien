@@ -319,6 +319,12 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# And the politics of that sect (Phase 07), read from the FactionRuntime sibling — same
 	# optional, null-safe, forward-a-read-only-view contract.
 	_push_politics_view_to_active_map()
+	# And the player's level/XP (Phase 11) — same contract again. Pushed on every arrival
+	# because the new map brings a brand-new HUD that has never seen a progression view, and
+	# re-connected because the subscription is what keeps the row event-driven rather than
+	# polled.
+	_connect_progression_signals()
+	_push_progression_view_to_active_map()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -434,6 +440,17 @@ func refresh_active_map_sect_view() -> void:
 ## once immediately afterwards.
 func refresh_active_map_politics_view() -> void:
 	_push_politics_view_to_active_map()
+
+
+## Push the progression view into the already-loaded map's HUD, and start listening for
+## changes (Phase 11).
+##
+## Needed for the same reason as the politics refresh: the hub map and its HUD are built
+## during the WORLD session, which finishes before Main starts the progression session, so the
+## in-transition push was a no-op. Main calls this once immediately afterwards.
+func refresh_active_map_progression_view() -> void:
+	_connect_progression_signals()
+	_push_progression_view_to_active_map()
 
 
 ## Announce the player's CURRENT map to the world simulation and push the resulting view
@@ -560,6 +577,60 @@ func _push_politics_view_to_active_map() -> void:
 	if sect_id == &"":
 		return
 	_active_map.call("set_politics_view", faction_runtime.call("get_politics_view", sect_id))
+
+
+## Push the player's read-only progression view (Phase 11) into the active map's HUD.
+##
+## Same optional, null-safe, forward-a-read-only-view contract as the sect and politics views:
+## no ProgressionRuntime or no session simply means no progression row is pushed, and the HUD
+## hides it rather than rendering `Lv 0`.
+func _push_progression_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_progression_view"):
+		return
+	var progression := _find_progression_runtime()
+	if progression == null or not progression.call("is_session_active"):
+		return
+	_active_map.call("set_progression_view", progression.call("build_view"))
+
+
+## Locate the ProgressionRuntime sibling (or null). Same direct-sibling lookup as the others.
+func _find_progression_runtime() -> Node:
+	var parent := get_parent()
+	if parent == null:
+		return null
+	for sibling in parent.get_children():
+		if sibling is ProgressionRuntime:
+			return sibling
+	return null
+
+
+## Subscribe to the progression session's events so the HUD is refreshed when XP or level
+## changes — EVENT-DRIVEN, never polled (`05-performance-testing.md`).
+##
+## Connected from here for the same reason the combat target view is: this is the node that
+## knows which map (and therefore which HUD) is currently active. Progression itself knows
+## nothing about a HUD.
+func _connect_progression_signals() -> void:
+	var progression := _find_progression_runtime()
+	if progression == null:
+		return
+	if not progression.is_connected("xp_gained", _on_xp_gained):
+		progression.connect("xp_gained", _on_xp_gained)
+	if not progression.is_connected("level_changed", _on_level_changed):
+		progression.connect("level_changed", _on_level_changed)
+
+
+func _on_xp_gained(_amount: int, _reward_id: StringName) -> void:
+	_push_progression_view_to_active_map()
+
+
+## A level-up refreshes the numbers AND asks the HUD to play its one-shot celebration. The
+## HUD owns the effect; this only reports that the event happened, so no presentation decision
+## is made in the gameplay layer.
+func _on_level_changed(_previous: int, current: int) -> void:
+	_push_progression_view_to_active_map()
+	if _active_map != null and _active_map.has_method("celebrate_level_up"):
+		_active_map.call("celebrate_level_up", current)
 
 
 ## Locate the FactionRuntime among this node's siblings under Main/Systems (or null). Same

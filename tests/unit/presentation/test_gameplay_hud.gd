@@ -489,6 +489,21 @@ func _populate_plaques(hud: Node) -> void:
 	# two reserve values too small. Pushing a value here is what makes the measured plaque the
 	# plaque on screen.
 	hud.call("set_health", 100, 100)
+	# The level badge and XP meter (Phase 11) are hidden until a progression view arrives —
+	# the SAME hidden-child trap, one phase later. This is the third time this fixture has had
+	# to grow for it (the affiliation tier, then the health gauge, now the progression row),
+	# which is the argument for populating EVERY plaque through the public setters rather than
+	# only the ones a given test happens to care about.
+	#
+	# The widest realistic numbers are used deliberately: a two-digit level and a four-digit
+	# cost are what the authored curve reaches, and they are what sets the plaque's width.
+	var progression := ProgressionView.new()
+	progression.available = true
+	progression.level = 20
+	progression.xp_into_level = 5431
+	progression.xp_for_next = 5925
+	progression.progress = 0.92
+	hud.call("set_progression_view", progression)
 	# A visible combat target too. It is CENTRE-anchored so it does not affect the reserve,
 	# but populating it here keeps the fixture honest about what a live HUD contains — the
 	# habit that L-035 exists to enforce.
@@ -600,29 +615,33 @@ func _first_scroll(node: Node) -> ScrollContainer:
 
 ## A8/A17 — the HUD must show a gauge for EXACTLY the stats a system owns, and no others.
 ##
-## This rule has not been relaxed, it has been applied: until Phase 09 nothing in a running
-## session owned health, so the correct number of gauges was zero. Combat owns health now, so
-## the correct number is ONE — and it must be the HEALTH gauge, hidden until a real value
-## arrives. Mana, realm progress and XP are still owned by nobody, so a second gauge is still
+## This rule has not been relaxed, it has been APPLIED, three times now: until Phase 09
+## nothing in a running session owned health, so the correct number of gauges was zero; combat
+## owning health made it one, and the combat target made it two; Phase 11 gives XP a real
+## owner (`ProgressionRuntime` + the authoritative `CharacterState.xp`), so the correct number
+## is now THREE. Mana and realm progress are still owned by nobody, so a FOURTH gauge is still
 ## a lie, and the count is what catches one appearing.
+##
+## The number is not the point — the pairing is. Each gauge is named, so swapping one for a
+## mana bar fails even though the count would still be right.
 func test_hud_shows_a_gauge_for_exactly_the_stats_a_system_owns() -> void:
 	var hud := _hud()
-	# TWO gauges as of Phase 10, and the test names WHICH two rather than only counting them.
-	# A count alone passes if somebody swaps one of these for a mana bar; naming them means a
-	# third gauge, or a different second gauge, both fail.
-	assert_eq(_count_class(hud, "ProgressBar"), 2,
-		("exactly TWO gauges — the player's health and the combat target's, both of which "
-			+ "combat owns. A third means a bar was added for mana/realm/XP, which no system "
-			+ "backs yet"))
+	assert_eq(_count_class(hud, "ProgressBar"), 3,
+		("exactly THREE gauges — the player's health, the combat target's health, and the "
+			+ "player's XP meter. A fourth means a bar was added for mana or realm progress, "
+			+ "which no system backs yet"))
 	assert_eq(_count_class(hud, "TextureProgressBar"), 0,
 		"and no textured gauge for an unbound stat")
 
-	# Both are hidden until a value is pushed: a full bar for health nothing has reported is
-	# the same lie as a bar for a system that does not exist.
+	# All three are hidden until a value is pushed: a full bar for health nothing has reported
+	# is the same lie as a bar for a system that does not exist.
 	assert_false(hud.call("is_health_gauge_visible"),
 		"the player gauge stays hidden until the session reports a health value")
 	assert_false(hud.call("is_target_panel_visible"),
 		"and the target plaque stays hidden until there is something to fight")
+	assert_false(hud.call("is_progression_visible"),
+		"and the level/XP row stays hidden until a progression session reports a view — "
+		+ "`Cấp 0` for progression nothing owns is the same lie one phase later")
 
 	hud.call("set_health", 42, 60)
 	assert_true(hud.call("is_health_gauge_visible"), "pushing a value reveals the player gauge")
@@ -637,6 +656,19 @@ func test_hud_shows_a_gauge_for_exactly_the_stats_a_system_owns() -> void:
 	hud.call("set_health", 0, 0)
 	assert_false(hud.call("is_health_gauge_visible"),
 		"a zero maximum hides the gauge rather than showing an empty one")
+
+	# The XP meter obeys the same contract, through its own view's `available` flag.
+	var progression := ProgressionView.new()
+	progression.available = true
+	progression.level = 3
+	progression.xp_into_level = 20
+	progression.xp_for_next = 45
+	progression.progress = 0.44
+	hud.call("set_progression_view", progression)
+	assert_true(hud.call("is_progression_visible"), "pushing a view reveals the level/XP row")
+	hud.call("set_progression_view", ProgressionView.make_empty())
+	assert_false(hud.call("is_progression_visible"),
+		"and an unavailable view hides it again rather than blanking it")
 	free_node(hud)
 
 

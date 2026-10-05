@@ -364,9 +364,18 @@ second RNG (D-040 / C-010). Combat emits events only. Timing model decided here 
 EnemyData-driven enemies, AIComponent with controlled tick rate, spawn tables.
 **Exit:** add a new enemy via data only; AI tick-rate measured; no per-frame churn.
 
-## Phase 11 — Progression
+## Phase 11 — Progression ✅ IMPLEMENTED (D-054)
 XP curve, level. Reacts to combat events.
-**Exit:** XP → level works; serializable; tests pass.
+**Exit:** XP → level works; serializable; tests pass. — **met.** `ProgressionCurveData` authors
+the curve as content (the maximum level is a data fact, not a constant); `ProgressionService`
+is the single mutator; `CharacterState.xp` is the only stored progression number and the level
+is DERIVED from it; `ProgressionRuntime` is the 7th `Main/Systems` sibling (no new autoload),
+started last and torn down first; `EnemyData.xp_reward` is the whole reward seam. The player
+sees a gold level badge and an XP meter, and a level-up plays a one-shot celebration. Verified
+by 664 suite tests, all three E2E processes, and a real-app playtest run that kills a creature
+with real attack keys and observes `xp 0 → 25 (level 1 → 2)`.
+**Level is NOT a gate** (C-002) — the service exposes no content ids, no unlock list and no
+gate query, and `MapData` still has no `min_level`.
 
 ## Phase 12 — Cultivation *(+ Knowledge Core substrate)*
 Cảnh giới / tu luyện breakthrough rules (the second progression axis, distinct from level).

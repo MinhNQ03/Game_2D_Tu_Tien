@@ -278,10 +278,16 @@ const DISABLED := COLOR_SURFACE_DISABLED
 ## panel must not cover a plaque" arithmetic rather than something to notice in a screenshot,
 ## exactly as `PROMPT_STRIP_RESERVE` does for the bottom prompt row.
 ##
-## MEASURED on a POPULATED HUD: the identity plaque is **194** tall (portrait row, name,
-## title, health gauge, divider, affiliation tier) and the map plaque **154**, so the strip is
-## the tallest, 194, plus one `HUD_MARGIN` of breathing room for the frame's corner ornaments
-## (which are drawn OUTSIDE the control's rect) = **212**.
+## MEASURED on a POPULATED HUD: the identity plaque is **206** tall (portrait row with the
+## name + level badge, title, health gauge, XP meter, divider, affiliation tier) and the map
+## plaque **154**, so the strip is the tallest, 206, plus one `HUD_MARGIN` of breathing room
+## for the frame's corner ornaments (which are drawn OUTSIDE the control's rect) = **224**.
+##
+## It was 212 until Phase 11 added the level/XP row, and the measuring test is what caught
+## that — which is the fifth time this constant has moved and the fifth time the cause was
+## content being added to a plaque. That is the intended workflow, not a failure: the number
+## is not maintained by eye, it is re-derived by a test that fills every plaque through the
+## public setters and fails with the measurement in its message.
 ##
 ## FOUR wrong values preceded it, and the pattern in them is the useful part — three of the
 ## four were wrong because something in a plaque was INVISIBLE at the moment of measurement:
@@ -301,7 +307,7 @@ const DISABLED := COLOR_SURFACE_DISABLED
 ## EVERY plaque through the HUD's public setters — including a health value, and the LONGEST
 ## localized world-event string derived from the authored set — before measuring. Adding a
 ## tier to a plaque now fails there instead of quietly reintroducing the overlap.
-const TOP_PLAQUE_RESERVE := 212
+const TOP_PLAQUE_RESERVE := 224
 
 
 ## Lines the HUD's world-event hint may wrap to before it trims. The cap is what makes the
@@ -407,6 +413,71 @@ const HIT_FLASH_TINT_CRITICAL := Color(2.52, 2.16, 1.26)
 ## important event.
 const HIT_FLASH_SECONDS := 0.16
 const HIT_FLASH_SECONDS_CRITICAL := 0.28
+
+
+# --- PROGRESSION: level + XP (Phase 11) -------------------------------------
+#
+# The second meter in the game, and it had to be made UNMISTAKABLE from the first. The phase
+# brief is explicit that XP must not be confused with HP, and the HUD puts them one above the
+# other in the same plaque, so "a bar in the identity panel" could not be allowed to mean two
+# things. Three properties separate them, and none of them is only colour:
+#
+#   * **Hue** — jade for vitals, GOLD for progression. That is not decoration, it is the
+#     palette's own vocabulary: jade is interaction/vitality, gold is STRUCTURE and
+#     achievement (the token comment on `GOLD_PRIMARY` already says frames, dividers, titles).
+#     A tu-tiên plaque reading gold for attainment is also the right cultural register.
+#   * **Weight** — the XP meter is thinner than the vitals gauge, so it reads as subordinate
+#     information rather than as a second vital sign competing for the same attention.
+#   * **Text** — the vitals gauge writes "18 / 60" (health now / health max); the XP meter
+#     writes "20 / 45" against a LEVEL label, so the pair is read as progress-within-a-level.
+#     `docs/UI_UX_BIBLE.md` §4 requires colour never to be the only carrier of meaning, and a
+#     colour-blind player must still be able to tell these two apart — the thickness and the
+#     adjacent level badge do that.
+
+## Height of the XP meter. Deliberately BELOW `GAUGE_HEIGHT` (14) — see above. Even, so the
+## 9-slice well's border bands stay symmetrical, like the vitals gauge.
+const XP_METER_HEIGHT := 8
+
+## Fill for the XP meter. An ALIAS of the gold token, not a new colour value: a second gold
+## would be a second source of truth for one decision (the D-050 B6 rule).
+const XP_METER_FILL := GOLD_PRIMARY
+
+## Fill once the level is at the authored curve's ceiling — the jade "nothing left to earn"
+## reading, so a maxed meter is visibly a different state from one that is merely nearly full.
+const XP_METER_FILL_COMPLETE := COLOR_ACCENT
+
+## Minimum width of the level badge, so `Lv 1` and `Lv 20` do not resize the identity plaque
+## as the player levels. A FLOOR, like `HUD_MAP_PANEL_WIDTH`.
+const LEVEL_BADGE_MIN_WIDTH := 52
+
+## How long the level-up celebration runs, in seconds.
+##
+## Long enough to be unmissable (the phase brief: a level-up must feel like an event, not a
+## changed number), short enough that it never becomes something the player waits through —
+## and it must not outlive a map transition, which is why the HUD's effect is cancellable and
+## why this is under two seconds rather than a cinematic length.
+const LEVEL_UP_SECONDS := 1.5
+
+## How far above the BOTTOM edge the level-up announcement sits, in px.
+##
+## The announcement is a bottom-centre HUD element, and that is the second answer to this
+## problem rather than the first. Anchoring it to the screen CENTRE printed it straight across
+## the player's body, because the camera follows the player — and nudging it upwards from
+## there did not fix it either: the camera is CLAMPED by the map limits, so the player's screen
+## position moves, and any fixed offset from the centre only relocates the collision instead of
+## removing it. Both versions were found by looking at a capture; neither was visible to a test.
+##
+## A band the HUD already owns is deterministic. This clears the prompt strip the prompts own
+## and leaves one margin of air, so the announcement cannot collide with the player, with the
+## prompts, or with a plaque — by arithmetic rather than by hoping.
+const LEVEL_UP_BANNER_BOTTOM_INSET := PROMPT_STRIP_RESERVE + SPACE_LG
+
+## Peak brightness multiplier of the level badge during the celebration.
+##
+## `modulate` is a MULTIPLY, so a channel above 1.0 brightens. Gold at 2.0 gain reads as the
+## badge catching light without blowing out to white — the same technique and the same reason
+## as `HIT_FLASH_TINT_CRITICAL`, which is also gold-based.
+const LEVEL_UP_FLASH_GAIN := 2.0
 
 ## Tint a dead entity's sprite keeps, marking it as a corpse rather than a live threat.
 ##

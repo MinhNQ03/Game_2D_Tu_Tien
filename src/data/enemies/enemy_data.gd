@@ -67,6 +67,24 @@ class_name EnemyData
 ## StringName rather than an enum so a new category is content.
 @export var spawn_category: StringName = &"field"
 
+## XP granted for defeating this creature (Phase 11).
+##
+## THE WHOLE REWARD SEAM IS THIS ONE FIELD. Tuning what a creature is worth, or giving a new
+## creature a reward, is editing a `.tres` — there is no reward table, no reward formula and
+## no `if enemy_id == ...` in the progression service, which is the extensibility rule this
+## resource already exists to satisfy (`02-game-design.md`).
+##
+## 0 is LEGAL and means "worth nothing": a harmless critter that exists for atmosphere should
+## not be forced to hand out progress. Negative is rejected — XP is monotonic by design
+## (`ProgressionService` refuses a negative grant too, so this is the authoring-side half of
+## the same invariant).
+##
+## It is XP and nothing else. A creature does not grant cultivation progress, realm advance,
+## knowledge or items here; those are other systems' phases and would each need their own
+## owner. Putting them on this field would make it a generic "rewards" bag whose consumers
+## could not be tested independently.
+@export var xp_reward: int = 0
+
 
 ## True when every authored field is usable, and loud about which is not.
 ##
@@ -99,6 +117,9 @@ func is_valid() -> bool:
 		# A creature that stops outside its own reach swings at nothing forever.
 		problems.append(("engage_distance (%.1f) exceeds the attack's reach (%.1f), so it "
 			+ "would stop short and swing at the air") % [engage_distance, attack.reach_pixels])
+	if xp_reward < 0:
+		problems.append(("xp_reward must be >= 0 (got %d); XP is monotonic, so a negative "
+			+ "reward would take progress away for winning a fight") % xp_reward)
 	if visual_profile == null:
 		problems.append("visual_profile is null (it would render as nothing)")
 	if problems.is_empty():

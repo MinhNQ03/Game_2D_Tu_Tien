@@ -60,6 +60,36 @@ var age_category: int = 0
 var profession: int = 0
 
 
+# --- Level / XP progression (persistent authority, Phase 11) -----------------
+#
+# CUMULATIVE LIFETIME XP, and the ONLY stored progression number. The character's LEVEL is
+# not stored anywhere: it is derived from this value and the authored `ProgressionCurveData`
+# by `ProgressionService.level_of()`. Two consequences worth stating where the field lives:
+#
+#   * a stored level could disagree with stored XP, and this cannot — the same reasoning that
+#     made sect membership a derived cache with one authority (D-015) and that L-032 records
+#     as a general preference;
+#   * a commit therefore writes ONE integer, so an XP grant is atomic by construction rather
+#     than by careful ordering (see `ProgressionService.grant_xp`).
+#
+# It is deliberately NOT `cultivation_progress` below. Level is the fine-grained
+# combat-derived axis; cảnh giới is the chunky capability-granting one, and
+# `docs/PROGRESSION_CULTIVATION_DESIGN.md` §1 forbids collapsing them into one number.
+# **Level is never an access gate** (C-002), so nothing in the domain may branch on it.
+
+var xp: int = 0
+
+
+## Set the authoritative cumulative XP. Clamped at 0, because XP is monotonic by design and a
+## negative total is not a state this game has.
+##
+## The ONLY writer is `ProgressionService.grant_xp()`. It lives here, next to the field, for
+## the same reason `set_current_hp` does: the invariant belongs with the data it constrains,
+## while the RULE that decides the new value belongs in the service.
+func set_total_xp(value: int) -> void:
+	xp = maxi(0, value)
+
+
 # --- Cultivation CONTRACT (persistent; mechanics are a later phase) ----------
 
 ## Current cảnh giới id (starts from the template's `starting_realm`). CONTRACT only.
@@ -155,6 +185,10 @@ static func create_from_template(
 	state.age = template.age
 	state.age_category = template.age_category
 	state.profession = template.profession
+	# A fresh character has earned nothing. The LEVEL this corresponds to is whatever the
+	# authored curve's `min_level` is — derived, not written here, so a curve that starts at a
+	# level other than 1 needs no change to character creation.
+	state.xp = 0
 	state.realm_id = template.starting_realm
 	state.cultivation_progress = 0
 	state.technique_ids = template.starting_technique_ids.duplicate()
@@ -233,6 +267,7 @@ func to_dict() -> Dictionary:
 		"age": age,
 		"age_category": age_category,
 		"profession": profession,
+		"xp": xp,
 		"realm_id": String(realm_id),
 		"cultivation_progress": cultivation_progress,
 		"technique_ids": _string_name_array_to_strings(technique_ids),
@@ -283,6 +318,21 @@ func from_dict(data: Dictionary) -> bool:
 		push_error("[character] from_dict: current_hp %d out of [0, %d]" % [
 				in_current_hp, in_max_hp])
 		return false
+	# XP is type-CHECKED before it is converted, not coerced (L-024). `int("250")`,
+	# `int(250.0)` and `int(true)` all succeed and all yield a plausible total, so a payload
+	# with the wrong TYPE in this field would otherwise be accepted as legitimate progress —
+	# and because the level is DERIVED from this number, a corrupt total silently becomes a
+	# corrupt level too. A missing key is still legal and means "no XP earned" (0), which is
+	# what keeps pre-Phase-11 saves loadable.
+	var raw_xp: Variant = data.get("xp", 0)
+	if typeof(raw_xp) != TYPE_INT:
+		push_error("[character] from_dict: xp must be an int, got %s"
+			% type_string(typeof(raw_xp)))
+		return false
+	var in_xp := int(raw_xp)
+	if in_xp < 0:
+		push_error("[character] from_dict: xp must be >= 0 (got %d)" % in_xp)
+		return false
 
 	instance_id = in_instance_id
 	template_id = StringName(String(data.get("template_id", "")))
@@ -294,6 +344,7 @@ func from_dict(data: Dictionary) -> bool:
 	age = int(data.get("age", 0))
 	age_category = int(data.get("age_category", 0))
 	profession = int(data.get("profession", 0))
+	xp = in_xp
 	realm_id = StringName(String(data.get("realm_id", "")))
 	cultivation_progress = int(data.get("cultivation_progress", 0))
 	technique_ids = _strings_to_string_name_array(data.get("technique_ids", []))

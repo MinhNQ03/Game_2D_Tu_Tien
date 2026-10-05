@@ -46,8 +46,8 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime", &"SectRuntime",
-	&"RelationshipRuntime", &"WorldRuntime", &"GameState",
+	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
+	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
 
 
@@ -726,6 +726,18 @@ func _prove_encounter(main: Node, player: Node2D, map: Node) -> void:
 	assert_true(bool(enemy.call("is_dead")),
 		"and killed it (hp %d)" % int(enemy.call("get_current_health")))
 
+	# PROGRESSION (Phase 11): the kill that just happened must have paid, through the real
+	# chain — enemy death → CombatRuntime.enemy_defeated → ProgressionRuntime → the player's
+	# authoritative CharacterState → the HUD. Asserted HERE, immediately after a kill driven
+	# by real attack keys, because that is the only place in the suite where the whole path
+	# from a player's keypress to a changed level is observable.
+	#
+	# NOTHING here calls `grant_for_defeat`, `grant_xp` or `set_total_xp`. The phase brief is
+	# explicit that an E2E must not fake the player's achievement, and an E2E that did would
+	# stay green while the announcement, the subscription or the reward authoring was broken
+	# (L-017).
+	await _prove_progression(main, map)
+
 	# DEATH CLEANUP, observed in the real app rather than in a harness.
 	assert_false(registry.has(enemy.call("instance_id")),
 		"a corpse is no longer targetable, so the player stops swinging at nothing")
@@ -816,6 +828,81 @@ func _prove_combat(main: Node, player: Node2D, map: Node) -> void:
 	assert_true(attack_component.damage_dealt() > 0,
 		"and the component recorded the damage it applied (%d)"
 			% attack_component.damage_dealt())
+
+
+## Prove the REAL progression loop paid for the kill that just happened (Phase 11).
+##
+## Called right after `_prove_encounter` has killed a creature with real attack keys, so the
+## XP it asserts was earned by the player's own input and not written by the test.
+##
+## It checks the whole chain at its OBSERVABLE ends: the authoritative `CharacterState.xp`
+## moved, the derived level moved with it, and the HUD is showing the progression row. Any one
+## of those alone could pass while the path was broken — a granted XP with no HUD row is a
+## reward the player never learns about, and a visible row over an unchanged total is a UI
+## reading a number nothing updated.
+func _prove_progression(main: Node, map: Node) -> void:
+	var progression := main.get_node_or_null("Systems/ProgressionRuntime")
+	assert_not_null(progression, "the ProgressionRuntime subsystem exists under Main/Systems")
+	if progression == null:
+		return
+	assert_true(bool(progression.call("is_session_active")),
+		"the progression session is live inside a running game")
+	assert_eq(_count_named("ProgressionRuntime"), 0,
+		"ProgressionRuntime is NOT an autoload (the budget stays at five — D-017)")
+
+	var world_runtime := _find_world_runtime(main)
+	if world_runtime == null:
+		return
+	var character: CharacterState = world_runtime.call("get_player_character")
+	assert_not_null(character, "the world session owns the player's CharacterState")
+	if character == null:
+		return
+
+	# THE AUTHORITY MOVED. The creature the player just killed carries an authored
+	# `xp_reward`, and this is the number that must have landed on the player.
+	assert_true(character.xp > 0,
+		("killing a creature with real attack keys granted XP to the authoritative "
+			+ "CharacterState (xp=%d) — the whole reason Phase 11 exists") % character.xp)
+
+	var view: ProgressionView = progression.call("build_view")
+	assert_true(view.available, "and the progression view is available")
+	assert_true(view.level >= 2,
+		("the player LEVELLED from that kill (level=%d, xp=%d). The authored curve's first "
+			+ "step is reachable from one kill on purpose: the first level-up is where the "
+			+ "player learns the loop exists") % [view.level, character.xp])
+	# The level is DERIVED, so it must agree with the stored XP rather than being a second
+	# number that happens to look right.
+	var service: ProgressionService = progression.call("get_service")
+	assert_not_null(service, "the session exposes its service")
+	if service != null:
+		assert_eq(view.level, service.level_of(character),
+			"the view's level is the one derived from the stored XP, not a copy")
+
+	# AND THE PLAYER CAN SEE IT. A reward nobody is told about is not a progression system.
+	#
+	# The HUD is located by TYPE in the map's own tree rather than through a getter, so this
+	# assertion needs no production API that exists only for a test.
+	var hud := _find_hud(map)
+	assert_not_null(hud, "the active map owns a GameplayHUD")
+	if hud != null:
+		assert_true(hud.is_progression_visible(),
+			("the HUD is showing the level/XP row after the first kill — a granted reward the "
+				+ "player is never told about is not a progression system"))
+
+
+## The `GameplayHUD` in a map's tree, or null.
+func _find_hud(node: Node) -> GameplayHUD:
+	if node == null:
+		return null
+	if node is GameplayHUD:
+		return node as GameplayHUD
+	for child in node.get_children():
+		# Explicitly typed: a recursive call's return type is not yet resolved, so `:=` would
+		# infer Variant and fail the warning-as-error compile (GD001 / L-020).
+		var found: GameplayHUD = _find_hud(child)
+		if found != null:
+			return found
+	return null
 
 
 func _fire_action(action: StringName) -> void:

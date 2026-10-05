@@ -279,9 +279,32 @@ with three untinted buttons — not a decision, just construction nobody copied.
   `TOP_PLAQUE_RESERVE` *and* the test fixture that populates it. The reserve is derived from a
   measurement, not computed at runtime, so it is the one number a new tier can invalidate —
   and a hidden child measures as zero, which is how it was wrong four times (L-035).
-- **Only one gauge exists**, and the rule that permits it is that combat owns health. A second
-  gauge for mana/XP/realm is still forbidden until a system owns that value (§4), and the
-  gauge COUNT is asserted so adding one fails loudly.
+- **Three gauges exist** (D-054): the player's health, the combat target's health, and the
+  player's XP meter. The rule that permits each is unchanged — a system owns that value — and
+  the gauge COUNT is still asserted, so a fourth (mana, realm progress) fails loudly until its
+  phase arrives. Each gauge is named in the assertion, so swapping one for an unbacked bar
+  fails even though the count would still be right.
+- **TWO METERS IN ONE PLAQUE MUST DIFFER ON MORE THAN COLOUR** (D-054, binding). The XP meter
+  sits directly under the health gauge — the hardest place to tell two bars apart — so it is
+  separated on three INDEPENDENT channels: **hue** (gold for progression, jade for vitals, using
+  the palette's existing vocabulary where gold already means structure and attainment),
+  **weight** (`XP_METER_HEIGHT` 8 vs `GAUGE_HEIGHT` 14, so XP reads as subordinate), and
+  **written text** (each writes its own numbers behind a localized caption). Colour alone would
+  fail the §4 rule and fail a colour-blind player outright; the thickness and the caption are
+  what make the distinction survive without it.
+- **A gauge at a terminal state must not render as its raw numbers.** At the top of the
+  authored XP curve both numerator and denominator are 0, and `0 / 0` on a character who has
+  earned everything is a lie — so the meter shows COMPLETE, in its own fill colour, with
+  localized "max" text.
+- **An announcement belongs in a band the HUD OWNS, never near the screen centre** (L-038). The
+  camera follows the player, so the centre of the screen is the character; the level-up banner
+  printed across them, and offsetting it upwards did not help because the camera is CLAMPED by
+  the map limits and the player is not a fixed distance from the centre. It is now bottom-centre,
+  inset by `PROMPT_STRIP_RESERVE + SPACE_LG`, which makes "cannot collide" arithmetic.
+- **Level is not cảnh giới, and the UI must not say it is.** The progression strings use
+  `Cấp / Kinh nghiệm / Thăng cấp` and are forbidden from using *tu vi*, *đột phá* or *cảnh
+  giới* — asserted in both languages. The HUD is the only place the player actually looks, so
+  borrowing cultivation words there would tell them the two axes are one thing (D-054).
 - **The key chip is drawn, not asset-backed** (`key_badge.png` measures centre alpha 0 — it is
   a corner ornament). Swap it back the day real keycap art lands.
 - **Visual regressions are caught by a human looking at `tools/capture_ui.gd` output**, not by

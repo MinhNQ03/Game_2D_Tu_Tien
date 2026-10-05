@@ -101,6 +101,53 @@ func test_round_trip_preserves_dead_state() -> void:
 	assert_eq(String(restored.death_cause), "poison", "death_cause round-trips")
 
 
+## XP is a PERSISTENT field (Phase 11) and the only stored progression number — the level is
+## derived from it, so a save that lost or corrupted it would silently change the character's
+## level too.
+func test_xp_round_trips_and_defaults_safely() -> void:
+	var state = StateScript.create_from_template(_template(), &"inst_1")
+	assert_eq(state.xp, 0, "a fresh character has earned nothing")
+	state.set_total_xp(1234)
+	var restored = StateScript.new()
+	assert_true(restored.from_dict(state.to_dict()), "the snapshot is accepted")
+	assert_eq(restored.xp, 1234, "cumulative XP round-trips exactly")
+
+	# A snapshot written before Phase 11 has no `xp` key at all. It must still load, as "no
+	# XP earned", rather than being rejected as malformed — otherwise adding the field would
+	# have invalidated every existing save.
+	var legacy = StateScript.new()
+	assert_true(legacy.from_dict({"instance_id": "old", "max_hp": 10, "current_hp": 10}),
+		"a pre-Phase-11 snapshot with no xp key still loads")
+	assert_eq(legacy.xp, 0, "and reads as no XP earned")
+
+
+## Malformed XP must FAIL CLOSED and leave the receiver byte-identical (L-024): the field is
+## type-CHECKED before conversion, because `int("250")`, `int(250.0)` and `int(true)` all
+## succeed and all produce a plausible total that would then derive a plausible wrong level.
+func test_from_dict_rejects_malformed_xp_without_mutating() -> void:
+	var good = StateScript.create_from_template(_template(), &"inst_1")
+	good.set_total_xp(500)
+	var baseline := str(good.to_dict())
+
+	for bad_xp in ["250", 250.0, true, [], {}, null]:
+		var payload := good.to_dict()
+		payload["xp"] = bad_xp
+		var target = StateScript.create_from_template(_template(), &"inst_1")
+		target.set_total_xp(500)
+		assert_false(target.from_dict(payload),
+			"xp of type %s is rejected" % type_string(typeof(bad_xp)))
+		assert_eq(str(target.to_dict()), baseline,
+			"and the character is byte-identical after the rejection (xp=%s)" % str(bad_xp))
+
+	# A NEGATIVE total is the right type and still impossible: XP is monotonic.
+	var negative := good.to_dict()
+	negative["xp"] = -1
+	var victim = StateScript.create_from_template(_template(), &"inst_1")
+	victim.set_total_xp(500)
+	assert_false(victim.from_dict(negative), "a negative total is rejected")
+	assert_eq(str(victim.to_dict()), baseline, "with no mutation")
+
+
 func test_from_dict_rejects_invalid_snapshots() -> void:
 	var state = StateScript.new()
 	assert_false(state.from_dict({}), "missing instance_id rejected")

@@ -32,6 +32,23 @@ class_name CombatRuntime
 ## (`03-architecture.md`: emitters never depend on listeners).
 signal combat_target_changed(view: CombatTargetView)
 
+## A creature was defeated, and this is what defeating it is worth (Phase 11).
+##
+## COMBAT ANNOUNCES; IT DOES NOT PAY. This carries the authored `xp_reward` and an identity,
+## and nothing else: combat holds no progression state, does not know a level exists, and has
+## no reference to the player's `CharacterState`. `ProgressionRuntime` listens and is the only
+## thing that mutates XP. Making combat call a progression API instead would point the
+## dependency the wrong way and would put permanent character state behind a per-session
+## system, both of which `03-architecture.md` forbids.
+##
+## `reward_id` is unique PER SPAWN (see `_next_reward_id`), so the progression owner can make
+## the grant idempotent without that making a re-cleared map unrewardable.
+##
+## The payload is deliberately free of localized strings, UI data and animation parameters —
+## it is a gameplay fact, and presentation reacts to the progression owner's events, not to
+## this one.
+signal enemy_defeated(reward_id: StringName, xp_reward: int)
+
 ## The enemy scene. Every creature is this ONE scene configured by `EnemyData` — there is no
 ## per-creature scene, which is what makes a new creature a `.tres` (Phase 10 exit criterion).
 const EnemyScene := preload("res://src/gameplay/entities/enemy.tscn")
@@ -57,6 +74,31 @@ var _enemies: Array[Enemy] = []
 ## for a player — that would be an O(tree) walk per enemy per tick, and a dependency pointing
 ## the wrong way.
 var _hunt_target: Node2D = null
+
+## Monotonic spawn counter, used to make a defeat's `reward_id` unique per SPAWN rather than
+## per spawn-table row (Phase 11).
+##
+## A table row's `instance_id` repeats every time the map is populated, so using it alone as
+## the reward identity would mean clearing the field, leaving and coming back granted nothing
+## the second time — the dedupe key would have silently become a "this row has ever been
+## killed" flag. Composing it with this counter keeps the key unique per spawn while staying
+## DETERMINISTIC (the counter advances in table order, which is the same order every run), so
+## a seeded session remains reproducible.
+var _spawn_serial: int = 0
+
+## Per-spawn reward id, by instance id. Assigned at spawn so the death handler never has to
+## derive it from a node that is already being torn down.
+var _reward_ids: Dictionary = {}
+
+## Reward ids already announced this session, so one death cannot be announced twice.
+##
+## This guard exists IN ADDITION to the progression owner's own ledger, and the two are not
+## redundant — they stop different things. This one stops a DOUBLE EMISSION for a single
+## creature (a `died` that somehow fires twice, a signal connected twice at the source).
+## The owner's stops a double GRANT however the event reached it, which is the authority's job
+## and the one §9 cares about. Cleared on despawn, so it is bounded by the living population
+## rather than by the session's total kills.
+var _announced: Dictionary = {}
 
 
 ## Start the combat session from the world's RNG seam.
@@ -86,6 +128,9 @@ func start_session(rng: RngService) -> bool:
 	_armed = {}
 	_enemies = []
 	_hunt_target = null
+	_spawn_serial = 0
+	_reward_ids = {}
+	_announced = {}
 	_session_active = true
 	return true
 
@@ -122,6 +167,9 @@ func end_session() -> void:
 	_service = null
 	_rng = null
 	_hunt_target = null
+	_spawn_serial = 0
+	_reward_ids.clear()
+	_announced.clear()
 	_session_active = false
 	set_physics_process(false)
 
@@ -260,6 +308,11 @@ func _spawn_one(
 		enemy.queue_free()
 		return false
 	enemy.ai().set_target(_hunt_target)
+	# The reward identity is fixed at SPAWN time, not read at death: a dead creature must be
+	# announceable even though its node is mid-teardown, and the id must not depend on
+	# anything the death handler has to go and look up.
+	_spawn_serial += 1
+	_reward_ids[String(instance_id)] = _compose_reward_id(instance_id, _spawn_serial)
 	enemy.died.connect(_on_enemy_died.bind(enemy))
 	# The target plaque is pushed on the EVENTS the player cares about — a hit landing and a
 	# death — rather than polled. "Whatever I just hit" is also the honest answer to "what am I
@@ -307,6 +360,11 @@ func despawn_enemies() -> void:
 		_armed.erase(String(enemy.instance_id()))
 		enemy.queue_free()
 	_enemies.clear()
+	# Both reward ledgers are per-POPULATION, not per-session: the next `spawn_from_table`
+	# mints fresh ids from the advancing serial, so a re-cleared map rewards again while a
+	# single death still cannot pay twice.
+	_reward_ids.clear()
+	_announced.clear()
 	set_physics_process(false)
 
 
@@ -343,6 +401,53 @@ func _on_enemy_health_changed(_current: int, _maximum: int, enemy: Enemy) -> voi
 func _on_enemy_ai_state_changed(state_name: String, enemy: Enemy) -> void:
 	if state_name in ["ALERT", "CHASE", "ATTACK", "RECOVER"]:
 		_publish_target(enemy)
+
+
+## Compose a per-spawn reward identity. `enemy_mist_wolf_1#3` reads as "the third creature
+## spawned this session, which was spawn-table row `enemy_mist_wolf_1`".
+##
+## Deterministic by construction: the serial advances in spawn-table order, so the same table
+## produces the same ids in the same run order every time — which is what lets a seeded
+## session stay reproducible and lets a future authoritative server mint matching identities.
+static func _compose_reward_id(instance_id: StringName, serial: int) -> StringName:
+	return StringName("%s#%d" % [String(instance_id), serial])
+
+
+## Announce what defeating `enemy` is worth, exactly once per spawn.
+##
+## Reads the reward from the creature's own authored data, so a new creature's worth is a
+## `.tres` value and this function never grows a branch per creature.
+func _announce_defeat(enemy: Enemy) -> void:
+	var key := String(enemy.instance_id())
+	if not _reward_ids.has(key):
+		# No id was minted for this creature, which means it was never spawned through
+		# `_spawn_one`. Loud: a creature that can die without being announceable is a silent
+		# hole in the reward path, and silence is exactly how a reward loop goes missing.
+		push_error(("[combat-rt] '%s' died with no reward id; it was not spawned through "
+			+ "spawn_from_table, so its defeat cannot be announced") % key)
+		return
+	var reward_id: StringName = _reward_ids[key]
+	if _announced.has(String(reward_id)):
+		return
+	_announced[String(reward_id)] = true
+	var data := enemy.data()
+	var reward := 0
+	if data != null:
+		reward = data.xp_reward
+	enemy_defeated.emit(reward_id, reward)
+
+
+## The reward id minted for a spawned creature, or an empty name. For tests and the debug
+## overlay — the same read-only-window shape as `armed_count()`.
+##
+## Written as an explicit branch rather than a ternary: a `Dictionary` lookup is a `Variant`,
+## so `dict[k] if ... else &""` mixes Variant with StringName and GDScript reports an
+## incompatible ternary.
+func reward_id_of(instance_id: StringName) -> StringName:
+	var key := String(instance_id)
+	if not _reward_ids.has(key):
+		return &""
+	return _reward_ids[key]
 
 
 ## Emit a read-only view of `enemy` for the HUD.
@@ -394,6 +499,7 @@ func _on_enemy_died(enemy: Enemy) -> void:
 			_registry.unregister(hurtbox)
 	_armed.erase(String(enemy.instance_id()))
 	_publish_target(enemy)
+	_announce_defeat(enemy)
 	# Nothing left alive means nothing left to think: stop the tick entirely rather than
 	# iterating corpses every frame for the rest of the session.
 	if living_enemy_count() == 0:

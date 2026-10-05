@@ -183,17 +183,34 @@ static func _build_corner_ornaments(parent: Control) -> void:
 ## `show_percentage` is off because a percentage is not what a player tracks in a fight; the
 ## absolute pair ("18 / 60") is, and it is what the label says.
 static func vitals_gauge() -> ProgressBar:
+	return _meter("VitalsGauge", UIPalette.GAUGE_HEIGHT, UIPalette.GAUGE_FILL)
+
+
+## THE XP meter (Phase 11). The same construction as the vitals gauge, deliberately styled to
+## be UNMISTAKABLE from it: gold instead of jade, and thinner.
+##
+## It shares `_meter()` rather than re-building a `ProgressBar` of its own, because duplicated
+## styling is precisely how this project previously ended up with four hand-rolled dividers
+## and one of them reading as a progress bar (D-050). What differs between the two meters is
+## only what SHOULD differ — hue and weight — and both differences are palette tokens, so the
+## distinction is one edit away rather than scattered through the HUD.
+static func xp_meter() -> ProgressBar:
+	return _meter("XpMeter", UIPalette.XP_METER_HEIGHT, UIPalette.XP_METER_FILL)
+
+
+## Shared meter construction: a styled `ProgressBar` with a centred value Label inside it.
+static func _meter(meter_name: String, height: int, fill: Color) -> ProgressBar:
 	var bar := ProgressBar.new()
-	bar.name = "VitalsGauge"
+	bar.name = meter_name
 	bar.show_percentage = false
-	bar.custom_minimum_size = Vector2(0, UIPalette.GAUGE_HEIGHT)
+	bar.custom_minimum_size = Vector2(0, height)
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.min_value = 0.0
 	bar.max_value = 1.0
 	bar.value = 1.0
 	bar.add_theme_stylebox_override("background", _gauge_well_stylebox())
-	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(UIPalette.GAUGE_FILL))
+	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(fill))
 
 	var value_label := Label.new()
 	value_label.name = "Value"
@@ -248,6 +265,38 @@ static func _gauge_fill_stylebox(fill: Color) -> StyleBoxFlat:
 	box.bg_color = fill
 	box.set_corner_radius_all(2)
 	return box
+
+
+## Push a value into an XP meter built by `xp_meter()`: the bar, the text and the ceiling
+## colour, together — one call, for the same reason `set_gauge_value` is one call.
+##
+## `at_ceiling` is handled explicitly rather than inferred from `into >= cost`, because at the
+## top of the authored curve BOTH numbers are 0 and the raw pair would render as "0 / 0" on a
+## character who has earned everything there is. A maxed meter shows FULL and switches to the
+## jade "nothing left to earn" fill, so it is visibly a different state from nearly-full.
+##
+## `text` arrives ALREADY LOCALIZED and already formatted. The theme writes it and does not
+## build it: resolving a key here would put `Localization` behind a static style helper, and
+## `07-localization.md` keeps string resolution with the screen that owns the strings. It is
+## also what lets the label read "XP 20 / 45" in English and "KN 20 / 45" in Vietnamese
+## without this function knowing either language exists.
+static func set_xp_meter_value(
+		bar: ProgressBar, into: int, cost: int, at_ceiling: bool, text: String = "") -> void:
+	if bar == null or not is_instance_valid(bar):
+		return
+	var label := bar.get_node_or_null("Value") as Label
+	if label != null:
+		label.text = text
+	if at_ceiling or cost <= 0:
+		bar.max_value = 1.0
+		bar.value = 1.0
+		bar.add_theme_stylebox_override(
+			"fill", _gauge_fill_stylebox(UIPalette.XP_METER_FILL_COMPLETE))
+		return
+	var safe_into: int = clampi(into, 0, cost)
+	bar.max_value = float(cost)
+	bar.value = float(safe_into)
+	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(UIPalette.XP_METER_FILL))
 
 
 ## THE scrolling body of a bounded side panel. Returns the `VBoxContainer` rows go into.

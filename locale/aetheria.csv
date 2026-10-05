@@ -124,3 +124,7 @@ ATTACK_PLAYER_BASIC_NAME,Palm Strike,Chưởng Pháp
 ENEMY_MIST_WOLF_NAME,Mist Wolf,Vụ Lang
 THREAT_FRONTIER_LOW,Frontier · Low,Biên thùy · Thấp
 ATTACK_MIST_WOLF_BITE_NAME,Fanged Lunge,Nhiếp Nha
+UI_HUD_LEVEL,"Lv {level}","Cấp {level}"
+UI_HUD_XP_PROGRESS,"XP {into} / {cost}","KN {into} / {cost}"
+UI_HUD_XP_COMPLETE,XP max,KN tối đa
+UI_HUD_LEVEL_UP,"Level Up! Lv {level}","Thăng cấp! Cấp {level}"

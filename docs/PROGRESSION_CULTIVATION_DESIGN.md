@@ -4,7 +4,19 @@
 > contract, the master realm table, cultivation paths, the technique MODEL, and Knowledge as a
 > third progression concept.
 > Frozen names: `docs/CANON_LEDGER.md` CL-02/03/13/14. Combat identity: `docs/COMBAT_DESIGN.md`.
-> Phase 11 implements level/XP; Phase 12 implements cultivation. **Nothing here is implemented.**
+>
+> **IMPLEMENTATION STATUS.** §1's LEVEL/XP axis is **implemented** (Phase 11, D-054): the
+> authored curve is `data/progression/player_progression_curve.tres`
+> (`ProgressionCurveData`), the one mutator is `ProgressionService.grant_xp()`, the state is
+> `CharacterState.xp` (cumulative; **the level is DERIVED, never stored**), and the player sees
+> a gold `Cấp N` badge plus an XP meter in the HUD. §11's "XP curve shape is NOT frozen" still
+> holds — the shipped curve is a first tuning pass, not canon.
+>
+> The CẢNH GIỚI axis — §2's hierarchy, §3's nine layers, §4's capability contract, §5's paths —
+> remains **unimplemented**; Phase 12 owns it. Level is not it, and nothing in the Phase-11 code
+> may be read as it: `ProgressionView` carries no realm-shaped field and the progression UI
+> deliberately avoids the words *tu vi*, *đột phá* and *cảnh giới* so the player is never told
+> the two axes are the same thing (D-054).
 
 ---
 

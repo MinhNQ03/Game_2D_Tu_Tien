@@ -117,7 +117,14 @@ prints `[boot] Aetheria main scene ready...` and exits 0 if boot didn't crash.
 > annotations + step summary, because Actions logs need auth to read (D-009) — a bare
 > "exit code 1" would otherwise cost a round-trip just to learn which rule fired.
 
-> **Note (D-009):** the AI agent could not run any of these locally — no Godot binary was
+> **SUPERSEDED (L-031): Godot DOES run locally.** The note below is kept for history. Run the
+> whole gate set locally FIRST — it takes about three minutes — and push a change that is
+> already green; CI remains the authority because it is the clean-room run and the gate
+> definitions live in the workflow. The one thing still unverifiable headlessly is **anything
+> on screen**: a layout or art claim needs a capture from `tools/playtest_flow.gd` (run WITHOUT
+> `--headless`) and someone actually opening it.
+>
+> **Note (D-009, historical):** the AI agent could not run any of these locally — no Godot binary was
 > reachable from its shell. All scripts were statically validated via the GDScript
 > language server (zero errors). The authoritative run happens in CI (D-012) and can be
 > run manually by any developer with Godot 4.7 installed.
@@ -322,9 +329,44 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
   `UI_HUD_INTERACT_ACTION`, `UI_HUD_MENU_ACTION`) exist in both vi + en.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
-every push. **Note:** these tests were authored and statically validated (GDScript
-diagnostics clean); the agent cannot run Godot locally (D-009), so the authoritative run
-is CI.
+every push, and remains the authority. **Since L-031 the gates also run locally** (~3 minutes
+for lint + import + parse + boot + suite + all three E2E processes), so a change should be
+green before it is pushed rather than diagnosed through CI round-trips.
+
+**Known environmental caveat (D-054):** the two wall-clock performance budgets
+(`tests/performance/test_ai_budget.gd`, `test_combat_budget.gd`) assert µs/ms figures and are
+machine-dependent — they pass on the CI runner and fail on at least one development machine,
+with the measured numbers swinging 2–3× between runs of identical code. Treat a failure there
+as "check whether this machine is the cause" before treating it as a regression, and compare
+against an unmodified baseline run.
+
+### Phase 11 — progression (D-054)
+- `tests/unit/progression/test_progression_curve.gd` — threshold semantics (exact, one before,
+  one after, overflow, multi-level, large), the derived level, the ceiling as a DATA fact, and
+  boundary validation (empty id/array, non-positive step, decreasing curve — a plateau is
+  legal, `min_level` < 1, all problems reported at once). Also pins the shipped curve and the
+  game-feel contract that ONE authored kill reaches the first level-up.
+- `tests/unit/progression/test_progression_service.gd` — the single mutation path: zero grant
+  as a legal no-op, negative and at-ceiling REJECTED with their reasons pinned and the state
+  byte-identical, monotonicity, determinism across repeated runs, and the proof that the level
+  is derived (a retuned curve re-levels the same stored XP).
+- `tests/unit/progression/test_progression_runtime.gd` — fail-closed start (nothing observable
+  after a refusal), the idempotency ledger, one `level_changed` per grant across several
+  thresholds, teardown disconnects, and a restart deriving from persisted XP.
+- `tests/unit/presentation/test_progression_hud.gd` — XP distinguishable from HP on three
+  channels (hue / weight / written text), the ceiling reading COMPLETE not `0 / 0`, both
+  languages resolving with no raw keys, the reserved-vocabulary guard (no *tu vi* / *đột phá*
+  / *cảnh giới*), and the celebration running, decaying, terminating exactly at rest,
+  cancelling cleanly and costing nothing while idle.
+- `tests/integration/test_combat_awards_progression.gd` — a REAL spawned creature dying and
+  paying its authored reward; a re-cleared population rewarding AGAIN (the per-spawn reward id);
+  a re-announced death paying once; and the forbidden "combat live, progression owning nothing".
+- `tests/e2e/world_flow_case.gd::_prove_progression` — after a kill driven by REAL attack keys:
+  the authority moved, the derived level agrees with it, and the HUD shows the row. No
+  `grant_xp`/`set_total_xp` anywhere in the E2E.
+- `tools/playtest_flow.gd` — records level + XP on EVERY step and captures
+  `12_pre_combat` → `13_enemy_killed_level_up` → `14_xp_updated` → `16_post_level`, reporting
+  whether the level-up effect was actually caught in the shot.
 
 **Phase 05 added Relationship + character-visual tests (high-risk: relationship state / save seam):**
 - `tests/unit/relationship/test_relationship_config.gd` — `RelationshipConfigData` validity

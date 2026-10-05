@@ -26,6 +26,8 @@ class_name GameplayHUD
 const PromptRowScript := preload("res://src/presentation/ui/components/ui_prompt_row.gd")
 const SectPanelScript := preload("res://src/presentation/sect/sect_panel.gd")
 const FactionPanelScript := preload("res://src/presentation/faction/faction_panel.gd")
+const LevelUpFeedbackScript := preload(
+	"res://src/presentation/progression/level_up_feedback.gd")
 
 const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
@@ -65,6 +67,16 @@ var _portrait: TextureRect
 ## The player's health gauge (Phase 09). Hidden until a health value arrives, so a HUD built
 ## outside a combat session shows no gauge rather than a full bar for health nothing owns.
 var _health_gauge: ProgressBar
+## Level badge + XP meter (Phase 11). Both hidden until a progression view arrives.
+var _level_label: Label
+var _xp_meter: ProgressBar
+## Transient centre-screen level-up announcement; owned by `_level_up` while it runs.
+var _level_up_banner: Label
+## The one-shot level-up celebration. Owned here; presentation-only; idle when not running.
+var _level_up: LevelUpFeedback = null
+## The last progression view pushed in, kept so `_refresh_text()` can re-resolve its strings
+## on a language change without the progression session having to push again.
+var _progression_view: ProgressionView = null
 ## The combat target plaque (Phase 10): what the player is fighting. Hidden with no target.
 var _target_panel: PanelContainer
 var _target_name_label: Label
@@ -108,6 +120,11 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	# Stop the level-up celebration before the HUD leaves the tree. A map transition or a
+	# return to the menu can land mid-effect, and an effect still decaying toward a colour on
+	# a node that is being freed is writing `modulate` on a dangling target.
+	if _level_up != null and is_instance_valid(_level_up):
+		_level_up.cancel()
 	if _bus != null and _bus.is_connected("language_changed", _on_language_changed):
 		_bus.disconnect("language_changed", _on_language_changed)
 	var vp := get_viewport()
@@ -208,10 +225,34 @@ func _build_ui() -> void:
 	identity_text.add_theme_constant_override("separation", UIPalette.ROW_GAP)
 	identity_row.add_child(identity_text)
 
+	# The name shares its row with the LEVEL badge (Phase 11). Level belongs here, beside the
+	# character's name, because it answers "who am I" at a glance — the phase brief ranks
+	# "LEVEL must be easy to identify" first in the HUD hierarchy, and a number tucked under
+	# two gauges is not at a glance. It is gold, which in this palette means structure and
+	# attainment, and is the hue the XP meter below also uses so the pair reads as one idea.
+	var name_row := HBoxContainer.new()
+	name_row.name = "NameRow"
+	name_row.add_theme_constant_override("separation", UIPalette.SPACE_MD)
+	identity_text.add_child(name_row)
+
 	_name_label = Label.new()
 	_name_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_SUBTITLE)
 	_name_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
-	identity_text.add_child(_name_label)
+	_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_row.add_child(_name_label)
+
+	_level_label = Label.new()
+	_level_label.name = "LevelBadge"
+	_level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_level_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_SUBTITLE)
+	_level_label.add_theme_color_override("font_color", UIPalette.GOLD_PRIMARY)
+	# A width FLOOR so `Cấp 1` and `Cấp 20` do not resize the plaque as the player levels —
+	# a plaque that changes width on a level-up would make the whole HUD twitch.
+	_level_label.custom_minimum_size = Vector2(UIPalette.LEVEL_BADGE_MIN_WIDTH, 0)
+	# Hidden until a progression view arrives, for the same reason the health gauge is: a
+	# badge reading `Cấp 0` for progression nothing owns is worse than no badge.
+	_level_label.visible = false
+	name_row.add_child(_level_label)
 
 	_title_label = Label.new()
 	_title_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
@@ -230,6 +271,56 @@ func _build_ui() -> void:
 	# reported is the same lie as a gauge for a system that does not exist yet.
 	_health_gauge.visible = false
 	identity_text.add_child(_health_gauge)
+
+	# The XP meter (Phase 11), directly under the health gauge and deliberately SUBORDINATE to
+	# it: thinner, and gold where health is jade. Both separations are palette tokens and both
+	# matter — the phase brief requires XP not to be confusable with HP, and these two sit one
+	# above the other in the same plaque, which is the hardest place to tell two bars apart.
+	# The meter also WRITES its value as text ("XP 20 / 45"), so the distinction survives for
+	# a player who cannot use the colour at all (`docs/UI_UX_BIBLE.md` §4).
+	_xp_meter = UITheme.xp_meter()
+	_xp_meter.visible = false
+	identity_text.add_child(_xp_meter)
+
+	# The level-up celebration drives the BADGE, not the meter: the meter's job is to be read
+	# accurately, and a flashing bar is harder to read, while a badge catching light is
+	# exactly the "something happened to me" signal a level-up wants. Presentation-only, and
+	# idle (zero per-frame cost) until a level actually changes.
+	# The transient level-up announcement. Anchored to the SCREEN CENTRE, deliberately outside
+	# every plaque: a label that appears inside the identity plaque would grow it mid-
+	# celebration, which both makes the HUD twitch and invalidates `TOP_PLAQUE_RESERVE` for
+	# the duration of the effect (a hidden child contributes nothing to a container's minimum
+	# size — the exact trap that produced four wrong values for that constant).
+	#
+	# The centre is also where it MEANS the most: the camera follows the player, so the player
+	# is near the middle of the screen, and the announcement lands on them rather than in a
+	# corner being reported about them.
+	_level_up_banner = Label.new()
+	_level_up_banner.name = "LevelUpBanner"
+	_level_up_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_level_up_banner.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_SUBTITLE)
+	_level_up_banner.add_theme_color_override("font_color", UIPalette.GOLD_PRIMARY)
+	# BOTTOM-CENTRE, in the band above the prompt strip — not the screen centre.
+	#
+	# Two capture-found defects led here. Centred, it printed across the player's body, because
+	# the camera follows the player. Nudged up from the centre, it still did: the camera is
+	# CLAMPED by the map limits, so the player's screen position moves and a fixed offset from
+	# the centre just relocates the collision. A band the HUD already reserves cannot collide
+	# with anything, at any resolution.
+	_level_up_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_level_up_banner.offset_top -= UIPalette.LEVEL_UP_BANNER_BOTTOM_INSET
+	_level_up_banner.offset_bottom -= UIPalette.LEVEL_UP_BANNER_BOTTOM_INSET
+	_level_up_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_level_up_banner.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_level_up_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_level_up_banner.visible = false
+	root.add_child(_level_up_banner)
+
+	_level_up = LevelUpFeedbackScript.new() as LevelUpFeedback
+	_level_up.name = "LevelUpFeedback"
+	add_child(_level_up)
+	_level_up.bind_target(_level_label)
+	_level_up.bind_banner(_level_up_banner)
 
 	# The engraved rule that separates the two identity tiers. Same art as the menu title and
 	# the sect panel header, so all three screens read as one design language (D-041).
@@ -563,6 +654,69 @@ func is_health_gauge_visible() -> bool:
 	return _health_gauge != null and _health_gauge.visible
 
 
+## Push the player's read-only level/XP view (Phase 11). Pushed by the owner (MapBase, fed by
+## WorldRuntime → ProgressionRuntime) on map arrival and on every XP change — never polled.
+##
+## An unavailable view HIDES the badge and the meter rather than blanking them: "no
+## progression session" and "a fresh character at level 1 with no XP" are different states,
+## and rendering them the same way would make a wiring failure look like a new game.
+func set_progression_view(view: ProgressionView) -> void:
+	_progression_view = view
+	if _level_label == null or _xp_meter == null:
+		return
+	var available := view != null and view.available
+	_level_label.visible = available
+	_xp_meter.visible = available
+	if not available:
+		return
+	_refresh_progression()
+
+
+## Play the one-shot level-up celebration. Called by the owner when `level_changed` fires.
+##
+## The HUD does not decide WHEN a level-up happened — it is told. It only decides what one
+## looks like, which is the division `03-architecture.md` requires: the gameplay layer reports
+## the event and owns no presentation decision.
+func celebrate_level_up(level: int) -> void:
+	if _level_up_banner != null:
+		_level_up_banner.text = _text_args("UI_HUD_LEVEL_UP", {"level": level})
+	if _level_up != null and is_instance_valid(_level_up):
+		_level_up.celebrate(level)
+
+
+## Is the progression row shown? (for tests — its visibility IS the contract.)
+func is_progression_visible() -> bool:
+	return _level_label != null and _level_label.visible
+
+
+## The level-up effect, so a test can drive its clock deterministically.
+func level_up_feedback() -> LevelUpFeedback:
+	return _level_up
+
+
+## Render the level badge + XP meter from the cached view.
+##
+## Separate from `set_progression_view` so a LANGUAGE CHANGE re-renders the existing numbers
+## without the progression session needing to push again — the same reason the target plaque
+## and the world-sim lines each have their own refresh.
+func _refresh_progression() -> void:
+	if _level_label == null or _xp_meter == null:
+		return
+	if _progression_view == null or not _progression_view.available:
+		return
+	_level_label.text = _text_args("UI_HUD_LEVEL", {"level": _progression_view.level})
+	var text := ""
+	if _progression_view.at_ceiling:
+		text = _text("UI_HUD_XP_COMPLETE")
+	else:
+		text = _text_args("UI_HUD_XP_PROGRESS", {
+			"into": _progression_view.xp_into_level,
+			"cost": _progression_view.xp_for_next,
+		})
+	UITheme.set_xp_meter_value(_xp_meter, _progression_view.xp_into_level,
+		_progression_view.xp_for_next, _progression_view.at_ceiling, text)
+
+
 ## Show what the player is fighting (Phase 10). A null or empty view HIDES the plaque.
 ##
 ## Pushed by the combat session when a target's health changes or it dies — never polled, so
@@ -699,6 +853,7 @@ func _refresh() -> void:
 	# fighting without the combat session having to push the view again.
 	_refresh_target_text()
 	_refresh_sect_chip()
+	_refresh_progression()
 	_refresh_world_sim()
 	_refresh_prompts()
 
