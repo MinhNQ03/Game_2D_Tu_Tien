@@ -43,10 +43,28 @@ catalog.
 renders background characters; until then the "Far has no entity nodes" guarantee is true of
 every band, and the tests assert the node count rather than trusting the sentence.
 
-**The shipped two-map world (hub ↔ field) has no FAR actors**, because both maps are adjacent.
-FAR becomes reachable the moment a third, non-adjacent map is authored; all three bands are
-exercised by the unit tests against a three-map graph, and the E2E asserts the census the
-shipped world should actually have rather than a hopeful `>= 0`.
+### 2b. The FAR band is unreachable in the SHIPPED world — content scope, not a limitation
+
+Stated plainly because it is the kind of gap that gets misread as a missing feature:
+
+- **The implementation supports all three bands.** The band is computed from the map graph with
+  no special cases, and `FAR` is the DEFAULT branch — an actor is FAR unless it is in the
+  player's map or one exit away.
+- **The shipped world cannot produce one**, because it contains exactly two maps (hub, field)
+  and they are adjacent, so every actor is NEAR or MID. That is a property of the authored
+  CONTENT, not of the code.
+- **All three bands are exercised** by `tests/unit/worldsim/test_world_sim_service.gd` against a
+  three-map graph (home / next-door / far-away), including a full FAR → MID → NEAR → MID → FAR
+  round trip and the assertion that a FAR actor is never behind an observed one.
+- **The real-application E2E asserts the census the shipped world SHOULD have** — every actor
+  NEAR or MID, with at least one in the player's own map — rather than a hopeful `>= 0` that
+  would pass whatever happened.
+- **A third map must NOT be authored just to make a band reachable.** A map exists because the
+  game needs a place, never because a test wants a graph shape; the test owns its own graph
+  precisely so content is never bent to suit it.
+- **Forward commitment:** when the world does gain a third, non-adjacent map, the authored cast
+  should gain **at least one meaningful FAR actor** — somebody whose absence the player can
+  notice — so the band is covered by real content and not only by a fixture.
 
 ### 2a. The one decision that makes LOD safe: activity is DERIVED
 

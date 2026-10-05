@@ -8,6 +8,38 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-05 — Phase-08 documentation close-out (D-049)
+
+Documentation only — no gameplay, scene, resource, UI-runtime, autoload or networking change.
+
+- **`PERFORMANCE.md` had a Phase-03 status block** claiming no benchmark existed and the
+  optimization log was empty on purpose. Both had been false since Phase 08: PERF-001 exists
+  with before/after numbers, and the budget test runs in the suite on every CI job.
+- **`TEST_PLAN.md` claimed `ran 282 test(s)` "through Phase 06"** — three phases and 195 tests
+  out of date, and silent about the whole social/world substrate. Now `477`, quoted from the
+  runner's own tally, with the zero-leak condition stated.
+- **`DEBUGGING.md` said "no gameplay bugs yet" and "No entries yet"**, false since Phase 03.
+- **The fix is structural, not a date bump:** every document that carries a status now has an
+  explicit `CURRENT STATUS` heading and an explicit `HISTORICAL NOTES` heading, and the
+  historical notes are **not rewritten** — they carry a standing disclaimer instead. Editing
+  the old notes to match today would have destroyed the record of *why* the code is shaped as
+  it is (the Phase-01 "no `_process` on the autoloads" discipline is still live) in order to
+  fix a date.
+- **The FAR band is now documented as CONTENT SCOPE, not a limitation** (`WORLD_SIMULATION.md`
+  §2b): the implementation supports all three bands and FAR is the *default* branch; the
+  shipped world cannot produce one because it has two adjacent maps; the unit tests cover all
+  three against a three-map graph; **a third map must not be authored merely to make a band
+  reachable.** With a forward commitment to author a meaningful FAR actor when a third
+  non-adjacent map lands.
+- **`DEBUGGING.md` §7 stays empty on purpose and now explains why:** incidents live as `L-0NN`
+  in always-included steering plus the phase's `DECISIONS.md` entry. A third copy of a rule is
+  how two of them go stale.
+- Verified by a scripted audit rather than by reading. Three initial hits were **false
+  positives in the audit's own regex** (passages correctly describing the historical defect,
+  and the row that correctly says Knowledge is "NOT Story/Quest") — preserved, and recorded,
+  because an unchecked audit manufactures work.
+- **Phase 09 remains NOT STARTED**; no Phase-09 content was introduced.
+
 ### 2026-10-05 — Phase 08: the world evolves on its own, deterministically (D-048)
 
 The world now moves while the player is elsewhere, and it moves the same way every time from

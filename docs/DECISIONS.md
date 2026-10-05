@@ -2481,3 +2481,73 @@ signals are the documented substrate the later phases subscribe to (B17 asked fo
 name), and each has a test consumer asserting its payload and emission ORDER, which is what
 makes it a verified contract rather than an unexercised declaration. **If the convention is
 ever revisited, it should be revisited for all five subsystems at once.**
+
+---
+
+## D-049 — Phase-08 documentation close-out: separate CURRENT STATUS from HISTORICAL NOTES
+**Status:** Accepted · **Phase:** post-08 hygiene · **Scope:** DOCUMENTATION ONLY — no
+gameplay, scene, resource, UI-runtime, `project.godot`, autoload or networking change
+
+### The problem this fixes, and the pattern behind it
+
+Several documents carried a **status block written in an earlier phase** that was accurate then
+and false now. That is a specific, recurring failure mode in this repository, and it is worth
+naming: a doc that mixes "what is true now" with "what we decided in phase N" has no safe way
+to be updated, so the status quietly rots while the phase notes stay correct. A reader cannot
+tell which sentences are claims and which are history.
+
+Concretely, the stale CURRENT claims were:
+- `docs/PERFORMANCE.md` opened with *"Status (Phase 03) … NO formal profiler benchmark has
+  been run yet, so the optimization log (§4) is empty on purpose."* By then PERF-001 existed
+  with before/after numbers and a benchmark ran in the suite on every CI job.
+- `docs/TEST_PLAN.md` opened with *"Status (through Phase 06) … `ran 282 test(s)`"*, three
+  phases and 195 tests out of date, and omitted the whole social/world substrate.
+- `docs/DEBUGGING.md` said *"Status: foundation — no gameplay bugs yet"* and *"No entries
+  yet"*, which had been false since Phase 03.
+
+### The decision
+
+**Every document that carries a status gets an explicit `CURRENT STATUS` heading and an
+explicit `HISTORICAL NOTES` heading, and the historical notes are NOT rewritten.** The
+historical block carries a standing disclaimer: where a phase note says the log is empty or no
+benchmark exists, that was accurate when written and is superseded by CURRENT STATUS above.
+
+This is deliberately the opposite of the tempting fix (editing the old notes to match today).
+The reasoning in those notes is still the reasoning the code follows — the Phase-01 "no
+`_process` on the autoloads" discipline is still live — so deleting or back-dating them would
+destroy the record of WHY the code is shaped the way it is in order to fix a date.
+
+**Test counts are quoted from the runner's own tally, never hand-counted** (the existing rule),
+and the historical ones keep the commit they were quoted from.
+
+### The FAR-band gap is now documented as CONTENT SCOPE, not a limitation
+
+`WORLD_SIMULATION.md` gains §2b, which states plainly: the implementation supports all three
+LOD bands and `FAR` is the DEFAULT branch; the SHIPPED world cannot produce a FAR actor because
+it has exactly two adjacent maps; all three bands are exercised by unit tests against a
+three-map graph; and **a third map must not be authored merely to make a band reachable** — a
+map exists because the game needs a place. With a forward commitment: when a third,
+non-adjacent map does land, the cast should gain at least one *meaningful* FAR actor, so the
+band is covered by real content rather than only by a fixture.
+
+### `DEBUGGING.md` §7 stays empty ON PURPOSE, and now says so
+
+The bug log had a template and no entries, which reads as neglect. It is not: incidents are
+recorded as `L-0NN` in `.kiro/steering/09-lessons-learned.md` (always-included steering, so it
+is read before every change) plus the context in the phase's `DECISIONS.md` entry. A `BUG-00N`
+entry would be a **third** copy of the same incident, and three copies of a rule is how two go
+stale. The section now explains the split and says which document to start from for which
+purpose (hunting a bug vs. about to write code).
+
+### Verified by an explicit audit, not by reading
+A scripted sweep checked that no document still asserts, as a CURRENT claim: no benchmark
+exists · the optimization log is empty · 282 tests · Phase 08 not started · the RNG seam starts
+at P-09 · World Simulation first uses RNG in P-09 · Knowledge is owned by Story/Quest · Phase
+09 is implemented. Three initial hits were **false positives in the audit's own regex** — two
+passages correctly describing the historical defect ("D-039 guessed Combat would be first; that
+was wrong") and the matrix row that correctly says Knowledge is "NOT Story/Quest". Those are
+right as written and were preserved; recorded here because an audit that is not itself checked
+can manufacture work.
+
+**No Phase-09 content was added to any document by this package.** Phase 09 remains NOT
+STARTED, which the roadmap and test plan both state.

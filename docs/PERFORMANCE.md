@@ -3,11 +3,37 @@
 > Performance principles + the mandatory log of every non-trivial optimization.
 > Rules summary: `.kiro/steering/05-performance-testing.md`.
 >
-> Status (Phase 03): early gameplay exists (Player + World/Map), but NO formal profiler
-> benchmark has been run yet, so the optimization log (§4) is empty on purpose. The
-> performance guards that DO exist are correctness/no-leak assertions (map-transition
-> orphan-node checks), not tuned optimizations — those are not optimization-log entries.
->
+## CURRENT STATUS (through Phase 08, D-048/D-049)
+
+- **A measured benchmark EXISTS.** `tests/performance/test_world_sim_budget.gd` measures the
+  world-simulation tick loop at a representative population (200 background actors × 300
+  ticks) and runs as part of the headless suite, so a regression fails CI rather than being
+  noticed later.
+- **The optimization log (§4) is NOT empty.** It holds **PERF-001**, a real measured
+  optimization with before/after numbers: the per-tick loop was `O(cast · log cast)` and is now
+  independent of the background population (50 ms → 12 ms at 200 actors; scaling factor
+  3.57× → 1.0×). It was found BY the budget test, before the phase was declared done.
+- **Deterministic-simulation performance discipline is established and enforced**, not merely
+  intended: zero per-frame work in the world-simulation subsystem (guarded by a source-reading
+  test), zero nodes for background actors in any LOD band, bounded catch-up, and a bounded
+  event feed. The full list is in the Phase-08 note at the end of this document.
+- **Still true, and still deliberate:** no Godot *profiler* session has been run on a
+  representative combat scene, because combat does not exist yet (Phase 09). The budget that
+  exists is an in-suite timing assertion, not a profiler capture. Phase 29 (Performance) is
+  where target-hardware profiling happens.
+- The other performance guards in the repo (map-transition orphan-node checks, the suite's
+  leak gate) are **correctness/no-leak assertions, not tuned optimizations** — they are tests,
+  and they are deliberately NOT optimization-log entries.
+
+---
+
+## HISTORICAL NOTES (kept as written; each records the discipline of its phase)
+
+> These notes describe the state of the project AT THE TIME OF THAT PHASE. Where one of them
+> says the optimization log is empty or that no benchmark exists, that was accurate when
+> written and has been superseded by the CURRENT STATUS block above. They are preserved rather
+> than rewritten, because the reasoning in them is still the reasoning the code follows.
+
 > **Phase 01 note (no optimization, just discipline):** the Core services were written to
 > avoid needless continuous work. None of the 5 autoloads (`EventBus`, `GameState`,
 > `Localization`, `InputService`, `SceneRouter`) implement `_process` or

@@ -4,18 +4,26 @@
 > Goal: **not** blind 100% coverage — strong coverage of high-risk logic, cheap smoke
 > coverage of the whole flow, and every fixed bug pinned by a regression test.
 >
-> Status (through **Phase 06** final hardening): strategy defined; runner + framework in
-> place. The suite covers the core framework (lifecycle/scene-router/input/localization/
-> event-bus/settings), the Player core (stats/health/movement/damage + player↔dummy
-> integration), the World/Map system (MapData/MapCatalog validation, data-driven catalog,
-> source-of-truth scene↔data checks, no-leak + transactional-rollback map transitions,
-> data-driven camera bounds + follow, persistent player across 20 round trips), the
-> Character core, the Relationship core, the **Sect** core, and the UI/theme asset
-> contracts — plus three dedicated real-application E2E processes (app-flow, player-flow,
-> world-flow). **CI runs 10 gates** (see §5) and the in-runner suite reports
-> **`ran 282 test(s): 282 passed, 0 failed`** with zero `SCRIPT ERROR:` lines — quoted from
-> the CI annotation on `1dabdba`, not counted by hand. Gameplay beyond world/map traversal +
-> sect membership is added phase by phase.
+> **CURRENT STATUS (through Phase 08 + its review pass — D-048/D-049):** strategy defined;
+> runner + framework in place. The suite covers the core framework (lifecycle/scene-router/
+> input/localization/event-bus/settings), the **session lifecycle contract** (the ordered
+> teardown, D-047), the Player core (stats/health/movement/damage + player↔dummy integration),
+> the World/Map system (MapData/MapCatalog validation, data-driven catalog, source-of-truth
+> scene↔data checks, no-leak + transactional-rollback map transitions, data-driven camera
+> bounds + follow, persistent player across 20 round trips), the Character core + the
+> **character registry**, the Relationship core, the **Sect** core, the **Faction** core, the
+> **World Simulation** core (clock, seeded RNG streams, LOD bands, determinism, resume,
+> bounded catch-up, a performance budget), and the UI/theme asset contracts — plus three
+> dedicated real-application E2E processes (app-flow, player-flow, world-flow).
+>
+> **CI runs 10 gates** (see §5) and the in-runner suite reports
+> **`ran 477 test(s): 477 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> ObjectDB / resources at exit** — the count is the runner's own tally, not a hand count.
+> Gameplay beyond world/map traversal + the social substrate is added phase by phase; combat
+> is Phase 09 and is **not started**.
+>
+> *(Historical: the same tally read `282 passed` at the Phase-06 close-out on `1dabdba`. The
+> phase notes further down are kept as written and still quote the numbers of their own time.)*
 
 ## 1. Test layers
 

@@ -4,7 +4,17 @@
 > fixed bug should leave behind a regression test (`docs/TEST_PLAN.md`) and, if it
 > revealed a pattern, an entry here.
 >
-> Status: foundation — no gameplay bugs yet. This is the method and the toolbox.
+> **CURRENT STATUS (through Phase 08, corrected in D-049):** this is the method and the
+> toolbox, and it is in active use — the project has diagnosed and fixed a steady stream of
+> real defects (headless Area2D/input timing, a `class_name` that failed to compile and
+> cascaded as "nonexistent function", a reversed session teardown, a fail-open mirror, a
+> `RefCounted` reference cycle leaking the test suite, a tick loop that sorted the whole cast,
+> a hydrate boundary that crashed instead of failing closed). It previously said "no gameplay
+> bugs yet", which stopped being true several phases ago.
+>
+> **Where incidents are recorded:** the durable, do-not-repeat RULE goes in
+> `.kiro/steering/09-lessons-learned.md` (L-0NN) and the DECISION/context goes in
+> `docs/DECISIONS.md`. §7 below is deliberately NOT a third copy — see the note there.
 
 ## 1. Method (don't guess, isolate)
 
@@ -74,4 +84,15 @@ Because combat/progression must be deterministic (and multiplayer-ready later):
 - Pattern worth remembering? (add to §3 if so)
 ```
 
-> No entries yet.
+> **This log is intentionally EMPTY, and that is not drift (D-049).**
+>
+> Real incidents ARE recorded — just not here. The convention that emerged in practice is:
+> the durable rule lands in `.kiro/steering/09-lessons-learned.md` as `L-0NN` (which is
+> always-included steering, so it is read before every change), and the context, the rejected
+> alternatives and the verification land in the `docs/DECISIONS.md` entry for the phase.
+>
+> A `BUG-00N` entry here would be a THIRD copy of the same incident, and three copies of a
+> rule is how two of them go stale. So the template above stays for the case it is genuinely
+> better at — a one-off incident with a sharp reproduction that taught no transferable rule —
+> and anything with a lesson in it goes to L-0NN instead. **Start here when hunting a bug;
+> start at L-0NN when about to write code.**
