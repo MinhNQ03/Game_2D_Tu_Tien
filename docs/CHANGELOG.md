@@ -8,6 +8,63 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-05 — Phase-07 hardening: a reversed teardown and a fail-OPEN politics mirror (D-047)
+
+Two lifecycle/invariant holes that a green CI could not see, plus a leak it was exiting 0 on.
+No new gameplay, no new scope, no new autoload, **still 10 CI gates**.
+
+- **The normal return-to-menu tore the session down in the WRONG order.** New Game starts
+  World → Relationship → Sect → Faction (dependency order); `_unwind_failed_session()` reversed
+  it correctly, but `_on_return_to_menu()` was a SECOND hand-written sequence that had drifted —
+  it ended **World and Relationship first**, freeing the player's `CharacterState` and dropping
+  the relationship graph while the sect and faction sessions, whose state is defined in terms of
+  both, were still unwinding through them. Its own comment two lines above claimed the opposite.
+- **Fixed by removing the duplication, not by correcting it.** `Main.SESSION_START_ORDER` is now
+  the single source of truth; `_end_session_stack()` walks it backwards then ends the `GameState`
+  session (**Faction → Sect → Relationship → World → GameState**), and both entry points
+  delegate to it and sequence nothing themselves. `_session_node()` resolves a name with an
+  explicit `match`, so a name Main owns no node for reports loudly instead of being a silent
+  no-op step.
+- **The order is now OBSERVABLE:** `Main.get_last_teardown_order()` returns what the last
+  teardown actually ended, in order. An invariant nothing can read back is only a comment — which
+  is how this survived three phases, since "all four sessions are down afterwards" is true for
+  any order.
+- **`FactionService` politics mutation was fail-OPEN.** `add_alliance()`/`add_rivalry()` guarded
+  the mirror with `if _relationship != null`, and `_ensure_edge()` opened with
+  `if _relationship == null: return true` — so with no graph installed the mirror was skipped and
+  the call **returned true**, recording a declared rivalry that no edge backed (breaking the
+  frozen D-042 invariant). It was unrecoverable, not just wrong: `clear_politics()` fails closed
+  on exactly that state, so the pair was stuck declared for the rest of the run.
+  `apply_default_politics()` had been hardened against this in D-038; the MUTATION path was the
+  door left open.
+- **The identical two lines sat in `SectService._set_diplomacy()`** and are fixed the same way —
+  found by looking for the defect's siblings rather than only its reported instance. Both
+  services now check the graph as a PRECONDITION (before any other rule) and both `_ensure_edge`
+  implementations FAIL on a null service instead of returning `true`: that `return true` *was*
+  the mechanism, and leaving it would let a future caller reopen the hole.
+- **The legitimate no-graph landscape is unchanged and now pinned:** a mirror-less service still
+  does registration, cross-store validation, membership, leadership, influence, resources, the
+  derived rules and the character cache. The fix is a precondition on the mutation, not a new
+  hard dependency.
+- **The suite had been LEAKING with CI green** — `17 ObjectDB instances were leaked` /
+  `8 resources still in use` at shutdown, printed after the runner already exited 0. Root cause:
+  a **`RefCounted` reference CYCLE** in the faction fixture (a resolver lambda capturing `self`,
+  stored as a `Callable` on a service the test instance kept on a field). GDScript
+  reference-counts; it does not collect cycles. An `after_each()` clears the `Callable` and the
+  suite now exits with **0 leaks**, and the existing headless gate FAILS on those two lines
+  exactly as it already does on `SCRIPT ERROR:`.
+- **Tests:** `tests/unit/bootstrap/test_session_lifecycle.gd` (new — the order constant, its
+  reversal, every ordered name being a real endable subsystem, and the structural guard that
+  exactly ONE function in the bootstrap issues `call("end_session")`); the real teardown trace
+  asserted in `tests/e2e/world_flow_case.gd`, which also now covers `FactionRuntime`; faction
+  tests 41-43 and sect test 53 for the fail-closed mutation. **Every new guard was proven able
+  to FAIL** by temporarily restoring the pre-fix code — the E2E printed the real reversed trace
+  `[World, Relationship, Sect, Faction, GameState]`.
+- **Process: D-009 is no longer true.** Godot 4.7-stable runs headless on this machine, so the
+  whole gate set runs locally in ~3 minutes instead of costing a CI round-trip per question
+  (L-031). CI remains the authority; on-screen results are still unverifiable without a
+  screenshot. `ran 392 test(s): 392 passed, 0 failed`.
+
 ### 2026-10-02 — The character actually animates: 32×48 four-direction cultivator (D-046)
 The owner asked why the character was still proto art after everything else got real graphics.
 Reading the pipeline corrected **two of my own earlier claims**, and found the real defect.

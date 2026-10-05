@@ -52,6 +52,28 @@ var _rel_service: RelationshipService = null
 var _sect_service: SectService = null
 
 
+## Break the fixture's REFERENCE CYCLE (L-019 extended to RefCounted).
+##
+## `_sect_store()` installs a character resolver built as a lambda over `_known_characters`,
+## which captures `self`; the resulting `Callable` is stored on the `SectService`, and the
+## service is kept on `_sect_service`. That closes a cycle — self → `_sect_service` → resolver
+## → self — and GDScript's `RefCounted` is reference-COUNTED, not garbage-collected, so a cycle
+## is never collected. One leaked test instance pins its whole fixture plus every GDScript it
+## references, which is what produced the suite's `17 ObjectDB instances were leaked at exit` /
+## `8 resources still in use` at shutdown: a non-fatal warning that CI exits 0 on, so it sat
+## there unnoticed. L-019 reads "a clean suite must end with 0 leaked ObjectDB" — it was written
+## about unfreed `Node`s, and this is the same requirement reached through a cycle instead.
+##
+## Clearing the Callable is what actually breaks the cycle; nulling the fields alone would not
+## be enough if anything else still held the service.
+func after_each() -> void:
+	if _sect_service != null:
+		_sect_service.set_character_resolver(Callable())
+	_sect_service = null
+	_rel_service = null
+	_known_characters = {}
+
+
 # --- typed-fixture builders --------------------------------------------------
 
 func _goal(gid: StringName, key: StringName, kind: int, priority: int) -> FactionGoalData:
@@ -1071,3 +1093,94 @@ func _authored_service() -> FactionService:
 			continue
 		svc.register_faction(FactionState.create_from_template(tmpl), tmpl)
 	return svc
+
+
+# === 41-43. D-047: politics MUTATION fails closed without the graph =========
+
+## The hole D-047 closed, pinned so a refactor cannot reopen it.
+##
+## `apply_default_politics()` already refused to mirror a DECLARED pair with no graph (D-038 /
+## test 28), but the MUTATION path let a null `RelationshipService` mean "skip the mirror and
+## succeed anyway". The faction state then recorded a rivalry that no edge backed, the two
+## stores were divergent from that call onward, and `clear_politics()` could never undo it —
+## it fails closed on exactly that state, so the pair was stuck declared forever. The call
+## returned `true`, so nothing noticed.
+##
+## This asserts all four halves of "nothing happened": the return value, BOTH factions' state,
+## the absence of a signal, and the absence of any graph the mirror could have hidden in.
+func test_41_rivalry_without_a_relationship_service_fails_closed() -> void:
+	var sects := _sect_store([SECT_A], [])
+	var svc := _service(sects, false)  # NO relationship mirror installed
+	assert_true(_reg(svc, _template(F1, SECT_A)), "faction A registers")
+	assert_true(_reg(svc, _template(F2, SECT_A)), "faction B registers")
+
+	var seen: Array[String] = []
+	svc.politics_changed.connect(
+		func(a: StringName, b: StringName, rel: StringName) -> void:
+			seen.append("%s|%s|%s" % [a, b, rel]))
+
+	assert_false(svc.add_rivalry(F1, F2),
+		"declaring a rivalry with no RelationshipService to mirror it into is REJECTED")
+
+	var a := svc.get_store().get_faction(F1)
+	var b := svc.get_store().get_faction(F2)
+	assert_false(a.is_rival_of(F2), "A holds no rival declaration")
+	assert_false(b.is_rival_of(F1), "B holds no rival declaration")
+	assert_true(a.rival_faction_ids().is_empty(), "A's rival list is still empty")
+	assert_true(b.rival_faction_ids().is_empty(), "B's rival list is still empty")
+	assert_true(a.allied_faction_ids().is_empty(), "and nothing leaked into the allied list")
+	assert_true(b.allied_faction_ids().is_empty(), "on either side")
+	assert_eq(seen.size(), 0, "no politics_changed signal was emitted for a rejected mutation")
+	# There is no second, hidden graph: with no service installed there is no store at all, so
+	# the mirror cannot have written an edge anywhere (no private RelationshipStore, D-042).
+	assert_null(svc.get_relationship_store(),
+		"the service exposes NO relationship store, so no hidden edge can exist")
+
+
+## Alliance takes the identical path, so it must fail identically — asserted rather than
+## assumed, because a future change could gate only one of the two verbs.
+func test_42_alliance_without_a_relationship_service_fails_closed() -> void:
+	var sects := _sect_store([SECT_A], [])
+	var svc := _service(sects, false)
+	_reg(svc, _template(F1, SECT_A))
+	_reg(svc, _template(F2, SECT_A))
+
+	var emitted: Array[int] = [0]
+	svc.politics_changed.connect(
+		func(_a: StringName, _b: StringName, _rel: StringName) -> void:
+			emitted[0] += 1)
+
+	assert_false(svc.add_alliance(F1, F2),
+		"declaring an alliance with no graph to mirror it into is REJECTED")
+	assert_false(svc.get_store().get_faction(F1).is_allied_with(F2), "A is not allied")
+	assert_false(svc.get_store().get_faction(F2).is_allied_with(F1), "B is not allied")
+	assert_eq(emitted[0], 0, "and no signal was emitted")
+
+	# `clear_politics` on the untouched pair stays an idempotent no-op — the fail-closed
+	# mutation left nothing for it to have to clean up, which is the point.
+	assert_true(svc.clear_politics(F1, F2),
+		"clearing the still-undeclared pair is an idempotent no-op")
+
+
+## The legitimate no-graph landscape is UNCHANGED: a service with no mirror may still do all
+## the work that touches no edge. Pinning this is what stops the D-047 fix from being
+## "over-corrected" into requiring a relationship graph for pure roster/influence work.
+func test_43_a_graphless_service_still_does_its_non_politics_work() -> void:
+	var sects := _sect_store([SECT_A], [PLAYER])
+	var svc := _service(sects, false)
+	_reg(svc, _template(F1, SECT_A, 0, 30))
+	_reg(svc, _template(F2, SECT_A, TemplateScript.Stance.REFORMIST, 25))
+
+	assert_true(svc.apply_default_politics(),
+		"nothing is declared, so having no mirror is legal (unchanged from D-038)")
+	assert_true(svc.validate_against_sects(), "cross-store integrity still checks out")
+	assert_true(svc.join_member(F1, PLAYER), "membership still works without a graph")
+	assert_true(svc.assign_leader(F1, PLAYER), "so does leadership")
+	assert_eq(svc.adjust_influence(F1, 10), 40, "so does influence")
+	assert_eq(svc.set_resource(F1, &"spirit_stones", 12), 12, "so do resources")
+	assert_eq(svc.total_influence_of_sect(SECT_A), 65, "and the derived rules still resolve")
+	assert_false(svc.is_contested(SECT_A),
+		"including the contested verdict (40 vs 25 is a %d-point gap, outside the %d margin)"
+		% [15, ServiceScript.CONTESTED_MARGIN])
+	assert_eq(svc.dominant_faction_of(SECT_A).id, F1, "and who holds sway")
+	assert_true(svc.verify_character_cache(), "and the derived character cache is consistent")

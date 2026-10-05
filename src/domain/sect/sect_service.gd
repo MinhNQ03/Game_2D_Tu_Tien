@@ -51,8 +51,10 @@ const REL_TYPE_ALLY := &"ALLY"
 const REL_TYPE_ENEMY := &"ENEMY"
 
 var _store: SectStore = null
-## RelationshipService used for the Sect↔Sect mirror. May be null (mirror disabled) only in
-## narrow unit tests; a real session always provides it.
+## RelationshipService used for the Sect↔Sect mirror. May be null ONLY in a landscape that
+## declares no diplomacy and mutates none — narrow roster/economy unit tests (D-047). Every
+## diplomacy path fails closed without it rather than skipping the mirror; a real session
+## always provides it.
 var _relationship: RelationshipService = null
 ## `(StringName character_id) -> CharacterState` (or null). See CHARACTER SEAM above.
 var _character_resolver: Callable = Callable()
@@ -446,6 +448,15 @@ func clear_diplomacy(sect_id: StringName, other_sect_id: StringName) -> bool:
 	return true
 
 
+## The single diplomacy-mutation path behind `add_alliance()` / `add_enemy()`.
+##
+## FAILS CLOSED WITHOUT THE GRAPH (D-047). Same defect, same fix, same reasoning as
+## `FactionService._set_politics()`: declared Sect↔Sect diplomacy and the mirrored relationship
+## edge are ONE fact stored twice, so a mutation with nowhere to mirror into is not a mutation
+## that can succeed. `apply_default_diplomacy()` (D-038) and `clear_diplomacy()` already
+## refused in that situation; this path still silently skipped the mirror and reported success,
+## which is how a sect could end up declaring an enmity that no edge records — and then be
+## unable to clear it, because `clear_diplomacy()` correctly refuses on exactly that state.
 func _set_diplomacy(sect_id: StringName, other_sect_id: StringName, relation: StringName) -> bool:
 	var a := _require_sect(sect_id, "set_diplomacy")
 	var b := _require_sect(other_sect_id, "set_diplomacy")
@@ -453,6 +464,12 @@ func _set_diplomacy(sect_id: StringName, other_sect_id: StringName, relation: St
 		return false
 	if sect_id == other_sect_id:
 		push_error("[sect] diplomacy: a sect cannot ally/enemy itself ('%s')" % sect_id)
+		return false
+	if _relationship == null:
+		push_error("[sect] diplomacy '%s'<->'%s': no RelationshipService is installed, so "
+			% [sect_id, other_sect_id]
+			+ "'%s' could not be mirrored into the relationship graph; refusing to declare it"
+			% relation)
 		return false
 	var want_ally := relation == REL_TYPE_ALLY
 	# Duplicate declaration guard.
@@ -465,7 +482,7 @@ func _set_diplomacy(sect_id: StringName, other_sect_id: StringName, relation: St
 
 	# RELATIONSHIP FIRST (§14): create/retype the symmetric edge. If it fails, abort BEFORE
 	# touching sect state, so the two stores never diverge.
-	if _relationship != null and not _ensure_edge(sect_id, other_sect_id, relation):
+	if not _ensure_edge(sect_id, other_sect_id, relation):
 		push_error("[sect] diplomacy rollback: relationship edge mutation failed for %s<->%s"
 			% [sect_id, other_sect_id])
 		return false
@@ -497,9 +514,15 @@ func _set_diplomacy(sect_id: StringName, other_sect_id: StringName, relation: St
 ## edge (with its dimensions + history) was already gone, which is exactly the divergence §14
 ## forbids. Retyping in place means a rejected mutation leaves the previous edge fully intact
 ## (same id, endpoints, symmetric/known flags, dimension values and history).
+## A missing `RelationshipService` is a FAILURE here, not a skip (D-047) — the mirror of a
+## declared relation cannot be optional, and the old `return true` was the mechanism by which a
+## half-applied mutation reported success.
 func _ensure_edge(sect_id: StringName, other_sect_id: StringName, relation: StringName) -> bool:
 	if _relationship == null:
-		return true
+		push_error("[sect] _ensure_edge %s<->%s: no RelationshipService installed; a diplomacy "
+			% [sect_id, other_sect_id]
+			+ "mirror cannot be skipped, so this fails rather than reporting success")
+		return false
 	var eid := edge_id(sect_id, other_sect_id)
 	var store := _relationship.get_store()
 	var existing: RelationshipEdge = store.get_edge(eid) if store != null else null

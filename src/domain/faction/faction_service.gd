@@ -67,8 +67,10 @@ var _store: FactionStore = null
 ## Read-only view of sect membership — the authority this service defers to (D-015). May be
 ## null only in narrow unit tests that exercise nothing membership-related.
 var _sects: SectStore = null
-## The shared relationship graph for the Faction↔Faction mirror. May be null (mirror disabled)
-## only when nothing declares politics.
+## The shared relationship graph for the Faction↔Faction mirror. May be null ONLY in a
+## landscape that declares no politics and mutates none — pure roster/influence work (D-047).
+## Every politics path (`apply_default_politics`, `add_alliance`, `add_rivalry`,
+## `clear_politics`) fails closed without it rather than skipping the mirror.
 var _relationship: RelationshipService = null
 ## `(StringName character_id) -> CharacterState` (or null).
 var _character_resolver: Callable = Callable()
@@ -346,11 +348,13 @@ func set_resource(faction_id: StringName, resource_id: StringName, quantity: int
 ## the relationship graph, in that order of safety: the symmetric edge is created/retyped
 ## FIRST and the faction-side declarations are written only if that succeeded, so a rejected
 ## mirror leaves nothing changed (L-023 / the §14 rollback contract).
+##
+## REQUIRES a `RelationshipService` and fails closed without one (D-047) — see `_set_politics`.
 func add_alliance(faction_id: StringName, other_faction_id: StringName) -> bool:
 	return _set_politics(faction_id, other_faction_id, REL_TYPE_ALLIED)
 
 
-## Declare two factions of the same sect RIVALS (same transactional contract).
+## Declare two factions of the same sect RIVALS (same transactional + fail-closed contract).
 func add_rivalry(faction_id: StringName, other_faction_id: StringName) -> bool:
 	return _set_politics(faction_id, other_faction_id, REL_TYPE_RIVAL)
 
@@ -423,6 +427,23 @@ func clear_politics(faction_id: StringName, other_faction_id: StringName) -> boo
 	return true
 
 
+## The single politics-mutation path behind `add_alliance()` / `add_rivalry()`.
+##
+## FAILS CLOSED WITHOUT THE GRAPH (D-047). Declared faction politics and the mirrored
+## Faction↔Faction relationship edge are one fact stored in two places, so the mirror is not an
+## optional decoration on a mutation — it is half of it. This used to let a null
+## `RelationshipService` mean "skip the mirror and succeed anyway": the faction state then
+## recorded a rivalry that the graph had no edge for, the two stores were divergent from that
+## moment on, and `clear_politics()` could never undo it (it fails closed, correctly, on
+## exactly that state — so the pair was stuck declared forever). Every gate was green because
+## the call returned `true`.
+##
+## It is the same hole D-038 closed in `apply_default_politics()` and D-037/L-025 closed in the
+## session starters, reached through a different door: "the dependency is absent, so the step
+## is skipped" is only legitimate when it is genuinely legal for the dependency to be absent.
+## For a politics MUTATION it never is. The one remaining legitimate no-RelationshipService
+## landscape is unchanged: a session or unit test that declares no politics and mutates none —
+## pure roster/influence work, which touches no edge.
 func _set_politics(
 		faction_id: StringName, other_faction_id: StringName, relation: StringName) -> bool:
 	var a := _require_faction(faction_id, "set_politics")
@@ -437,6 +458,15 @@ func _set_politics(
 			% [faction_id, a.parent_sect_id, other_faction_id, b.parent_sect_id]
 			+ "sects; internal politics must stay inside one sect")
 		return false
+	# The graph is a PRECONDITION of the mutation, checked before any other rule so the
+	# rejection reason is the missing mirror rather than an incidental duplicate-declaration
+	# hit. Nothing below this point can run without somewhere to mirror into.
+	if _relationship == null:
+		push_error("[faction] politics '%s'<->'%s': no RelationshipService is installed, so "
+			% [faction_id, other_faction_id]
+			+ "'%s' could not be mirrored into the relationship graph; refusing to declare "
+			% relation + "it (declared politics and the mirrored edge are one fact, D-042)")
+		return false
 	var want_allied := relation == REL_TYPE_ALLIED
 	if want_allied and a.is_allied_with(other_faction_id):
 		push_error("[faction] add_alliance: '%s' already allied with '%s'"
@@ -448,7 +478,7 @@ func _set_politics(
 		return false
 
 	# RELATIONSHIP FIRST. If it fails, abort BEFORE touching faction state.
-	if _relationship != null and not _ensure_edge(faction_id, other_faction_id, relation):
+	if not _ensure_edge(faction_id, other_faction_id, relation):
 		push_error("[faction] politics rollback: relationship edge mutation failed for %s<->%s"
 			% [faction_id, other_faction_id])
 		return false
@@ -478,10 +508,19 @@ func _set_politics(
 ## edge's dimensions and history are already gone. Retyping means a rejected mutation leaves
 ## the previous edge fully intact: same id, endpoints, symmetric/known flags, every dimension
 ## value and the whole history.
+##
+## A missing `RelationshipService` is a FAILURE here, not a skip (D-047). Both callers already
+## refuse to proceed without one, so this is defence in depth: the previous `return true` was
+## the mechanism by which a mutation could report success while performing only its
+## faction-side half, and leaving it in place would let a future third caller reopen that hole
+## without touching this function.
 func _ensure_edge(
 		faction_id: StringName, other_faction_id: StringName, relation: StringName) -> bool:
 	if _relationship == null:
-		return true
+		push_error("[faction] _ensure_edge %s<->%s: no RelationshipService installed; a "
+			% [faction_id, other_faction_id]
+			+ "politics mirror cannot be skipped, so this fails rather than reporting success")
+		return false
 	var eid := edge_id(faction_id, other_faction_id)
 	var store := _relationship.get_store()
 	var existing: RelationshipEdge = store.get_edge(eid) if store != null else null

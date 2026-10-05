@@ -607,3 +607,84 @@
   required `walk_sheet` in all four profiles, an animation clock with a public `advance(delta)`
   for deterministic tests, and assertions that the frame index advances, wraps, stays in its row
   and resets across an idle↔walk switch.
+
+## L-030 — Two hand-written copies of an ORDER drift, and "the dependency is absent so skip the step" is a fail-OPEN mutation
+- **Symptom A (D-047):** New Game starts the per-session subsystems in dependency order
+  (World → Relationship → Sect → Faction). `_unwind_failed_session()` reversed it correctly.
+  `_on_return_to_menu()` was a SECOND, hand-written sequence and had drifted: it ended **World
+  and Relationship first**, so a normal return to menu freed the player's `CharacterState` and
+  dropped the relationship graph while the sect and faction sessions — whose state is *defined
+  in terms of* those two — were still unwinding through them. Its own comment two lines above
+  said "End the faction session FIRST". Three phases, every gate green, because the only thing
+  ever asserted was "all four sessions are down afterwards", which is true for ANY order.
+- **Rule A:** **an ORDER is a value, not a code pattern — store it once and walk it.** If two
+  functions both sequence the same steps, that is not duplication you can "keep in sync", it is
+  a future divergence with a comment on it. Put the order in ONE constant, have one function
+  walk it (forwards or reversed), and make every entry point delegate. Then add the guard that
+  would actually have caught the drift: not "is the order right" but **"is there only one place
+  that does this?"** — assert that exactly one function in the file issues the call, and that it
+  consumes the constant instead of re-listing the steps. And **make the order observable**
+  (record what the teardown actually ended, in order): an invariant nothing can read back is
+  only a comment, and "everything ended up down" never tests a SEQUENCE.
+- **Symptom B (D-047):** `FactionService._set_politics()` guarded the relationship mirror with
+  `if _relationship != null and not _ensure_edge(...)`, and `_ensure_edge()` itself opened with
+  `if _relationship == null: return true`. With no graph installed the mirror was SKIPPED and
+  `add_rivalry()` **returned true** — the faction state then recorded a declared rivalry that no
+  edge backed, breaking the frozen "declared politics IS a mirrored edge" invariant. Worse, it
+  was unrecoverable: `clear_politics()` fails closed on exactly that state, so the pair was
+  stuck declared for the rest of the run. `apply_default_politics()` had already been hardened
+  against the same situation (D-038); the MUTATION path was the door left open. The identical
+  two lines sat in `SectService._set_diplomacy()`.
+- **Rule B:** **"the dependency is absent, so skip that step and succeed" is only legitimate
+  when it is genuinely legal for the dependency to be absent.** For a MUTATION that writes one
+  fact into two stores it never is — skipping half of it and returning `true` manufactures the
+  divergence the transaction exists to prevent. Check the dependency as a PRECONDITION, before
+  any other rule, so the rejection names the real reason. Keep the fail-closed guard in the
+  low-level helper too (`_ensure_edge`), even once every caller checks: that `return true` *was*
+  the mechanism, and leaving it lets a future third caller reopen the hole without touching the
+  guard. Also: **when you fix a fail-open skip, grep for its siblings** — the same two lines
+  existed in the sect mirror and nobody had reported it.
+- **Also (the general shape of both):** when a defect is reported in one place, ask what the
+  SAME defect looks like in the neighbouring system, and write the negative test so it asserts
+  all four halves of "nothing happened" — the return value, BOTH parties' state, the absence of
+  the signal, and the absence of anywhere the skipped write could have hidden.
+- **Also (a leak that exits 0):** the suite had been reporting `17 ObjectDB instances were
+  leaked` / `8 resources still in use` at shutdown with CI green, because the engine prints that
+  AFTER the runner has exited 0. Cause: a **`RefCounted` reference CYCLE** — a test fixture
+  installed a resolver lambda capturing `self`, the `Callable` was stored on a service, and the
+  test instance kept that service on a field. GDScript `RefCounted` is reference-COUNTED, not
+  garbage-collected, so a cycle is never collected and one pinned test instance holds its whole
+  fixture plus every GDScript it touches. **L-019 extends to cycles, not just unfreed `Node`s:**
+  if a test stores a service that holds a `Callable` capturing `self`, clear the `Callable` in
+  `after_each` (nulling the field is not enough if anything else still holds the service). The
+  existing headless gate now FAILS on those two shutdown lines, exactly as it already does on
+  `SCRIPT ERROR:` — same gate, no new gate.
+- **Fixed:** D-047. `Main.SESSION_START_ORDER` + `_end_session_stack()` (one ordered teardown,
+  both entry points delegate) + `get_last_teardown_order()`; precondition checks in
+  `FactionService._set_politics` / `SectService._set_diplomacy` and fail-closed `_ensure_edge` on
+  both; `tests/unit/bootstrap/test_session_lifecycle.gd` (order constant, reversal, the
+  one-function structural guard), the real teardown trace asserted in
+  `tests/e2e/world_flow_case.gd`, faction tests 41-43, sect test 53, and an `after_each` breaking
+  the fixture cycle. Every new guard was proven able to fail against the pre-fix code.
+
+## L-031 — An inherited "the tool cannot run here" constraint was never re-tested (D-009 was false)
+- **Symptom (D-047):** D-009 recorded "Godot is not invocable locally", and that single fact
+  shaped the whole process: L-007 ("parse passing is not done — push and read the CI check-run"),
+  L-016/L-020 (diagnose a CI-only failure by reading code), L-027 (verify an encoding by hand),
+  and all of `10-ci-failure-protocol.md`, which exists because each verification cost a CI
+  round-trip measured in minutes of the owner's time. Nobody re-checked it. The 4.7-stable Linux
+  build downloads in 13 seconds and runs headless fine; the complete gate set — lint, import,
+  parse/compile, boot smoke, the 392-test suite and all three isolated E2E processes — runs
+  locally in about three minutes.
+- **Rule:** **re-test an inherited capability constraint before letting it shape a plan**, every
+  time the plan is big enough that the constraint is expensive. This is L-027's rule applied to
+  the environment rather than to an encoding, and it is the same failure in the same direction:
+  a limit accepted from one's own earlier reasoning rather than from a tool error observed now.
+  Concretely, for this project: run the gates locally FIRST, iterate there, and push a change
+  that is already green. **CI stays the authority** — it is the clean-room run and the gate
+  definitions live in the workflow — but it is no longer the only way to learn something is
+  broken, and "guess → push → wait → guess again" (the exact pattern steering 10 forbids) now
+  has no excuse at all. What is still genuinely unverifiable locally: **anything on screen.** A
+  headless run renders nothing, so a layout/art claim still needs a screenshot from the owner.
+- **Fixed:** D-047 (process note). The local gate mirror lives outside the repo (L-009: no
+  scratch files in the tree).

@@ -229,7 +229,8 @@ See `docs/TEST_PLAN.md`.
   sect roster as the membership authority and the relationship graph as the standings authority,
   and duplicates neither).
 - Runtime: `FactionRuntime` (a node under `Main/Systems`, NOT an autoload) starts LAST because it
-  reads both the sect store and the relationship graph, and is ended FIRST on an unwind.
+  reads both the sect store and the relationship graph, and is ended FIRST on EVERY teardown —
+  a failed start and a normal return to menu alike (one ordered path, D-047).
   `start_session()` is FAIL-CLOSED and commits nothing until the catalog, every template, every
   registration, the cross-store parent-sect check, the politics mirror and the post-conditions
   have all succeeded.

@@ -162,3 +162,12 @@ serialized shape of stream state — those belong to the implementing phase.
   private copy or a parallel flag (C-012). This is the same rule D-015 established for the sect
   roster vs. the character's derived cache.
 - **No earlier phase may require state owned by a later phase** (§4b).
+- **Per-session subsystems are torn down in exact REVERSE of the order they start in** — one
+  ordered path in the bootstrap, never a second hand-written sequence (D-047 / L-030). The
+  dependency column above *is* that order: a subsystem's state is defined in terms of the ones
+  ended after it, so ending a dependency first drops state a dependent is still unwinding
+  through.
+- **A mutation that writes ONE fact into TWO stores may not "skip" the second store when its
+  service is absent** — it fails closed (D-047). A skipped mirror that returns success
+  manufactures exactly the divergence the "one owner per state" rule above exists to prevent,
+  and the clearing path then refuses to act on the diverged state, making it permanent.

@@ -143,8 +143,11 @@ jobs:
           rc=${PIPESTATUS[0]}
           set -e
           script_errors=$(grep -c 'SCRIPT ERROR:' _suite.log || true)
+          leaks=$(grep -cE 'ObjectDB instances were leaked|resources still in use' \
+            _suite.log || true)
           {
-            echo "### Headless test suite (rc=$rc, SCRIPT ERROR lines=$script_errors)"
+            echo "### Headless test suite (rc=$rc, SCRIPT ERROR lines=$script_errors," \
+              "leak lines=$leaks)"
             echo '```'
             grep -E '^\[tests\]|RESULT:' _suite.log || true
             echo '```'
@@ -173,6 +176,29 @@ jobs:
             echo "::error::[test-integrity] ${script_errors} SCRIPT ERROR line(s): a test" \
               "method aborted instead of running. The runner reported PASS because it only" \
               "counts assertion failures. Fix the fixture."
+            exit 1
+          fi
+          # LEAK CHECK (D-047). Same shape as the SCRIPT ERROR check above and for the same
+          # reason: the engine reports a leak at SHUTDOWN as a non-fatal warning, so the
+          # process still exits 0 and the gate stayed green while the suite leaked. L-019
+          # already says a clean suite must end with 0 leaked ObjectDB / 0 resources in use —
+          # this makes that rule enforced instead of merely written down. It found a
+          # pre-existing RefCounted reference CYCLE in the faction fixture (a resolver lambda
+          # capturing `self`, held by a service kept on the test instance), which pinned one
+          # test instance and every script it referenced. Still part of the SAME gate, so the
+          # gate count is unchanged at 10.
+          if [ "$leaks" -ne 0 ]; then
+            {
+              echo '```'
+              grep -E 'ObjectDB instances were leaked|resources still in use' _suite.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            grep -E 'ObjectDB instances were leaked|resources still in use' _suite.log \
+              | while IFS= read -r line; do echo "::error::[leak] ${line}"; done
+            echo "::error::[leak] the suite leaked at exit. A Node created in a test must be" \
+              "freed by that test (L-019), and a RefCounted CYCLE (e.g. a lambda capturing" \
+              "\`self\` stored on a service the test instance holds) must be broken in" \
+              "after_each — GDScript reference-counts, it does not collect cycles."
             exit 1
           fi
 

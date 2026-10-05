@@ -59,8 +59,10 @@
 >   sect truth; resource ids render through `SECT_RESOURCE_*` keys, never as raw tokens).
 >   SECT relationship endpoints are now backed by real `SectState`s. `SectRuntime.start_session()`
 >   is FAIL-CLOSED (D-037): it commits nothing until every step succeeds, and New Game treats a
->   relationship or sect failure as fatal, unwinding Sect → Relationship → World → GameState →
->   MENU rather than running a half-wired session.
+>   relationship or sect failure as fatal rather than running a half-wired session. **Every
+>   teardown — a failed start AND a normal return to menu — runs through ONE ordered function in
+>   `Main`, walking `SESSION_START_ORDER` backwards: Faction → Sect → Relationship → World →
+>   GameState (D-047).**
 > - Phase-02 Player Sandbox (`src/gameplay/sandbox/`) is retained for combat validation but
 >   is not reachable from New Game. The `prologue_shell` is retained but no longer first.
 > - Semantic InputMap in `project.godot`; translations in `locale/aetheria.csv`;

@@ -18,6 +18,11 @@ extends TestCase
 ## field → back → repeat >= 20 round trips (per-round + no-leak invariants) → real open_menu
 ## key → clean return to menu + player freed.
 
+## The bootstrap script, for the frozen session-lifecycle order constants (D-047). Comparing
+## the OBSERVED teardown against them is what keeps `tests/unit/bootstrap/test_session_lifecycle.gd`
+## (which pins the constant) and this file (which pins the behaviour) from drifting apart.
+const MainScript := preload("res://src/bootstrap/main.gd")
+
 const MAIN_SCENE_PATH := "res://main.tscn"
 const INTERACT := &"interact"
 const OPEN_MENU := &"open_menu"
@@ -36,6 +41,12 @@ const CAMERA_SETTLE_FRAMES := 45
 const CAMERA_PROBE_MOVE_FRAMES := 30
 const REQUIRED_AUTOLOADS := [
 	"EventBus", "GameState", "Localization", "InputService", "SceneRouter",
+]
+
+## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
+## the contract rather than only restating whatever the bootstrap currently does.
+const EXPECTED_TEARDOWN_ORDER := [
+	&"FactionRuntime", &"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
 
 
@@ -110,6 +121,22 @@ func test_real_world_map_flow() -> void:
 			"SectRuntime is NOT an autoload (not under /root)")
 		assert_eq(sect_runtime.call("get_player_sect_id"), &"sect_azure_cloud",
 			"player enrolled in the authored start sect")
+
+	# Phase 07 (Faction): a FactionRuntime sibling must exist under Main/Systems, be a
+	# non-autoload node and run a session. It is started LAST (it reads the sect store + the
+	# relationship graph) and must therefore be ended FIRST, which §7 below asserts.
+	var faction_runtime := _find_faction_runtime(main)
+	assert_not_null(faction_runtime, "FactionRuntime exists under Main/Systems")
+	var faction_runtime_id := -1
+	if faction_runtime != null:
+		faction_runtime_id = faction_runtime.get_instance_id()
+		assert_true(faction_runtime.call("is_session_active"),
+			"FactionRuntime session active after New Game")
+		assert_eq(_count_named("FactionRuntime"), 0,
+			"FactionRuntime is NOT an autoload (not under /root)")
+		# The C-003 guard: Phase 07 enrols nobody, so the player holds no political identity.
+		assert_eq(faction_runtime.call("get_player_instance_id"), &"player",
+			"the faction session knows the player (for the view only)")
 
 	# Phase 06 final hardening (§3): the FORBIDDEN combination is "lifecycle RUNNING + a live
 	# world + a character carrying a sect id + an INACTIVE sect session" — a running game whose
@@ -272,6 +299,33 @@ func test_real_world_map_flow() -> void:
 			"SectRuntime session ended on return to menu")
 		assert_eq(sect_runtime.call("get_player_sect_id"), &"",
 			"SectRuntime cleared the player's sect on session end")
+	# And the faction subsystem, which is ended FIRST but must still be fully down.
+	if faction_runtime != null and is_instance_valid(faction_runtime):
+		assert_eq(faction_runtime.get_instance_id(), faction_runtime_id,
+			"the FactionRuntime NODE survived the session (only its session ended)")
+		assert_false(faction_runtime.call("is_session_active"),
+			"FactionRuntime session ended on return to menu")
+		assert_null(faction_runtime.call("get_store"),
+			"FactionRuntime dropped its store on session end")
+
+	# --- 7b. THE TEARDOWN ORDER ITSELF (D-047) ----------------------------------
+	# This is the assertion the Phase-07 defect needed: `_on_return_to_menu()` had drifted to
+	# ending World and Relationship BEFORE Faction and Sect — i.e. it tore out the relationship
+	# graph and the player's CharacterState while the two subsystems defined in terms of them
+	# were still unwinding. Every gate stayed green because "all four sessions are down
+	# afterwards" is true for ANY order; only the SEQUENCE distinguishes correct from broken.
+	var trace: Array = main.call("get_last_teardown_order")
+	assert_eq(str(trace), str(EXPECTED_TEARDOWN_ORDER),
+		"the real return-to-menu tore the session down in exact reverse dependency order "
+		+ "(expected %s, got %s)" % [str(EXPECTED_TEARDOWN_ORDER), str(trace)])
+	# Tie the observed behaviour back to the documented constant, so neither can drift alone.
+	var derived: Array[StringName] = []
+	var start_order: Array = MainScript.SESSION_START_ORDER
+	for i in range(start_order.size() - 1, -1, -1):
+		derived.append(StringName(start_order[i]))
+	derived.append(StringName(MainScript.SESSION_OWNER_STEP))
+	assert_eq(str(trace), str(derived),
+		"and that order IS the reverse of Main.SESSION_START_ORDER + the session owner")
 
 	# --- 8. cleanup / isolation --------------------------------------------------
 	_teardown(main)
@@ -311,6 +365,16 @@ func _find_sect_runtime(main: Node) -> Node:
 		return null
 	for child in systems.get_children():
 		if child is SectRuntime:
+			return child
+	return null
+
+
+func _find_faction_runtime(main: Node) -> Node:
+	var systems := main.get_node_or_null("Systems")
+	if systems == null:
+		return null
+	for child in systems.get_children():
+		if child is FactionRuntime:
 			return child
 	return null
 

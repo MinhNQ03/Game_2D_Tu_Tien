@@ -69,6 +69,31 @@ const REQUIRED_AUTOLOADS := [
 	"EventBus", "GameState", "Localization", "InputService", "SceneRouter",
 ]
 
+## The per-session subsystems in START order, which IS their dependency order (D-047).
+##
+## This is the single source of truth for both directions of the session lifecycle:
+##   * New Game starts them in this order, because each one reads what the one before it
+##     produced — the relationship graph needs the world's player CharacterState, the sect
+##     session mirrors into the relationship graph, and the faction session reads BOTH the
+##     sect store and the relationship graph.
+##   * EVERY teardown — the failed-start unwind AND the normal return to menu — walks this
+##     list BACKWARDS, so a dependency is never dropped while something that reads it is
+##     still unwinding through it.
+##
+## Before D-047 the two teardown paths disagreed: the unwind was correct while the normal
+## return-to-menu ended World and Relationship BEFORE Faction and Sect, i.e. it tore out the
+## relationship graph and the player's CharacterState while the sect and faction sessions —
+## whose state is defined in terms of both — were still live. Driving both paths from this one
+## constant is what makes the two orders incapable of drifting apart again.
+const SESSION_START_ORDER := [
+	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
+]
+
+## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
+## a subsystem is only meaningful inside a session: ending the session first would make
+## `GameState.is_session_active()` false while sect/faction state was still being unwound.
+const SESSION_OWNER_STEP := &"GameState"
+
 var _menu: Control = null
 var _settings: Control = null  # settings screen while open (D-035); null otherwise
 var _world: Node = null   # WorldRuntime (per-session world/map coordinator), under Systems
@@ -78,6 +103,19 @@ var _relationship: Node = null
 var _sect: Node = null
 # FactionRuntime (per-session faction domain), under Systems (Phase 07).
 var _faction: Node = null
+
+## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
+## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
+## return to menu go through.
+##
+## It exists because the teardown ORDER is an invariant and an invariant that nothing can
+## observe is only a comment: the Phase-07 defect this records was a reversed order sitting in
+## plain sight under a correct-sounding comment, with every gate green. Reading this after a
+## real return-to-menu is how `tests/e2e/world_flow_case.gd` proves the dependent session was
+## ended before its dependency, and it is the first thing to print when a session leaves
+## something behind (`docs/DEBUGGING.md`). Same role as `is_settings_open()` below: a small
+## read-only window onto bootstrap state, never an input to behaviour.
+var _last_teardown_order: Array[StringName] = []
 
 
 func _ready() -> void:
@@ -340,30 +378,71 @@ func _on_new_game_pressed() -> void:
 
 ## Unwind a partially-started New Game back to a usable menu.
 ##
-## Order is REVERSE DEPENDENCY order — Faction → Sect → Relationship → World → GameState →
-## menu — because each session holds state owned by the subsystems ended after it: the faction
-## session reads the sect store and the relationship graph, and the sect session holds the
-## relationship graph (its diplomacy mirror) and the player's CharacterState (its derived
-## membership cache). Ending a dependency first would drop state the dependent is still
-## unwinding through.
-##
-## Every step is null-safe and idempotent (`end_session` on all three runtimes is safe to
-## call when no session is active), so this is callable from any failure point in
-## `_on_new_game_pressed`. After it runs there is no session anywhere: no player, no map, no
-## graph, no sect store, and the lifecycle is back at MENU with the menu shown.
+## Callable from any failure point in `_on_new_game_pressed`: every step of
+## `_end_session_stack()` is null-safe and idempotent (`end_session` on all four runtimes is
+## safe when no session is active). After it runs there is no session anywhere — no player, no
+## map, no graph, no sect store, no faction store — and the lifecycle is back at MENU with the
+## menu shown.
 func _unwind_failed_session() -> void:
-	if _faction != null and is_instance_valid(_faction):
-		_faction.call("end_session")
-	if _sect != null and is_instance_valid(_sect):
-		_sect.call("end_session")
-	if _relationship != null and is_instance_valid(_relationship):
-		_relationship.call("end_session")
-	if _world != null and is_instance_valid(_world):
-		_world.call("end_session")
+	_end_session_stack()
+	_show_menu()
+
+
+## End EVERYTHING this session owns, in exact reverse dependency order (D-047).
+##
+## Walks `SESSION_START_ORDER` backwards and then ends the `GameState` session, so the order is
+## Faction → Sect → Relationship → World → GameState. That direction is not a preference: each
+## subsystem holds state DEFINED IN TERMS OF the ones ended after it. The faction session reads
+## the sect store (its membership authority, D-015) and the relationship graph (where
+## Faction↔Faction standing lives, D-042); the sect session holds the relationship graph (its
+## diplomacy mirror) and the player's `CharacterState` (its derived membership cache). Ending a
+## dependency first drops state the dependent is still unwinding through, which is how a
+## teardown can leave a sect roster referring to a character that no longer exists.
+##
+## This is the ONLY teardown path — the failed-start unwind and the normal return to menu both
+## go through it, so the two can no longer disagree (the Phase-07 defect was exactly that they
+## did). It records what it ended into `_last_teardown_order` so the order is OBSERVABLE rather
+## than merely commented.
+func _end_session_stack() -> void:
+	var ended: Array[StringName] = []
+	for i in range(SESSION_START_ORDER.size() - 1, -1, -1):
+		var subsystem: StringName = SESSION_START_ORDER[i]
+		var node := _session_node(subsystem)
+		if node == null or not is_instance_valid(node):
+			continue  # never created (boot aborted) or already freed: nothing to end
+		node.call("end_session")
+		ended.append(subsystem)
 	var gs := _game_state()
 	if gs != null and bool(gs.call("is_session_active")):
 		gs.call("end_session")
-	_show_menu()
+		ended.append(SESSION_OWNER_STEP)
+	_last_teardown_order = ended
+
+
+## Resolve a `SESSION_START_ORDER` name to the node Main owns for it.
+##
+## An explicit `match`, deliberately not reflection over `Main/Systems` children: a name with
+## no case here reports loudly instead of being silently skipped, and the teardown can never
+## pick up some unrelated node that happens to expose an `end_session` method.
+func _session_node(subsystem: StringName) -> Node:
+	match subsystem:
+		&"WorldRuntime":
+			return _world
+		&"RelationshipRuntime":
+			return _relationship
+		&"SectRuntime":
+			return _sect
+		&"FactionRuntime":
+			return _faction
+	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
+		% subsystem + "session would be silently skipped on teardown")
+	return null
+
+
+## What the last teardown ended, in the order it ended it (empty before the first teardown).
+## A copy, so a caller cannot edit the record. See `_last_teardown_order`.
+func get_last_teardown_order() -> Array[StringName]:
+	return _last_teardown_order.duplicate()
 
 
 ## Start the SectRuntime session (Phase 06). Pulls the shared RelationshipService from the
@@ -472,23 +551,16 @@ func _start_faction_session() -> bool:
 	return true
 
 
+## The NORMAL end of a session (the player asked to go back to the menu).
+##
+## Identical teardown to a failed start, through the SAME function: Faction → Sect →
+## Relationship → World → GameState, then the menu. It used to have its own hand-written
+## sequence, which had drifted into the wrong order (World and Relationship were ended before
+## Faction and Sect), so a normal return to menu tore out the relationship graph and the
+## player's CharacterState while the two subsystems defined in terms of them were still live.
+## Having one path is the fix; `_end_session_stack()` documents why the direction matters.
 func _on_return_to_menu() -> void:
-	# End the world session (frees the persistent player + clears the active map) before the
-	# lifecycle returns to MENU.
-	if _world != null and is_instance_valid(_world):
-		_world.call("end_session")
-	# End the relationship session too (drops the per-session graph).
-	if _relationship != null and is_instance_valid(_relationship):
-		_relationship.call("end_session")
-	# End the faction session FIRST (it reads the sect + relationship state below).
-	if _faction != null and is_instance_valid(_faction):
-		_faction.call("end_session")
-	# End the sect session (drops the per-session sect store/service).
-	if _sect != null and is_instance_valid(_sect):
-		_sect.call("end_session")
-	var gs := _game_state()
-	if gs != null and gs.call("is_session_active"):
-		gs.call("end_session")
+	_end_session_stack()
 	_show_menu()
 
 

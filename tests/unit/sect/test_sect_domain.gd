@@ -1019,6 +1019,50 @@ func test_52_clear_never_corrupts_unrelated_relationship_state() -> void:
 		"with its own type intact")
 
 
+# --- 53: D-047 — diplomacy MUTATION fails closed without the graph ----------
+
+## The same fail-open hole D-047 closed in `FactionService`, which sat in this file's
+## `_set_diplomacy` too and was found by looking for the defect's siblings rather than only
+## its reported instance.
+##
+## `apply_default_diplomacy()` (test 47) and `clear_diplomacy()` (test 51) already refused to
+## act with no graph installed. `add_alliance()`/`add_enemy()` instead SKIPPED the mirror and
+## returned `true`, so a sect could record an enmity that no relationship edge backed — and
+## then never clear it, because `clear_diplomacy()` correctly fails closed on exactly that
+## state. Asserted here so the three paths can only be changed together.
+func test_53_diplomacy_mutation_without_a_graph_fails_closed() -> void:
+	var svc := _service(false, [])  # NO relationship mirror installed
+	_reg(svc, &"sect_a")
+	_reg(svc, &"sect_b")
+
+	var emitted: Array[int] = [0]
+	svc.diplomacy_changed.connect(
+		func(_a: StringName, _b: StringName, _rel: StringName) -> void:
+			emitted[0] += 1)
+
+	assert_false(svc.add_enemy(&"sect_a", &"sect_b"),
+		"declaring enmity with no RelationshipService to mirror it into is REJECTED")
+	assert_false(svc.add_alliance(&"sect_a", &"sect_b"),
+		"and so is declaring an alliance")
+
+	var a := svc.get_store().get_sect(&"sect_a")
+	var b := svc.get_store().get_sect(&"sect_b")
+	assert_false(a.is_enemy(&"sect_b"), "A holds no enemy declaration")
+	assert_false(b.is_enemy(&"sect_a"), "B holds no enemy declaration")
+	assert_false(a.is_ally(&"sect_b"), "nor an ally declaration")
+	assert_false(b.is_ally(&"sect_a"), "on either side")
+	assert_eq(emitted[0], 0, "and no diplomacy_changed signal was emitted")
+	assert_null(svc.get_relationship_store(),
+		"no relationship store exists, so no hidden edge could have been written")
+
+	# The legitimate graphless landscape is unchanged: everything that touches no edge works.
+	assert_true(svc.apply_default_diplomacy(),
+		"nothing is declared, so having no mirror is still legal (D-038, unchanged)")
+	assert_true(svc.clear_diplomacy(&"sect_a", &"sect_b"),
+		"and clearing the undeclared pair is still an idempotent no-op")
+	assert_eq(svc.adjust_influence(&"sect_a", 7), 12, "influence still works without a graph")
+
+
 # --- strict-type fixtures ----------------------------------------------------
 
 ## A VALID `from_dict` payload. Every strict-type case below mutates exactly one field of

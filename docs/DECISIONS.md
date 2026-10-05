@@ -2125,3 +2125,136 @@ files), the generated sheets inspected at 8× magnification and iterated on twic
 pass drew skin over the hair on every UP frame (a bare face on the character's back) and had
 walk deltas so small they were indistinguishable from idle. **The on-screen result has not been
 seen** (D-009); only a screenshot from the owner can confirm it.
+
+---
+
+## D-047 — Two lifecycle/invariant holes a green CI could not see: a reversed teardown and a fail-OPEN politics mirror
+**Status:** Accepted · **Phase:** Phase-07 hardening (no new scope, no new gameplay) ·
+**Extends:** D-037 (fail-closed session start), D-038 (the mirror fails closed), D-042 (standings
+live on relationship edges)
+
+### What was wrong
+
+**1. The normal return-to-menu tore the session down in the WRONG order.**
+New Game starts the per-session subsystems in dependency order — World → Relationship → Sect →
+Faction — because each one reads what the previous one produced. `_unwind_failed_session()`
+(added in D-037, extended in D-042) correctly reversed that. But `_on_return_to_menu()` was a
+SECOND, hand-written sequence, and it had drifted: it ended **World and Relationship first**, then
+Faction and Sect. So a normal return to menu freed the player's `CharacterState` and dropped the
+relationship graph while the sect and faction sessions — whose entire state is *defined in terms
+of* those two — were still live and still unwinding through them. Its own comments claimed the
+opposite order ("End the faction session FIRST"), sitting two lines below the code that did not.
+
+**2. `FactionService` politics mutation was fail-OPEN without the relationship graph.**
+`_set_politics()` (behind `add_alliance()` / `add_rivalry()`) guarded the mirror with
+`if _relationship != null and not _ensure_edge(...)`, and `_ensure_edge()` itself opened with
+`if _relationship == null: return true`. With no `RelationshipService` installed, the mirror was
+therefore SKIPPED and the mutation **reported success**: the faction state recorded a declared
+rivalry that no graph edge backed. That breaks the frozen D-042 invariant (declared faction
+politics **is** a mirrored Faction↔Faction edge), and it is unrecoverable rather than merely
+wrong — `clear_politics()` fails closed on exactly that state ("declared but the mirrored edge is
+missing; refusing to clear"), so the pair was stuck declared for the rest of the run.
+`apply_default_politics()` had already been hardened against the same situation in D-038; the
+mutation path was the door that stayed open.
+
+**3. The identical hole in `SectService._set_diplomacy()`**, found by looking for the defect's
+siblings instead of only its reported instance. Same two lines, same consequence for
+`add_alliance()` / `add_enemy()`, same `clear_diplomacy()` dead end.
+
+Every gate was green for all three. Nothing asserted a teardown *sequence* (only that everything
+was down afterwards, which is true for any order), and nothing called a politics mutation without
+a mirror, because every existing test that declares politics installs one.
+
+### Decisions
+
+- **One ordered teardown, driven by one constant.** `Main.SESSION_START_ORDER` is the single
+  source of truth for both directions. `_end_session_stack()` walks it BACKWARDS and then ends
+  the `GameState` session (`Main.SESSION_OWNER_STEP`), giving **Faction → Sect → Relationship →
+  World → GameState**. Both `_on_return_to_menu()` and `_unwind_failed_session()` now delegate to
+  it and sequence nothing themselves. The fix is not "correct the second sequence" — it is
+  *removing the second sequence*, because two hand-written orders will drift again.
+- **`_session_node()` resolves a name to a node with an explicit `match`,** not reflection over
+  `Main/Systems` children. A name with no case reports loudly instead of being silently skipped,
+  and the teardown can never pick up an unrelated node that happens to expose `end_session`.
+- **The teardown order is OBSERVABLE.** `Main.get_last_teardown_order()` returns what the last
+  teardown actually ended, in order. An invariant nothing can observe is only a comment — which
+  is precisely how this defect survived three phases. Same role as the existing
+  `is_settings_open()`: a small read-only window onto bootstrap state, never an input to
+  behaviour.
+- **Politics/diplomacy mutation REQUIRES the graph.** `FactionService._set_politics()` and
+  `SectService._set_diplomacy()` check for the service *before any other rule*, so the rejection
+  reason is the missing mirror rather than an incidental duplicate-declaration hit. Nothing is
+  mutated, no signal is emitted, and no edge is touched.
+- **`_ensure_edge()` on both services now FAILS on a null service** instead of returning `true`.
+  Both callers already refuse earlier, so this is defence in depth: that `return true` *was* the
+  mechanism, and leaving it would let a future third caller reopen the hole without touching the
+  guard.
+- **The legitimate no-graph landscape is unchanged and now pinned by a test:** a service with no
+  mirror may still do every piece of work that touches no edge — registration, cross-store
+  validation, membership, leadership, influence, resources, the derived rules and the character
+  cache. The fix is a precondition on the *mutation*, not a new dependency on the service.
+
+### Also fixed here (same "warning that exits 0" class)
+The headless suite had been leaking at shutdown — `17 ObjectDB instances were leaked` /
+`8 resources still in use` — and CI stayed green because the engine reports that as a non-fatal
+warning after the runner has already exited 0. Root cause: a **`RefCounted` reference CYCLE** in
+`tests/unit/faction/test_faction_domain.gd`. Its `_sect_store()` fixture installs a character
+resolver built as a lambda over `_known_characters`, which captures `self`; the `Callable` is
+stored on a `SectService` that the test instance keeps on `_sect_service`. GDScript's
+`RefCounted` is reference-COUNTED, not garbage-collected, so the cycle was never collected, and
+one pinned test instance held its whole fixture plus every GDScript it referenced. An
+`after_each()` clears the `Callable` (which is what actually breaks the cycle) and the fields.
+L-019 already required "0 leaked ObjectDB / 0 resources in use" — it was written about unfreed
+`Node`s; this is the same requirement reached through a cycle. **The existing headless gate now
+fails on those two lines**, exactly as it already does on `SCRIPT ERROR:` (D-038). Still **10 CI
+gates** — the check lives inside the gate that was already there.
+
+### Rejected
+- **Fixing `_on_return_to_menu()`'s order in place.** It would have been three lines and would
+  have left two independent sequences that must agree forever. The defect was the duplication.
+- **Deriving the teardown from the `Main/Systems` child order.** Elegant-looking (creation order
+  *is* dependency order) but implicit: any future node parented under `Systems` would silently
+  join or reorder the teardown.
+- **A `SessionLifecycle` sequencer class.** A new type for four explicit calls is the
+  speculative generality `03-architecture.md` forbids, and reads as the "manager" the brief ruled
+  out. The order lives in the bootstrap that already owns it.
+- **Requiring a `RelationshipService` at `FactionService`/`SectService` construction.** It would
+  have fixed the hole by over-correcting: pure roster/influence/economy unit tests legitimately
+  have no graph, and D-038 already settled that "nothing declared" is a valid landscape.
+- **Testing the teardown order by instantiating `Main` in the shared runner.** It drives the live
+  `/root/GameState` autoload, which the runner's isolation guard forbids (L-010). The runtime
+  order is asserted in the dedicated E2E process instead.
+
+### Verification
+- `tests/unit/bootstrap/test_session_lifecycle.gd` (new, 4 tests): pins the start-order constant
+  by value, proves the teardown is its exact reversal plus the session owner, proves every
+  ordered name is a real subsystem exposing `start_session`/`end_session`/`is_session_active`,
+  and — the guard that would actually have caught this — asserts that **exactly one function in
+  the bootstrap issues `call("end_session")`**, that both entry points delegate to it, and that
+  it consumes the constant rather than re-listing the subsystems.
+- `tests/e2e/world_flow_case.gd`: after a REAL `open_menu` return-to-menu, asserts
+  `get_last_teardown_order()` equals the literal `[Faction, Sect, Relationship, World,
+  GameState]` **and** equals reverse(`SESSION_START_ORDER`) + `SESSION_OWNER_STEP`, so neither
+  the constant nor the behaviour can drift alone. It also now covers `FactionRuntime` (present,
+  non-autoload, session live, node survives while its session ends, store dropped).
+- `tests/unit/faction/test_faction_domain.gd` tests 41-43 and
+  `tests/unit/sect/test_sect_domain.gd` test 53: the rejected mutation returns false, BOTH
+  parties hold no declaration, no signal is emitted, no relationship store exists for an edge to
+  hide in, and the graphless service still does all its non-politics work.
+- **Every new guard was proven able to FAIL**: the pre-fix code was temporarily restored and each
+  assertion was observed failing (the E2E printed the real reversed trace
+  `[World, Relationship, Sect, Faction, GameState]`), so none of them is vacuous (L-026).
+- **Godot 4.7 was run locally for the first time** (see the note below) — all 10 gates green,
+  `ran 392 test(s): 392 passed, 0 failed`, suite exiting with 0 leaks.
+
+### Process note: D-009 is no longer true
+D-009 ("Godot is not invocable locally") shaped a great deal of this project's process — L-007,
+L-016, L-020, L-027 and `.kiro/steering/10-ci-failure-protocol.md` all exist because a failure
+could only be diagnosed through a CI round-trip. The assumption was tested rather than inherited
+(L-027's rule, applied to itself): the 4.7-stable Linux build downloads and runs headless on this
+machine, so the full gate set — lint, import, parse/compile, boot smoke, the 392-test suite and
+all three E2E processes — now runs locally in about three minutes. **CI remains the authority**
+(it is the clean-room run, and the gate definitions live there), but "the first real execution is
+the workflow on GitHub" is no longer a constraint, and a CI-only failure is no longer the only
+way to learn something is broken. The on-screen result is still unverifiable without a
+screenshot: headless runs render nothing.

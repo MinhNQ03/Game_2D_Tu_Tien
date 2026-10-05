@@ -20,7 +20,24 @@
 > `b3c98cc`, all 9 gates green at the time; **final hardening D-037**, see below).
 > **Phase 07 (Faction/Politics) is IMPLEMENTED (D-042)** — faction domain + deterministic politics
 > rules + the first usable Faction UI; the §7 standings-representation question is pinned to
-> relationship edges. **Phase 08 (World Simulation) is NOT STARTED.**
+> relationship edges. **Hardened in D-047** (see below). **Phase 08 (World Simulation) is NOT
+> STARTED.**
+>
+> **Phase 07 hardening (2026-10-05, D-047 — not a phase, no new scope):** two lifecycle/invariant
+> holes a green CI could not see. (1) The normal return-to-menu had drifted to tearing the session
+> down in the WRONG order — it ended World and Relationship BEFORE Faction and Sect, freeing the
+> player's `CharacterState` and the relationship graph while the two subsystems defined in terms
+> of them were still unwinding. Fixed by DELETING the duplicate sequence: `Main.SESSION_START_ORDER`
+> is now the single source of truth, one ordered function walks it backwards (**Faction → Sect →
+> Relationship → World → GameState**), both entry points delegate, and the order is observable via
+> `get_last_teardown_order()`. (2) `FactionService` politics mutation was fail-OPEN — with no
+> `RelationshipService` the mirror was skipped and the call returned `true`, declaring a rivalry no
+> edge backed and that `clear_politics()` could then never clear; the identical hole in
+> `SectService._set_diplomacy()` was fixed with it. Also closed a pre-existing suite leak (a
+> `RefCounted` reference cycle in a test fixture) that CI was exiting 0 on, and the existing
+> headless gate now fails on the leak lines. No new autoload, **still 10 CI gates**, no Phase 08
+> work. CI-verified with `ran 392 test(s): 392 passed, 0 failed`. **Process:** D-009 no longer
+> holds — Godot 4.7 runs headless locally, so the whole gate set runs in ~3 minutes (L-031).
 >
 > **Phase 06 final hardening (2026-10-03, D-037 — not a phase, no new scope):** the sect core
 > was audited for failure modes that a green CI cannot see, and six were closed: the Sect↔Sect
@@ -28,7 +45,8 @@
 > rejected flip used to destroy the edge it was "rolling back" — L-023);
 > `SectRuntime.start_session()` is fail-closed and commits nothing until all nine steps succeed
 > (it used to warn-and-continue into a half-session — L-025); New Game treats a relationship or
-> sect failure as FATAL and unwinds Sect → Relationship → World → GameState → MENU;
+> sect failure as FATAL and unwinds in reverse dependency order (made the SINGLE teardown path
+> in D-047);
 > `SectState.from_dict()` validates `typeof()` before converting, so a corrupt payload is no
 > longer coerced into an accepted state (L-024); the rank ladder's `authority` must increase
 > strictly along the authored order; the catalog validates referential integrity of every
@@ -262,8 +280,13 @@ influence changes produce documented, deterministic outcomes asserted by exact v
 `FactionState` round-trips byte-stably and `from_dict` is strictly-typed fail-closed; tests cover
 the membership authority, the non-destructive mirror (object identity + surviving dimensions and
 history), the determinism, and a no-duplication guard on the serialized shape.
-**NOT verified:** no runtime screenshot of the faction panel exists (Godot is not runnable
-locally, D-009) — its composition is asserted structurally and by CI only.
+**Hardening (D-047):** closed the two remaining lifecycle/invariant holes — a normal return to
+menu that tore the session down in the wrong order (now ONE ordered teardown path, observable and
+regression-tested), and a politics mutation that was fail-OPEN without the relationship graph
+(now a precondition, with the identical hole in the sect mirror fixed with it). Tests expanded in
+place plus one new bootstrap test file; **CI still 10 gates**; no new scope.
+**NOT verified:** no runtime screenshot of the faction panel exists — a headless run renders
+nothing, so on-screen composition is still asserted structurally and by the gates only.
 
 ## Phase 08 — World Simulation *(+ the deterministic RNG seam)*
 LOD simulation (`docs/WORLD_SIMULATION.md`): Near real-time / Far abstract; schedule/tick/

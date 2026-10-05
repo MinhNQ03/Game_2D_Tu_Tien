@@ -6,7 +6,8 @@
 >
 > Status (through Phase 06 final hardening, 2026-10-03): Phase 05 (Relationship core + early
 > character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is **CLOSED** (D-032,
-> hardened in D-037); Phase 07 (Faction/Politics) is **NOT STARTED**. **Sect membership is
+> hardened in D-037); Phase 07 (Faction/Politics) is **IMPLEMENTED** (D-042, hardened in D-047).
+> **Sect membership is
 > LIVE in the runnable flow:** New Game enrols the player into the authored start sect
 > (Azure Cloud, at Outer Disciple) through `SectRuntime`, the in-map **HUD** carries a
 > localized sect chip, the `sect_panel` action (`T`) toggles a **Sect detail panel** (name,
@@ -437,6 +438,30 @@ MENU). Phase 06 adds, underneath + on top of that flow:
   localized (vi + en), no raw ids, in the live Xianxia UI.
 
 No new first scene, no new autoload. Faction/internal-politics (SECT_SYSTEM §7) is Phase 07.
+
+## Phase 07 note (D-042, hardened D-047) — internal politics substrate, flow unchanged
+
+The runnable flow is UNCHANGED (START → MAIN MENU → NEW GAME → WORLD SESSION → HUB ↔ FIELD →
+MENU). Phase 07 adds, underneath + on top of it:
+- a **faction domain** owned by a new `FactionRuntime` under `Main/Systems` (sibling of the
+  other three, not an autoload) that starts LAST with New Game — it reads the sect store and
+  the relationship graph — survives map swaps, and ends FIRST on the way out;
+- a toggleable `FactionPanel` on the semantic `faction_panel` action, rendering a read-only
+  `SectPoliticsView` (localized vi + en, no raw ids);
+- **Phase 07 enrols nobody** (the C-003 guard): taking a side is a gameplay act from P-17
+  onward, so the player leaves the menu with no political identity.
+
+**What SESSION END actually does (D-047).** Both ways out of a session — a failed New Game and
+a normal return to menu — run the SAME ordered teardown in `Main`, the exact reverse of the
+start order:
+
+```
+FactionRuntime -> SectRuntime -> RelationshipRuntime -> WorldRuntime -> GameState -> MAIN MENU
+```
+
+Each subsystem's state is defined in terms of the ones ended after it, so this direction is a
+correctness requirement, not a preference (the rule and the defect it fixed: D-047 / L-030).
+No new first scene, no new autoload. World Simulation (`WORLD_SIMULATION.md`) is Phase 08.
 
 ## Phase 06 follow-up note (D-033…D-036) — one new flow branch, two in-map fixes
 
