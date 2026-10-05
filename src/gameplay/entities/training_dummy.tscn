@@ -1,9 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/entities/training_dummy.gd" id="1_dummy"]
 [ext_resource type="Script" path="res://src/gameplay/components/stats_component.gd" id="2_stats"]
 [ext_resource type="Script" path="res://src/gameplay/components/health_component.gd" id="3_health"]
 [ext_resource type="Resource" path="res://data/stats/training_dummy_stats.tres" id="4_statblock"]
+[ext_resource type="Script" path="res://src/gameplay/components/hurtbox_component.gd" id="5_hurtbox"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/training_dummy.png" id="6_sprite"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dummy"]
 size = Vector2(28, 28)
@@ -14,9 +16,11 @@ script = ExtResource("1_dummy")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_dummy")
 
-[node name="Visual" type="Polygon2D" parent="."]
-color = Color(0.85, 0.3, 0.3, 1)
-polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+[node name="Visual" type="Sprite2D" parent="."]
+texture_filter = 1
+centered = false
+offset = Vector2(-16, -40)
+texture = ExtResource("6_sprite")
 
 [node name="StatsComponent" type="Node" parent="."]
 script = ExtResource("2_stats")
@@ -24,3 +28,8 @@ stat_block = ExtResource("4_statblock")
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("3_health")
+
+[node name="HurtboxComponent" type="Node" parent="."]
+script = ExtResource("5_hurtbox")
+entity_id = &"training_dummy_hub"
+radius = 14.0

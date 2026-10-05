@@ -828,3 +828,41 @@
   re-measures both; the divider guard walks `src/presentation` and watches the live token;
   `sect_panel`/`faction_panel` call `UITheme.ornament_divider()`; `TEX_TITLE_DIVIDER` retired;
   `capture_ui.gd` reports and exits non-zero.
+
+## L-035 — A HIDDEN child contributes nothing to a container's minimum size, so a layout measured on a bare screen is always too small
+- **Symptom (D-050 then Phase 09 — the same trap twice, one phase apart):**
+  `UIPalette.TOP_PLAQUE_RESERVE` had to be corrected FOUR times (104 → 174 → 198 → 212), and
+  three of the four wrong values were wrong for one reason: something in the plaque was
+  INVISIBLE at the moment it was measured, so it measured as zero height.
+  - **174** came from a bare `GameplayHUD`. Both top plaques hide content until a view
+    arrives — the affiliation tier until `set_sect_view()`, the world-time lines until
+    `set_world_sim_view()` — so the measured plaques were a tier shorter than the ones on
+    screen, and the side panels still covered them.
+  - **198** came from a POPULATED HUD, and was still wrong, because Phase 09's new health
+    gauge is itself hidden until `set_health()` arrives. The warning was *already written in
+    that test's own doc comment*, and the new gauge walked straight into it anyway.
+  - Only **212** came from a screen with every tier actually visible.
+- **Rule:** **measure a FULLY POPULATED screen, through its PUBLIC setters, or the number is
+  a floor rather than a maximum.** `get_combined_minimum_size()` sums only the children a
+  container is currently laying out, and `visible == false` removes a child from that sum
+  entirely — so a layout reserve derived from a default-constructed screen is guaranteed to be
+  too small, in exactly the direction that causes overlap. Concretely:
+  - Fill every tier through the real setters (`set_character`, `set_sect_view`,
+    `set_world_sim_view`, `set_health`), never by writing private fields — then the test cannot
+    drift from how the screen is actually fed.
+  - **When you add a tier to a measured container, add it to the fixture in the same change.**
+    The reserve test is not a guard against the tier you just added unless the fixture shows
+    it; it only catches the NEXT one. This is the whole reason 198 shipped.
+  - Use the LONGEST localized string, derived from the authored set, not one somebody picked.
+  - Confirm the measurement against the running game once (a throwaway script that prints the
+    node rects) — the first pixel-based estimate here was off by 20px because a 9-slice frame
+    and its corner ornaments are drawn OUTSIDE the control's rect, so what looks like the
+    plaque's edge is not its rect.
+- **Also (the same shape, in art):** a generated sprite's dither pass used the TILE-local
+  `_dither()`, which writes unconditionally — so it speckled the transparent canvas outside
+  the silhouette. Invisible at 1x, obvious at 8x. Mask a texture pass to the pixels it is
+  meant to touch, and look at generated pixel art magnified before it ships (L-029).
+- **Fixed:** Phase 09. `TOP_PLAQUE_RESERVE = 212`, derived and documented with all four wrong
+  values and why each was wrong; `_populate_plaques()` in
+  `tests/unit/presentation/test_gameplay_hud.gd` now pushes a health value too; the dummy
+  sprite's dither is masked to its straw pixels.

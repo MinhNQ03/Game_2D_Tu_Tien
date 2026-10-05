@@ -278,27 +278,30 @@ const DISABLED := COLOR_SURFACE_DISABLED
 ## panel must not cover a plaque" arithmetic rather than something to notice in a screenshot,
 ## exactly as `PROMPT_STRIP_RESERVE` does for the bottom prompt row.
 ##
-## MEASURED on a POPULATED HUD, and confirmed against the running game: the identity plaque
-## is **180** tall and the map plaque **154**, so the strip is the tallest, 180, plus one
-## `HUD_MARGIN` of breathing room for the frame's corner ornaments (which are drawn OUTSIDE
-## the control's rect) = **198**.
+## MEASURED on a POPULATED HUD: the identity plaque is **194** tall (portrait row, name,
+## title, health gauge, divider, affiliation tier) and the map plaque **154**, so the strip is
+## the tallest, 194, plus one `HUD_MARGIN` of breathing room for the frame's corner ornaments
+## (which are drawn OUTSIDE the control's rect) = **212**.
 ##
-## Three wrong values preceded it, each wrong for a different reason worth remembering:
+## FOUR wrong values preceded it, and the pattern in them is the useful part — three of the
+## four were wrong because something in a plaque was INVISIBLE at the moment of measurement:
 ##   * **104** — taken from the map plaque alone, so the left-hand politics panel covered the
 ##     identity plaque's affiliation tier by ~52px.
 ##   * **174** — measured on a BARE HUD. A hidden child contributes nothing to a container's
 ##     minimum size, and both plaques hide content until a view arrives (the affiliation tier
-##     until a sect view, the world-time lines until a world-sim view), so the plaques
-##     measured a tier short of the ones on screen.
-##   * both were asserted only as "> 0" and "the HUD mentions the token", which is why
-##     neither was caught by a test.
+##     until a sect view, the world-time lines until a world-sim view).
+##   * **198** — measured on a populated HUD, but Phase 09's health gauge is itself hidden
+##     until a health value arrives, so it too measured as zero. The same trap, one phase later
+##     and with the warning already written in the test.
+##   * The first two were asserted only as "> 0" and "the HUD mentions the token", which is
+##     why neither was caught by a test at all.
 ##
-## The value is now pinned by
+## The value is pinned by
 ## `test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for`, which fills
-## the plaques through the HUD's public setters (with the LONGEST localized world-event
-## string, derived from the authored set) before measuring — so growing a plaque, or adding a
-## longer translation, fails loudly instead of quietly reintroducing the overlap.
-const TOP_PLAQUE_RESERVE := 198
+## EVERY plaque through the HUD's public setters — including a health value, and the LONGEST
+## localized world-event string derived from the authored set — before measuring. Adding a
+## tier to a plaque now fails there instead of quietly reintroducing the overlap.
+const TOP_PLAQUE_RESERVE := 212
 
 
 ## Lines the HUD's world-event hint may wrap to before it trims. The cap is what makes the
@@ -348,6 +351,28 @@ const TEX_BUTTON_PAINTED := PAINTED_UI_DIR + "/buttons/button_jade.png"
 
 ## A violet variant of the same plate, for a role that must read as clearly apart.
 const TEX_BUTTON_PAINTED_ALT := PAINTED_UI_DIR + "/buttons/button_violet.png"
+
+# --- VITALS GAUGE (Phase 09) ------------------------------------------------
+#
+# The first gauge in the game, and it only exists now because combat finally owns the value
+# it shows. `docs/UI_UX_BIBLE.md` forbids rendering a gauge for state no system owns: a bar
+# that looks right in a mock and shows nothing real in a build is worse than an absent one.
+
+## Height of a vitals gauge. Thin enough to read as a readout rather than as a panel, and an
+## even number so the 9-slice well's border bands stay symmetrical.
+const GAUGE_HEIGHT := 14
+
+## Fill colour for a healthy gauge. An ALIAS of the jade accent, not a new colour value —
+## one more colour token would be a second source of truth for the same decision (D-050 B6).
+const GAUGE_FILL := COLOR_ACCENT
+
+## Fill colour once the gauge crosses `GAUGE_LOW_FRACTION`. Crimson is reserved for
+## "leaving or destroying", and losing the last of your health qualifies.
+const GAUGE_FILL_LOW := COLOR_CRIMSON_HOVER
+
+## Fraction at or below which a gauge reads as critical. A quarter, so the warning arrives
+## while the player can still act on it.
+const GAUGE_LOW_FRACTION := 0.25
 
 ## Width reserved on the right of a scrolling panel so its vertical scrollbar never sits on
 ## the content. Godot draws the scrollbar OVER a `ScrollContainer`'s child rather than taking

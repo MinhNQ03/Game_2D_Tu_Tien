@@ -8,6 +8,51 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-05 — Phase 09: real-time action combat (D-007 resolved)
+
+**D-007 is resolved as (a) REAL-TIME TOP-DOWN ACTION COMBAT**, after being Open since Phase 0.
+The reasoning is in `DECISIONS.md`; in short, a top-down camera exists to present SPACE and
+TIMING, and a turn-based model throws away the information the camera is there to show.
+
+- **The attack lifecycle is a pure domain class.** `AttackStateMachine` runs
+  `READY → WINDUP → ACTIVE → RECOVERY → READY` with no node dependency, so every frame-timing
+  question is answered by an assertion with exact deltas instead of by watching the game. Two
+  properties are guarded because both are expensive defect classes in an action model: a long
+  frame passes THROUGH the hit window rather than over it (a 10-second delta still delivers the
+  hit), and the window is an EDGE consumed once per swing (polling the ACTIVE state would make
+  frame rate into damage).
+- **Timing is CONTENT.** `AttackData` (`data/combat/attack_player_basic.tres`) authors
+  windup/active/recovery, reach, arc, power and crit, so a new attack is a `.tres`.
+- **Hit detection is ANALYTIC, not physics.** `CombatService` compares reach and arc against a
+  session `CombatHurtboxRegistry`; there are deliberately NO hitbox/hurtbox collision layers.
+  In the headless runner an Area2D overlap does not fire reliably (L-016/L-017), so a combat
+  system detecting hits that way could not be tested end to end — and the trade (a target is a
+  point plus a radius) is invisible on a 16px grid. The reasoning is recorded in
+  `collision_layers.gd` where the bits would have gone.
+- **The damage formula stayed in one place.** `DamageRules.compute_hit()` gained
+  `power_multiplier` and `critical_multiplier` as DEFAULTED parameters — the existing two-arg
+  behaviour is unchanged and asserted to be — rather than letting combat multiply scalars
+  itself. The service decides whether a hit crits; the formula decides how much.
+- **`RngService.STREAM_COMBAT`** is the second named stream, added the day it had a consumer.
+  One world seed, two independent streams: a combat roll cannot shift the simulation's
+  sequence, and the test proves a filtered-out target consumes NO draw — so where the player
+  stands cannot change the dice.
+- **`CombatRuntime` is the sixth per-session node under `Main/Systems`**, last in
+  `SESSION_START_ORDER` and therefore first in teardown, where it cancels swings in flight
+  before the entities they would resolve against are freed. No new autoload (budget still 5).
+- **The hub map has a real target.** A `TrainingDummy` is authored into it, because a combat
+  system with nothing in the shipped world to hit is a no-op with documentation (L-029).
+- **The first gauge in the game.** The HUD shows player health via `UITheme.vitals_gauge()` —
+  the D-050 foundation's fifth shared seam, not ad-hoc combat styling — hidden until a real
+  value arrives, and it writes the number as text as well as drawing a bar.
+- **PERF-002:** the budget test found that every candidate was fully type-validated before
+  being rejected by distance. Geometry now runs first: a swing against 400 entities went
+  1005 ms → 334 ms for 2000 swings. The entry also records that the test's own first scaling
+  claim was wrong, and why the corrected one is a better guard.
+- 536 tests (+16 from Phase 08's 520), zero leaks. The world E2E now drives a REAL attack key
+  through InputService → player → component → state machine → service → the target's health
+  and asserts the target lost HP — the end state, not that a signal fired.
+
 ### 2026-10-05 — UI production foundation (D-050)
 
 Presentation only — no gameplay rule, domain state, input semantic, autoload or networking

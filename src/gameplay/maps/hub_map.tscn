@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -9,6 +9,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="7_rock"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_planter.png" id="8_planter"]
 [ext_resource type="Texture2D" path="res://assets/sprites/sects/emblem_azure_cloud.png" id="9_emblem"]
+[ext_resource type="PackedScene" path="res://src/gameplay/entities/training_dummy.tscn" id="10_dummy"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(992, 16)
@@ -107,6 +108,11 @@ rotation = 1.5707963
 
 [node name="ShapeRight" type="CollisionShape2D" parent="Collision/Walls/WallRight"]
 shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="CombatTargets" type="Node2D" parent="."]
+
+[node name="TrainingDummy" parent="CombatTargets" instance=ExtResource("10_dummy")]
+position = Vector2(620, 304)
 
 [node name="PlayerHost" type="Node2D" parent="."]
 

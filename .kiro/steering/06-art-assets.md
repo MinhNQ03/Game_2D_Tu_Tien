@@ -51,6 +51,14 @@
   `texture_filter = 1` (nearest) locally. Mipmaps **off** on sprite/tile imports.
 - Integer-friendly scaling: prefer integer scale factors; the arena/maps are authored on a
   16px grid so tile and collision edges stay aligned.
+- **The combat target is a straw training post** (`assets/sprites/characters/training_dummy.png`,
+  32x48, Phase 09): a wrapped bale on a wooden post with rope bindings and a painted target
+  mark, so what the player is meant to HIT reads at a glance without a label. It replaced the
+  flat red `Polygon2D` the dummy scene drew — fine as a Phase-02 sandbox marker, wrong in a
+  hub full of shaded, outlined, dithered art, where one untextured rectangle reads as an
+  unfinished build. Its dither is MASKED to the straw pixels: the tile-local `_dither()`
+  writes unconditionally and speckled the transparent canvas outside the silhouette, which
+  was invisible at 1x and obvious at 8x.
 - These world/character assets are **self-made / project-owned**, reproducible via
   `tools/gen_prototype_assets.py` (a build-time tool; the game runtime does NOT depend on it).
 

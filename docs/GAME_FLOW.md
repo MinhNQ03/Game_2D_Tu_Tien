@@ -400,9 +400,12 @@ with minimal changes to these systems (a design goal, not a guarantee). Detail i
 
 ## 6. Open design questions
 
-Tracked in `docs/DECISIONS.md`. Notably: real-time vs. turn-based combat resolution (D-007);
-scene-instanced vs. single-scene map streaming; final save file format (D-005). These are
-**not** decided here and must be resolved before the relevant system is built.
+Tracked in `docs/DECISIONS.md`. Notably: scene-instanced vs. single-scene map streaming;
+final save file format (D-005). These are **not** decided here and must be resolved before
+the relevant system is built.
+
+**Resolved since this section was written:** real-time vs. turn-based combat resolution
+(D-007) is **Accepted as real-time top-down action combat** (Phase 09).
 
 The *content* design questions that used to sit here — what the world is, what the realms are,
 what the prologue is, how access is gated — were closed by the **Master Game Design Freeze**

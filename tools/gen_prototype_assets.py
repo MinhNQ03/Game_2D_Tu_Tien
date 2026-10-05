@@ -748,11 +748,63 @@ def gen_sect_emblems():
     gen_sect_emblem_crimson()
 
 
+def gen_training_dummy():
+    """A straw training post (Phase 09's combat target).
+
+    It replaces the flat red `Polygon2D` the dummy scene drew. A bare red square was fine as a
+    Phase-02 sandbox marker and is wrong in the hub, which is at the production-foundation art
+    tier (`06-art-assets.md`): the map is full of shaded, outlined, dithered art and one
+    untextured rectangle reads as an unfinished build rather than as a training post.
+
+    32x48, the character baseline, with the base on the bottom row so its origin anchors at
+    the ground like every other world sprite. A wrapped straw bale on a wooden post with a
+    rope binding and a painted target mark — it must read as something a cultivator HITS, at a
+    glance, without a label.
+    """
+    w, h = 32, 48
+    px = _blank(w, h)
+    post = (104, 76, 48, 255)
+    post_dk = _shade(post, 0.68)
+    straw = (198, 168, 98, 255)
+    straw_hi = _shade(straw, 1.18)
+    straw_dk = _shade(straw, 0.74)
+    rope = (150, 112, 62, 255)
+    mark = (176, 56, 52, 255)
+
+    # Wooden post + a shadow side, standing on the ground row.
+    _rect(px, 13, 30, 19, 47, post)
+    _rect(px, 17, 30, 19, 47, post_dk)
+    # Straw bale: a tall oval body with a lit upper-left and a shaded lower-right.
+    _oval(px, 16, 19, 10, 14, straw)
+    _oval(px, 12, 14, 5, 7, straw_hi)
+    _oval(px, 20, 24, 5, 7, straw_dk)
+    # Ordered dither for straw texture, the same treatment the tiles use — but MASKED to
+    # pixels that are already the base straw colour.
+    #
+    # `_dither()` is tile-local and writes unconditionally, so calling it here speckled the
+    # TRANSPARENT canvas outside the bale too: a scatter of floating straw pixels above the
+    # silhouette, invisible at 1x and obvious the moment the sprite was viewed at 8x (L-029 —
+    # generated pixel art gets looked at magnified before it ships).
+    for y in range(h):
+        for x in range(w):
+            if px[y][x] == straw and _BAYER4[y % 4][x % 4] < 3:
+                px[y][x] = straw_hi
+    # Two rope bindings, which is what makes it a BALE rather than a boulder.
+    _rect(px, 7, 15, 25, 16, rope)
+    _rect(px, 7, 24, 25, 25, rope)
+    # A painted target mark, so the thing a player is meant to hit is where the eye goes.
+    _oval(px, 16, 20, 4, 4, mark)
+    _oval(px, 16, 20, 2, 2, straw_hi)
+    _outline_pass(px)
+    _png(os.path.join(ROOT, "assets/sprites/characters/training_dummy.png"), w, h, px)
+
+
 def gen_props():
     gen_prop_lantern()
     gen_prop_tree()
     gen_prop_rock()
     gen_prop_planter()
+    gen_training_dummy()
 
 
 if __name__ == "__main__":

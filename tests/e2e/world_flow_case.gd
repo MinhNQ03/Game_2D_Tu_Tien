@@ -46,8 +46,8 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"WorldSimulationRuntime", &"FactionRuntime", &"SectRuntime", &"RelationshipRuntime",
-	&"WorldRuntime", &"GameState",
+	&"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime", &"SectRuntime",
+	&"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
 
 
@@ -268,6 +268,9 @@ func test_real_world_map_flow() -> void:
 
 	# --- 4. a REAL semantic MOVEMENT step (proves InputService movement path) -----
 	await _prove_movement(player, input, hub_map)
+
+	# --- 4b. a REAL attack key DAMAGES a REAL target (Phase 09, D-007) -----------
+	await _prove_combat(main, player, hub_map)
 
 	# --- 5. first transition hub → field via REAL interact input -----------------
 	await _interact_to_transition(player, "map_hub")
@@ -655,6 +658,82 @@ func _first_exit_zone(map: Node) -> Node2D:
 ## Feed a REAL key press+release for `action` through the engine input pipeline. The engine
 ## updates the InputMap action state (so is_*_just_pressed is true) AND dispatches
 ## `_input`/`_unhandled_input` to in-tree nodes on the processed frame. No direct handler call.
+## Prove the WHOLE combat path with a REAL attack key: InputService gate → `Player` →
+## `AttackComponent` → `AttackStateMachine` → `CombatService` → the target's health.
+##
+## It drives the boundary it advertises (L-017): the swing is started by a real `InputEventKey`
+## for the bound `attack` action, fed through `Input.parse_input_event` so the engine updates
+## the action state and dispatches it, exactly as a key press does in a real frame. Nothing
+## here calls `request_attack()` or `resolve_hit()` directly — a test that did would stay green
+## while the input gate, the component wiring or the registry was broken.
+##
+## It asserts the OBSERVABLE END STATE — the target lost health — not that a signal fired.
+## "The attack resolved" is satisfied by a swing that hits nothing; only a health drop proves
+## the hit landed, and this is the one assertion that would have caught an unarmed player, an
+## unregistered target, or an empty registry (L-029: a pipeline whose only path is the fallback).
+func _prove_combat(main: Node, player: Node2D, map: Node) -> void:
+	var combat := main.get_node_or_null("Systems/CombatRuntime")
+	assert_not_null(combat, "the CombatRuntime subsystem exists under Main/Systems")
+	if combat == null:
+		return
+	assert_true(bool(combat.call("is_session_active")),
+		"the combat session is live inside a running game")
+	var registry: CombatHurtboxRegistry = combat.call("get_registry")
+	assert_not_null(registry, "the session exposes a hurtbox registry")
+	if registry == null:
+		return
+	# The player must be ARMED, and it must be a target itself — an attacker that cannot be
+	# hit back is a one-way fight nobody notices until something tries.
+	assert_true(registry.has(&"player"), "the player is registered as a target")
+	assert_true(int(combat.call("armed_count")) >= 1, "at least one attacker is armed")
+
+	# A REAL target authored into the map, not one the test spawned. A combat system with
+	# nothing in the shipped world to hit is a no-op with documentation (L-029).
+	var targets: Array[Node] = map.call("get_combat_targets")
+	assert_true(targets.size() >= 1,
+		"the hub map declares at least one combat target (got %d)" % targets.size())
+	if targets.is_empty():
+		return
+	var target := targets[0] as Node2D
+	assert_not_null(target, "the declared target is a Node2D")
+	if target == null:
+		return
+	assert_true(target.has_method("get_current_health"), "the target exposes its health")
+
+	# Stand next to it and face it, then swing. Position is set directly (this is not the
+	# movement boundary — section 4 already proved that with real input) and the facing is
+	# pushed the way the player pushes it every physics frame.
+	var before := int(target.call("get_current_health"))
+	assert_true(before > 0, "the target starts alive (hp %d)" % before)
+	player.global_position = target.global_position - Vector2(18, 0)
+	var attack_component := player.get_node_or_null("AttackComponent") as AttackComponent
+	assert_not_null(attack_component, "the player carries an AttackComponent")
+	if attack_component == null:
+		return
+	assert_true(attack_component.is_armed(),
+		"and CombatRuntime armed it (an unarmed player is a dead attack key)")
+	attack_component.set_facing(Vector2.RIGHT)
+
+	# Feed the REAL key and let the lifecycle run. The hit lands in ACTIVE, which is one
+	# windup away, so the effect is polled over a bounded number of frames rather than
+	# guessed at a single one (L-016: `is_action_just_pressed` timing after a synthetic press
+	# is fragile, so poll the observable effect instead of betting on a frame).
+	await _fire_action(&"attack")
+	var after := before
+	for _i in 240:
+		await scene_tree.process_frame
+		after = int(target.call("get_current_health"))
+		if after < before:
+			break
+	assert_true(after < before,
+		("a REAL attack key damaged the target through the whole chain — InputService gate, "
+			+ "AttackComponent, the state machine's hit window, CombatService and the "
+			+ "target's own health (hp %d -> %d)") % [before, after])
+	assert_true(attack_component.damage_dealt() > 0,
+		"and the component recorded the damage it applied (%d)"
+			% attack_component.damage_dealt())
+
+
 func _fire_action(action: StringName) -> void:
 	var press := _key_event_for(action, true)
 	if press == null:

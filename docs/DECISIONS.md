@@ -79,13 +79,58 @@ the docs.
 `test_project_name_is_aetheria` asserts this at boot.
 **Consequence:** done. Low risk, reversible.
 
-## D-007 — Combat resolution model: real-time vs. turn-based  — **Open**
-**Context:** Top-down combat; the damage formula is defined but the *timing model* isn't.
+## D-007 — Combat resolution model: real-time vs. turn-based  — **Accepted** (resolved 2026-10-05, Phase 09)
+**Context:** Top-down combat; the damage formula was defined (D-002/Phase 02) but the *timing
+model* was not. It blocked Phase 09 because it shapes the whole combat orchestration layer.
 **Options:** (a) real-time action; (b) turn-based; (c) hybrid (ATB).
-**Decision:** *Undecided — significant design question.* Must be resolved before Phase 4
-(Combat) because it shapes the combat orchestration layer (not the damage math, which is
-model-agnostic).
-**Blocking:** Phase 09 (Combat).
+
+**Decision: (a) REAL-TIME TOP-DOWN ACTION COMBAT.**
+
+The player's attack is a timed commitment, not a menu choice. Every attack runs one lifecycle
+— `READY → WINDUP → ACTIVE → RECOVERY → READY` — and a hit can only land during ACTIVE.
+
+**Why, in terms of the product's own pillars rather than genre convention:**
+- Pillar 2 is *readable top-down combat* (`01-product.md`). The thing a player reads in a
+  top-down view is SPACE and TIMING — where I am, where it is, whether I can get there before
+  the swing lands. A turn-based model throws away the spatial information the top-down camera
+  exists to present, and ATB keeps the camera while making position advisory.
+- Pillar 1 is *progression that feels earned*. In an action model a realm advance can change
+  what the player can DO in a fight (faster recovery, longer reach, a new window), which is the
+  question `PROGRESSION_CULTIVATION_DESIGN.md` §1 demands every advance answer with something
+  other than a bigger number. In a turn-based model most of those answers collapse back into
+  damage and HP.
+- The **cost** is accepted openly: real-time makes frame timing part of correctness, which is
+  why the lifecycle is a pure domain class with exact-delta tests rather than flags on a node.
+
+**Consequences, and what each one made necessary:**
+- **Timing is CONTENT.** `AttackData` authors windup/active/recovery, reach, arc and the damage
+  scalars, so a heavy attack and a jab are the same three numbers with different values and a
+  new attack is a `.tres` (the extensibility rule).
+- **A hit window is an EDGE, not a level.** `consume_hit_window()` fires exactly once per swing.
+  Polling "am I in ACTIVE" would resolve the same swing once per frame, which makes frame rate
+  into damage.
+- **A long frame must not swallow a hit.** `advance()` consumes its delta state by state, so a
+  stutter passes THROUGH the hit window instead of over it. This is the single most expensive
+  defect class in an action model, and the symptom ("sometimes my attack does nothing") is
+  almost unreproducible.
+- **Hit detection is ANALYTIC, not physics.** `CombatService` compares reach and arc against a
+  session registry of hurtboxes; there are no hitbox/hurtbox collision layers. In the headless
+  `-s` runner an Area2D overlap does not fire reliably — L-016 and L-017, the two costliest
+  lessons in this repository — so a combat system detecting hits with one could not be tested
+  end to end. It is also cheaper, and the trade (a target is a point plus a radius rather than
+  a polygon) is invisible on a 16px grid.
+- **Crit needs seeded randomness**, so `RngService.STREAM_COMBAT` exists — a second stream on
+  the SAME world seed, not a second seed, so a combat roll can never shift the world
+  simulation's sequence and a save still has one world identity.
+- **Damage math stayed in one place.** `DamageRules.compute_hit()` grew `power_multiplier` and
+  `critical_multiplier` as defaulted parameters rather than combat multiplying scalars itself;
+  the service decides WHETHER a hit crits, the formula decides how much.
+
+**What this decision does NOT settle** (each belongs to the phase with a real consumer): enemy
+AI and aggro, dodge/parry/stagger/knockback, combo chains and cancels, status effects, elemental
+resistance, projectiles, and anything multi-entity turn-ordered. The lifecycle is the seam those
+hook onto — a transition needs something to transition.
+**Superseded blocking note:** this no longer blocks Phase 09; Phase 09 implements it.
 
 ## D-008 — Localization backing format: CSV vs. PO  — **Accepted** (resolved 2026-10-02, Phase 01)
 **Context:** `vi`/`en` from the foundation, wrapped by a thin `Localization` service.

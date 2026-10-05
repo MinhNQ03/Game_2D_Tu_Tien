@@ -62,6 +62,9 @@ var _map_label: Label
 var _world_date_label: Label
 var _world_event_label: Label
 var _portrait: TextureRect
+## The player's health gauge (Phase 09). Hidden until a health value arrives, so a HUD built
+## outside a combat session shows no gauge rather than a full bar for health nothing owns.
+var _health_gauge: ProgressBar
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
 var _sect_row: UIPromptRow
@@ -204,6 +207,19 @@ func _build_ui() -> void:
 	_title_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
 	_title_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
 	identity_text.add_child(_title_label)
+
+	# The health gauge (Phase 09). It appears NOW and not earlier because combat finally owns
+	# the value it shows — the UI bible forbids a gauge for state no system owns, since a bar
+	# that looks right in a mock and shows nothing real in a build is worse than no bar.
+	#
+	# Styled by `UITheme.vitals_gauge()`, not here: C18 requires combat UI to use the shared
+	# foundation, so the next gauge (mana, cultivation progress, a boss bar) inherits the same
+	# look instead of being styled again by whoever adds it.
+	_health_gauge = UITheme.vitals_gauge()
+	# Hidden until a real value arrives. A gauge sitting at full for health nothing has
+	# reported is the same lie as a gauge for a system that does not exist yet.
+	_health_gauge.visible = false
+	identity_text.add_child(_health_gauge)
 
 	# The engraved rule that separates the two identity tiers. Same art as the menu title and
 	# the sect panel header, so all three screens read as one design language (D-041).
@@ -462,6 +478,27 @@ func set_character(state: CharacterState) -> void:
 		_name_key = state.name_key
 		_title_key = state.title_key
 	_refresh()
+
+
+## Push the player's health into the gauge (Phase 09). Called by whoever connects the player's
+## `health_changed` signal — the HUD never reads a HealthComponent itself, so it stays a view.
+##
+## A non-positive maximum HIDES the gauge instead of showing an empty one: "no health has been
+## reported" and "this character is at 0 HP" are different states, and rendering them the same
+## way would make a wiring failure look like a death.
+func set_health(current: int, maximum: int) -> void:
+	if _health_gauge == null:
+		return
+	if maximum <= 0:
+		_health_gauge.visible = false
+		return
+	_health_gauge.visible = true
+	UITheme.set_gauge_value(_health_gauge, current, maximum)
+
+
+## Is the health gauge currently shown? (for tests — the gauge's visibility IS its contract.)
+func is_health_gauge_visible() -> bool:
+	return _health_gauge != null and _health_gauge.visible
 
 
 ## Set the current map's name localization key.

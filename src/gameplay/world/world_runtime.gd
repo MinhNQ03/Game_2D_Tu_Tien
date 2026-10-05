@@ -41,6 +41,10 @@ const PLAYER_TEMPLATE_PATH := "res://data/characters/player_default.tres"
 ## player's CharacterState consistently.
 const PLAYER_INSTANCE_ID := &"player"
 
+## The player's authored attack (Phase 09). Content, so swapping the player's basic swing is
+## editing a `.tres` — never this file.
+const PLAYER_ATTACK_PATH := "res://data/combat/attack_player_basic.tres"
+
 const PlayerScene := preload("res://src/gameplay/entities/player.tscn")
 
 ## Emitted when the player asks to leave the world back to the menu (bubbled up from the
@@ -378,6 +382,67 @@ func refresh_active_map_politics_view() -> void:
 func refresh_active_map_world_sim_view() -> void:
 	_notify_world_sim_arrival(get_current_map_id())
 	_push_world_sim_view_to_active_map()
+
+
+## Arm the realized world for combat (Phase 09): make the player an attacker and register
+## every combat target in the active map.
+##
+## Public for the same reason as the three refreshes above — the hub map and the player are
+## already realized by the time `Main` starts the combat session, so nothing in the world is
+## armed yet. `Main` calls this once immediately after.
+##
+## Returns false (loud) if the PLAYER could not be armed, because that is the one failure the
+## player would experience directly as "attack does nothing". A map with no targets is NOT a
+## failure: an empty, peaceful map is legitimate content.
+func arm_active_map_combat(combat_runtime: Node) -> bool:
+	if combat_runtime == null or not is_instance_valid(combat_runtime):
+		push_error("[world] arm_active_map_combat called with no CombatRuntime")
+		return false
+	if _player == null or not is_instance_valid(_player):
+		push_error("[world] cannot arm combat: no player is realized")
+		return false
+	var attack := _load_player_attack()
+	if attack == null:
+		return false
+	if not bool(combat_runtime.call(
+			"arm_attacker", _player, attack, WorldRuntime.PLAYER_INSTANCE_ID)):
+		push_error("[world] the player could not be armed for combat")
+		return false
+	_register_active_map_targets(combat_runtime)
+	return true
+
+
+## Register every combat target the ACTIVE map declares. A map answers for its own contents —
+## the world runtime does not go hunting through the scene for things that look damageable,
+## because "looks damageable" is exactly the kind of implicit rule that silently skips a
+## target when a scene is restructured.
+func _register_active_map_targets(combat_runtime: Node) -> void:
+	if _active_map == null or not is_instance_valid(_active_map):
+		return
+	if not _active_map.has_method("get_combat_targets"):
+		return
+	for target in _active_map.call("get_combat_targets"):
+		var node := target as Node
+		if node == null or not is_instance_valid(node):
+			continue
+		combat_runtime.call("register_target", node)
+
+
+## Load the player's authored attack. A missing or invalid resource is FATAL for arming
+## rather than silently skipped: an unarmed player is a game where the attack key does
+## nothing, and that must be an error with a path in it, not a mystery.
+func _load_player_attack() -> AttackData:
+	if not ResourceLoader.exists(PLAYER_ATTACK_PATH):
+		push_error("[world] player attack resource missing: %s" % PLAYER_ATTACK_PATH)
+		return null
+	var attack := load(PLAYER_ATTACK_PATH) as AttackData
+	if attack == null:
+		push_error("[world] %s did not load as AttackData" % PLAYER_ATTACK_PATH)
+		return null
+	if not attack.is_valid():
+		push_error("[world] the authored player attack is invalid; the player stays unarmed")
+		return null
+	return attack
 
 
 ## Find the optional FactionRuntime sibling and push the read-only politics view of the

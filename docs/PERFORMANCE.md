@@ -17,10 +17,15 @@
   intended: zero per-frame work in the world-simulation subsystem (guarded by a source-reading
   test), zero nodes for background actors in any LOD band, bounded catch-up, and a bounded
   event feed. The full list is in the Phase-08 note at the end of this document.
+- **Combat has a budget too** (Phase 09): `tests/performance/test_combat_budget.gd` asserts
+  that an idle attacker runs no physics callback at all, that a swing is LINEAR in candidates
+  rather than quadratic, that each candidate is cheap to reject (~0.42 µs), and that the seeded
+  stream advances once per HIT rather than per candidate. It produced **PERF-002**.
 - **Still true, and still deliberate:** no Godot *profiler* session has been run on a
-  representative combat scene, because combat does not exist yet (Phase 09). The budget that
-  exists is an in-suite timing assertion, not a profiler capture. Phase 29 (Performance) is
-  where target-hardware profiling happens.
+  representative combat scene. The budgets that exist are in-suite timing assertions, not
+  profiler captures, and the shipped world has one combat target — so these numbers bound the
+  RESOLUTION cost, not the cost of a real fight with enemies and AI, which arrives with the
+  phase that adds them. Phase 29 (Performance) is where target-hardware profiling happens.
 - The other performance guards in the repo (map-transition orphan-node checks, the suite's
   leak gate) are **correctness/no-leak assertions, not tuned optimizations** — they are tests,
   and they are deliberately NOT optimization-log entries.
@@ -170,6 +175,40 @@ Template:
 > This is the FIRST entry in this log, and it is here because the budget test was written
 > before the code was declared done and then failed. That is the intended order
 > (`§1 Measure first`): the optimization is a response to a measurement, not to a hunch.
+
+### PERF-002 — a swing fully type-validated every candidate before rejecting it  (2026-10-05)
+
+- **Problem:** `CombatService.resolve_hit()` ran `_validated_target()` — five `typeof` checks
+  and five dictionary lookups — on EVERY entity in the hurtbox registry, and only then rejected
+  it by distance. A swing in a busy area therefore paid the full validation cost for hundreds
+  of entities that were nowhere near the attack, on every attack.
+- **Cause:** found by the budget test in `tests/performance/test_combat_budget.gd`, which holds
+  the in-range targets CONSTANT at 4 and varies only the number of irrelevant registered
+  entities. A tenfold registry cost **9.00x** more per swing — i.e. the cost was dominated by
+  entities that could not be hit. Validation is a BOUNDARY concern; running it per candidate
+  per swing re-checks data the program itself constructed moments earlier.
+- **Solution:** geometry first, full validation second. The reach/arc reject needs only
+  `position` and `radius`, so those two are type-checked up front and the remaining three
+  fields are validated only for candidates that survive the geometric filter. No validation was
+  removed — the same fields are still checked before they are read (L-024), just not for
+  entities that are about to be discarded.
+- **Impact:** 2000 swings, 4 in-range targets in both runs —
+  - registry of 40: **112 ms -> 52 ms**
+  - registry of 400: **1005 ms -> 334 ms** (3x faster)
+  - scaling factor for a 10x larger registry: **9.00x -> 6.43x**
+  - broad-phase cost: **0.418 us per candidate**
+- **Measured:** `tests/performance/test_combat_budget.gd` (headless, `Time.get_ticks_usec`
+  around 2000 `resolve_hit` calls, synthetic target arrays so N is controllable), Godot
+  4.7-stable headless.
+- **A correction worth recording:** the test's first version asserted scaling "< 4x", which is
+  a claim the design never made — a broad-phase scan looks at every candidate once, so 10x
+  candidates legitimately costs ~10x. The assertion was wrong, and it still did its job: it
+  failed at 9x and that is how the validation ordering was found. It was then restated as what
+  linear MEANS (< 13x, so a quadratic scan at ~100x fails) plus a per-candidate microsecond
+  budget, which is the property that actually matters. Sub-linear would need a spatial index,
+  and nothing needs one yet.
+- **Links:** D-007 (Phase 09), `tests/unit/combat/test_combat_resolution.gd`.
+
 
 ## 5. Relationship to tests
 

@@ -63,6 +63,7 @@ const FACTION_RUNTIME_SCRIPT := "res://src/gameplay/world/faction_runtime.gd"
 ## service (its actors enrol, its events move sect influence), the faction service, and the
 ## relationship graph. It is therefore ended FIRST on every teardown.
 const WORLD_SIM_RUNTIME_SCRIPT := "res://src/gameplay/world/world_sim_runtime.gd"
+const COMBAT_RUNTIME_SCRIPT := "res://src/gameplay/world/combat_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -93,9 +94,14 @@ const REQUIRED_AUTOLOADS := [
 ## relationship graph and the player's CharacterState while the sect and faction sessions —
 ## whose state is defined in terms of both — were still live. Driving both paths from this one
 ## constant is what makes the two orders incapable of drifting apart again.
+## CombatRuntime is LAST on purpose (Phase 09): it borrows the world simulation's `RngService`
+## for the seeded combat stream and points at entities the world realized, so it must start
+## after both — and therefore end FIRST, before the seam it borrowed and the entities it
+## points at are gone. Ending it first is also what lets it cancel a swing in flight before
+## the nodes it would resolve against are freed.
 const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
-	&"WorldSimulationRuntime",
+	&"WorldSimulationRuntime", &"CombatRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -114,6 +120,9 @@ var _sect: Node = null
 var _faction: Node = null
 # WorldSimulationRuntime (per-session world simulation), under Systems (Phase 08).
 var _world_sim: Node = null
+# CombatRuntime (per-session combat seam: service + hurtbox registry), under Systems
+# (Phase 09).
+var _combat: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -191,6 +200,7 @@ func _boot() -> void:
 
 	# And the WorldSimulationRuntime (Phase 08), now the last link in the dependency chain.
 	_create_world_sim_runtime()
+	_create_combat_runtime()
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -297,6 +307,22 @@ func _create_world_sim_runtime() -> void:
 	_world_sim.name = "WorldSimulationRuntime"
 	_world_sim.set_script(sim_script)
 	get_node(CONTAINER_SYSTEMS).add_child(_world_sim)
+
+
+## Instantiate the CombatRuntime subsystem under Systems (Phase 09). Same shape as the other
+## five: a script-created node, not an autoload (the budget is frozen at five — D-017), and
+## idle until New Game starts a session.
+func _create_combat_runtime() -> void:
+	if _combat != null and is_instance_valid(_combat):
+		return
+	var combat_script: Script = load(COMBAT_RUNTIME_SCRIPT)
+	if combat_script == null:
+		push_error("[boot] failed to load CombatRuntime script: %s" % COMBAT_RUNTIME_SCRIPT)
+		return
+	_combat = Node.new()
+	_combat.name = "CombatRuntime"
+	_combat.set_script(combat_script)
+	get_node(CONTAINER_SYSTEMS).add_child(_combat)
 
 
 ## Instantiates the main-menu shell under the UI layer and wires its intents. Returns
@@ -409,6 +435,16 @@ func _on_new_game_pressed() -> void:
 		_unwind_failed_session()
 		return
 
+	# Start the combat session (Phase 09) after the simulation, because it borrows the
+	# simulation's seeded `RngService` for the combat stream. Also FATAL: a running game whose
+	# combat session failed would be one where the player can press attack and nothing can
+	# ever be hit — a game that looks playable and is not. Failing closed sends it back to the
+	# menu with an error instead (L-025).
+	if not _start_combat_session():
+		push_error("[main] combat session failed to start; returning to menu")
+		_unwind_failed_session()
+		return
+
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
@@ -477,6 +513,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _faction
 		&"WorldSimulationRuntime":
 			return _world_sim
+		&"CombatRuntime":
+			return _combat
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -666,6 +704,45 @@ func _start_world_sim_session() -> bool:
 	if _world != null and is_instance_valid(_world) \
 			and _world.has_method("refresh_active_map_world_sim_view"):
 		_world.call("refresh_active_map_world_sim_view")
+	return true
+
+
+## Start the CombatRuntime session (Phase 09), sharing the world simulation's `RngService`.
+##
+## It takes the SIMULATION's seam rather than building one: one world seed, two independent
+## streams (`derive_state()` starts them far apart), so a combat roll can never shift the
+## simulation's sequence and a save has exactly one world identity. A second `RngService` with
+## its own seed would mean "which seed is this world" no longer had one answer.
+##
+## Returns TRUE only when combat is actually live. Every prerequisite the caller cannot see is
+## reported here rather than quietly skipped, because New Game treats a combat failure as
+## fatal: a session where the player can press attack and nothing can be hit looks playable
+## and is not.
+func _start_combat_session() -> bool:
+	if _combat == null or not is_instance_valid(_combat):
+		push_error("[main] cannot start combat: CombatRuntime missing")
+		return false
+	if _world_sim == null or not is_instance_valid(_world_sim):
+		push_error("[main] cannot start combat: WorldSimulationRuntime missing, so there is "
+			+ "no seeded RNG seam to share")
+		return false
+	var sim_state: WorldSimulationState = _world_sim.call("get_state")
+	if sim_state == null:
+		push_error("[main] cannot start combat: the world simulation has no state, so no "
+			+ "seeded RngService exists to draw the combat stream from")
+		return false
+	var rng := sim_state.rng()
+	if rng == null:
+		push_error("[main] cannot start combat: the simulation state exposed no RngService")
+		return false
+	if not bool(_combat.call("start_session", rng)):
+		return false
+	# The hub map and the player were realized during the WORLD session, before combat
+	# existed, so nothing in the world is armed or targetable yet. Arm them now — same
+	# after-the-fact wiring as the sect/politics/world-sim view refreshes above.
+	if _world != null and is_instance_valid(_world) \
+			and _world.has_method("arm_active_map_combat"):
+		_world.call("arm_active_map_combat", _combat)
 	return true
 
 

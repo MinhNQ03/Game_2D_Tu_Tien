@@ -36,6 +36,10 @@ const VisualComponentScript := preload(
 @onready var _health: HealthComponent = $HealthComponent
 @onready var _movement: MovementComponent = $MovementComponent
 @onready var _static_visual: Sprite2D = $Visual
+## The attack driver (Phase 09). Present in the scene but UNARMED until `CombatRuntime` arms
+## it, so a player realized outside a combat session simply cannot swing — rather than
+## swinging into a world with no registry and no service.
+@onready var _attack: AttackComponent = $AttackComponent
 
 var _input: Node = null
 
@@ -169,10 +173,22 @@ func _physics_process(delta: float) -> void:
 	if _visual != null:
 		_visual.update_facing(intent, intent != Vector2.ZERO)
 
+	# Facing is pushed to the ATTACK component from the same intent that drives movement and
+	# the visual, so a swing points where the player is actually looking. The component
+	# ignores a zero vector, which is what makes a standing player keep the facing they
+	# stopped with instead of swinging in no direction (Phase 09).
+	if _attack != null:
+		_attack.set_facing(intent)
+
 	# Edge-triggered attack INTENT. The service gates this on GAMEPLAY context, so an open
 	# menu/modal can never leak an attack to the world.
 	if _input.call("is_gameplay_action_just_pressed", ATTACK_ACTION):
-		attack_requested.emit()
+		# The signal is kept for the Phase-02 sandbox coordinator, which still resolves its
+		# own hit. In a real session the AttackComponent owns the swing, and it REFUSES while
+		# one is in flight — that refusal is the commitment rule, so it must not be worked
+		# around by also emitting a second resolution path here.
+		if _attack == null or not _attack.request_attack():
+			attack_requested.emit()
 
 
 # --- Stat reads (for a gameplay coordinator resolving a hit via DamageRules) ---

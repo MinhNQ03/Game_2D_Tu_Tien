@@ -64,6 +64,25 @@ Inputs: attacker stats · công pháp (`technique_mult`) · skill def · equipme
 target defense/resist. Output: integer damage + effects to apply + events to emit.
 Any change to this formula is logged in `DECISIONS.md` and re-tested (high-risk area).
 
+**IMPLEMENTED SO FAR** (`src/domain/combat/damage_rules.gd`, the one owner of this math):
+
+```
+compute_hit(attacker_attack, target_defense, power_multiplier = 1.0, critical_multiplier = 1.0)
+  raw        = attacker_attack * power_multiplier
+  mitigated  = raw * ATTACK_SCALE / (ATTACK_SCALE + target_defense)
+  final      = max(MIN_DAMAGE, round(mitigated * critical_multiplier))
+```
+
+- `power_multiplier` and `critical_multiplier` arrived in **Phase 09** and are DEFAULTED, so
+  the Phase-02 two-argument behaviour is unchanged (asserted).
+- `power_multiplier` is `AttackData.power_multiplier`; `skill.flat_power` does not exist yet.
+- The function does NOT roll. `CombatService` owns the seeded roll (`RngService.STREAM_COMBAT`)
+  and passes `AttackData.critical_multiplier` in when it crits, `1.0` otherwise — a rule that
+  drew its own randomness could not be unit-tested without also pinning an RNG.
+- `ATTACK_SCALE` is a named constant here, not yet `attacker.attack_scale` from data.
+- Still absent, each waiting for the phase with a real consumer: `skill.flat_power`,
+  `resist[element]`, `technique_mult`, `equipment_mult`.
+
 ## 3. Content resource schemas
 
 ### ItemData (`item_*`)

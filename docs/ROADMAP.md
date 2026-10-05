@@ -25,7 +25,13 @@
 > gameplay beats, deterministically from a seeded per-subsystem RNG stream, with Near/Mid/Far
 > LOD, zero nodes for the background cast and zero per-frame work. It also introduced the
 > deterministic RNG seam (D-040/C-010) that Phase 09 onward reuses, and `CharacterRegistry`.
-> **Phase 09 (Combat) is NOT STARTED.**
+> **Phase 09 (Combat) is IMPLEMENTED** — **D-007 is resolved as REAL-TIME TOP-DOWN ACTION
+> COMBAT**, after being Open since Phase 0. A pure-domain `READY -> WINDUP -> ACTIVE ->
+> RECOVERY` lifecycle with data-authored timing, ANALYTIC hit resolution against a session
+> hurtbox registry (no physics sensors — L-016/L-017), crit from the seeded
+> `RngService.STREAM_COMBAT`, `CombatRuntime` as the sixth per-session node, a real target in
+> the hub map, the first health gauge on the D-050 UI foundation, and PERF-002.
+> **Phase 10 is NOT STARTED.**
 >
 > **Phase 07 hardening (2026-10-05, D-047 — not a phase, no new scope):** two lifecycle/invariant
 > holes a green CI could not see. (1) The normal return-to-menu had drifted to tearing the session
@@ -123,7 +129,7 @@ MovementComponent) — no inheritance chain, no God object. Semantic input only 
 `InputService`); top-down 8-direction movement with normalized diagonals and collision;
 stats from a `StatBlock` Resource (data, not magic numbers); health with enforced
 invariants (`0<=hp<=max`, `died` once, DEAD terminal). A minimal, model-agnostic damage
-rule lives once in `src/domain/combat/damage_rules.gd` (NOT a combat system — D-007 stays
+rule lives once in `src/domain/combat/damage_rules.gd` (NOT a combat system — D-007 was still
 Open). A Training Dummy (same components, no AI) and a playable **Player Sandbox** scene
 prove a bidirectional damage exchange. The player is modeled as a Character conceptually
 (Phase 04): authoritative numbers are data, the node is a runtime view, so Phase 04 binds

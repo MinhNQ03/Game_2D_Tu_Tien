@@ -120,3 +120,4 @@ UI_HUD_WORLD_DATE,"Yr {year} · Season {season} · Day {day}","Năm {year} · M�
 UI_HUD_WORLD_EVENT_ROSE,"{subject} rose","{subject} tăng lên"
 UI_HUD_WORLD_EVENT_FELL,"{subject} fell","{subject} giảm xuống"
 UI_HUD_WORLD_QUIET,The world is quiet.,Thế gian đang yên ắng.
+ATTACK_PLAYER_BASIC_NAME,Palm Strike,Chưởng Pháp

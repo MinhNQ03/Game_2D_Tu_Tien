@@ -208,7 +208,35 @@ func _physics_process(_delta: float) -> void:
 		_follow_target = _find_player_node()
 		if _follow_target == null:
 			return  # player not spawned/parented yet; try again next frame
+		# The player was just resolved, so this is the one place that knows both the player
+		# and the HUD exist. Wire health here (Phase 09) rather than in `_ready`: the player
+		# is parented in by `WorldRuntime` AFTER the map is ready, so a `_ready`-time
+		# connection would silently find nothing and the gauge would stay empty forever.
+		_bind_player_health(_follow_target)
 	_camera.global_position = _follow_target.global_position
+
+
+## Connect the player's health to the HUD gauge and push the current value immediately.
+##
+## Pushing immediately matters: `health_changed` fires on `initialize()`, which already
+## happened when the player entered the tree, so a listener that only waits for the next
+## signal shows nothing until the player is first damaged — a gauge that appears only after
+## you get hit reads as a bug.
+func _bind_player_health(player: Node2D) -> void:
+	if _hud == null or player == null or not is_instance_valid(player):
+		return
+	if not player.has_signal("health_changed"):
+		return
+	if not player.is_connected("health_changed", _on_player_health_changed):
+		player.connect("health_changed", _on_player_health_changed)
+	if player.has_method("get_current_health") and player.has_method("get_max_health"):
+		_hud.set_health(
+			int(player.call("get_current_health")), int(player.call("get_max_health")))
+
+
+func _on_player_health_changed(current: int, maximum: int) -> void:
+	if _hud != null:
+		_hud.set_health(current, maximum)
 
 
 ## The player node realized in this map (or null before WorldRuntime parents it).
@@ -242,6 +270,24 @@ func _validate_exit_zones(map_data: MapData) -> void:
 # --- Player host + spawns ----------------------------------------------------
 
 ## Where WorldRuntime parents the persistent player. Falls back to self if no PlayerHost.
+## Every combat target this map declares (Phase 09). Children of an optional `CombatTargets`
+## node, in scene order.
+##
+## The map ANSWERS FOR ITS OWN CONTENTS rather than letting the world runtime hunt the scene
+## for things that look damageable. "Looks damageable" is the kind of implicit rule that
+## silently stops matching when a scene is restructured — and a combat target that quietly
+## stops being registered is a target the player can hit forever with no effect. An empty
+## result is legitimate: a peaceful map is content, not a misconfiguration.
+func get_combat_targets() -> Array[Node]:
+	var out: Array[Node] = []
+	var host := get_node_or_null("CombatTargets")
+	if host == null:
+		return out
+	for child in host.get_children():
+		out.append(child)
+	return out
+
+
 func get_player_host() -> Node:
 	var host := get_node_or_null("PlayerHost")
 	return host if host != null else self

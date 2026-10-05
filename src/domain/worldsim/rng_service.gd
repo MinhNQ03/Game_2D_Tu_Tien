@@ -24,14 +24,20 @@ class_name RngService
 ## RNG seam is an autoload"). A global RNG would also make the determinism untestable, since
 ## two tests in one process would share a sequence.
 ##
-## WHY `stream(id)` IS GENERIC AND ONLY ONE STREAM ID IS NAMED HERE. The matrix lists the
-## future streams above, but a constant for a stream nothing draws from yet is exactly the
-## speculative surface L-005 forbids. Phase 08 therefore names ONE id — the one it actually
-## consumes — and the API takes any `StringName`. Phase 09 adds `STREAM_COMBAT` in the file
-## that draws from it.
+## WHY ONLY THE STREAMS WITH A REAL CONSUMER ARE NAMED HERE. The matrix lists the future
+## streams above, but a constant for a stream nothing draws from yet is exactly the speculative
+## surface L-005 forbids. Phase 08 named ONE id, and Phase 09 added the second the day
+## `CombatService` actually drew from it. The API takes any `StringName`, so the next stream is
+## a constant plus a consumer, in the same commit — never a constant on its own.
 
-## The world-simulation stream. The only stream with a real producer in Phase 08.
+## The world-simulation stream (Phase 08).
 const STREAM_WORLD_SIM := &"world_sim"
+
+## The combat stream (Phase 09, D-007). Drawn from by `CombatService` for the critical-hit
+## roll. It is a stream of its own, not a shared one, because `derive_state()` makes streams
+## start independently: a combat roll can never shift the world simulation's sequence, so two
+## runs with the same seed evolve the same world whether or not the player fought on the way.
+const STREAM_COMBAT := &"combat"
 
 ## Seed bounds. The world seed is a 32-bit value because that is the width the stream mixer
 ## works in; a wider seed would have bits that cannot affect anything, which is worse than a

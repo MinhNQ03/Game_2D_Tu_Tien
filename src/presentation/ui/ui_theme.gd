@@ -169,6 +169,87 @@ static func _build_corner_ornaments(parent: Control) -> void:
 		parent.add_child(piece)
 
 
+## THE vitals gauge (Phase 09). A styled `ProgressBar` with a centred value Label inside it.
+##
+## The fifth shared seam, built for the same reason as the other four: the HUD must not style
+## a gauge itself, or the next gauge (mana, cultivation progress, a boss bar) will be styled
+## differently by whoever adds it — and C18 is explicit that combat UI uses this foundation
+## rather than ad-hoc styling.
+##
+## THE NUMBER IS ALWAYS WRITTEN, not only drawn. `docs/UI_UX_BIBLE.md` §4: colour is never the
+## only carrier of meaning, so a gauge carries its value as TEXT as well as a bar — which also
+## covers the case where the bar is too short at low values to be read at all.
+##
+## `show_percentage` is off because a percentage is not what a player tracks in a fight; the
+## absolute pair ("18 / 60") is, and it is what the label says.
+static func vitals_gauge() -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.name = "VitalsGauge"
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, UIPalette.GAUGE_HEIGHT)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.min_value = 0.0
+	bar.max_value = 1.0
+	bar.value = 1.0
+	bar.add_theme_stylebox_override("background", _gauge_well_stylebox())
+	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(UIPalette.GAUGE_FILL))
+
+	var value_label := Label.new()
+	value_label.name = "Value"
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	value_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	value_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
+	value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A `ProgressBar` is not a container, so the label is anchored over it rather than laid
+	# out by it. FULL_RECT with offsets, not `set_anchors_preset`, which preserves the current
+	# 0x0 rect and would leave the label invisible (L-028).
+	value_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bar.add_child(value_label)
+	return bar
+
+
+## Push a value into a gauge built by `vitals_gauge()`: the bar, the text, and the critical
+## fill colour, together.
+##
+## It is ONE call on purpose. Three separate updates is three chances to update two of them,
+## and a gauge whose bar and number disagree is worse than either alone — the player cannot
+## tell which one is lying.
+static func set_gauge_value(bar: ProgressBar, current: int, maximum: int) -> void:
+	if bar == null or not is_instance_valid(bar):
+		return
+	var safe_max: int = maxi(1, maximum)
+	var safe_current: int = clampi(current, 0, safe_max)
+	bar.max_value = float(safe_max)
+	bar.value = float(safe_current)
+	var label := bar.get_node_or_null("Value") as Label
+	if label != null:
+		label.text = "%d / %d" % [safe_current, safe_max]
+	var fraction := float(safe_current) / float(safe_max)
+	var fill: Color = UIPalette.GAUGE_FILL_LOW if fraction <= UIPalette.GAUGE_LOW_FRACTION \
+		else UIPalette.GAUGE_FILL
+	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(fill))
+
+
+## The gauge's empty well: the same dark ink the text surfaces use, so an empty gauge reads as
+## part of its plaque rather than as a hole in it.
+static func _gauge_well_stylebox() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = UIPalette.COLOR_BACKGROUND_DEEP
+	box.border_color = UIPalette.COLOR_ORNAMENT
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(2)
+	return box
+
+
+static func _gauge_fill_stylebox(fill: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.set_corner_radius_all(2)
+	return box
+
+
 ## THE scrolling body of a bounded side panel. Returns the `VBoxContainer` rows go into.
 ##
 ## One factory because both side panels built this identically — scroll mode, `follow_focus`,

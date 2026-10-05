@@ -478,6 +478,11 @@ func _populate_plaques(hud: Node) -> void:
 	sect.rank_name_key = &"SECT_RANK_OUTER_DISCIPLE"
 	sect.reputation = 45
 	hud.call("set_sect_view", sect)
+	# The health gauge is hidden until a value arrives (Phase 09), and a hidden child
+	# contributes nothing to a container's minimum size — the SAME trap that made the first
+	# two reserve values too small. Pushing a value here is what makes the measured plaque the
+	# plaque on screen.
+	hud.call("set_health", 100, 100)
 	var view := WorldSimView.new()
 	view.available = true
 	view.year = 1
@@ -577,15 +582,38 @@ func _first_scroll(node: Node) -> ScrollContainer:
 	return null
 
 
-## A8/A17 — the visual pass must NOT invent stats the domain cannot back yet. A gold HP bar
-## looks great in a mock and is a lie in a build: nothing in the running session owns health,
-## mana, realm progress or XP, so no bar may appear until the phase that does.
-func test_hud_visual_pass_invents_no_unbound_stats() -> void:
+## A8/A17 — the HUD must show a gauge for EXACTLY the stats a system owns, and no others.
+##
+## This rule has not been relaxed, it has been applied: until Phase 09 nothing in a running
+## session owned health, so the correct number of gauges was zero. Combat owns health now, so
+## the correct number is ONE — and it must be the HEALTH gauge, hidden until a real value
+## arrives. Mana, realm progress and XP are still owned by nobody, so a second gauge is still
+## a lie, and the count is what catches one appearing.
+func test_hud_shows_a_gauge_for_exactly_the_stats_a_system_owns() -> void:
 	var hud := _hud()
-	assert_eq(_count_class(hud, "ProgressBar"), 0,
-		"the HUD draws no progress bar for a stat the session does not own yet")
+	assert_eq(_count_class(hud, "ProgressBar"), 1,
+		("exactly ONE gauge: health, which combat owns. A second gauge means a bar was "
+			+ "added for mana/realm/XP, which no system backs yet"))
 	assert_eq(_count_class(hud, "TextureProgressBar"), 0,
-		"the HUD draws no textured gauge for an unbound stat")
+		"and no textured gauge for an unbound stat")
+
+	# Hidden until a value is pushed: a full bar for health nothing has reported is the same
+	# lie as a bar for a system that does not exist.
+	assert_false(hud.call("is_health_gauge_visible"),
+		"the gauge stays hidden until the session reports a health value")
+	hud.call("set_health", 42, 60)
+	assert_true(hud.call("is_health_gauge_visible"), "pushing a value reveals it")
+
+	# The NUMBER is written, not only drawn — colour is never the only carrier (UI bible §4),
+	# and at low values the bar is too short to read at all.
+	assert_true("42 / 60" in _all_label_text(hud),
+		"the gauge writes its value as text, not only as a bar length")
+
+	# A non-positive maximum is "nothing reported", not "dead at 0 HP": rendering those the
+	# same way would make a wiring failure look like a death.
+	hud.call("set_health", 0, 0)
+	assert_false(hud.call("is_health_gauge_visible"),
+		"a zero maximum hides the gauge rather than showing an empty one")
 	free_node(hud)
 
 

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AttackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/combat/attack_data.gd" id="1_attackdata"]
+
+[resource]
+script = ExtResource("1_attackdata")
+id = &"attack_player_basic"
+name_key = &"ATTACK_PLAYER_BASIC_NAME"
+windup_seconds = 0.1
+active_seconds = 0.08
+recovery_seconds = 0.22
+reach_pixels = 28.0
+arc_degrees = 110.0
+power_multiplier = 1.0
+critical_chance_percent = 15
+critical_multiplier = 1.5
