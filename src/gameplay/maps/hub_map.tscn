@@ -112,7 +112,7 @@ shape = SubResource("RectangleShape2D_wall_h")
 [node name="CombatTargets" type="Node2D" parent="."]
 
 [node name="TrainingDummy" parent="CombatTargets" instance=ExtResource("10_dummy")]
-position = Vector2(620, 304)
+position = Vector2(680, 408)
 
 [node name="PlayerHost" type="Node2D" parent="."]
 

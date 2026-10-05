@@ -1,10 +1,21 @@
 extends RefCounted
 class_name CombatHurtboxRegistry
-## CombatHurtboxRegistry — Aetheria domain (who can be hit right now, Phase 09).
+## CombatHurtboxRegistry — Aetheria GAMEPLAY (who can be hit right now, Phase 09).
 ##
 ## The session's answer to "what targets exist". An attacker asks this instead of asking the
 ## physics engine, which is what makes combat resolvable — and testable — without a physics
 ## frame (D-007; see the note in `collision_layers.gd` for why no sensor layers exist).
+##
+## IT LIVES IN `gameplay`, NOT `domain`, AND THAT PLACEMENT IS THE POINT. Its whole API is
+## typed on `HurtboxComponent`, which is a `Node`. A domain class referring to a node type is
+## an UPWARD dependency — `03-architecture.md` is explicit that dependencies point downward
+## only — and it shipped in `src/domain/combat/` for exactly as long as it took the review
+## pass to read the import list. The distinction is worth stating because it is the seam that
+## keeps the rest of combat clean: `CombatService`, `AttackStateMachine` and `DamageRules` are
+## genuinely domain (plain vectors, dictionaries and Resources, no node anywhere), and they
+## stay testable headless because of it. This class is the gameplay-side collection that feeds
+## them, so it is the right place for the node types to appear — and the wrong place for any
+## combat RULE to appear.
 ##
 ## It is the combat twin of `CharacterRegistry` (Phase 08): one collection that owns the
 ## answer to an existence question, so no other system has to keep a parallel list and the two

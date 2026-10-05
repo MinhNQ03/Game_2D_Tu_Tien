@@ -24,7 +24,9 @@ TIMING, and a turn-based model throws away the information the camera is there t
 - **Timing is CONTENT.** `AttackData` (`data/combat/attack_player_basic.tres`) authors
   windup/active/recovery, reach, arc, power and crit, so a new attack is a `.tres`.
 - **Hit detection is ANALYTIC, not physics.** `CombatService` compares reach and arc against a
-  session `CombatHurtboxRegistry`; there are deliberately NO hitbox/hurtbox collision layers.
+  session `CombatHurtboxRegistry` (in `src/gameplay/` — its API is typed on a `Node`, so
+  domain would have been the wrong layer; the rules themselves stay node-free and therefore
+  headless-testable); there are deliberately NO hitbox/hurtbox collision layers.
   In the headless runner an Area2D overlap does not fire reliably (L-016/L-017), so a combat
   system detecting hits that way could not be tested end to end — and the trade (a target is a
   point plus a radius) is invisible on a 16px grid. The reasoning is recorded in

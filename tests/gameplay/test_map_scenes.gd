@@ -22,6 +22,11 @@ const FIELD_DATA := "res://data/maps/map_field.tres"
 ## `fill_rect` into world units so it can be compared with `MapData.bounds`.
 const TILE_PX := 16
 
+## Clearance a solid combat target must leave around a spawn→exit walking line, in pixels.
+## Two tiles: wide enough that a 32px-wide character walking the line does not clip the
+## target's 28px collision box, with a tile of margin so it does not merely *barely* pass.
+const MIN_PATH_CLEARANCE_PX := 32
+
 
 func _assert_map_structure(scene: PackedScene, data_path: String) -> void:
 	var map: Node = scene.instantiate()  # NOT added to the tree
@@ -189,6 +194,64 @@ func _assert_decor_contract(scene: PackedScene, label: String) -> void:
 				"%s decor '%s' texture is authored size %s" % [label, sprite.name, str(want)])
 	assert_true(sprites >= 1, "%s has at least one decorative prop sprite" % label)
 	map.free()
+
+
+## A combat target is a SOLID body, so a map must not park one on the line a player walks
+## from a spawn to an exit (Phase 09).
+##
+## The hub's training dummy first shipped at (620, 304) — dead centre of the straight
+## east-west run from `spawn_default` (496, 304) to the field exit (944, 304) — so leaving
+## spawn walked you straight into it. Nothing caught it: the movement E2E takes one short
+## step and the transition E2E places the player at the exit, so no test walks the corridor,
+## and the capture happens to show the player standing still. This makes the clearance
+## arithmetic instead of something to notice in a screenshot.
+##
+## It checks perpendicular distance to each spawn→exit SEGMENT, not just to the endpoints: a
+## target can be far from both ends and still sit in the middle of the path.
+func test_combat_targets_do_not_block_a_spawn_to_exit_path() -> void:
+	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
+		var scene: PackedScene = entry[0]
+		var label: String = String(entry[1])
+		var root := scene.instantiate()
+		add_to_tree(root)
+		var targets: Array[Node] = root.call("get_combat_targets")
+		var spawns := root.get_node_or_null("Spawns")
+		var exits := root.get_node_or_null("Exits")
+		if targets.is_empty() or spawns == null or exits == null:
+			free_node(root)
+			continue
+		for target_node in targets:
+			var target := target_node as Node2D
+			if target == null:
+				continue
+			for spawn in spawns.get_children():
+				var spawn_2d := spawn as Node2D
+				if spawn_2d == null:
+					continue
+				for exit_node in exits.get_children():
+					var exit_2d := exit_node as Node2D
+					if exit_2d == null:
+						continue
+					var distance := _distance_to_segment(
+						target.position, spawn_2d.position, exit_2d.position)
+					assert_true(distance >= MIN_PATH_CLEARANCE_PX,
+						("%s: target '%s' sits %.0fpx from the %s -> %s walking line "
+							+ "(minimum %dpx). A solid target on a spawn-to-exit line means "
+							+ "leaving spawn walks into it.") % [
+								label, target.name, distance, spawn_2d.name, exit_2d.name,
+								MIN_PATH_CLEARANCE_PX])
+		free_node(root)
+
+
+## Shortest distance from `point` to the segment `a`-`b`. A point-to-ENDPOINT check would pass
+## for a target parked exactly half-way along the path, which is the case that actually hurts.
+func _distance_to_segment(point: Vector2, a: Vector2, b: Vector2) -> float:
+	var span := b - a
+	var length_squared := span.length_squared()
+	if length_squared <= 0.0:
+		return point.distance_to(a)
+	var t: float = clampf((point - a).dot(span) / length_squared, 0.0, 1.0)
+	return point.distance_to(a + span * t)
 
 
 func test_hub_decor_contract() -> void:

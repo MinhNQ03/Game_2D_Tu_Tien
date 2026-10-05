@@ -866,3 +866,43 @@
   values and why each was wrong; `_populate_plaques()` in
   `tests/unit/presentation/test_gameplay_hud.gd` now pushes a health value too; the dummy
   sprite's dither is masked to its straw pixels.
+
+## L-036 — A "domain" class typed on a Node is an upward dependency, and a solid prop on the walking line is a defect no test walks into
+- **Symptom (Phase 09 review pass, two findings on a commit that was already green on all 10
+  gates and on CI):**
+  1. `CombatHurtboxRegistry` shipped in `src/domain/combat/` with its entire public API typed
+     on `HurtboxComponent` — a `Node`. That is a **domain → gameplay** dependency, which
+     `03-architecture.md` forbids outright ("dependencies point downward/inward only"). It
+     passed every gate because GDScript's `class_name` resolution does not care about
+     directories: there is no import statement to look wrong, so the violation is invisible
+     unless somebody reads the type names against the folder the file is in.
+  2. The hub's training dummy — a SOLID `StaticBody2D` the player's mask collides with — was
+     placed at (620, 304), dead centre of the straight east-west line from `spawn_default`
+     (496, 304) to the field exit (944, 304). Leaving spawn walked you into it. No test saw
+     it: the movement E2E takes one short step, the transition E2E places the player at the
+     exit, and the capture shows the player standing still. It was then placed at (620, 420),
+     which is clear of the corridor and leaves the sprite standing in a flooded rice paddy —
+     the first fix was checked against the path and not against the floor.
+- **Rule:** **a file's LAYER is a claim about its dependencies, and the type names in its
+  signatures are the evidence.** Before committing a new file under `src/domain/`, read its
+  signatures and fields: a `Node`, `Node2D`, `Control`, `Area2D` or any component class
+  appearing there means it is gameplay or presentation, not domain. Nothing in the toolchain
+  will tell you — no import to flag, no cycle to detect, and the tests pass either way. The
+  useful question is "could this run with no scene tree at all?"; if not, it is not domain.
+  Keep the rules (formula, state machine, resolution) node-free, and let the collection that
+  holds the nodes live one layer up.
+- **Also (content placement):** **a gameplay object that is SOLID makes its position a
+  traversal decision, and the check is against the SEGMENT, not the endpoints** — a prop can
+  be far from both ends and still sit halfway along the path. Verify the floor as well as the
+  path: `get_combat_targets()` returns nodes whose SPRITE extends ~3 cells above its origin,
+  so "the feet are on dry ground" is not the same as "the sprite is on dry ground". Both are
+  now arithmetic: `test_combat_targets_do_not_block_a_spawn_to_exit_path` asserts
+  perpendicular clearance from every spawn→exit segment, and it was confirmed to FAIL at the
+  original coordinates before being accepted.
+- **Also (process):** both findings came from the mandatory review pass AFTER the commit was
+  pushed and CI was green — the same way D-050's three defects were found. A green pipeline
+  says the code runs; it says nothing about which layer a file is in or whether the player can
+  walk out of spawn.
+- **Fixed:** Phase 09 review pass. Registry moved to `src/gameplay/combat_hurtbox_registry.gd`
+  with the placement reasoning in its docstring; dummy moved to (680, 408) — dry ground, 104px
+  clear of the corridor — with the clearance pinned by a test.

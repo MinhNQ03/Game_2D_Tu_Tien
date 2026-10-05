@@ -278,6 +278,13 @@ func _validate_exit_zones(map_data: MapData) -> void:
 ## silently stops matching when a scene is restructured — and a combat target that quietly
 ## stops being registered is a target the player can hit forever with no effect. An empty
 ## result is legitimate: a peaceful map is content, not a misconfiguration.
+##
+## A TARGET IS ALSO A SOLID BODY, so where it is placed is a traversal decision. The hub's
+## dummy was first dropped at (620, 304) — dead centre of the straight east-west line from
+## `spawn_default` (496, 304) to the field exit (944, 304) — so the player walked out of spawn
+## directly into it. No test saw it: the movement E2E takes a short step and the transition
+## E2E places the player at the exit, so nothing walks the corridor. Keep targets OFF the
+## spawn-to-exit lines (`test_map_scenes.gd` pins this).
 func get_combat_targets() -> Array[Node]:
 	var out: Array[Node] = []
 	var host := get_node_or_null("CombatTargets")
