@@ -2942,18 +2942,45 @@ A structural test WALKS `src/gameplay` and fails if any file there authors a col
 comments stripped so `enemy.gd` can still document the literal it used to carry. A
 hand-written file list only protects the files somebody remembered (L-034).
 
-### 4. The corpse was invisible, and dimming alone could not fix it
+### 4. The corpse was invisible — and it took three values and two wrong justifications
 
-The relocated tint was also **measured and corrected**. The original multiplied the pale wolf
-(luminance ~0.80) to ~0.44 and blended a quarter of the dark grass (~0.25) through it, landing
-at ~0.36 against a ~0.25 background: magnified it was plainly a wolf, at 1:1 in the playtest
-capture it was a dark smudge. So a kill read as a *despawn* while the HUD was still naming the
-creature.
+A corpse renders as `sprite * tint.rgb * tint.a + floor * (1 - tint.a)`. Measured against the
+worst (sprite, floor-tile) pair:
 
-`UIPalette.CORPSE_TINT` is now `Color(0.62, 0.66, 0.80, 0.80)`: dimmer than a living entity
-**and** blue-shifted and slightly translucent. Two carriers, not one — the UI bible's rule that
-colour is never the only carrier, applied to the world instead of to a panel. The test asserts
-both properties plus a luminance FLOOR, so the next tidy-up cannot re-darken it into nothing.
+| tint | worst Δluminance vs FLOOR | worst Δluminance vs LIVE |
+|---|---|---|
+| `0.55, 0.55, 0.62 @ 0.75` — shipped in Phase 10 | **0.009** | 0.200 |
+| `0.62, 0.66, 0.80 @ 0.80` — correction #1 | **0.014** | 0.163 |
+| `0.26, 0.34, 0.52 @ 0.80` — correction #2 | **0.082** | 0.287 |
+| `0.18, 0.26, 0.44 @ 0.80` — **shipped** | **0.121** | 0.319 |
+
+The shipped Phase-10 tint put the corpse 0.009 of luminance from the floor: at 1:1 a kill read
+as a *despawn* while the HUD plaque was still naming the creature.
+
+**Correction #1 was wrong, and wrong in an instructive way.** It moved the corpse to 0.014 —
+still invisible to brightness — and looked better in a capture purely because it was blue
+against green. The entire signal rested on hue, which is exactly what the UI bible's "colour is
+never the only carrier" forbids, and the change *cited that rule while breaking it*. Its palette
+comment also asserted a measured-sounding background luminance of "~0.25" that had been
+eyeballed from the dark pixels; the ground sheet actually measures 0.305–0.367.
+
+**Correction #2 was derived from a real measurement and still failed**, because the measurement
+was taken against the texture's MEAN. `v16_ground.png` holds eight fills in two families (four
+moss, four flooded paddy); the mean 0.346 sits clear of a value that is only just clear of the
+dimmest moss fill. Rewriting the test to measure **per fill tile** dropped it from 0.115 to
+0.082 and named the binding pair: the pale player (luminance 0.601) over floor tile 1 (0.305).
+A corpse lands on one tile, not on an average.
+
+The shipped value is solved against that constraint — the tint's luminance is capped at ~0.30 by
+the player-over-dimmest-moss pair and sits at 0.256 — and it is counter-intuitively **darker**
+than everything before it: "dimmer than alive" and "visible against the floor" both point DOWN,
+because the floor is brighter than it looks. The blue shift stays as the second carrier, which
+matters most on the paddy, where a blue corpse has no hue contrast left at all (the final
+capture happens to show exactly that case).
+
+`test_damage_feedback.gd` re-derives all of it from the PNGs — the eight fill tiles, the three
+sprites that can die, both margins — so a brighter floor, a paler archetype or a tidied palette
+fails loudly instead of quietly erasing the body (L-034).
 
 ### 5. A time-limited effect cannot be proven by a screenshot
 
@@ -2967,12 +2994,26 @@ pacing is how a budget test becomes flaky and then gets deleted (L-032).
 ### Verification
 
 586 tests (up from 572), 0 failures, 0 leaked ObjectDB, 0 resources in use, all ten gates
-green locally and in CI. Every new guard was proven able to FAIL against the pre-fix code: the
-colour-authoring walk reported `["enemy.gd"]`, the corpse assertion reported `blue 0.62 is 0.07
-above red`, the linger test reported `the retirement clock is running` and `for the authored
-linger (1.00s, expected 2.50s)`, and removing the node from `enemy.tscn` reported `the shipped
-enemy scene carries a DamageFeedback`. The playtest was re-run and the captures re-inspected at
-6x magnification: the corpse now reads as a body rather than a smudge.
+green locally and in CI. Every new guard was proven able to FAIL against the pre-fix code:
+- the colour-authoring walk reported `["enemy.gd"]`;
+- the corpse measurement rejected BOTH earlier tints by name and by number, e.g.
+  `mist_wolf_idle.png: corpse 0.331 vs floor 0.346 is 0.014 apart, needs 0.10`, and then
+  rejected correction #2 with `player_proto.png on floor tile 1: corpse 0.223 vs floor 0.305 is
+  0.082 apart` — a guard that found a defect in the fix it was written for;
+- the linger test reported `the retirement clock is running` and `for the authored linger
+  (1.00s, expected 2.50s)`;
+- removing the node from `enemy.tscn` reported `the shipped enemy scene carries a
+  DamageFeedback`.
+
+The playtest was re-run after each tint change and the captures re-inspected at 7x: the corpse
+now reads as a body — legs, head and qi orb legible — including in the worst case where it lies
+on a blue paddy tile and has no hue contrast to fall back on.
+
+One process note: a throwaway probe written to capture a dead training post and a dead player
+HUNG with no output (the L-033 failure mode for a custom headless entry) and was deleted rather
+than debugged. The question it was meant to answer — "is the corpse legible on the OTHER two
+entities?" — was answered better by measurement, which covers all three sprites against all
+eight floor fills instead of one screenshot of one pair.
 
 ### Scorecard movement (C22)
 

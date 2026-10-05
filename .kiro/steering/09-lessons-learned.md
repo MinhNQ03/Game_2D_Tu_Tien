@@ -922,9 +922,16 @@
   3. `Enemy._on_health_died()` set `modulate = Color(0.55, 0.55, 0.62, 0.75)` on itself — a
      gameplay entity authoring a presentation decision, a colour no palette edit could reach,
      and a SECOND writer of a property the new flash also wrote.
-  4. That tint multiplied the pale wolf to ~0.36 luminance against ~0.25 grass. Magnified it
-     was plainly a wolf; at 1:1 it was a dark smudge, so **a kill read as a despawn** while the
-     HUD was still naming the creature.
+  4. That tint put the corpse within **0.009 luminance of the floor**. Magnified it was plainly
+     a wolf; at 1:1 it was a dark smudge, so **a kill read as a despawn** while the HUD was
+     still naming the creature.
+  5. **And the fix for (4) was wrong twice more**, which is the part of this entry that matters.
+     Correction #1 moved the corpse to 0.014 from the floor — still invisible to brightness —
+     and only *looked* better in a capture because it was blue against green, so the entire
+     signal rested on hue; the commit message cited "colour is never the only carrier" while
+     reintroducing exactly that. Correction #2 was derived from a real measurement, passed at
+     0.115, and failed at **0.082** the moment the test measured **per floor fill tile** instead
+     of against the texture's mean — on the pale player over the dimmest moss.
 - **Rule (the general one):** **a feedback effect that lasts a fraction of a second is not
   evidenced by a capture taken at an arbitrary frame.** The flash here lasts 0.16s and the
   harness shoots one frame after the hit: on a fast run it caught it, on a frame-starved run
@@ -947,13 +954,21 @@
   re-derive which writer wins. Give the channel to ONE owner driven by the signals the other
   already emits. That is what turned "do not paint over a corpse" from a comment into
   something structural.
-- **Also (a mark must carry twice):** **dimming alone is not a visible state change on a dark
-  map.** `SURFACE_LIGHT_BRIGHTNESS_LIMIT` and "colour is never the only carrier" are written in
-  the UI bible as PANEL rules; they apply to the WORLD too. A corpse is now dimmer AND
-  blue-shifted AND slightly translucent, with a test asserting the colour shift and a luminance
-  FLOOR so the next tidy-up cannot re-darken it into nothing. And remember `modulate` is a
-  MULTIPLY: a tint built only from values <= 1 can only darken, which reads on pale art and
-  disappears on dark art — push a channel past 1.0 when the effect must be visible on both.
+- **Rule (never score a contrast against a background's MEAN):** a corpse, a label or a sprite
+  lands on ONE tile, not on the average of the tileset. `v16_ground.png` spans 0.305-0.367 in
+  luminance across its eight fills, and the mean (0.346) sits clear of a value that is only just
+  clear of the dimmest fill — so averaging the background averages away the case that breaks.
+  Enumerate the worst (foreground, background) PAIR: every sprite that can wear the effect
+  against every fill it can lie on. The same applies to the foreground: the pale player
+  (luminance 0.601) is the binding constraint, not the creature the effect was designed for, and
+  a brighter archetype tightens the cap again. **A mark must also carry on BRIGHTNESS, not only
+  on hue** — "colour is never the only carrier" is written in the UI bible as a PANEL rule and it
+  applies to the WORLD too; a corpse carried by hue alone disappears the moment it lies on a
+  fill of its own hue (here the blue rice paddy). And remember `modulate` is a MULTIPLY: a tint
+  built only from values <= 1 can only darken, which reads on pale art and disappears on dark
+  art — push a channel past 1.0 when the effect must be visible on both. Counter-intuitively,
+  "dimmer than alive" and "visible against the floor" can point the SAME way (down), because a
+  floor is usually brighter than it looks.
 - **Fixed:** D-053. `UIPalette.TARGET_PLAQUE_LINGER` + a cancellable one-shot `Timer` in
   `gameplay_hud.gd`; `src/presentation/combat/damage_feedback.gd` owning the whole `modulate`
   channel (flash, crit flash, corpse look, revival); `Enemy._on_health_died()` reduced to

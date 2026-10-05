@@ -414,17 +414,58 @@ const HIT_FLASH_SECONDS_CRITICAL := 0.28
 ## where it shipped: a presentation decision hard-coded in a gameplay entity is a colour no
 ## palette edit can reach, and the same literal had already been copied into two tests.
 ##
-## MEASURED, not guessed. The first value — `Color(0.55, 0.55, 0.62, 0.75)` — multiplied the
-## pale wolf (luminance ~0.80) down to ~0.44 and then blended a quarter of the dark grass
-## (~0.25) through it, landing at ~0.36 against a ~0.25 background. Magnified it was plainly a
-## wolf; at 1:1 in the playtest capture it was a dark smudge, so a kill read as a despawn while
-## the HUD plaque was still naming the thing. Dimming alone cannot carry this on a dark map.
+## MEASURED — and the second value had to be corrected too, because the first correction was
+## justified with an argument that did not hold. A corpse is composited as
+## `sprite * tint.rgb * tint.a + floor * (1 - tint.a)`, and the real numbers are:
 ##
-## So the corpse is marked by TWO signals, not one, which is also the UI bible's rule that
-## colour is never the only carrier: it is DIMMER than a living entity (so it recedes) and it
-## is BLUE-SHIFTED and translucent (so it reads as drained rather than as shadow). Blue is
-## 0.18 above red, which survives against this map's green.
-const CORPSE_TINT := Color(0.62, 0.66, 0.80, 0.80)
+## scored against the WORST (sprite, floor-tile) pair rather than against the floor's mean:
+##
+## | tint | worst d_lum vs FLOOR | worst d_lum vs LIVE |
+## |---|---|---|
+## | `0.55, 0.55, 0.62 @ 0.75` (shipped in Phase 10) | **0.009** | 0.200 |
+## | `0.62, 0.66, 0.80 @ 0.80` (first correction) | **0.014** | 0.163 |
+## | `0.26, 0.34, 0.52 @ 0.80` (second correction) | **0.082** | 0.287 |
+## | `0.18, 0.26, 0.44 @ 0.80` (this value) | **0.121** | 0.319 |
+##
+## The third value is the instructive one: it passed when scored against the floor MEAN (0.115)
+## and failed at 0.082 the moment the test measured per tile, on the pale player over the
+## dimmest moss fill. Averaging a background averages away the case that actually breaks.
+##
+## against the measured floor. `v16_ground.png` holds EIGHT fills in two families, and they are
+## measured per tile rather than averaged — a corpse lands on one tile, not on the mean, and
+## averaging the floor averages away the worst case:
+##   * moss (tiles 0-3): luminance 0.349 · 0.305 · 0.338 · 0.338, green (r≈0.23 b≈0.21)
+##   * flooded paddy (tiles 4-7): luminance 0.349 · 0.359 · 0.367 · 0.361, blue-green (b≈0.44)
+## So the floor spans **0.305 to 0.367** — not the ~0.25 an earlier version of this comment
+## claimed from a glance at the dark pixels. Both earlier tints land their corpse within 0.014
+## luminance of the floor mean, i.e. a corpse that a greyscale view cannot see at all: the first
+## correction looked better in a capture purely because it was blue against green, so the whole
+## signal rested on hue. That is the failure the UI bible's "colour is never the only carrier"
+## rule exists to prevent, and it was reintroduced by the change that cited the rule — and it
+## would have been worst on the PADDY, where a blue corpse has no hue contrast left at all.
+##
+## This value carries the mark on BOTH axes: the corpse sits at least 0.12 BELOW the floor in
+## luminance (a darker silhouette, which is what makes the body's shape readable) and stays
+## strongly blue-shifted (blue 0.26 above red) so it reads as drained rather than as a shadow.
+## Going darker rather than lighter is the counter-intuitive part: "dimmer than alive" and
+## "visible against the floor" both point DOWN, because the floor is brighter than it looks.
+##
+## The binding constraint is the PALE player over the DIMMEST moss fill, which caps the tint's
+## luminance at ~0.30; this value is 0.256. A brighter character archetype tightens that cap.
+##
+## `test_damage_feedback.gd` re-measures all of this from the actual PNGs, per fill tile and per
+## sprite, so a brighter floor or a paler creature fails loudly instead of quietly erasing the
+## corpse (L-034).
+const CORPSE_TINT := Color(0.18, 0.26, 0.44, 0.80)
+
+## Floor luminance a corpse must stand clear of, and the margins it must clear by.
+##
+## The floor figure is DERIVED in the test from `v16_ground.png` rather than trusted from here;
+## these two margins are the contract. 0.10 is about where a luminance step stops being
+## arguable at 1:1 on a 16px grid, and the live margin is larger because "this is dead" must be
+## unmistakable at a glance, not merely detectable.
+const CORPSE_MIN_FLOOR_CONTRAST := 0.10
+const CORPSE_MIN_LIVE_CONTRAST := 0.15
 
 ## Width reserved on the right of a scrolling panel so its vertical scrollbar never sits on
 ## the content. Godot draws the scrollbar OVER a `ScrollContainer`'s child rather than taking

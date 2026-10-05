@@ -47,8 +47,10 @@
 > crit — reading the `is_critical` flag `HurtboxComponent.damaged` had carried unread for a
 > phase) and owns the entity's `modulate` channel entirely, which removed a `Color(...)`
 > literal from `Enemy` — a gameplay entity authoring a presentation decision. The corpse tint
-> was MEASURED and corrected: it had dimmed the pale wolf to ~0.36 luminance against ~0.25
-> grass, so a kill read as a despawn, and it is now dimmer AND colour-shifted. The target
+> was MEASURED and corrected — three times, because the first two corrections were scored
+> against the floor's MEAN and the third test measured per fill tile, where a pale player over
+> the dimmest moss broke it. The corpse now sits at least 0.12 of luminance below every floor
+> tile AND stays blue-shifted, so the mark does not rest on hue alone. The target
 > plaque, documented as showing a kill "briefly" while nothing implemented a timeout, now
 > retires on a cancellable one-shot timer. And `tools/playtest_flow.gd` reports whether its
 > screenshot actually CAUGHT the 0.16s flash, because a capture that silently lacks the thing

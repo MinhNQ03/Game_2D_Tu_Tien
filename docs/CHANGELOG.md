@@ -26,11 +26,13 @@ generating the evidence is not reviewing it.
   reach, and a second writer of a property the flash also wrote. The entity now only reports
   that it died; the presentation node decides what dead looks like. A test WALKS
   `src/gameplay` and fails if any file there authors a colour.
-- **The corpse is visible again.** Its tint multiplied the pale wolf to ~0.36 luminance against
-  ~0.25 grass — plainly a wolf when magnified, a dark smudge at 1:1, so a kill read as a
-  despawn while the HUD was still naming the creature. It is now dimmer AND blue-shifted AND
-  slightly translucent: two carriers, which is the UI bible's rule applied to the world rather
-  than to a panel.
+- **The corpse is visible again** — after three tries, which is the part worth remembering. The
+  shipped tint and the first correction both put the corpse within 0.014 luminance of the
+  floor, so a kill read as a despawn; the first correction only *looked* better because it was
+  blue against green, meaning the entire signal rested on hue. The second correction passed
+  against the floor's MEAN and failed at 0.082 as soon as the test measured per fill tile, on
+  the pale player over the dimmest moss. A corpse now sits at least 0.12 of luminance below
+  EVERY floor tile and stays blue-shifted, and the test re-measures it from the PNGs.
 - **The target plaque retires.** It was documented as showing a kill "briefly" while nothing
   implemented a timeout, so it sat on `0 / 34` until the next fight. A cancellable one-shot
   timer retires it after `TARGET_PLAQUE_LINGER`; a live target cancels it, so a second creature

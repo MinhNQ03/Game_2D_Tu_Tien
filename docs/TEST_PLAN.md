@@ -618,7 +618,9 @@ unrecorded here:
   creature; a hit that applied NOTHING does not flash; death wears the palette corpse look and
   the killing blow does not flash over it; a flash in flight is ABANDONED on death rather than
   restoring a living colour; only a REVIVAL clears the corpse look; the corpse tint is both
-  dimmer AND colour-shifted with a luminance FLOOR; `_process` is off whenever no flash is
+  RE-MEASURED from the actual PNGs — the corpse composite is computed per floor FILL TILE and
+  per sprite and must clear both the floor and the living sprite in luminance, which caught a
+  tint that passed against the floor's mean; `_process` is off whenever no flash is
   running; and a **structural walk of `src/gameplay`** fails if any file there authors a colour
   (comments stripped, so the entity can still document the literal it used to carry).
 - `tests/unit/presentation/test_gameplay_hud.gd` (extended) — the target plaque RETIRES after a

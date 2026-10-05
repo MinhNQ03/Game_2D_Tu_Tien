@@ -269,11 +269,14 @@ live creature.
 
 Two traps worth not repeating, both found by LOOKING at playtest captures rather than by any
 assertion:
-- A **dimming-only** corpse tint is invisible on a dark map. The first value multiplied the
-  pale wolf to ~0.36 luminance against ~0.25 grass, so a kill read as a despawn while the HUD
-  plaque was still naming the creature. The corpse mark now carries TWICE — dimmer AND
-  colour-shifted — which is the UI bible's "colour is never the only carrier" applied to the
-  world instead of to a panel.
+- A corpse tint has to be **measured against the worst (sprite, floor-tile) pair**, and it took
+  three values to get there. The shipped tint and the first correction both landed the corpse
+  within 0.014 luminance of the floor — invisible to brightness alone, so the first correction
+  only looked better because it was blue against green and the whole signal rested on hue. The
+  second correction then passed when scored against the floor's MEAN and failed at 0.082 the
+  moment the test measured PER FILL TILE, on the pale player over the dimmest moss. Averaging a
+  background averages away the case that breaks. The mark now carries on both axes: at least
+  0.12 of luminance below every fill tile, plus the blue shift.
 - A **time-limited** effect cannot be proven by a screenshot taken at an arbitrary frame. The
   flash lasts 0.16s; on a frame-starved run the capture named `08_attack` showed an untouched
   target. `tools/playtest_flow.gd` now REPORTS whether the shot caught the flash instead of

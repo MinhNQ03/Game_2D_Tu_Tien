@@ -18,6 +18,17 @@ extends TestCase
 const FeedbackScript := preload("res://src/presentation/combat/damage_feedback.gd")
 const HurtboxScript := preload("res://src/gameplay/components/hurtbox_component.gd")
 
+## The map floor a corpse lies on, and every sprite that can wear the corpse look. Listed
+## because each is a DIFFERENT brightness — the wolf and the post sit near 0.49 and the player
+## near 0.60, so a tint that works for one can erase another.
+const FLOOR_TEXTURE := "res://assets/tiles/verdant/v16_ground.png"
+const FLOOR_TILE_SIZE := 16
+const CORPSE_WEARER_TEXTURES := [
+	"res://assets/sprites/enemies/mist_wolf_idle.png",
+	"res://assets/sprites/characters/training_dummy.png",
+	"res://assets/sprites/characters/player_proto.png",
+]
+
 
 ## The minimum entity this component reacts to: it has health, it can die, it says so, and it
 ## is a `CanvasItem` so it has a `modulate` to drive. Deliberately NOT the real `Player` or
@@ -243,23 +254,118 @@ func test_only_a_revival_clears_the_corpse_look() -> void:
 	free_node(entity)
 
 
-## The corpse look must be visibly DEAD and still visible. Its first value multiplied the pale
-## wolf down to ~0.36 luminance against ~0.25 grass, so a kill read as a despawn at 1:1 while
-## the HUD was still naming the creature. Dimming alone cannot carry this on a dark map, so the
-## mark is carried TWICE — dimmer AND colour-shifted — which is also the UI bible's rule that
-## colour is never the only carrier.
-func test_the_corpse_look_is_both_dimmer_and_colour_shifted() -> void:
-	var corpse := UIPalette.CORPSE_TINT
-	var brightest: float = maxf(corpse.r, maxf(corpse.g, corpse.b))
-	assert_true(brightest < 1.0,
-		"a corpse is dimmer than a living entity (%.2f < 1.0)" % brightest)
-	assert_true(brightest >= 0.60,
-		("but not so dim it vanishes on a dark map — the defect this value was corrected "
-			+ "for (%.2f >= 0.60)") % brightest)
-	assert_true(corpse.b - corpse.r >= 0.10,
-		("and it is colour-shifted, not only darkened, so brightness is not the only carrier "
-			+ "(blue %.2f is %.2f above red)") % [corpse.b, corpse.b - corpse.r])
-	assert_true(corpse.a < 1.0, "slightly translucent, which reads as drained")
+## The corpse look is RE-MEASURED from the actual art, for every entity that wears it.
+##
+## Two previous values failed this, and the second one failed it while CITING the rule it
+## broke. A corpse is composited as `sprite * tint.rgb * tint.a + floor * (1 - tint.a)`;
+## `0.55, 0.55, 0.62 @ 0.75` landed 0.009 luminance from the floor and
+## `0.62, 0.66, 0.80 @ 0.80` landed 0.014 — corpses a greyscale view cannot see at all. The
+## second one looked better in a playtest capture purely because it was blue against green, so
+## the entire signal rested on hue, which is exactly what "colour is never the only carrier"
+## forbids.
+##
+## So this asserts the two luminance margins, derived from the PNGs rather than trusted from a
+## comment, for each of the three entities that can die. A brighter floor or a darker creature
+## then fails loudly instead of quietly erasing the body (L-034).
+func test_the_corpse_look_clears_both_the_floor_and_the_living_sprite() -> void:
+	# PER FILL TILE, not the texture's mean. The ground sheet holds two families — 4 moss and
+	# 4 flooded paddy — and their luminances span 0.305 to 0.367, so the mean (0.346) sits
+	# comfortably clear of a corpse that is only just clear of the DIMMEST fill. Averaging the
+	# floor is averaging away the worst case, and a corpse lands on one tile, not on the mean.
+	var floor_tiles := _floor_fill_tiles()
+	assert_eq(floor_tiles.size(), 8,
+		"the ground sheet's 8 fill tiles were measured (got %d)" % floor_tiles.size())
+	for path in CORPSE_WEARER_TEXTURES:
+		var live := _mean_opaque_rgb(path)
+		var live_lum := _luminance(live)
+		var name := String(path).get_file()
+		for index in floor_tiles.size():
+			var tile: Color = floor_tiles[index]
+			var tile_lum := _luminance(tile)
+			var corpse_lum := _luminance(_composite_corpse(live, tile))
+			assert_true(absf(corpse_lum - tile_lum) >= UIPalette.CORPSE_MIN_FLOOR_CONTRAST,
+				("%s on floor tile %d: a corpse must stand clear of the FLOOR in luminance, "
+					+ "so a body is visible without relying on hue — corpse %.3f vs floor "
+					+ "%.3f is %.3f apart, needs %.2f") % [name, index, corpse_lum, tile_lum,
+						absf(corpse_lum - tile_lum), UIPalette.CORPSE_MIN_FLOOR_CONTRAST])
+			assert_true(absf(corpse_lum - live_lum) >= UIPalette.CORPSE_MIN_LIVE_CONTRAST,
+				("%s on floor tile %d: and clear of the LIVING sprite, so dead is "
+					+ "unmistakable — corpse %.3f vs live %.3f is %.3f apart, needs %.2f")
+					% [name, index, corpse_lum, live_lum, absf(corpse_lum - live_lum),
+						UIPalette.CORPSE_MIN_LIVE_CONTRAST])
+	# The hue shift is the SECOND carrier, not the first. Kept as an assertion because a value
+	# that passed on luminance alone would be a grey corpse, which reads as a shadow.
+	var tint := UIPalette.CORPSE_TINT
+	assert_true(tint.b - tint.r >= 0.10,
+		("the corpse is also colour-shifted, so the mark carries twice (blue %.2f is %.2f "
+			+ "above red)") % [tint.b, tint.b - tint.r])
+	assert_true(tint.a < 1.0, "and slightly translucent, which reads as drained")
+
+
+## Mean colour of each 16px FILL TILE in the ground sheet, left to right.
+##
+## The tile width comes from the project's base tile size (`06-art-assets.md`), so adding a
+## ninth fill is covered automatically rather than needing this test edited.
+func _floor_fill_tiles() -> Array[Color]:
+	var out: Array[Color] = []
+	var texture := load(FLOOR_TEXTURE) as Texture2D
+	if texture == null:
+		return out
+	var image := texture.get_image()
+	if image == null:
+		return out
+	var tile := FLOOR_TILE_SIZE
+	for index in int(image.get_width() / tile):
+		var total := Vector3.ZERO
+		var count := 0
+		for y in image.get_height():
+			for x in range(index * tile, (index + 1) * tile):
+				var pixel := image.get_pixel(x, y)
+				if pixel.a < 0.5:
+					continue
+				total += Vector3(pixel.r, pixel.g, pixel.b)
+				count += 1
+		if count > 0:
+			out.append(Color(total.x / count, total.y / count, total.z / count))
+	return out
+
+
+## Mean colour of a texture's OPAQUE pixels. Transparent padding would drag every mean toward
+## black and make a sprite look darker than it renders.
+func _mean_opaque_rgb(path: String) -> Color:
+	var texture := load(path) as Texture2D
+	if texture == null:
+		return Color.BLACK
+	var image := texture.get_image()
+	if image == null:
+		return Color.BLACK
+	var total := Vector3.ZERO
+	var count := 0
+	for y in image.get_height():
+		for x in image.get_width():
+			var pixel := image.get_pixel(x, y)
+			if pixel.a < 0.5:
+				continue
+			total += Vector3(pixel.r, pixel.g, pixel.b)
+			count += 1
+	if count == 0:
+		return Color.BLACK
+	return Color(total.x / count, total.y / count, total.z / count)
+
+
+## What a corpse actually renders as: the sprite multiplied by the tint, composited over the
+## floor at the tint's alpha. This is the arithmetic the engine performs, not an approximation.
+func _composite_corpse(sprite: Color, floor_rgb: Color) -> Color:
+	var tint := UIPalette.CORPSE_TINT
+	var a := tint.a
+	return Color(
+		sprite.r * tint.r * a + floor_rgb.r * (1.0 - a),
+		sprite.g * tint.g * a + floor_rgb.g * (1.0 - a),
+		sprite.b * tint.b * a + floor_rgb.b * (1.0 - a))
+
+
+func _luminance(colour: Color) -> float:
+	return 0.2126 * colour.r + 0.7152 * colour.g + 0.0722 * colour.b
 
 
 ## A STRUCTURAL guard: no gameplay entity may author a colour. The corpse tint shipped as a
