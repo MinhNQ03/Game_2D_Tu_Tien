@@ -3,6 +3,33 @@
 > Steering: always included. The mandatory checklist Kiro (and any AI contributor)
 > runs for **every** code change in this project. This governs how AI works here.
 
+## Finishing a PHASE: `docs/PHASE_EXECUTION_PROTOCOL.md` is binding
+
+This file governs **a change**. A whole PHASE has a second, larger contract, and it lives in
+**`docs/PHASE_EXECUTION_PROTOCOL.md`** — read it at the START of a phase, not at the end:
+
+```
+PRE-FLIGHT → DEPENDENCY → AUTHORITY → EXTENSIBILITY → GAMEPLAY → NARRATIVE
+    → UI → REAL PLAYTEST → VISUAL QA → PERFORMANCE → CLEANUP → DOCS → FINAL REVIEW
+```
+
+That document owns the detailed checklist, the evidence each gate requires, the capture policy
+and the player-facing review. It is deliberately **not duplicated here** — two copies of a
+checklist drift, and then nobody knows which one is binding.
+
+The one line worth repeating in steering, because it is the rule most often broken:
+
+> **Unit tests prove rules. Integration tests prove boundaries. E2E proves the real flow. A
+> real-app playtest proves the player-facing experience. A visual capture proves what is
+> actually on screen.** The last two were missing for nine phases, and that is where D-034's
+> four HUD defects, D-050's nine UI defects and D-051's invisible attack lifecycle were hiding
+> — every one of them on a green pipeline.
+
+Two tools make those last two gates possible, and both are build-time only:
+`tools/playtest_flow.gd` (real app, real semantic input, expected-vs-observed per step) and
+`tools/capture_ui.gd` (real viewport). Their output is **ephemeral evidence**: inspect it, do
+not commit it.
+
 ## The loop (every non-trivial feature)
 
 ```

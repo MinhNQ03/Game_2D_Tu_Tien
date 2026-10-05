@@ -1,0 +1,207 @@
+# PHASE_EXECUTION_PROTOCOL — Aetheria
+
+> **Binding execution protocol for every Aetheria phase from Phase 10 onward.**
+> `.kiro/steering/08-ai-review-protocol.md` governs *how any single change is reviewed*; this
+> document governs *what it takes to finish a PHASE*. The steering file points here rather
+> than restating it, so there is one checklist and not two that can drift apart.
+>
+> **Owner of:** the phase quality contract, the evidence each gate requires, and the rule that
+> a green pipeline is not a finished phase.
+> **NOT the owner of:** coding standards (`04-coding-standards.md`), the review loop for an
+> individual change (`08-ai-review-protocol.md`), the CI-failure procedure
+> (`10-ci-failure-protocol.md`), or UI design direction (`UI_UX_BIBLE.md`).
+
+---
+
+## 0. Why this exists
+
+The repository is entering the content-heavy gameplay stage. Up to Phase 09 a phase could be
+judged almost entirely by its tests, because almost everything it added was a rule. That is no
+longer true: a phase now adds things a player *sees*, *feels* and *fights*, and none of those
+are visible to an assertion.
+
+The evidence for this is in the project's own history, not in theory:
+
+- **D-034** shipped four simultaneous HUD defects — light text on a light plate, a hollow
+  ornament used as a keycap, a 218×118 texture used as a 40×40 slot — with every test green.
+- **D-050** found **nine** defects in a UI that was asset-backed, tokenised and green on 481
+  tests, the first time anybody looked at a screenshot of the running game. One of them was
+  that every `vi_*.png` was in English.
+- **D-051** found the Phase-09 attack lifecycle to be **completely invisible to the player**:
+  correct state machine, no swing, no impact, just a number changing.
+- **L-036** found a solid combat target parked on the hub's main walking line, so leaving spawn
+  walked you into it — on a commit already green on CI.
+
+Every one of those passed compilation, unit tests, integration tests, E2E and CI. So:
+
+> **A green CI is necessary and NOT sufficient. A phase is complete only when DESIGN + CODE +
+> TEST + PLAYER EXPERIENCE + UI + CLEANUP all pass.**
+
+### What each kind of evidence actually proves
+
+| Evidence | Proves | Does NOT prove |
+|---|---|---|
+| Compile / parse | the code loads | anything about behaviour |
+| **Unit tests** | the RULES are right | that anything is wired to them |
+| **Integration tests** | the BOUNDARIES hold | that the real app takes that path |
+| **E2E (real app, headless)** | the real FLOW works | that a human can see or understand it |
+| **Real-app playtest** | the player-facing EXPERIENCE works | that it looks right |
+| **Visual capture + inspection** | what is actually ON SCREEN | that it is fun |
+| **Performance budget** | cost scales as the design claims | that it is fast on target hardware |
+
+The last two rows are the ones that were missing for nine phases, and they are where the
+defects above were hiding.
+
+---
+
+## 1. The phase quality contract
+
+```
+PRE-FLIGHT → DEPENDENCY → AUTHORITY → EXTENSIBILITY → GAMEPLAY → NARRATIVE
+    → UI → REAL PLAYTEST → VISUAL QA → PERFORMANCE → CLEANUP → DOCS → FINAL REVIEW
+```
+
+Run them in order. Each gate below states **what it asks** and **what evidence closes it** —
+a gate with no evidence is an opinion.
+
+### 1. PRE-FLIGHT — audit the repository before adding to it
+Read the design docs that own the scope, and the code you are about to touch, before writing
+anything. Find the stale claims FIRST: a phase that starts from an out-of-date document
+inherits its errors. Record what you found rather than silently correcting it.
+**Evidence:** a list of the docs/files read, and any drift found (which becomes its own
+documentation fix, as D-049 and D-051 were).
+
+### 2. DEPENDENCY — do the arrows still point downward?
+`presentation → gameplay → domain → data`, with `persistence`/`infrastructure` as described in
+`03-architecture.md`. **A file's layer is a claim about its dependencies, and the type names in
+its signatures are the evidence.** GDScript resolves `class_name` globally, so there is no
+import statement to look wrong — a domain class typed on a `Node` compiles and tests fine
+(L-036). Ask: *could this run with no scene tree at all?* If not, it is not domain.
+**Evidence:** grep the new files' signatures for node types; confirm no new autoload (the
+budget is frozen at five, D-017).
+
+### 3. AUTHORITY — who owns each piece of state?
+Every new value has exactly one owner, and the persistent / runtime / presentation partition
+holds. No system writes another system's authoritative collection (D-015); it asks that
+system's service. A derived cache must be rebuilt, never serialized as truth (L-001).
+**Evidence:** name the owner of each new field and which tier it is in.
+
+### 4. EXTENSIBILITY — is the next one content?
+Adding the *second* map / enemy / skill / item / quest must be **data + content**, not an edit
+to core code. If a second instance would need an `if id == ...`, the design is wrong now.
+**Evidence:** point at the `.tres` (or catalog row) that a second instance would be.
+
+### 5. GAMEPLAY — what can the player do that they could not before?
+Answer in one sentence, in player terms. "The system exists" is not an answer. A phase that
+cannot answer this has built infrastructure and should say so plainly.
+**Evidence:** the sentence, plus the playtest step that demonstrates it.
+
+### 6. NARRATIVE / WORLD — does it belong to Aetheria?
+Where the phase adds content: does it fit the frozen world, the canon vocabulary
+(`02-game-design.md`), and the licence/provenance rules (`06-art-assets.md`)? A generic
+fantasy creature in a tu-tiên world is a content defect even if it functions.
+**Evidence:** the content's identity stated in Aetheria's own terms, and its
+`ASSET_LICENSES.md` row.
+
+### 7. UI — is the new state visible, and does it use the foundation?
+Anything the player must know has to be on screen, using the D-050 shared seams
+(`UI_UX_BIBLE.md` §3b/§8b) — never ad-hoc styling and never default Godot look. **Do not render
+a gauge for a value no system owns** (§4): a bar that shows nothing real is worse than an
+absent one.
+**Evidence:** the seam used, and a capture showing it.
+
+### 8. REAL PLAYTEST — drive the real app through the real input pipeline
+`tools/playtest_flow.gd` boots the real game in a real window and plays it with real semantic
+input. Each step declares **expected vs observed**. It must not fake player behaviour by
+calling domain mutators (that is L-017: an E2E that bypasses the boundary it advertises can be
+green while the boundary is broken).
+**Evidence:** the playtest report, with every step `PASS` and a non-zero exit on any failure.
+
+### 9. VISUAL QA — look at the screenshots
+`tools/capture_ui.gd` writes the real viewport. **A screenshot-producing tool is not a
+screenshot-reviewing tool.** The loop is:
+
+```
+RUN → CAPTURE → LOOK → IDENTIFY DEFECTS → FIX → CAPTURE AGAIN → REVIEW AGAIN
+```
+
+Generating an image and declaring success is the exact failure D-050 was created to stop. For
+a UI-changing phase: **two genuinely different ASPECT RATIOS**, both languages. 1600×900 next
+to 1280×720 is *not* two layout tests — with `canvas_items` + `expand` a same-aspect window is
+a pure uniform scale and produces two identical images.
+**Evidence:** the defects found by looking, and the re-capture after fixing them.
+
+### 10. PERFORMANCE — measure the claim the design makes
+Find the architectural claim ("cost scales with observed actors, not the whole cast"; "an idle
+attacker costs nothing") and assert it as a **relative scaling** test, which holds on any
+hardware because it compares the build against itself. Add a generous absolute ceiling only to
+catch an accidental quadratic — a tight millisecond budget on shared CI is a flaky test that
+gets deleted rather than a guard that gets respected.
+**Do not optimize before measuring**, and log any real optimization in `PERFORMANCE.md` with
+before/after numbers (`05-performance-testing.md`).
+**Evidence:** the printed numbers, and a `PERF-00N` entry if something was optimized.
+
+### 11. CLEANUP — leave nothing behind
+No scratch scripts, no temp captures, no committed logs, no unused asset or source-pack copies,
+no dead resource references, no debug polygons, no commented-out alternates, no stale comments
+describing removed architecture.
+**Evidence:** `git status`, `git diff --stat`, `git diff --name-status`, each read rather than
+merely run.
+
+### 12. DOCS — synchronize everything the phase touched
+`DECISIONS.md` (an ADR for anything a future reader would ask "why"), `CHANGELOG.md`,
+`ROADMAP.md` status, `SYSTEM_DEPENDENCY_MATRIX.md` row, the owning design doc, `TEST_PLAN.md`
+count, `ASSET_LICENSES.md`, `PERFORMANCE.md`, and a steering `L-0NN` for any recurring mistake
+class. **A doc that contradicts the code is a bug** (L-014). Mark status explicitly as
+CURRENT / HISTORICAL / FUTURE rather than letting a status block rot (D-049, D-051).
+**Evidence:** the list of docs changed, and the status markers added.
+
+### 13. FINAL REVIEW — the pre-completion gates, reported
+Run the `08-ai-review-protocol.md` gates and **report each one by name with its result**,
+including what could not be verified. Then the phase's own exit criteria. Then the player-facing
+review (§3).
+**Evidence:** the gate-by-gate report.
+
+---
+
+## 2. Capture and report policy
+
+**Generated screenshots, logs and diagnostics are EPHEMERAL EVIDENCE.** They are produced,
+inspected, and not committed.
+
+- Default output is `user://` (or a git-ignored temp dir). The tools default there on purpose.
+- **Do not commit a capture set.** A full matrix is ~15MB of binaries whose only job was to be
+  looked at once; the harness is committed and deterministic, so anybody can regenerate it in
+  one command. Repository history is not a screenshot archive.
+- A screenshot may be committed **only** as an intentional design baseline, and then it must
+  have a documented purpose, provenance, and a reason the harness cannot replace it. A random
+  debug image never qualifies.
+- Scratch files use the `_` prefix convention so `.gitignore` catches them by construction
+  rather than by remembering to delete them (L-009).
+
+---
+
+## 3. Player-facing review (the questions tests cannot ask)
+
+At phase close, answer in prose — not as checkboxes — and then score. Scores are a **review
+aid, never a gameplay rule**.
+
+Ask: is the new thing understandable? does it feel alive rather than scripted? can the player
+predict it? is the timing readable? does the player understand *why* something happened to
+them? does it feel different from the test fixture it grew out of? does success feel
+meaningful? is the scene visually coherent? does the UI help or obstruct? **does it feel like
+Aetheria rather than a generic Godot demo?**
+
+Score 1–5: **UX · Visual · Readability · Performance · Maintainability**.
+
+> **For any score ≤ 3, list concrete defects.** And do not hide a weakness behind "the next
+> phase will fix it" unless that weakness is genuinely owned by that phase — say so with the
+> phase number, or own it now.
+
+---
+
+## 4. What this document does NOT do
+
+It does not replace the per-change review loop (`08-ai-review-protocol.md`), the CI-failure
+procedure (`10-ci-failure-protocol.md`), or any design doc. It adds no gameplay rule and no
+code. It is the definition of "finished", and nothing else.
