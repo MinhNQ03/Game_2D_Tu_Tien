@@ -374,6 +374,58 @@ const GAUGE_FILL_LOW := COLOR_CRIMSON_HOVER
 ## while the player can still act on it.
 const GAUGE_LOW_FRACTION := 0.25
 
+## Seconds the combat-target plaque stays up after the target dies (Phase 10).
+##
+## Long enough to read the name of what you just killed — the information is most wanted at
+## exactly the moment it would otherwise vanish — and short enough that the HUD is not still
+## advertising a corpse once the fight is over.
+const TARGET_PLAQUE_LINGER := 2.5
+
+## Tint an entity's sprite is multiplied by at the instant it takes damage (Phase 10).
+##
+## `modulate` is a MULTIPLY, so a channel above 1.0 brightens. That is deliberate and is why
+## these are not plain palette colours: a tint built only from values <= 1 darkens the sprite,
+## which reads clearly on the player's pale robe and almost not at all on a dark creature. The
+## red channel is pushed past 1 so the flash is visible on BOTH, while the cut green and blue
+## keep the crimson hue.
+##
+## The hue is `CRIMSON_DANGER` (0.72, 0.26, 0.30) at a gain of 3.0, written out as a literal
+## because a const expression cannot read a component off another const colour. Change the
+## crimson and this must be recomputed — the ratio is the thing to preserve, not the numbers.
+const HIT_FLASH_TINT := Color(2.16, 0.78, 0.90)
+
+## The same idea for a CRITICAL hit, in gold instead of crimson: `GOLD_PRIMARY`
+## (0.84, 0.72, 0.42) at the same gain of 3.0. A crit already exists in shipped content (15%
+## on the player's basic attack, 10% on the wolf's bite), so this is a tint real play reaches,
+## not a hypothetical — and `HurtboxComponent.damaged` carries `is_critical` precisely so
+## presentation can tell them apart without recomputing anything.
+const HIT_FLASH_TINT_CRITICAL := Color(2.52, 2.16, 1.26)
+
+## How long a hit flash takes to decay back to the sprite's resting colour, in seconds.
+## Short: long enough to register at 60fps, short enough that two quick hits read as two hits
+## rather than as one long smear. A crit holds slightly longer because it is the rarer, more
+## important event.
+const HIT_FLASH_SECONDS := 0.16
+const HIT_FLASH_SECONDS_CRITICAL := 0.28
+
+## Tint a dead entity's sprite keeps, marking it as a corpse rather than a live threat.
+##
+## It lives HERE rather than as a `Color(...)` literal in `Enemy._on_health_died()`, which is
+## where it shipped: a presentation decision hard-coded in a gameplay entity is a colour no
+## palette edit can reach, and the same literal had already been copied into two tests.
+##
+## MEASURED, not guessed. The first value — `Color(0.55, 0.55, 0.62, 0.75)` — multiplied the
+## pale wolf (luminance ~0.80) down to ~0.44 and then blended a quarter of the dark grass
+## (~0.25) through it, landing at ~0.36 against a ~0.25 background. Magnified it was plainly a
+## wolf; at 1:1 in the playtest capture it was a dark smudge, so a kill read as a despawn while
+## the HUD plaque was still naming the thing. Dimming alone cannot carry this on a dark map.
+##
+## So the corpse is marked by TWO signals, not one, which is also the UI bible's rule that
+## colour is never the only carrier: it is DIMMER than a living entity (so it recedes) and it
+## is BLUE-SHIFTED and translucent (so it reads as drained rather than as shadow). Blue is
+## 0.18 above red, which survives against this map's green.
+const CORPSE_TINT := Color(0.62, 0.66, 0.80, 0.80)
+
 ## Width reserved on the right of a scrolling panel so its vertical scrollbar never sits on
 ## the content. Godot draws the scrollbar OVER a `ScrollContainer`'s child rather than taking
 ## layout space from it, so without this a right-aligned value column runs underneath it and

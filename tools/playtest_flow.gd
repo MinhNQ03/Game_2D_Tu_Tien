@@ -220,8 +220,28 @@ func _step_attack(map: Node) -> void:
 	var hurt := await _press_until(&"attack", func() -> bool:
 		return int(target.call("get_current_health")) < before)
 	var after := int(target.call("get_current_health"))
+	# The hit flash lasts `UIPalette.HIT_FLASH_SECONDS`, and `_shot()` captures one frame
+	# later — so on a frame-starved machine the flash has already decayed and the screenshot
+	# shows an untouched target. The shot is still taken, but what it CAUGHT is reported
+	# rather than assumed: a capture that silently lacks the thing its name promises is worse
+	# than a missing one (L-034), and it is not a PASS condition because a real-time effect
+	# cannot be gated on frame pacing without becoming flaky.
+	var shot := await _shot("08_attack")
+	# Read AFTER the shot: `_shot()` awaits a frame and then grabs the image, so the state
+	# immediately afterwards is the closest proxy for what the pixels actually show.
+	var flashing := _is_flashing(target)
 	_record("08_attack", "target health drops after a real attack key",
-		"hp %d -> %d" % [before, after], hurt, started, await _shot("08_attack"))
+		"hp %d -> %d, hit-flash caught in shot=%s" % [before, after, flashing],
+		hurt, started, shot)
+
+
+## Is this entity wearing a damage flash right now? False when it carries no `DamageFeedback`,
+## which is a legitimate scene rather than an error.
+func _is_flashing(entity: Node) -> bool:
+	var feedback := entity.get_node_or_null("DamageFeedback")
+	if feedback == null or not feedback.has_method("is_flashing"):
+		return false
+	return bool(feedback.call("is_flashing"))
 
 
 ## A REAL map transition: walk into the exit zone and interact.

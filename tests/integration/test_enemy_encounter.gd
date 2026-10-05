@@ -323,6 +323,46 @@ func test_a_dead_enemy_stops_everything() -> void:
 	free_node(player)
 
 
+## A hit must MARK the creature, and a kill must leave the corpse look standing.
+##
+## This spawns the REAL `enemy.tscn` from the REAL shipped table, so it proves the scene is
+## actually wired with a `DamageFeedback` — a unit test against a hand-built stub would pass
+## with the node missing from the scene entirely, which is the gap L-029 is about. Damage goes
+## through the REAL `HurtboxComponent.apply_hit()`, because that is what emits `damaged`;
+## `enemy.take_damage()` bypasses the hurtbox and would silently prove nothing.
+##
+## It also pins the SEAM the review pass moved: the corpse look now comes from the presentation
+## node and the palette, not from a literal inside `Enemy`.
+func test_a_damaged_enemy_flashes_and_a_dead_one_wears_the_corpse_look() -> void:
+	var runtime := _runtime()
+	runtime.spawn_from_table(_table(Vector2(400, 300)), runtime)
+	var enemy := runtime.enemies()[0]
+	var feedback := enemy.get_node_or_null("DamageFeedback") as DamageFeedback
+	assert_not_null(feedback, "the shipped enemy scene carries a DamageFeedback")
+	var hurtbox := enemy.get_node("HurtboxComponent") as HurtboxComponent
+	var resting := feedback.resting_tint()
+
+	hurtbox.apply_hit(4, false)
+	assert_true(feedback.is_flashing(), "a landed hit flashes the creature")
+	assert_ne(enemy.modulate, resting, "so the player can see WHAT they hit, on the creature")
+	feedback.advance(UIPalette.HIT_FLASH_SECONDS * 1.5)
+	assert_eq(enemy.modulate, resting, "and it returns to its normal colour")
+
+	# Kill it through the hurtbox so the real ordering happens: health applied -> `died`
+	# (the corpse look) -> `damaged` emitted.
+	while not enemy.is_dead():
+		hurtbox.apply_hit(10, false)
+	assert_false(feedback.is_flashing(), "the killing blow starts no flash")
+	assert_true(feedback.is_corpse(), "the creature wears its corpse look")
+	assert_eq(enemy.modulate, UIPalette.CORPSE_TINT,
+		"which is the palette token, applied by presentation and not by the entity (%s)"
+			% str(enemy.modulate))
+	feedback.advance(UIPalette.HIT_FLASH_SECONDS * 4.0)
+	assert_eq(enemy.modulate, UIPalette.CORPSE_TINT,
+		"and nothing restores a living colour over it, however long the world runs")
+	free_node(runtime)
+
+
 ## Ending the session must stop every creature BEFORE the world it reasons about disappears.
 func test_ending_the_session_stops_and_clears_enemies() -> void:
 	var runtime := _runtime()

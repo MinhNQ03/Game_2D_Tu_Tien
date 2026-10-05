@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/entities/training_dummy.gd" id="1_dummy"]
 [ext_resource type="Script" path="res://src/gameplay/components/stats_component.gd" id="2_stats"]
@@ -6,6 +6,7 @@
 [ext_resource type="Resource" path="res://data/stats/training_dummy_stats.tres" id="4_statblock"]
 [ext_resource type="Script" path="res://src/gameplay/components/hurtbox_component.gd" id="5_hurtbox"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/training_dummy.png" id="6_sprite"]
+[ext_resource type="Script" path="res://src/presentation/combat/damage_feedback.gd" id="91_dmgfeedback"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dummy"]
 size = Vector2(28, 28)
@@ -33,3 +34,7 @@ script = ExtResource("3_health")
 script = ExtResource("5_hurtbox")
 entity_id = &"training_dummy_hub"
 radius = 14.0
+
+
+[node name="DamageFeedback" type="Node" parent="."]
+script = ExtResource("91_dmgfeedback")

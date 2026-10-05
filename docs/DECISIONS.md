@@ -2871,3 +2871,112 @@ Enemy variety (one excellent creature beats five generic ones), aggro/threat tab
 around obstacles (the field is open ground), group coordination, defensive actions for the
 player (D-007 settled timing, not that model), status effects, projectiles, loot and XP (P-11+),
 and a death animation beyond the dimmed corpse.
+
+---
+
+## D-053 — Phase-10 review pass: the receiving half of combat feedback, and one owner for `modulate`
+
+**Status:** Accepted · **Phase:** 10 (review pass) · **Scope:** presentation + one gameplay
+entity simplification + tooling. No new autoload, no gameplay rule changed, no content added.
+
+Found by the mandatory review pass on a commit (`8502caa`) that was already green on all ten
+gates and on CI — the third time in three phases that a green pipeline said nothing about the
+defects (see D-050's nine UI findings and L-036's two). Two were found by **opening the
+playtest captures the commit itself had produced**; generating the evidence is not reviewing it.
+
+### 1. A dead target advertised itself forever
+
+`CombatTargetView.is_dead` was documented as keeping a killed creature on the plaque
+"briefly", and nothing implemented a timeout at all — so the plaque sat on `0 / 34` until the
+next fight. A doc comment contradicting its own code is a bug (L-014), and this one was in the
+comment that explained the behaviour.
+
+Fixed with a one-shot `Timer` (not a `_process` countdown — a timer costs nothing while
+stopped, and this runs for a second or two per fight on a node that lives for the whole
+session) started on a dead view, **cancelled by a live one** so a second creature taking the
+player's attention keeps the panel up. The duration is `UIPalette.TARGET_PLAQUE_LINGER`.
+
+### 2. Damage left no mark on the thing damaged
+
+Phase 10 shipped the ATTACKING half of combat feedback (`AttackFeedback` draws the swing) and
+left the RECEIVING half with nothing. The player's health number dropped with no mark on the
+character, so "why did I just lose 9 HP" was answerable only by having watched the right
+creature at the right moment; and the player's own swing landed with no confirmation on the
+creature either, only a gauge moving inside a HUD plaque — the wrong place to look during a
+fight. The review scored combat readability 4/5 for exactly this.
+
+`DamageFeedback` is the pair to `AttackFeedback`: a short decaying tint on the entity that was
+damaged, crimson normally and brighter gold on a crit. Three things make it a design rather
+than an effect:
+
+- **It reads `is_critical` from the signal that already carries it.** `HurtboxComponent.damaged`
+  documents that it carries the flag "so presentation can distinguish a crit without
+  recomputing anything" — and until now nothing did. Crits exist in shipped content (15% on the
+  player's basic attack, 10% on the wolf's bite), so this is a distinction real play produces
+  rather than a hypothetical configuration (L-029).
+- **The tints BRIGHTEN.** `modulate` is a multiply, so a tint built only from values ≤ 1 can
+  only darken — legible on the player's pale robe, nearly invisible on a dark creature. Both
+  tints push a channel past 1.0, and a test pins that so a later palette tidy-up cannot clamp
+  the flash into invisibility on half the cast.
+- **It decays on an explicit clock, not a `Tween`.** A tween cannot be stepped from a headless
+  test; `advance(delta)` is the same public seam `CharacterVisualComponent` uses. At the end
+  the resting colour is ASSIGNED rather than lerped, because `lerp(base, 1.0)` is only
+  approximately the endpoint in floating point and a long fight would drift.
+
+### 3. `Enemy` was authoring a colour, and two nodes wrote one property
+
+`Enemy._on_health_died()` set `modulate = Color(0.55, 0.55, 0.62, 0.75)` on itself. Three
+problems in one line: a **gameplay entity making a presentation decision** (the same layer
+mistake as L-036, which was a domain class typed on a `Node` — nothing in the toolchain flags
+either), a colour **no palette edit could reach**, and a **second writer** of a property the
+new flash also writes, so the two had to be careful not to overwrite each other.
+
+The entity now only reports that it died. `DamageFeedback` owns the whole `modulate` channel —
+flash while alive, corpse look once dead, cleared only by a revival (`health_changed` with a
+positive value, which is what `TrainingDummy.reset_dummy()` produces; reacting to every
+`health_changed` would cut a flash short, since a hit reports its new health BEFORE the
+hurtbox reports the damage). Moving the write is what made the "do not paint over a corpse"
+rule structural instead of a comment.
+
+A structural test WALKS `src/gameplay` and fails if any file there authors a colour, with
+comments stripped so `enemy.gd` can still document the literal it used to carry. A
+hand-written file list only protects the files somebody remembered (L-034).
+
+### 4. The corpse was invisible, and dimming alone could not fix it
+
+The relocated tint was also **measured and corrected**. The original multiplied the pale wolf
+(luminance ~0.80) to ~0.44 and blended a quarter of the dark grass (~0.25) through it, landing
+at ~0.36 against a ~0.25 background: magnified it was plainly a wolf, at 1:1 in the playtest
+capture it was a dark smudge. So a kill read as a *despawn* while the HUD was still naming the
+creature.
+
+`UIPalette.CORPSE_TINT` is now `Color(0.62, 0.66, 0.80, 0.80)`: dimmer than a living entity
+**and** blue-shifted and slightly translucent. Two carriers, not one — the UI bible's rule that
+colour is never the only carrier, applied to the world instead of to a panel. The test asserts
+both properties plus a luminance FLOOR, so the next tidy-up cannot re-darken it into nothing.
+
+### 5. A time-limited effect cannot be proven by a screenshot
+
+The flash lasts 0.16s and `_shot()` captures one frame later. On a fast run the capture caught
+it; on a frame-starved run the capture named `08_attack` showed a completely untouched target.
+A capture that silently lacks the thing its name promises is worse than a missing one (L-034),
+so `tools/playtest_flow.gd` now reports `hit-flash caught in shot=true|false` as part of the
+step's observed line. It is deliberately **not** a pass condition: gating a step on frame
+pacing is how a budget test becomes flaky and then gets deleted (L-032).
+
+### Verification
+
+586 tests (up from 572), 0 failures, 0 leaked ObjectDB, 0 resources in use, all ten gates
+green locally and in CI. Every new guard was proven able to FAIL against the pre-fix code: the
+colour-authoring walk reported `["enemy.gd"]`, the corpse assertion reported `blue 0.62 is 0.07
+above red`, the linger test reported `the retirement clock is running` and `for the authored
+linger (1.00s, expected 2.50s)`, and removing the node from `enemy.tscn` reported `the shipped
+enemy scene carries a DamageFeedback`. The playtest was re-run and the captures re-inspected at
+6x magnification: the corpse now reads as a body rather than a smudge.
+
+### Scorecard movement (C22)
+
+UX 4 → 5 and READABILITY 4 → 5: both scores cited the two defects fixed here (no feedback when
+hit; a plaque that never cleared). VISUAL stays at **3** — the remaining gap is a death
+animation and impact particles, which belong to whichever phase owns combat VFX, and one
+creature is still one creature.

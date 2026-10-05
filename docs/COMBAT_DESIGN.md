@@ -28,7 +28,9 @@ Read every section below as DESIGN. What exists in the build is only this:
 - A player health gauge on the D-050 UI foundation.
 
 **IMPLEMENTED (Phase 10):** enemy AI — see `§7` for the grammar it implements and
-`DECISIONS.md` for what it deliberately does not do yet.
+`DECISIONS.md` for what it deliberately does not do yet. Plus both halves of combat
+feedback — `AttackFeedback` (the swing you make) and `DamageFeedback` (the hit you take, and
+the corpse) — which **clears the §10b presentation debt**.
 
 **NOT IMPLEMENTED (design only, owned by a later phase):** the defensive-action model
 (dodge/parry/block, §2 — still NOT frozen, §11) · combo logic and cancels · control/stagger ·
@@ -236,20 +238,46 @@ kept because it names the ROLES correctly; the implementation is deliberate. Add
 overlap the day something genuinely needs it (a swept projectile, a terrain-shaped AoE) —
 together with its consumer, and without taking the analytic path away from everything else.
 
-## 10b. COMBAT PRESENTATION DEBT (recorded by the D-051 audit)
+## 10b. COMBAT PRESENTATION DEBT (recorded by the D-051 audit — CLEARED in Phase 10)
 
-Audited against the real build: the four lifecycle states are **not visually distinguishable**.
-Pressing attack produces no swing, no flash, no impact and no recovery pause the player can
-see — only a health number changing on the target. The state machine is correct and invisible.
+**STATUS: CLEARED in Phase 10 (both halves). Kept here as the record of what was wrong and
+what now renders it, because the debt is what explains the shape of the fix.**
+
+What the D-051 audit found: the four lifecycle states were **not visually distinguishable**.
+Pressing attack produced no swing, no flash, no impact and no recovery pause the player could
+see — only a health number changing on the target. The state machine was correct and invisible.
 
 Consequence per §1 ("Hour 1: moving and hitting feels good; threats are readable") and the
 §7 rule that telegraph language is global and learned once: a telegraph the player cannot see
-is not a telegraph. **This is DEBT, not a design change** — the design in §2/§7 already
-requires readable timing; the build simply does not render it yet.
+is not a telegraph. **That was DEBT, not a design change** — the design in §2/§7 already
+required readable timing; the build simply did not render it.
 
-Owned by the Phase-10 presentation package (minimal, restrained attack + impact feedback; no
-VFX framework). Tracked here so it cannot be lost, and so nobody mistakes "the lifecycle is
-implemented" for "the player can perceive the lifecycle".
+Cleared by two restrained presentation nodes, both pure presentation (they decide nothing,
+resolve nothing, and deleting either changes no outcome), both idle-free (`_process` off until
+there is something to show), and both drawing every colour from `UIPalette` so combat feedback
+cannot drift from the game's palette:
+
+| Node | Half | What it renders |
+|---|---|---|
+| `AttackFeedback` | the swing you MAKE | one arc whose radius, width and alpha distinguish WINDUP (gathering, dim, growing) from ACTIVE (bright, full reach, thickest — the only phase that can land) from RECOVERY (fading at full reach, so the cost of having swung is visible). Derived from the state machine's own remaining time, never a clock of its own. |
+| `DamageFeedback` | the hit you TAKE | a short decaying tint on the entity that was damaged — crimson normally, brighter gold on a crit (`damaged` carries `is_critical` for exactly this) — plus the corpse look once it dies. It owns the entity's `modulate` channel entirely. |
+
+No particles, no shaders, no tweens, no VFX framework. The remaining presentation gap is a
+death ANIMATION and impact particles, which belong to whichever phase owns combat VFX; a
+dimmed, cooled, slightly translucent body is the minimum that distinguishes a corpse from a
+live creature.
+
+Two traps worth not repeating, both found by LOOKING at playtest captures rather than by any
+assertion:
+- A **dimming-only** corpse tint is invisible on a dark map. The first value multiplied the
+  pale wolf to ~0.36 luminance against ~0.25 grass, so a kill read as a despawn while the HUD
+  plaque was still naming the creature. The corpse mark now carries TWICE — dimmer AND
+  colour-shifted — which is the UI bible's "colour is never the only carrier" applied to the
+  world instead of to a panel.
+- A **time-limited** effect cannot be proven by a screenshot taken at an arbitrary frame. The
+  flash lasts 0.16s; on a frame-starved run the capture named `08_attack` showed an untouched
+  target. `tools/playtest_flow.gd` now REPORTS whether the shot caught the flash instead of
+  leaving the reader to assume it did.
 
 ## 11. Explicitly NOT frozen
 

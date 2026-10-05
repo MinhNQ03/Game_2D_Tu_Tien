@@ -640,6 +640,63 @@ func test_hud_shows_a_gauge_for_exactly_the_stats_a_system_owns() -> void:
 	free_node(hud)
 
 
+## The target plaque RETIRES after a kill instead of advertising a corpse forever.
+##
+## Phase 10 shipped the plaque documented as showing a dead target "briefly" while nothing
+## implemented a timeout at all, so it sat on "0 / 34" until the next fight — a comment
+## contradicting its own code, which L-014 calls a bug. The retirement is asserted through the
+## timer's OWN `timeout` signal rather than by waiting 2.5 real seconds: emitting the node's
+## real signal runs the real handler, which is the documented substitution for an
+## engine-internal clock in a headless test (L-016).
+func test_the_target_plaque_retires_after_a_kill_instead_of_advertising_a_corpse() -> void:
+	var hud := _hud()
+	var linger := hud.find_child("TargetLinger", true, false) as Timer
+	assert_not_null(linger, "the HUD owns a one-shot timer for retiring the plaque")
+	assert_true(linger.one_shot,
+		"one-shot: a repeating timer would keep hiding a plaque that is back on screen")
+
+	# A LIVE target: shown, and nothing is counting down. A fight that drags on must not time
+	# the plaque out from under the player.
+	var live := CombatTargetView.new()
+	live.has_target = true
+	live.name_key = &"ENEMY_MIST_WOLF_NAME"
+	live.threat_key = &"THREAT_FRONTIER_LOW"
+	live.current_health = 20
+	live.max_health = 34
+	hud.call("set_target_view", live)
+	assert_true(hud.call("is_target_panel_visible"), "a live target is shown")
+	assert_true(linger.is_stopped(), "and nothing is counting down while it is alive")
+
+	# DEAD: still shown — the name of what you just killed is wanted at exactly the moment it
+	# would otherwise vanish — but now on a clock.
+	var dead := CombatTargetView.new()
+	dead.has_target = true
+	dead.name_key = &"ENEMY_MIST_WOLF_NAME"
+	dead.threat_key = &"THREAT_FRONTIER_LOW"
+	dead.current_health = 0
+	dead.max_health = 34
+	dead.is_dead = true
+	hud.call("set_target_view", dead)
+	assert_true(hud.call("is_target_panel_visible"),
+		"the kill is still on screen, so the player can read what they killed")
+	assert_false(linger.is_stopped(), "and the retirement clock is running")
+	assert_true(is_equal_approx(linger.wait_time, UIPalette.TARGET_PLAQUE_LINGER),
+		"for the authored linger (%.2fs, expected %.2fs)"
+			% [linger.wait_time, UIPalette.TARGET_PLAQUE_LINGER])
+
+	linger.timeout.emit()
+	assert_false(hud.call("is_target_panel_visible"),
+		"once the linger elapses the plaque goes, rather than advertising a corpse forever")
+
+	# A SECOND creature taking the player's attention cancels the retirement outright.
+	hud.call("set_target_view", dead)
+	hud.call("set_target_view", live)
+	assert_true(hud.call("is_target_panel_visible"), "the new target is shown")
+	assert_true(linger.is_stopped(),
+		"and the dead one's countdown was cancelled, not left to hide a live target")
+	free_node(hud)
+
+
 ## The visual pass must not have cost any behaviour: the character name, the map name, the
 ## prompts and the closed-by-default sect panel all still work (a pure presentation change).
 func test_hud_behaviour_survived_the_visual_pass() -> void:

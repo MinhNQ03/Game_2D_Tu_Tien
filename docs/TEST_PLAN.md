@@ -17,7 +17,7 @@
 > dedicated real-application E2E processes (app-flow, player-flow, world-flow).
 >
 > **CI runs 10 gates** (see §5) and the in-runner suite reports
-> **`ran 572 test(s): 572 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> **`ran 586 test(s): 586 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
 > ObjectDB / resources at exit** — the count is the runner's own tally, not a hand count.
 > Combat (Phase 09) is covered: the attack lifecycle's frame-timing contract, hit resolution
 > and its determinism, the gameplay components and the session runtime, a performance budget,
@@ -534,3 +534,98 @@ is CI.
   no unsubstituted `{placeholder}`; and the session is ended FIRST of all five on return to
   menu, with its state dropped. All five of these were verified to FAIL when the arrival beat
   was disconnected.
+
+**Phase 07 (D-042) + the D-035 settings screen + the D-047 lifecycle contract** — these
+sections were missing from this list for three phases while the tests themselves were green,
+which is the kind of drift L-014 calls a bug; the coverage below is real and was simply
+unrecorded here:
+- `tests/unit/faction/test_faction_domain.gd` — data validation, `FactionState`
+  (de)serialization and invariants, `FactionStore`'s per-sect index, and the `FactionService`
+  mutation path: the sect-roster membership authority, the Faction↔Faction relationship mirror
+  with transactional rollback, and the deterministic politics rules. The sect side is a REAL
+  `SectStore` driven through a REAL `SectService`, not a stub — the whole point of the
+  membership rule is that the faction service defers to the actual roster, and a stub roster
+  would let the test pass while the real composition was broken.
+- `tests/unit/faction/test_faction_runtime.gd` — the fail-closed session start, the absence of
+  any observable half-session after a rejected start (L-025), the C-003 guard that nobody is
+  enrolled, and the read-only politics view handed to presentation. It drives the REAL node
+  with the REAL shipped catalog, because the thing most worth proving is that the authored
+  content actually starts a session.
+- `tests/unit/presentation/test_faction_panel.gd` — a `SectPoliticsView` rendered through
+  Localization, never leaking a raw content id or an enum number to the screen; "no session"
+  distinguished from "this sect has no factions"; truncation REPORTED rather than silently
+  dropping a faction; and the shared visual language worn. The view is built by hand, which is
+  the point of a read-only DTO: presentation can be tested against landscapes the shipped
+  content does not contain (a player faction, an ALLIED relation, an overflow).
+- `tests/unit/core/test_settings_store.gd` — a preference round-trips, a write does NOT lose
+  unrelated keys, and a missing or corrupt file never blocks boot. Every test binds a SCRATCH
+  path under `user://` and deletes it, because disk is shared state and the L-010 isolation
+  rule applies to it too.
+- `tests/unit/presentation/test_settings_menu.gd` — one button per SUPPORTED language read
+  from the service rather than a second hard-coded list, LOCALIZED language names instead of
+  raw codes, a press that actually changes the active language, the active choice marked, and
+  `close_requested` emitted instead of the screen navigating itself.
+- `tests/unit/bootstrap/test_session_lifecycle.gd` — the frozen session order
+  (`World → Relationship → Sect → Faction`, teardown exactly reversed) asserted as a VALUE:
+  the order constant, the reversal, and the structural guard that exactly ONE function issues
+  the teardown and consumes the constant. It exists because `_on_return_to_menu()` had drifted
+  into ending World and Relationship FIRST, under a comment claiming the opposite, with every
+  gate green (L-030).
+
+**Phase 09 (D-007) — real-time action combat:**
+- `tests/unit/combat/test_attack_lifecycle.gd` — the `READY → WINDUP → ACTIVE → RECOVERY`
+  state machine driven with EXACT deltas: each phase lasts its authored duration, the hit
+  window opens only in ACTIVE and only once per swing, a long frame consumes states in order
+  rather than skipping them, and a cancel returns to READY without resolving.
+- `tests/unit/combat/test_combat_resolution.gd` — hit selection against the ANALYTIC HURTBOX
+  MODEL (reach plus the target's radius, inside the arc, facing respected), the damage formula
+  including power and crit multipliers, and determinism: the same seeded `STREAM_COMBAT`
+  reproduces the same crit sequence while another stream stays unmoved.
+- `tests/unit/combat/test_combat_runtime.gd` — the per-session subsystem: registration and
+  unregistration are symmetric, a corpse stops being a target, and ending the session clears
+  the registry rather than leaving stale hurtboxes for the next map.
+- `tests/performance/test_combat_budget.gd` — the per-swing cost against a populated registry,
+  as a relative assertion so it fails on any hardware (L-032).
+
+**Phase 10 (D-052) — deterministic data-driven enemy AI:**
+- `tests/unit/ai/test_ai_brain.gd` — the pure-domain brain as plain numbers: each of the seven
+  states is entered for the documented reason and left for the documented reason, the leash
+  OUTRANKS a visible target, re-acquisition only happens back inside it (so a player cannot
+  walk a creature across the map or pin it in a turn-around at the boundary), and the same
+  perception at the same tick yields the same intent.
+- `tests/integration/test_enemy_encounter.gd` — a REAL `CombatRuntime` session with a REAL
+  seeded `RngService`, REAL enemies from the REAL shipped spawn table, stepped with exact
+  deltas: the shipped creature and table are valid and the creature can reach what it stops
+  at; instance ids are derived and stable; a length-mismatched table is REJECTED rather than
+  truncated (the `PackedVector2Array` authoring bug that only this check caught — L-026);
+  spawn arms and registers every row; despawn leaves the registry clean and stops the tick; the
+  creature notices and CLOSES, and from inside reach it BITES through `DamageRules` with the
+  formula's own number; death stops all four things at once (moving, thinking, being a target,
+  landing a hit from beyond the grave); decisions are throttled while movement is not; a long
+  frame causes no double swing and no stuck ATTACK; and one seed reproduces one encounter.
+- `tests/performance/test_ai_budget.gd` — the budget that **found two real clock defects before
+  the code shipped** (PERF-003): zeroing the decision accumulator discarded the overshoot, so
+  the cadence slipped to every 13th frame, and the brain was advanced by the NOMINAL interval
+  so its clock ran slower than the world under long frames. It keeps a relative scaling
+  assertion (a 10× larger cast must not cost ~3× more per tick) plus a generous absolute
+  ceiling, and asserts the decision count over a known span.
+
+**Phase-10 review pass (D-053) — the receiving half of combat feedback:**
+- `tests/unit/presentation/test_damage_feedback.gd` — a landed hit VISIBLY changes the entity
+  and decays back to exactly its resting colour (so repeated hits cannot accumulate a residual
+  tint); a crit is distinguishable from a normal hit; the tints BRIGHTEN rather than only
+  darken, because `modulate` is a multiply and a darkening-only tint disappears on a dark
+  creature; a hit that applied NOTHING does not flash; death wears the palette corpse look and
+  the killing blow does not flash over it; a flash in flight is ABANDONED on death rather than
+  restoring a living colour; only a REVIVAL clears the corpse look; the corpse tint is both
+  dimmer AND colour-shifted with a luminance FLOOR; `_process` is off whenever no flash is
+  running; and a **structural walk of `src/gameplay`** fails if any file there authors a colour
+  (comments stripped, so the entity can still document the literal it used to carry).
+- `tests/unit/presentation/test_gameplay_hud.gd` (extended) — the target plaque RETIRES after a
+  kill instead of advertising a corpse forever: a live target starts no countdown, a dead one
+  stays visible on a one-shot timer set to the authored linger, the timer's own `timeout` hides
+  it, and a new live target CANCELS the countdown rather than letting it hide a live creature.
+- `tests/integration/test_enemy_encounter.gd` (extended) — the same flash and corpse contract
+  on the REAL `enemy.tscn` spawned from the REAL table, driven through the REAL
+  `HurtboxComponent.apply_hit()`. A unit test against a hand-built stub would pass with the
+  node missing from the shipped scene entirely, which is the gap L-029 is about.

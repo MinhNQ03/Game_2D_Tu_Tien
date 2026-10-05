@@ -40,6 +40,21 @@
 > field map via a spawn table; and the Phase-09 presentation debt paid (a visible swing arc
 > plus a target plaque). **Phase 11 is NOT STARTED.**
 >
+> **Phase 10 review pass (2026-10-05, D-053 — not a phase, no new scope):** four defects on a
+> commit already green on all ten gates, two of them found by opening the playtest captures the
+> commit itself had produced. Combat had feedback for the swing you MAKE and none for the hit
+> you TAKE, so `DamageFeedback` now marks whatever was damaged (crimson, brighter gold on a
+> crit — reading the `is_critical` flag `HurtboxComponent.damaged` had carried unread for a
+> phase) and owns the entity's `modulate` channel entirely, which removed a `Color(...)`
+> literal from `Enemy` — a gameplay entity authoring a presentation decision. The corpse tint
+> was MEASURED and corrected: it had dimmed the pale wolf to ~0.36 luminance against ~0.25
+> grass, so a kill read as a despawn, and it is now dimmer AND colour-shifted. The target
+> plaque, documented as showing a kill "briefly" while nothing implemented a timeout, now
+> retires on a cancellable one-shot timer. And `tools/playtest_flow.gd` reports whether its
+> screenshot actually CAUGHT the 0.16s flash, because a capture that silently lacks the thing
+> its name promises is worse than a missing one. 586 tests, 0 leaks; every new guard verified
+> to fail against the pre-fix code. **This clears `COMBAT_DESIGN.md` §10b entirely.**
+>
 > **Phase 07 hardening (2026-10-05, D-047 — not a phase, no new scope):** two lifecycle/invariant
 > holes a green CI could not see. (1) The normal return-to-menu had drifted to tearing the session
 > down in the WRONG order — it ended World and Relationship BEFORE Faction and Sect, freeing the

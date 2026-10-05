@@ -8,6 +8,40 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-05 — Phase-10 review pass: you can now see yourself being hit (D-053)
+
+Four defects the review pass found on a commit that was already green on all ten gates and on
+CI. Two of them were found by opening the playtest captures the commit itself had produced —
+generating the evidence is not reviewing it.
+
+- **`DamageFeedback`, the pair to `AttackFeedback`.** Combat had feedback for the swing you
+  MAKE and none for the hit you TAKE: your health number dropped with no mark on your
+  character, and your own swing landed with no confirmation on the creature. Now a short
+  decaying tint marks whatever was damaged — crimson normally, brighter gold on a crit, reading
+  the `is_critical` flag `HurtboxComponent.damaged` had been carrying unread for a phase. The
+  tints BRIGHTEN rather than only darken, because `modulate` is a multiply and a darkening-only
+  tint is invisible on a dark creature.
+- **One owner for `modulate`.** `Enemy._on_health_died()` used to set a `Color(...)` literal on
+  itself: a gameplay entity authoring a presentation decision, a colour no palette edit could
+  reach, and a second writer of a property the flash also wrote. The entity now only reports
+  that it died; the presentation node decides what dead looks like. A test WALKS
+  `src/gameplay` and fails if any file there authors a colour.
+- **The corpse is visible again.** Its tint multiplied the pale wolf to ~0.36 luminance against
+  ~0.25 grass — plainly a wolf when magnified, a dark smudge at 1:1, so a kill read as a
+  despawn while the HUD was still naming the creature. It is now dimmer AND blue-shifted AND
+  slightly translucent: two carriers, which is the UI bible's rule applied to the world rather
+  than to a panel.
+- **The target plaque retires.** It was documented as showing a kill "briefly" while nothing
+  implemented a timeout, so it sat on `0 / 34` until the next fight. A cancellable one-shot
+  timer retires it after `TARGET_PLAQUE_LINGER`; a live target cancels it, so a second creature
+  keeps the panel up.
+- **The playtest says what its screenshot caught.** A 0.16s flash is not evidenced by a frame
+  grabbed at an arbitrary moment — on a frame-starved run the file named `08_attack` showed an
+  untouched target. The report now carries `hit-flash caught in shot=true|false`, and it is
+  deliberately not a pass condition.
+
+586 tests (up from 572), 0 leaks. Every new guard was verified to fail against the pre-fix code.
+
 ### 2026-10-05 — Phase 10: deterministic data-driven enemy AI (D-052)
 
 The field has something in it. A player walks out of the hub, meets a **Vụ Lang** (frontier

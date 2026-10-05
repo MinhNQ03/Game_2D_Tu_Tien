@@ -906,3 +906,58 @@
 - **Fixed:** Phase 09 review pass. Registry moved to `src/gameplay/combat_hurtbox_registry.gd`
   with the placement reasoning in its docstring; dummy moved to (680, 408) — dry ground, 104px
   clear of the corridor — with the clearance pinned by a test.
+
+## L-037 — A short-lived effect cannot be proven by a screenshot, and a gameplay entity that writes a colour is a layer violation with no compiler to catch it
+- **Symptom (Phase 10 review pass, D-053):** four defects on a commit already green on all ten
+  gates and on CI, two of them found by **opening the playtest captures the commit itself had
+  produced**.
+  1. `CombatTargetView.is_dead` was documented as keeping a killed creature on the HUD plaque
+     "briefly" and **nothing implemented a timeout at all** — the plaque sat on `0 / 34` until
+     the next fight. The comment explaining the behaviour was the thing contradicting the code.
+  2. Phase 10 shipped the ATTACKING half of combat feedback and left the RECEIVING half empty:
+     the player's health number dropped with no mark on the character, and the player's own
+     swing landed with no confirmation on the creature. `HurtboxComponent.damaged` had carried
+     `is_critical` "so presentation can distinguish a crit" for a whole phase with nothing
+     reading it.
+  3. `Enemy._on_health_died()` set `modulate = Color(0.55, 0.55, 0.62, 0.75)` on itself — a
+     gameplay entity authoring a presentation decision, a colour no palette edit could reach,
+     and a SECOND writer of a property the new flash also wrote.
+  4. That tint multiplied the pale wolf to ~0.36 luminance against ~0.25 grass. Magnified it
+     was plainly a wolf; at 1:1 it was a dark smudge, so **a kill read as a despawn** while the
+     HUD was still naming the creature.
+- **Rule (the general one):** **a feedback effect that lasts a fraction of a second is not
+  evidenced by a capture taken at an arbitrary frame.** The flash here lasts 0.16s and the
+  harness shoots one frame after the hit: on a fast run it caught it, on a frame-starved run
+  the file named `08_attack` showed a completely untouched target. Make the tool REPORT what it
+  caught (`hit-flash caught in shot=true|false`) rather than leaving the reader to assume —
+  same reasoning as L-034's "a capture that quietly lies is worse than a missing one". Do NOT
+  make it a pass condition: gating a step on frame pacing is how a timing test becomes flaky
+  and then gets deleted (L-032). For the behaviour itself, assert it on an explicit clock
+  (`advance(delta)`), never with a `Tween` — a tween cannot be stepped from a headless test.
+- **Rule (colour is a layer):** **a gameplay or domain file that writes a colour is in the
+  wrong layer, and nothing in the toolchain will say so** — there is no import to look wrong,
+  the code compiles, and the tests pass either way. This is L-036 ("a domain class typed on a
+  `Node`") in a second disguise: ask not "does this run" but "is this file entitled to make
+  this decision". The entity reports WHAT HAPPENED to it (`died`); presentation decides what
+  that LOOKS like. Enforce it by WALKING the directory — a hand-written file list only protects
+  the files somebody remembered (L-034) — and strip comments in the scan so the file can still
+  document the mistake it used to make.
+- **Rule (one owner per property):** when two nodes write one property (`modulate` here), the
+  bug is not the overwrite, it is the **shared ownership**: every future change has to
+  re-derive which writer wins. Give the channel to ONE owner driven by the signals the other
+  already emits. That is what turned "do not paint over a corpse" from a comment into
+  something structural.
+- **Also (a mark must carry twice):** **dimming alone is not a visible state change on a dark
+  map.** `SURFACE_LIGHT_BRIGHTNESS_LIMIT` and "colour is never the only carrier" are written in
+  the UI bible as PANEL rules; they apply to the WORLD too. A corpse is now dimmer AND
+  blue-shifted AND slightly translucent, with a test asserting the colour shift and a luminance
+  FLOOR so the next tidy-up cannot re-darken it into nothing. And remember `modulate` is a
+  MULTIPLY: a tint built only from values <= 1 can only darken, which reads on pale art and
+  disappears on dark art — push a channel past 1.0 when the effect must be visible on both.
+- **Fixed:** D-053. `UIPalette.TARGET_PLAQUE_LINGER` + a cancellable one-shot `Timer` in
+  `gameplay_hud.gd`; `src/presentation/combat/damage_feedback.gd` owning the whole `modulate`
+  channel (flash, crit flash, corpse look, revival); `Enemy._on_health_died()` reduced to
+  `died.emit()`; `UIPalette.CORPSE_TINT` measured and corrected; the colour-authoring walk and
+  the two-carrier assertion in `tests/unit/presentation/test_damage_feedback.gd`; the real-scene
+  wiring pinned in `tests/integration/test_enemy_encounter.gd`; the flash-caught report in
+  `tools/playtest_flow.gd`. Each guard was verified to FAIL against the pre-fix code.

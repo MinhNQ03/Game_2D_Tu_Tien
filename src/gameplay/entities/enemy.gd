@@ -175,8 +175,9 @@ func _on_health_died() -> void:
 	if _attack != null and is_instance_valid(_attack):
 		_attack.cancel()
 	velocity = Vector2.ZERO
-	# Visually dead: dimmed and flattened, which is readable at a glance and costs nothing.
-	# A death ANIMATION belongs to the phase that owns combat VFX; this is the minimum that
-	# distinguishes a corpse from a live creature (C13).
-	modulate = Color(0.55, 0.55, 0.62, 0.75)
+	# NOTHING here touches how the corpse LOOKS. This originally set a `Color(...)` literal on
+	# itself, which made a gameplay entity the author of a presentation decision — a colour no
+	# palette edit could reach, and a second writer of a property `DamageFeedback` also writes
+	# (L-036 is the same mistake in the domain layer). The entity reports that it died; the
+	# presentation node decides what dead looks like.
 	died.emit()

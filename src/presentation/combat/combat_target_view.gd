@@ -33,8 +33,14 @@ var threat_key: StringName = &""
 var current_health: int = 0
 var max_health: int = 1
 
-## True once it is dead. The panel keeps showing it briefly so the player sees WHAT they
-## killed, instead of the information vanishing at the moment it is most satisfying.
+## True once it is dead. The panel keeps showing it for `UIPalette.TARGET_PLAQUE_LINGER` so the
+## player sees WHAT they killed, instead of the information vanishing at the moment it is most
+## satisfying — and then hides, because a plaque advertising a corpse forever is the UI not
+## having noticed the fight ended.
+##
+## The linger is REAL, not a figure of speech. This comment originally said the panel shows a
+## dead target "briefly" while nothing implemented a timeout at all, so the plaque sat on
+## "0 / 34" indefinitely — a doc contradicting its own code, which L-014 calls a bug.
 var is_dead: bool = false
 
 

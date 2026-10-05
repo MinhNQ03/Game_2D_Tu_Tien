@@ -70,6 +70,8 @@ var _target_panel: PanelContainer
 var _target_name_label: Label
 var _target_threat_label: Label
 var _target_gauge: ProgressBar
+## Retires the target plaque a moment after a kill (see `set_target_view`).
+var _target_linger: Timer
 ## The last target view pushed in, kept so `_refresh_text()` can re-resolve its keys on a
 ## language change without the combat session having to push again.
 var _target_view: CombatTargetView = null
@@ -367,6 +369,15 @@ func _build_ui() -> void:
 	_target_gauge = UITheme.vitals_gauge()
 	target_body.add_child(_target_gauge)
 
+	# One-shot timer that retires the plaque after a kill. A `Timer` rather than a `_process`
+	# countdown: it costs nothing while stopped, which matters on a node that exists for the
+	# whole session and is used for a second or two per fight.
+	_target_linger = Timer.new()
+	_target_linger.name = "TargetLinger"
+	_target_linger.one_shot = true
+	_target_linger.timeout.connect(_on_target_linger_timeout)
+	_target_panel.add_child(_target_linger)
+
 	# --- Bottom-left: control-prompt panel (graphic key badges) -------------------
 	var prompt_panel := _panel()
 	prompt_panel.name = "PromptStrip"
@@ -563,10 +574,24 @@ func set_target_view(view: CombatTargetView) -> void:
 		return
 	if view == null or not view.has_target:
 		_target_panel.visible = false
+		_target_linger.stop()
 		return
 	_target_panel.visible = true
 	UITheme.set_gauge_value(_target_gauge, view.current_health, view.max_health)
 	_refresh_target_text()
+	# A DEAD target lingers, then goes. Long enough to read what you killed, short enough that
+	# the plaque is not still advertising a corpse minutes later. A live target cancels the
+	# timer, so taking a second creature's attention keeps the panel up.
+	if view.is_dead:
+		_target_linger.start(UIPalette.TARGET_PLAQUE_LINGER)
+	else:
+		_target_linger.stop()
+
+
+## The dead target has been on screen long enough: retire the plaque.
+func _on_target_linger_timeout() -> void:
+	if _target_panel != null:
+		_target_panel.visible = false
 
 
 ## Is the target plaque shown? (for tests — its visibility IS the contract.)
