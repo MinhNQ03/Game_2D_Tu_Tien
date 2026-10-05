@@ -11,9 +11,28 @@
 > **CẤM "đoán → push → chờ CI → đoán tiếp".** Mỗi lần push một bản sửa suy đoán mà
 > không có bằng chứng nguyên nhân gốc là VI PHẠM giao thức này.
 
-Godot KHÔNG chạy được ở máy local (D-009), nên CI là nơi chạy test thật duy nhất. Chính
-vì vậy mỗi vòng CI rất đắt (thời gian của người dùng). Phải tận dụng tối đa MỖI vòng:
-tối đa thông tin, tối thiểu số lần push.
+### CẬP NHẬT QUAN TRỌNG — tiền đề cũ của file này đã SAI (L-031)
+
+File này từng mở đầu bằng *"Godot KHÔNG chạy được ở máy local (D-009), nên CI là nơi chạy
+test thật duy nhất"*. **Điều đó không còn đúng, và thật ra chưa bao giờ được kiểm lại.**
+D-009 là một kết luận từ Phase 0 (không tìm thấy Godot trên PATH của agent) và nó được
+thừa hưởng suốt tám phase mà không ai thử lại. Khi thử: tải Godot 4.7-stable về là chạy
+được ngay — headless, có display, chạy đủ cả 10 gate và chụp được screenshot thật.
+
+**Hệ quả với giao thức này: BƯỚC 0 LÀ TÁI HIỆN LỖI Ở LOCAL, không phải đọc log CI.**
+- Chạy đủ bộ gate ở local TRƯỚC khi push: lint → `--import` → `parse_check.gd` →
+  `run_tests.gd` → 3 E2E. Một lỗi tái hiện được ở local không bao giờ nên trở thành một
+  vòng CI.
+- CI vẫn là **cơ quan xác nhận cuối cùng** (môi trường sạch, Godot do workflow pin), nên
+  một commit vẫn chỉ "xong" khi check-run `Foundation gates (Godot 4.7)` là `success`.
+  Nhưng CI không còn là nơi *phát hiện* lỗi.
+- Phần còn lại của file vẫn nguyên giá trị: luật cấm "đoán → push → đoán tiếp", cách đọc
+  lỗi thật, giới hạn push, và danh sách bẫy headless `-s` ở dưới. Chỉ có tiền đề "chỉ CI
+  mới chạy được" là bị thay thế.
+
+> Bài học tổng quát ở L-031: **một giới hạn công cụ mà bạn thừa hưởng từ lập luận của
+> chính mình — chứ không từ một lỗi tool bạn vừa thấy — đáng được thử lại 10 phút trước
+> khi để nó định hình cả quy trình.**
 
 ## Khi một CI check thất bại — làm ĐÚNG THỨ TỰ này
 

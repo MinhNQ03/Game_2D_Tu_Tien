@@ -155,7 +155,25 @@ not change call sites. Missing-key behavior: return the key itself and `push_war
 dev (documented in `docs/TEST_PLAN.md` / `DEBUGGING.md`), never crash.
 **Blocking (resolved):** Phase 01 (foundation strings) and Phase 24 (full content sweep).
 
-## D-009 — Local headless Godot execution is unavailable to the AI agent  — **Accepted / documented limitation** (2026-10-02)
+## D-009 — Local headless Godot execution is unavailable to the AI agent  — **SUPERSEDED** (2026-10-05, Phase 09 review; see L-031)
+
+> **This decision is WRONG and was never re-tested.** Godot 4.7-stable downloads and runs
+> on this machine — headless and with a display — so the full 10-gate set and real
+> screenshot captures both work locally. The conclusion below was drawn in Phase 0 from a
+> PATH search and was then inherited for eight phases, shaping the whole CI-failure
+> protocol (`.kiro/steering/10-ci-failure-protocol.md`, now corrected) around a constraint
+> that cost a ten-minute experiment to disprove.
+>
+> **What is still true:** CI remains the AUTHORITATIVE verification — a clean environment
+> with a workflow-pinned Godot — so a commit is only done when the `Foundation gates
+> (Godot 4.7)` check-run is `success`. What changed is that CI is no longer where defects
+> are *discovered*: reproduce locally first, and never spend a CI round on something a
+> local run would have caught.
+>
+> The original text is kept below unedited, because the reasoning it records is what the
+> process looked like while the belief was held.
+
+### Original decision (2026-10-02, superseded)
 **Context:** During the Phase 0 foundation fix, the AI agent could not find or invoke a
 Godot executable from the shell. Checked: PATH, common install dirs
 (`%LOCALAPPDATA%\Programs`, Program Files, scoop, Downloads, itch), and the Windows
