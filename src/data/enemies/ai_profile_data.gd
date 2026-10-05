@@ -1,0 +1,102 @@
+extends Resource
+class_name AiProfileData
+## AiProfileData — Aetheria data (one enemy's BEHAVIOUR TUNING, Phase 10).
+##
+## The numbers an `AiBrain` reads to decide. Separate from `EnemyData` on purpose: a profile is
+## a reusable *behaviour archetype* ("frontier skirmisher", "ambusher", "guard") that several
+## creatures can share, while `EnemyData` is one creature's identity and stats. Merging them
+## would mean copying a dozen tuning values every time a second creature wanted the same
+## behaviour, and then having them drift.
+##
+## IT CONTAINS NO LOGIC AND NO BRANCHES. There is no `behaviour_type` enum here that a brain
+## switches on — that would put AI logic in data, which `02-game-design.md`'s extensibility rule
+## forbids in the other direction too: data describes, the domain decides. A genuinely new
+## BEHAVIOUR is a new brain state (code, with a test); a different *flavour* of the same
+## behaviour is this resource.
+
+## Stable content id (`ai_*`).
+@export var id: StringName = &""
+
+# --- Perception ---------------------------------------------------------------
+
+## Distance at which the enemy notices a target, in pixels.
+@export var detect_radius: float = 160.0
+
+## Distance at which it gives up and goes home. MUST be larger than `detect_radius`, or the
+## enemy oscillates between noticing and forgetting at the same spot — a hysteresis band, not
+## a single threshold. `is_valid()` enforces it.
+@export var lose_interest_radius: float = 260.0
+
+## How far it will stray from its spawn point before returning, in pixels. This is what keeps
+## an encounter LOCAL: without it a single wolf can be walked across the whole map.
+@export var leash_radius: float = 320.0
+
+# --- Decision cadence ---------------------------------------------------------
+
+## Seconds between DECISIONS. Movement is executed every tick; only the choice is throttled
+## (`05-performance-testing.md`: no per-frame AI thinking). Larger = cheaper and more readable
+## (the player can see a committed decision); too large = the enemy feels deaf.
+@export var decision_interval: float = 0.2
+
+# --- Movement -----------------------------------------------------------------
+
+## Speed multiplier while chasing, applied to the enemy's `move_speed` stat.
+@export var chase_speed_scale: float = 1.0
+
+## Speed multiplier while patrolling or returning home — slower, so "hunting you" and
+## "wandering" are visibly different states rather than the same motion with a different name.
+@export var patrol_speed_scale: float = 0.45
+
+# --- State timings ------------------------------------------------------------
+
+## How long it pauses on first noticing a target. This is a TELEGRAPH, not a delay: it is the
+## window in which the player can see that they have been spotted (`COMBAT_DESIGN.md` §7 —
+## telegraph language is learned once and must be visible).
+@export var alert_seconds: float = 0.35
+
+## How long it backs off after a swing. The signature of this archetype: it does not stand in
+## your face trading hits, it disengages and re-closes, which is what punishes standing still.
+@export var recover_seconds: float = 0.6
+
+## How long it idles before wandering again.
+@export var idle_seconds: float = 1.2
+
+## How long one patrol leg lasts before picking a new direction.
+@export var patrol_seconds: float = 1.5
+
+## Distance it tries to keep while recovering, in pixels — it backs off to about here.
+@export var recover_distance: float = 72.0
+
+
+## True when the tuning is self-consistent. Loud about WHICH field is wrong, because a content
+## error that only says "invalid" sends the author through the whole file.
+func is_valid() -> bool:
+	var problems: Array[String] = []
+	if id == &"":
+		problems.append("id is empty")
+	if detect_radius <= 0.0:
+		problems.append("detect_radius must be > 0 (got %.1f)" % detect_radius)
+	# The hysteresis band is the point: equal radii make the enemy flicker between noticing
+	# and forgetting while standing at exactly that distance.
+	if lose_interest_radius <= detect_radius:
+		problems.append("lose_interest_radius (%.1f) must EXCEED detect_radius (%.1f) so "
+			% [lose_interest_radius, detect_radius] + "notice/forget is a band, not a knife edge")
+	if leash_radius <= 0.0:
+		problems.append("leash_radius must be > 0 (got %.1f)" % leash_radius)
+	if decision_interval <= 0.0:
+		problems.append("decision_interval must be > 0 (got %.3f) or the AI thinks every frame"
+			% decision_interval)
+	if chase_speed_scale <= 0.0:
+		problems.append("chase_speed_scale must be > 0 (got %.2f)" % chase_speed_scale)
+	if patrol_speed_scale <= 0.0:
+		problems.append("patrol_speed_scale must be > 0 (got %.2f)" % patrol_speed_scale)
+	for field in ["alert_seconds", "recover_seconds", "idle_seconds", "patrol_seconds"]:
+		var value: float = float(get(field))
+		if value <= 0.0:
+			problems.append("%s must be > 0 (got %.3f)" % [field, value])
+	if recover_distance <= 0.0:
+		problems.append("recover_distance must be > 0 (got %.1f)" % recover_distance)
+	if problems.is_empty():
+		return true
+	push_error("[ai-profile] '%s' is invalid: %s" % [id, "; ".join(problems)])
+	return false

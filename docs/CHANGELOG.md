@@ -8,6 +8,47 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-05 — Phase 10: deterministic data-driven enemy AI (D-052)
+
+The field has something in it. A player walks out of the hub, meets a **Vụ Lang** (frontier
+mist wolf), is noticed, chased, bitten, and can kill it — and the corpse stops being an actor.
+
+- **`AiBrain` is pure domain**: scalars in, an INTENT out, never a vector. That makes "at 300px
+  it gives up" an assertion rather than a scene, and makes AI the mirror of player input
+  (`DECISION → INTENT → resolution`), which is what lets a server own it later.
+- **Seven states, each earned**: IDLE · PATROL · **ALERT** (the telegraph — a pause the player
+  can see) · CHASE · ATTACK · **RECOVER** (disengage and re-close, which punishes standing
+  still) · RETURN. The leash outranks a visible target, and re-acquisition only happens once
+  back inside it — otherwise a player can walk one creature across the map or pin it in a
+  turn-around at the boundary.
+- **No seventh Systems node and no per-enemy frame callback.** `CombatRuntime` spawns, ticks
+  and despawns; ONE session callback drives every brain, asserted structurally as well as by
+  timing, so the cost of N creatures is one measurable number. An enemy-free map stops ticking.
+- **A second creature is a `.tres` + a spawn-table row.** No `if enemy_id == ...`; one
+  `enemy.tscn` configured entirely by `EnemyData`, with `AiProfileData` separate so a
+  behaviour archetype is shareable. Neither carries a `behaviour_type` enum.
+- **Enemies have no `CharacterState`** — a beast has no realm, sect or memory, and wildlife
+  does not belong in the world simulation's cast. Recorded so the next creature that DOES need
+  remembering knows nothing is in its way.
+- **PERF-003, found by the new budget test**: zeroing the decision accumulator discarded the
+  overshoot and the cadence silently ran 8% slow (138 decisions where 150 were expected,
+  because 12 frames at 60fps sum to 0.19999999999999998). The same test's long-frame sibling
+  caught a second bug — the brain was advanced by the NOMINAL interval, so under 5-second
+  frames its clock ran slower than the world and a creature could sit in one state
+  indefinitely. 40 creatures × 1800 frames = 289 ms, 4.0 µs per enemy per frame, 10.3× scaling
+  for a 10× cast.
+- **The Phase-09 presentation debt is PAID** (D-051 §10b). `AttackFeedback` draws one arc
+  whose radius, width and alpha distinguish WINDUP / ACTIVE / RECOVERY — no particles, no
+  shader, every colour from `UIPalette`, nothing when idle. A capture confirms the swing is
+  visible where before there was only a number changing.
+- **A target plaque** on the D-050 seams shows the creature's name, threat rating and health.
+  No level, mana or realm — nothing owns those yet. Published on engagement AND damage:
+  publishing on damage alone meant the player watched a wolf close in with an empty plaque,
+  which a capture caught.
+- 572 tests (+35), 0 leaks. The world E2E now kills a real creature with real attack keys and
+  asserts the corpse is untargetable, immobile and harmless; the playtest harness runs 14 steps
+  including the whole encounter.
+
 ### 2026-10-05 — Phase 09: real-time action combat (D-007 resolved)
 
 **D-007 is resolved as (a) REAL-TIME TOP-DOWN ACTION COMBAT**, after being Open since Phase 0.

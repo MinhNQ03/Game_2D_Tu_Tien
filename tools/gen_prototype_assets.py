@@ -547,16 +547,25 @@ CULTIVATORS = {
 }
 
 
-def _cell(px, col, row):
-    """The flat pixel list of one frame cell, for comparing frames."""
+def _cell(px, col, row, cell_w=None, cell_h=None):
+    """The flat pixel list of one frame cell, for comparing frames.
+
+    The cell size is a PARAMETER, defaulting to the 32x48 character baseline. It used to be
+    hard-coded to CHAR_W/CHAR_H, which would silently read a 32x32 beast sheet (Phase 10) at
+    the wrong stride: the comparison would still run, still find differences, and still pass —
+    while comparing regions that are not the frames. A verifier that reads the wrong pixels is
+    worse than no verifier, because it reports confidence it does not have.
+    """
+    w = CHAR_W if cell_w is None else cell_w
+    h = CHAR_H if cell_h is None else cell_h
     out = []
-    for y in range(CHAR_H):
-        row_px = px[row * CHAR_H + y]
-        out.extend(row_px[col * CHAR_W:(col + 1) * CHAR_W])
+    for y in range(h):
+        row_px = px[row * h + y]
+        out.extend(row_px[col * w:(col + 1) * w])
     return out
 
 
-def _verify_sheet_animates(label, px, frames):
+def _verify_sheet_animates(label, px, frames, cell_w=None, cell_h=None):
     """Fail LOUD if the sheet has no visible motion, or if two facings are identical.
 
     This guards the exact defect D-046 existed to fix (L-029): an animation INDEX that
@@ -571,7 +580,8 @@ def _verify_sheet_animates(label, px, frames):
         for direction in range(DIRECTION_COUNT):
             for frame in range(frames):
                 nxt = (frame + 1) % frames
-                if _cell(px, frame, direction) == _cell(px, nxt, direction):
+                if _cell(px, frame, direction, cell_w, cell_h) \
+                        == _cell(px, nxt, direction, cell_w, cell_h):
                     raise SystemExit(
                         "DEGENERATE ART: %s direction row %d frames %d and %d are "
                         "pixel-identical - the animation would advance its index over a "
@@ -579,7 +589,7 @@ def _verify_sheet_animates(label, px, frames):
     # Every facing must be distinguishable, or the character does not turn on screen.
     for a in range(DIRECTION_COUNT):
         for b in range(a + 1, DIRECTION_COUNT):
-            if _cell(px, 0, a) == _cell(px, 0, b):
+            if _cell(px, 0, a, cell_w, cell_h) == _cell(px, 0, b, cell_w, cell_h):
                 raise SystemExit(
                     "DEGENERATE ART: %s direction rows %d and %d are pixel-identical - the "
                     "character would not visibly turn" % (label, a, b))
@@ -799,6 +809,150 @@ def gen_training_dummy():
     _png(os.path.join(ROOT, "assets/sprites/characters/training_dummy.png"), w, h, px)
 
 
+# --- Enemies (Phase 10) ------------------------------------------------------
+# Sheets follow the SAME grid contract as the character sheets (`06-art-assets.md`): one ROW
+# per cardinal direction in DOWN, UP, LEFT, RIGHT order, N animation COLUMNS, and the frame
+# count DERIVED from the texture width. Beasts are 32x32 rather than 32x48 — they are
+# quadrupeds, not standing figures — which `CharacterVisualProfileData.frame_size` already
+# supports, so no new rendering path is needed.
+
+BEAST_W, BEAST_H = 32, 32
+
+
+def _mist_wolf_palette():
+    """Vụ Lang — the frontier mist wolf. Pale mist-grey coat, jade qi at the shoulders.
+
+    The colours are the creature's IDENTITY, not decoration: a pale grey silhouette reads at a
+    glance against the field's moss green and the paddy blue (neither of which is grey), and
+    the jade wisp is the only saturated thing on it, so the eye lands on the part that marks it
+    as a SPIRIT beast rather than an animal.
+    """
+    return {
+        "coat": (168, 176, 186, 255),
+        "coat_hi": (206, 212, 220, 255),
+        "coat_dk": (112, 120, 132, 255),
+        "maw": (74, 78, 90, 255),
+        "eye": (122, 226, 178, 255),
+        "qi": (122, 226, 178, 255),
+        "qi_dim": (74, 150, 120, 255),
+    }
+
+
+def _draw_mist_wolf(px, ox, oy, direction, pal, bob, stride):
+    """One 32x32 frame of the mist wolf at (ox, oy).
+
+    `bob` lifts the body (idle breath), `stride` swings the legs. The silhouette is built from
+    ovals rather than a pixel-by-pixel drawing so every direction stays the same ANIMAL — a
+    hand-placed side view and a hand-placed front view usually end up looking like two
+    different creatures.
+    """
+    coat, hi, dk = pal["coat"], pal["coat_hi"], pal["coat_dk"]
+
+    def oval(cx, cy, rx, ry, color):
+        _oval_at(px, ox + cx, oy + cy, rx, ry, color)
+
+    def rect(x0, y0, x1, y1, color):
+        _rect(px, ox + x0, oy + y0, ox + x1, oy + y1, color)
+
+    # EVERY FEATURE IS AT LEAST 2px. `_outline_pass()` draws a dark edge around every opaque
+    # pixel, so a 1px leg or a 1px ear is consumed entirely by its own outline — the second
+    # attempt at this sprite had 1px legs and rendered them as detached dots floating under a
+    # featureless blob. At 32x32 with an outline, 2px is the smallest shape that survives.
+    body_y = 16 + bob
+    if direction in (Dir.LEFT, Dir.RIGHT):
+        flip = -1 if direction == Dir.LEFT else 1
+        cx = 15
+        # LEGS first, so the barrel overlaps their tops and they read as attached.
+        for i, lx in enumerate((-7, -3, 3, 7)):
+            swing = stride if i % 2 == 0 else -stride
+            leg_x = cx + flip * lx
+            rect(leg_x - 1, body_y + 2, leg_x, body_y + 9 + swing, dk)
+        # A LONG, LOW barrel: 10x4 reads as a hunter where the 9x5 of the first pass read as
+        # livestock. The silhouette IS the identity at this size.
+        oval(cx, body_y, 10, 4, coat)
+        oval(cx - flip * 3, body_y - 2, 5, 2, hi)                   # lit spine
+        # HEAD forward and LOW with a blunt muzzle — the two cues that read as canine.
+        head_x = cx + flip * 9
+        oval(head_x, body_y - 4, 4, 3, coat)
+        rect(head_x + flip * 2, body_y - 4, head_x + flip * 5, body_y - 2, coat)
+        rect(head_x + flip * 4, body_y - 3, head_x + flip * 5, body_y - 2, pal["maw"])
+        rect(head_x - flip * 2, body_y - 4, head_x - flip * 1, body_y - 2, hi)  # cheek
+        # EAR: 2x3, back-swept, in the DARK coat tone so it reads against the lit head.
+        rect(head_x - flip * 2, body_y - 8, head_x - flip * 1, body_y - 6, dk)
+        rect(head_x + flip * 1, body_y - 4, head_x + flip * 2, body_y - 4, pal["eye"])
+        # TAIL: a 2px sweep, low and trailing.
+        rect(cx - flip * 10, body_y - 3, cx - flip * 12, body_y - 2, dk)
+        # The qi wisp is the ONLY saturated thing on the creature, and it sits over the
+        # shoulders so the eye lands on what marks this as a SPIRIT beast.
+        oval(cx - flip * 2, body_y - 6, 3, 2, pal["qi"])
+        oval(cx - flip * 4, body_y - 8, 2, 2, pal["qi_dim"])
+    else:
+        facing_down = direction == Dir.DOWN
+        cx = 16
+        for i, lx in enumerate((-5, -1, 2, 6)):
+            swing = stride if i % 2 == 0 else -stride
+            rect(cx + lx - 1, body_y + 2, cx + lx, body_y + 9 + swing, dk)
+        oval(cx, body_y, 7, 5, coat)                                # chest-on body
+        oval(cx - 2, body_y - 2, 4, 2, hi)
+        head_y = body_y + (5 if facing_down else -5)
+        oval(cx, head_y, 5, 3, coat)
+        # EARS as 2x3 shapes in the dark tone. The first pass drew them as jade blobs, which
+        # made the creature read as a plush toy and stole the qi wisp's job.
+        for ear_x in (cx - 4, cx + 3):
+            rect(ear_x, head_y - 4, ear_x + 1, head_y - 2, dk)
+        if facing_down:
+            rect(cx - 3, head_y - 1, cx - 2, head_y - 1, pal["eye"])
+            rect(cx + 2, head_y - 1, cx + 3, head_y - 1, pal["eye"])
+            rect(cx - 1, head_y + 1, cx + 1, head_y + 2, pal["maw"])   # muzzle
+        else:
+            oval(cx, head_y, 4, 2, dk)                              # back of the skull
+        oval(cx - 4, body_y - 5, 3, 2, pal["qi"])
+        oval(cx + 4, body_y - 5, 3, 2, pal["qi"])
+
+
+def _oval_at(px, cx, cy, rx, ry, color):
+    h, w = len(px), len(px[0])
+    for y in range(max(0, cy - ry), min(h, cy + ry + 1)):
+        for x in range(max(0, cx - rx), min(w, cx + rx + 1)):
+            dx = (x - cx) / float(rx)
+            dy = (y - cy) / float(ry)
+            if dx * dx + dy * dy <= 1.0:
+                px[y][x] = color
+
+
+def _gen_beast_sheet(name, pal, frames, anim):
+    """A direction-rows x animation-columns sheet, verified to actually ANIMATE.
+
+    The verification is not ceremony: D-046 shipped four "walk" sheets whose frames differed
+    by +/-1px, i.e. a walk animation that animated nothing a player could see, and every
+    assertion about the pipeline passed (L-029). So each sheet is checked for a real
+    frame-to-frame difference before it is written.
+    """
+    w, h = BEAST_W * frames, BEAST_H * 4
+    px = _blank(w, h)
+    for row, direction in enumerate((Dir.DOWN, Dir.UP, Dir.LEFT, Dir.RIGHT)):
+        for col in range(frames):
+            phase = col / float(frames)
+            if anim == "idle":
+                bob = 0 if col % 2 == 0 else -1
+                stride = 0
+            else:
+                # A full stride cycle: legs swing out, through, out the other way, through.
+                bob = -1 if col in (1, 3) else 0
+                stride = [2, 0, -2, 0][col % 4]
+            _draw_mist_wolf(px, col * BEAST_W, row * BEAST_H, direction, pal, bob, stride)
+    _outline_pass(px)
+    _verify_sheet_animates("%s/%s" % (name, anim), px, frames, BEAST_W, BEAST_H)
+    _png(os.path.join(ROOT, "assets/sprites/enemies/%s_%s.png" % (name, anim)), w, h, px)
+
+
+def gen_enemies():
+    os.makedirs(os.path.join(ROOT, "assets/sprites/enemies"), exist_ok=True)
+    pal = _mist_wolf_palette()
+    _gen_beast_sheet("mist_wolf", pal, 2, "idle")
+    _gen_beast_sheet("mist_wolf", pal, 4, "walk")
+
+
 def gen_props():
     gen_prop_lantern()
     gen_prop_tree()
@@ -812,5 +966,6 @@ if __name__ == "__main__":
     gen_tileset()
     gen_character_sheets()
     gen_props()
+    gen_enemies()
     gen_sect_emblems()
     print("done")

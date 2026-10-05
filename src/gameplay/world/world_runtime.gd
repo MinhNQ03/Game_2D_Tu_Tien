@@ -45,6 +45,12 @@ const PLAYER_INSTANCE_ID := &"player"
 ## editing a `.tres` — never this file.
 const PLAYER_ATTACK_PATH := "res://data/combat/attack_player_basic.tres"
 
+## Where per-map enemy spawn tables live (Phase 10). A map is populated by CONVENTION —
+## `spawn_table_<map suffix>.tres` — so adding enemies to a map is adding a file, and a map
+## with no table is simply peaceful. The alternative (a `spawn_table_ref` on `MapData`) would
+## make every existing map resource carry an empty field for a feature most maps will not use.
+const SPAWN_TABLE_DIR := "res://data/enemies"
+
 const PlayerScene := preload("res://src/gameplay/entities/player.tscn")
 
 ## Emitted when the player asks to leave the world back to the menu (bubbled up from the
@@ -319,8 +325,63 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# below reflects the ticks this arrival just caused.
 	_notify_world_sim_arrival(map_id)
 	_push_world_sim_view_to_active_map()
+	# COMBAT, last (Phase 10): despawn the previous map's creatures and populate this one.
+	#
+	# It has to happen on every transition, not only at session start: the old map's enemies
+	# were freed with its scene, so their hurtboxes would otherwise linger in the registry as
+	# stale entries and the new map would have nothing in it. Last in the sequence because an
+	# enemy needs the player already placed (it is the hunt target) and the HUD already built.
+	_repopulate_combat_for_active_map()
 	# The old scene was freed by the router's _free_current_scene(); nothing to do here.
 	return true
+
+
+## Re-arm combat for the map that just became active (Phase 10).
+##
+## Null-safe at every hop, like the sect/politics/world-sim pushes: no CombatRuntime or no
+## combat session simply means a map with no fighters, which is the isolated-harness case and
+## must not be an error.
+func _repopulate_combat_for_active_map() -> void:
+	var combat := _find_combat_runtime()
+	if combat == null or not bool(combat.call("is_session_active")):
+		return
+	# Forward the target view to the new map's HUD. Connected here rather than in Main because
+	# this is the node that knows which map (and therefore which HUD) is active — the same
+	# reason the sect and politics views are pushed from here.
+	if not combat.is_connected("combat_target_changed", _on_combat_target_changed):
+		combat.connect("combat_target_changed", _on_combat_target_changed)
+	# A fresh map means a fresh HUD with no target, and the previous map's creatures are gone.
+	_push_target_view_to_active_map(CombatTargetView.make_empty())
+	combat.call("despawn_enemies")
+	# The player is a persistent node that survives the transition, so its hurtbox is still
+	# registered — but re-registering is idempotent and keeps "the active map is fully armed"
+	# true from one call rather than depending on what the previous map left behind.
+	if _player != null and is_instance_valid(_player):
+		combat.call("register_target", _player)
+	_register_active_map_targets(combat)
+	_populate_active_map_enemies(combat)
+
+
+func _on_combat_target_changed(view: CombatTargetView) -> void:
+	_push_target_view_to_active_map(view)
+
+
+## Push a read-only combat-target view into the active map's HUD. Null-safe at every hop: a map
+## without the method simply shows no target panel.
+func _push_target_view_to_active_map(view: CombatTargetView) -> void:
+	if _active_map == null or not is_instance_valid(_active_map):
+		return
+	if _active_map.has_method("set_target_view"):
+		_active_map.call("set_target_view", view)
+
+
+## The CombatRuntime sibling under `Main/Systems`, or null. Same optional-sibling lookup the
+## sect/faction/world-sim pushes use, so WorldRuntime holds no hard dependency on it.
+func _find_combat_runtime() -> Node:
+	var systems := get_parent()
+	if systems == null:
+		return null
+	return systems.get_node_or_null("CombatRuntime")
 
 
 ## Tell the world simulation the player arrived in `map_id` (Phase 08).
@@ -409,7 +470,39 @@ func arm_active_map_combat(combat_runtime: Node) -> bool:
 		push_error("[world] the player could not be armed for combat")
 		return false
 	_register_active_map_targets(combat_runtime)
+	_populate_active_map_enemies(combat_runtime)
 	return true
+
+
+## Spawn the active map's authored enemies, and tell them what to hunt (Phase 10).
+##
+## The player is the hunt target, pushed from here because the WORLD is what knows the player
+## exists — an enemy that searched the tree for one would be an O(tree) walk per creature per
+## tick and a dependency pointing the wrong way.
+##
+## A map with NO spawn table is normal and silent: an empty, peaceful map is content. Only a
+## table that exists and is broken is an error.
+func _populate_active_map_enemies(combat_runtime: Node) -> void:
+	combat_runtime.call("set_hunt_target", _player)
+	var map_id := get_current_map_id()
+	var table_path := "%s/spawn_table_%s.tres" % [
+		SPAWN_TABLE_DIR, String(map_id).trim_prefix("map_")]
+	if not ResourceLoader.exists(table_path):
+		return
+	var table := load(table_path) as EnemySpawnTableData
+	if table == null:
+		push_error("[world] %s did not load as EnemySpawnTableData" % table_path)
+		return
+	if table.map_id != map_id:
+		# A table whose own `map_id` disagrees with the file it was found under would populate
+		# the wrong map silently — the kind of content error that looks like a spawn bug.
+		push_error("[world] spawn table at %s declares map_id '%s' but was loaded for '%s'"
+			% [table_path, table.map_id, map_id])
+		return
+	var host := _active_map.get_node_or_null("CombatTargets") if _active_map != null else null
+	if host == null:
+		host = _active_map
+	combat_runtime.call("spawn_from_table", table, host)
 
 
 ## Register every combat target the ACTIVE map declares. A map answers for its own contents —

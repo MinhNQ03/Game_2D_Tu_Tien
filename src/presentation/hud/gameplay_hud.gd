@@ -65,6 +65,14 @@ var _portrait: TextureRect
 ## The player's health gauge (Phase 09). Hidden until a health value arrives, so a HUD built
 ## outside a combat session shows no gauge rather than a full bar for health nothing owns.
 var _health_gauge: ProgressBar
+## The combat target plaque (Phase 10): what the player is fighting. Hidden with no target.
+var _target_panel: PanelContainer
+var _target_name_label: Label
+var _target_threat_label: Label
+var _target_gauge: ProgressBar
+## The last target view pushed in, kept so `_refresh_text()` can re-resolve its keys on a
+## language change without the combat session having to push again.
+var _target_view: CombatTargetView = null
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
 var _sect_row: UIPromptRow
@@ -316,6 +324,49 @@ func _build_ui() -> void:
 	_world_event_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	map_body.add_child(_world_event_label)
 
+	# --- Top-centre: the combat target plaque (Phase 10) --------------------------
+	#
+	# Between the two top plaques, which is the one region of the top strip nothing owns, and
+	# centred because the thing you are FIGHTING belongs in the middle of your attention —
+	# not tucked into a corner with your own identity or the date.
+	#
+	# Hidden until there is a target, so "not fighting anything" and "a target at 0 HP" can
+	# never look the same. Built from the same `_panel()` as every other plaque, so it needs
+	# no styling of its own (C18).
+	_target_panel = _panel()
+	_target_panel.name = "TargetPlaque"
+	_target_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_target_panel.position = Vector2(0, UIPalette.HUD_MARGIN)
+	_target_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_target_panel.custom_minimum_size = Vector2(UIPalette.HUD_MAP_PANEL_WIDTH, 0)
+	_target_panel.visible = false
+	root.add_child(_target_panel)
+
+	var target_body := VBoxContainer.new()
+	target_body.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	_target_panel.add_child(target_body)
+
+	_target_name_label = Label.new()
+	_target_name_label.name = "TargetName"
+	_target_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_target_name_label.add_theme_font_size_override(
+		"font_size", UIPalette.FONT_SIZE_SUBTITLE)
+	_target_name_label.add_theme_color_override("font_color", UIPalette.COLOR_TITLE)
+	target_body.add_child(_target_name_label)
+
+	_target_threat_label = Label.new()
+	_target_threat_label.name = "TargetThreat"
+	_target_threat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_target_threat_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_target_threat_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT_MUTED)
+	target_body.add_child(_target_threat_label)
+
+	# The SAME gauge factory the player's health uses, so target health and player health are
+	# read the same way. A second gauge styled differently would make the player learn two
+	# readouts for one concept.
+	_target_gauge = UITheme.vitals_gauge()
+	target_body.add_child(_target_gauge)
+
 	# --- Bottom-left: control-prompt panel (graphic key badges) -------------------
 	var prompt_panel := _panel()
 	prompt_panel.name = "PromptStrip"
@@ -501,6 +552,42 @@ func is_health_gauge_visible() -> bool:
 	return _health_gauge != null and _health_gauge.visible
 
 
+## Show what the player is fighting (Phase 10). A null or empty view HIDES the plaque.
+##
+## Pushed by the combat session when a target's health changes or it dies — never polled, so
+## the HUD does no per-frame work (`05-performance-testing.md`). The view is cached so a
+## language change can re-resolve its keys without the session pushing again.
+func set_target_view(view: CombatTargetView) -> void:
+	_target_view = view
+	if _target_panel == null:
+		return
+	if view == null or not view.has_target:
+		_target_panel.visible = false
+		return
+	_target_panel.visible = true
+	UITheme.set_gauge_value(_target_gauge, view.current_health, view.max_health)
+	_refresh_target_text()
+
+
+## Is the target plaque shown? (for tests — its visibility IS the contract.)
+func is_target_panel_visible() -> bool:
+	return _target_panel != null and _target_panel.visible
+
+
+## Resolve the target's localization keys. Separate from `set_target_view` so a language change
+## re-renders the existing target instead of needing the combat session to re-push it.
+func _refresh_target_text() -> void:
+	if _target_view == null or not _target_view.has_target or _loc == null:
+		return
+	_target_name_label.text = _resolve(_target_view.name_key)
+	# A dead target keeps its name and gauge but loses its threat line: the rating describes a
+	# live danger, and leaving it up over a corpse reads as the UI not having noticed.
+	if _target_view.is_dead or _target_view.threat_key == &"":
+		_target_threat_label.text = ""
+	else:
+		_target_threat_label.text = _resolve(_target_view.threat_key)
+
+
 ## Set the current map's name localization key.
 func set_map_name(name_key: StringName) -> void:
 	_map_name_key = name_key
@@ -583,6 +670,9 @@ func _refresh() -> void:
 	_title_label.text = _resolve(_title_key)
 	_title_label.visible = _title_key != &""
 	_map_label.text = _resolve(_map_name_key)
+	# Re-resolve the combat target too, so a language change relabels what the player is
+	# fighting without the combat session having to push the view again.
+	_refresh_target_text()
 	_refresh_sect_chip()
 	_refresh_world_sim()
 	_refresh_prompts()

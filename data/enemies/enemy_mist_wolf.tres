@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemies/enemy_data.gd" id="1_enemy"]
+[ext_resource type="Resource" path="res://data/stats/mist_wolf_stats.tres" id="2_stats"]
+[ext_resource type="Resource" path="res://data/enemies/ai_frontier_skirmisher.tres" id="3_ai"]
+[ext_resource type="Resource" path="res://data/combat/attack_mist_wolf_bite.tres" id="4_attack"]
+[ext_resource type="Resource" path="res://data/characters/visual/mist_wolf_visual.tres" id="5_vis"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"enemy_mist_wolf"
+name_key = &"ENEMY_MIST_WOLF_NAME"
+threat_key = &"THREAT_FRONTIER_LOW"
+stats = ExtResource("2_stats")
+hurt_radius = 12.0
+ai_profile = ExtResource("3_ai")
+attack = ExtResource("4_attack")
+engage_distance = 22.0
+visual_profile = ExtResource("5_vis")
+spawn_category = &"field"

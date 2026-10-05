@@ -270,6 +270,13 @@ func _validate_exit_zones(map_data: MapData) -> void:
 # --- Player host + spawns ----------------------------------------------------
 
 ## Where WorldRuntime parents the persistent player. Falls back to self if no PlayerHost.
+## Forward a read-only combat-target view to this map's HUD (Phase 10). Same
+## forward-a-view-and-own-nothing contract as the sect / politics / world-sim setters.
+func set_target_view(view: CombatTargetView) -> void:
+	if _hud != null:
+		_hud.set_target_view(view)
+
+
 ## Every combat target this map declares (Phase 09). Children of an optional `CombatTargets`
 ## node, in scene order.
 ##

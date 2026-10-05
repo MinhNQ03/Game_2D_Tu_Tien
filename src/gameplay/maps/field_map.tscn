@@ -109,6 +109,8 @@ rotation = 1.5707963
 [node name="ShapeRight" type="CollisionShape2D" parent="Collision/Walls/WallRight"]
 shape = SubResource("RectangleShape2D_wall_h")
 
+[node name="CombatTargets" type="Node2D" parent="."]
+
 [node name="PlayerHost" type="Node2D" parent="."]
 
 [node name="Spawns" type="Node2D" parent="."]

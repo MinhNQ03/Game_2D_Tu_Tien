@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EnemySpawnTableData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemies/enemy_spawn_table_data.gd" id="1_table"]
+[ext_resource type="Resource" path="res://data/enemies/enemy_mist_wolf.tres" id="2_wolf"]
+
+[resource]
+script = ExtResource("1_table")
+map_id = &"map_field"
+enemies = [ExtResource("2_wolf"), ExtResource("2_wolf")]
+positions = PackedVector2Array(632, 168, 360, 536)

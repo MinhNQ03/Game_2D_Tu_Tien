@@ -117,6 +117,21 @@ func state_name() -> String:
 	return _fsm.state_name() if _fsm != null else AttackStateMachine.STATE_NAMES[0]
 
 
+## Seconds left in the current lifecycle phase (0.0 in READY).
+##
+## Exposed for PRESENTATION (`AttackFeedback` derives how far through a phase a swing is from
+## it) so the drawing cannot keep a clock of its own and drift out of step with the mechanics
+## it depicts. No gameplay rule reads it.
+func time_remaining() -> float:
+	return _fsm.time_remaining() if _fsm != null else 0.0
+
+
+## The attack this component is armed with, or null. For presentation, which needs the authored
+## reach and arc to draw a swing that matches the one being resolved.
+func attack_data() -> AttackData:
+	return _attack
+
+
 ## Can this entity start a swing right now?
 func can_attack() -> bool:
 	return is_armed() and _fsm.can_begin()

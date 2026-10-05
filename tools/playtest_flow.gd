@@ -78,6 +78,7 @@ func _run() -> void:
 	await _step_toggle_panel(map)
 	await _step_attack(map)
 	await _step_enter_field(map)
+	await _step_encounter(main)
 	await _step_return_to_menu(main)
 
 	_write_report()
@@ -246,6 +247,87 @@ func _step_enter_field(map: Node) -> void:
 		"map=%s" % _map_id(), changed, started, await _shot("09_field"))
 
 
+## The Phase-10 encounter, as a player would meet it: the field is populated, a creature
+## hunts, a real attack key kills it, and the corpse stops acting.
+##
+## Three steps rather than one, so a failure says WHICH part of an encounter broke — "the
+## creature never hunted" and "the creature could not be killed" are different bugs with
+## different causes, and a single `09_encounter FAILED` would hide that.
+func _step_encounter(main: Node) -> void:
+	var combat := main.get_node_or_null("Systems/CombatRuntime")
+	var started := Time.get_ticks_msec()
+	if combat == null:
+		_record("10_enemies_spawned", "CombatRuntime exists", "missing", false, started)
+		return
+	var spawned := int(combat.call("enemy_count"))
+	_record("10_enemies_spawned", "the field is populated from data",
+		"enemies=%d living=%d" % [spawned, int(combat.call("living_enemy_count"))],
+		spawned >= 1, started, await _shot("10_field_enemies"))
+	if spawned < 1:
+		return
+
+	var enemies: Array = combat.call("enemies")
+	var enemy := enemies[0] as Node2D
+	var router := root.get_node_or_null("SceneRouter")
+	var map: Node = router.call("get_current_scene") if router != null else null
+	var player := _player_of(map)
+	if enemy == null or player == null:
+		_record("11_enemy_hunts", "a creature and a player exist",
+			"enemy=%s player=%s" % [enemy != null, player != null], false, started)
+		return
+
+	# --- it hunts (deterministic setup: stand where it can see you) ---
+	started = Time.get_ticks_msec()
+	player.global_position = enemy.global_position + Vector2(70, 0)
+	var hunting := false
+	var state := "IDLE"
+	for _i in POLL_FRAMES:
+		await process_frame
+		state = String(enemy.call("ai_state_name"))
+		if state in ["ALERT", "CHASE", "ATTACK", "RECOVER"]:
+			hunting = true
+			break
+	var hunt_shot := await _shot("11_enemy_hunts")
+	_record("11_enemy_hunts", "the creature notices the player and hunts",
+		"state=%s" % state, hunting, started, hunt_shot)
+
+	# --- the player kills it with REAL attack keys ---
+	started = Time.get_ticks_msec()
+	var start_hp := int(enemy.call("get_current_health"))
+	var attack_component := player.get_node_or_null("AttackComponent")
+	for _round in 40:
+		if bool(enemy.call("is_dead")):
+			break
+		# Re-placed inside reach each round because the creature keeps moving; the SWING
+		# itself is a real key event.
+		player.global_position = enemy.global_position - Vector2(16, 0)
+		if attack_component != null:
+			attack_component.call("set_facing", Vector2.RIGHT)
+		_send_key(&"attack", true)
+		await process_frame
+		_send_key(&"attack", false)
+		for _i in 24:
+			await process_frame
+			if bool(enemy.call("is_dead")):
+				break
+	var dead := bool(enemy.call("is_dead"))
+	_record("12_enemy_killed", "real attack keys kill the creature",
+		"hp %d -> %d dead=%s" % [start_hp, int(enemy.call("get_current_health")), dead],
+		dead, started, await _shot("12_enemy_killed"))
+
+	# --- the corpse stops acting ---
+	started = Time.get_ticks_msec()
+	var resting := enemy.global_position
+	for _i in 60:
+		await process_frame
+	var still := enemy.global_position.distance_to(resting) < 0.01
+	var reset := String(enemy.call("ai_state_name")) == "IDLE"
+	_record("13_corpse_inert", "a dead creature stops moving and thinking",
+		"moved=%.2fpx state=%s" % [
+			enemy.global_position.distance_to(resting), enemy.call("ai_state_name")],
+		still and reset, started)
+
+
 func _step_return_to_menu(main: Node) -> void:
 	var started := Time.get_ticks_msec()
 	var gs := root.get_node_or_null("GameState")
@@ -253,10 +335,10 @@ func _step_return_to_menu(main: Node) -> void:
 		return gs != null and not bool(gs.call("is_session_active")))
 	var teardown: Array = main.call("get_last_teardown_order") if main.has_method(
 		"get_last_teardown_order") else []
-	_record("10_return_to_menu", "open_menu ends the session",
+	_record("14_return_to_menu", "open_menu ends the session",
 		"session_active=%s teardown=%s" % [
 			gs != null and bool(gs.call("is_session_active")), str(teardown)],
-		back, started, await _shot("10_menu"))
+		back, started, await _shot("14_menu"))
 
 
 # === Real semantic input =====================================================

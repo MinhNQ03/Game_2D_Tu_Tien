@@ -445,6 +445,12 @@ func test_the_reserved_top_strip_is_tall_enough_for_the_plaques_it_reserves_for(
 		# This excludes the bottom prompt row and the two stretched side panels.
 		if plaque == null or plaque.anchor_top != 0.0 or plaque.anchor_bottom != 0.0:
 			continue
+		# ...and only the ones a SIDE panel can actually reach. The side panels hug the left
+		# and right edges, so a CENTRE-anchored plaque (the Phase-10 combat target) can never
+		# be covered by one and must not inflate the reserve. Checked by anchor rather than by
+		# name so a new edge plaque is included automatically.
+		if plaque.anchor_left != 0.0 and plaque.anchor_left != 1.0:
+			continue
 		var height := maxf(plaque.size.y, plaque.get_combined_minimum_size().y)
 		measured.append("%s=%d" % [plaque.name, int(height)])
 		tallest = maxf(tallest, height)
@@ -483,6 +489,16 @@ func _populate_plaques(hud: Node) -> void:
 	# two reserve values too small. Pushing a value here is what makes the measured plaque the
 	# plaque on screen.
 	hud.call("set_health", 100, 100)
+	# A visible combat target too. It is CENTRE-anchored so it does not affect the reserve,
+	# but populating it here keeps the fixture honest about what a live HUD contains — the
+	# habit that L-035 exists to enforce.
+	var target := CombatTargetView.new()
+	target.has_target = true
+	target.name_key = &"ENEMY_MIST_WOLF_NAME"
+	target.threat_key = &"THREAT_FRONTIER_LOW"
+	target.current_health = 20
+	target.max_health = 34
+	hud.call("set_target_view", target)
 	var view := WorldSimView.new()
 	view.available = true
 	view.year = 1
@@ -591,18 +607,25 @@ func _first_scroll(node: Node) -> ScrollContainer:
 ## a lie, and the count is what catches one appearing.
 func test_hud_shows_a_gauge_for_exactly_the_stats_a_system_owns() -> void:
 	var hud := _hud()
-	assert_eq(_count_class(hud, "ProgressBar"), 1,
-		("exactly ONE gauge: health, which combat owns. A second gauge means a bar was "
-			+ "added for mana/realm/XP, which no system backs yet"))
+	# TWO gauges as of Phase 10, and the test names WHICH two rather than only counting them.
+	# A count alone passes if somebody swaps one of these for a mana bar; naming them means a
+	# third gauge, or a different second gauge, both fail.
+	assert_eq(_count_class(hud, "ProgressBar"), 2,
+		("exactly TWO gauges — the player's health and the combat target's, both of which "
+			+ "combat owns. A third means a bar was added for mana/realm/XP, which no system "
+			+ "backs yet"))
 	assert_eq(_count_class(hud, "TextureProgressBar"), 0,
 		"and no textured gauge for an unbound stat")
 
-	# Hidden until a value is pushed: a full bar for health nothing has reported is the same
-	# lie as a bar for a system that does not exist.
+	# Both are hidden until a value is pushed: a full bar for health nothing has reported is
+	# the same lie as a bar for a system that does not exist.
 	assert_false(hud.call("is_health_gauge_visible"),
-		"the gauge stays hidden until the session reports a health value")
+		"the player gauge stays hidden until the session reports a health value")
+	assert_false(hud.call("is_target_panel_visible"),
+		"and the target plaque stays hidden until there is something to fight")
+
 	hud.call("set_health", 42, 60)
-	assert_true(hud.call("is_health_gauge_visible"), "pushing a value reveals it")
+	assert_true(hud.call("is_health_gauge_visible"), "pushing a value reveals the player gauge")
 
 	# The NUMBER is written, not only drawn — colour is never the only carrier (UI bible §4),
 	# and at low values the bar is too short to read at all.

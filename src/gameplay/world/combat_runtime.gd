@@ -27,13 +27,36 @@ class_name CombatRuntime
 ## going" path — a half-built combat session would be a world where some entities can be hit
 ## and others silently cannot.
 
+## What the player is fighting changed (Phase 10). Carries a read-only `CombatTargetView`;
+## `WorldRuntime` forwards it to the active map's HUD, so combat knows nothing about UI
+## (`03-architecture.md`: emitters never depend on listeners).
+signal combat_target_changed(view: CombatTargetView)
+
+## The enemy scene. Every creature is this ONE scene configured by `EnemyData` — there is no
+## per-creature scene, which is what makes a new creature a `.tres` (Phase 10 exit criterion).
+const EnemyScene := preload("res://src/gameplay/entities/enemy.tscn")
+
 var _service: CombatService = null
 var _registry: CombatHurtboxRegistry = null
 var _session_active: bool = false
 
+## The session's RngService, kept so enemy brains can draw from the AI stream. Combat holds
+## the seam rather than a second seed: one world identity, independent streams (D-051 §10).
+var _rng: RngService = null
+
 ## Entities armed this session, by id, so teardown can cancel a swing in flight rather than
 ## leave a hit window pending on a node that is about to be freed.
 var _armed: Dictionary = {}
+
+## Live enemies, in SPAWN ORDER. An Array, not a Dictionary, because the tick order must be
+## deterministic: two enemies deciding in a different order could resolve their swings in a
+## different order, and a seeded run would stop being reproducible.
+var _enemies: Array[Enemy] = []
+
+## What the enemies are hunting. Set once per map by the world, so no enemy searches the tree
+## for a player — that would be an O(tree) walk per enemy per tick, and a dependency pointing
+## the wrong way.
+var _hunt_target: Node2D = null
 
 
 ## Start the combat session from the world's RNG seam.
@@ -59,7 +82,10 @@ func start_session(rng: RngService) -> bool:
 	# Commit: every step succeeded, so the session becomes observable all at once.
 	_service = service
 	_registry = CombatHurtboxRegistry.new()
+	_rng = rng
 	_armed = {}
+	_enemies = []
+	_hunt_target = null
 	_session_active = true
 	return true
 
@@ -82,6 +108,9 @@ func _fail_start(reason: String) -> bool:
 ## Idempotent: ending a session that never started is a no-op, which is what makes the shared
 ## teardown path safe to run after an aborted boot.
 func end_session() -> void:
+	# Enemies first: stopping an AI drops its target and cancels its swing, so no brain can
+	# decide against a registry that is about to disappear.
+	despawn_enemies()
 	for key in _armed.keys():
 		var component: AttackComponent = _armed[key]
 		if component != null and is_instance_valid(component):
@@ -91,7 +120,10 @@ func end_session() -> void:
 		_registry.clear()
 	_registry = null
 	_service = null
+	_rng = null
+	_hunt_target = null
 	_session_active = false
+	set_physics_process(false)
 
 
 func is_session_active() -> bool:
@@ -151,6 +183,221 @@ func arm_attacker(entity: Node, attack: AttackData, attacker_id: StringName) -> 
 ## overlay, like `Main.get_last_teardown_order()`.
 func armed_count() -> int:
 	return _armed.size()
+
+
+# --- Enemies (Phase 10) -----------------------------------------------------
+#
+# Spawning, ticking and despawning live HERE rather than in a seventh `Main/Systems` node, and
+# that is a deliberate call: "the combat session owns the fighters" is one cohesive
+# responsibility — the service that resolves their hits, the registry that makes them
+# targetable, and the creatures themselves have the same lifetime and the same teardown order.
+# A separate `EnemyRuntime` would need the registry, the service and the RNG seam this node
+# already holds, so it would be a node whose only content is a pointer to this one, plus
+# another entry in `SESSION_START_ORDER` to keep in sync.
+
+## Who the enemies hunt. Set by the world when it realizes the player.
+func set_hunt_target(target: Node2D) -> void:
+	_hunt_target = target
+	for enemy in _enemies:
+		if enemy != null and is_instance_valid(enemy):
+			enemy.ai().set_target(target)
+
+
+## Populate `host` from a spawn table. Returns the number spawned.
+##
+## Order is the TABLE's order, so the same table always produces the same entities with the
+## same ids — which is what makes a populated map reproducible from a seed and lets a future
+## authoritative server assign identical identities.
+##
+## A row that fails to spawn is reported and SKIPPED rather than aborting the map: one bad
+## content row must not leave a playable map empty.
+func spawn_from_table(table: EnemySpawnTableData, host: Node) -> int:
+	if not _session_active:
+		push_error("[combat-rt] spawn_from_table outside a session")
+		return 0
+	if table == null or not table.is_valid():
+		push_error("[combat-rt] refusing to spawn from an invalid spawn table")
+		return 0
+	if host == null or not is_instance_valid(host):
+		push_error("[combat-rt] spawn_from_table needs a host node to parent enemies under")
+		return 0
+	var spawned := 0
+	for i in table.size():
+		if _spawn_one(table.enemies[i], table.positions[i], table.instance_id_for(i), host):
+			spawned += 1
+	# The tick only runs while there is something to tick, so an enemy-free map costs nothing.
+	set_physics_process(not _enemies.is_empty())
+	return spawned
+
+
+func _spawn_one(
+		data: EnemyData, position: Vector2, instance_id: StringName, host: Node) -> bool:
+	var enemy := EnemyScene.instantiate() as Enemy
+	if enemy == null:
+		push_error("[combat-rt] the enemy scene did not instantiate as an Enemy")
+		return false
+	# Configure BEFORE entering the tree, so `_ready` sees final data — the same ordering the
+	# player uses for `bind_character_state` (D-026).
+	if not enemy.setup(data, instance_id):
+		enemy.free()
+		return false
+	enemy.name = String(instance_id)
+	enemy.position = position
+	host.add_child(enemy)
+	if not register_target(enemy):
+		enemy.queue_free()
+		return false
+	var component := _find_child_of_type(enemy, "AttackComponent") as AttackComponent
+	if component == null or not component.arm(data.attack, _service, _registry, instance_id):
+		push_error("[combat-rt] '%s' could not be armed to attack" % instance_id)
+		enemy.queue_free()
+		return false
+	# The AI draws from its OWN stream, not the combat one: a creature's patrol choices must
+	# not shift the crit sequence, and vice versa (`derive_state` starts them far apart).
+	var ai_stream := _rng.stream(STREAM_ENEMY_AI)
+	if ai_stream == null or not enemy.ai().arm(data, ai_stream, position):
+		push_error("[combat-rt] '%s' could not arm its AI" % instance_id)
+		enemy.queue_free()
+		return false
+	enemy.ai().set_target(_hunt_target)
+	enemy.died.connect(_on_enemy_died.bind(enemy))
+	# The target plaque is pushed on the EVENTS the player cares about — a hit landing and a
+	# death — rather than polled. "Whatever I just hit" is also the honest answer to "what am I
+	# fighting": a nearest-living-enemy search would need a per-frame scan and would flicker
+	# between two creatures standing at similar distances.
+	enemy.health_changed.connect(_on_enemy_health_changed.bind(enemy))
+	# ...and when it starts HUNTING, not only when it is hit. Publishing on damage alone meant
+	# the player could watch a creature notice them and close in with nothing on screen saying
+	# what it was — the panel appeared only after the first exchange, i.e. exactly after the
+	# moment the information was useful. Found by looking at a playtest capture of a creature
+	# mid-ALERT with an empty target plaque.
+	enemy.ai().ai_state_changed.connect(_on_enemy_ai_state_changed.bind(enemy))
+	_armed[String(instance_id)] = component
+	_enemies.append(enemy)
+	return true
+
+
+## The enemy-AI stream id. Named here, in the file that draws from it, with a real consumer —
+## the pattern `RngService` documents for every stream after the first (L-005).
+##
+## A stream per SUBSYSTEM, not per creature: all enemies share it, so one creature's patrol
+## draws advance the next one's sequence. That is still deterministic because the tick order
+## is deterministic (`_enemies` is kept in spawn order, and the spawn order is the table's
+## order), and it keeps the save's stream list bounded by subsystems rather than by population.
+## The cost is that inserting a spawn row shifts later creatures' patrol choices — acceptable
+## for wandering, and the day something needs per-creature isolation (a scripted boss pattern)
+## it can derive its own stream id from its instance id without changing this.
+const STREAM_ENEMY_AI := &"enemy_ai"
+
+
+## Free every spawned enemy. Called on map change and on session end.
+##
+## It STOPS each AI before freeing: a brain that decides during teardown would perceive a
+## half-dismantled world, and a swing in flight would resolve against a registry that is
+## already being cleared.
+func despawn_enemies() -> void:
+	for enemy in _enemies:
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		enemy.ai().stop()
+		if _registry != null:
+			var hurtbox := _find_child_of_type(enemy, "HurtboxComponent") as HurtboxComponent
+			if hurtbox != null:
+				_registry.unregister(hurtbox)
+		_armed.erase(String(enemy.instance_id()))
+		enemy.queue_free()
+	_enemies.clear()
+	set_physics_process(false)
+
+
+## Live enemy count (including corpses that have not been cleaned up yet).
+func enemy_count() -> int:
+	return _enemies.size()
+
+
+## Enemies that are still a threat — alive and acting. The number an encounter is "over" at.
+func living_enemy_count() -> int:
+	var alive := 0
+	for enemy in _enemies:
+		if enemy != null and is_instance_valid(enemy) and not enemy.is_dead():
+			alive += 1
+	return alive
+
+
+## The spawned enemies, in spawn order (a copy, so a caller cannot edit the session's list).
+func enemies() -> Array[Enemy]:
+	return _enemies.duplicate()
+
+
+## A creature's health changed — publish it as the current combat target.
+func _on_enemy_health_changed(_current: int, _maximum: int, enemy: Enemy) -> void:
+	_publish_target(enemy)
+
+
+## A creature entered an ENGAGED state — publish it, so the player learns what is coming for
+## them before the first blow rather than after it.
+##
+## Only the engaged states: an idle creature wandering past should not take over the panel, or
+## walking through a populated map would flicker the plaque between whatever happens to be
+## nearby.
+func _on_enemy_ai_state_changed(state_name: String, enemy: Enemy) -> void:
+	if state_name in ["ALERT", "CHASE", "ATTACK", "RECOVER"]:
+		_publish_target(enemy)
+
+
+## Emit a read-only view of `enemy` for the HUD.
+##
+## A VIEW, not the node: the panel must not hold a reference to an entity that may be freed a
+## frame later (`SectMembershipView` has the same contract). Combat builds the DTO and emits;
+## it does not know a HUD exists — `WorldRuntime` forwards it, exactly as it forwards the sect
+## and politics views.
+func _publish_target(enemy: Enemy) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	combat_target_changed.emit(CombatTargetView.make(
+		enemy.data(), enemy.get_current_health(), enemy.get_max_health(), enemy.is_dead()))
+
+
+## ONE physics callback drives EVERY enemy's AI.
+##
+## This is the whole reason the components have no `_physics_process` of their own: N enemies
+## cost one callback instead of N, so "AI costs X ms for N enemies" is a number a budget test
+## can assert. Each component then throttles its own DECISIONS to its profile's interval while
+## executing movement every tick — the separation Phase 10 requires (C6).
+func _physics_process(delta: float) -> void:
+	tick_enemies(delta)
+
+
+## Advance every enemy's AI by `delta`.
+##
+## Public and delta-driven so a test can step AI with EXACT deltas: the headless runner does
+## not run physics callbacks the way a game does (L-016), and AI timing is exactly what needs
+## testing. Iterates the spawn-ordered array, so decisions happen in a deterministic order.
+func tick_enemies(delta: float) -> void:
+	for enemy in _enemies:
+		if enemy == null or not is_instance_valid(enemy) or enemy.is_dead():
+			continue
+		enemy.ai().tick(delta)
+
+
+## A creature died: it stops acting and stops being targetable, but its NODE stays.
+##
+## Unregistering is what stops the player swinging at a corpse forever; keeping the node is
+## what lets the body remain visible as a corpse. Freeing here would tear down the emitter
+## mid-signal (L-013), and the session owns the lifetime anyway.
+func _on_enemy_died(enemy: Enemy) -> void:
+	if enemy == null or not is_instance_valid(enemy):
+		return
+	if _registry != null:
+		var hurtbox := _find_child_of_type(enemy, "HurtboxComponent") as HurtboxComponent
+		if hurtbox != null:
+			_registry.unregister(hurtbox)
+	_armed.erase(String(enemy.instance_id()))
+	_publish_target(enemy)
+	# Nothing left alive means nothing left to think: stop the tick entirely rather than
+	# iterating corpses every frame for the rest of the session.
+	if living_enemy_count() == 0:
+		set_physics_process(false)
 
 
 ## First direct child of `entity` whose class matches `type_name`.

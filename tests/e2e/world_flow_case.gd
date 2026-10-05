@@ -281,6 +281,9 @@ func test_real_world_map_flow() -> void:
 	assert_true(_player_is_in_map(player, field_map), "player re-parented into the field map")
 	_assert_camera_limits(field_map, 16, 16, 976, 592, "field")
 
+	# --- 5b. A REAL ENCOUNTER in the field (Phase 10) ----------------------------
+	await _prove_encounter(main, player, field_map)
+
 	# --- 6. >= 20 round trips, per-round invariants + no orphan leak -------------
 	await scene_tree.process_frame
 	var baseline: float = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
@@ -658,6 +661,87 @@ func _first_exit_zone(map: Node) -> Node2D:
 ## Feed a REAL key press+release for `action` through the engine input pipeline. The engine
 ## updates the InputMap action state (so is_*_just_pressed is true) AND dispatches
 ## `_input`/`_unhandled_input` to in-tree nodes on the processed frame. No direct handler call.
+## Prove a REAL ENCOUNTER in the real app (Phase 10): the field is populated from data, the
+## creature hunts, the player kills it with a REAL attack key, and the corpse stops being an
+## actor.
+##
+## This is the gate that would catch an enemy that spawns but never acts, acts but cannot be
+## hit, or dies but keeps hunting — none of which a unit test on the brain can see, because
+## each one is a WIRING failure between systems that are individually correct.
+func _prove_encounter(main: Node, player: Node2D, map: Node) -> void:
+	var combat := main.get_node_or_null("Systems/CombatRuntime")
+	assert_not_null(combat, "the CombatRuntime subsystem exists")
+	if combat == null:
+		return
+	# The field is populated FROM DATA on arrival — nothing in the scene authors a creature.
+	var spawned: int = int(combat.call("enemy_count"))
+	assert_true(spawned >= 1,
+		"arriving in the field spawned the authored creatures (got %d)" % spawned)
+	assert_eq(int(combat.call("living_enemy_count")), spawned, "and all of them are alive")
+
+	var enemies: Array = combat.call("enemies")
+	var enemy := enemies[0] as Node2D
+	assert_not_null(enemy, "the first creature is a node")
+	if enemy == null:
+		return
+	var registry: CombatHurtboxRegistry = combat.call("get_registry")
+	assert_true(registry.has(enemy.call("instance_id")),
+		"it is registered as a combat target, so the player can hit it")
+
+	# IT HUNTS. Stand next to it and let the real session tick drive its brain; the state must
+	# leave IDLE/PATROL for the encounter chain.
+	player.global_position = enemy.global_position + Vector2(60, 0)
+	var hunted := false
+	for _i in 240:
+		await scene_tree.process_frame
+		var state := String(enemy.call("ai_state_name"))
+		if state == "ALERT" or state == "CHASE" or state == "ATTACK" or state == "RECOVER":
+			hunted = true
+			break
+	assert_true(hunted,
+		"the creature noticed the player and started hunting (state=%s)"
+			% String(enemy.call("ai_state_name")))
+
+	# THE PLAYER CAN KILL IT, through the real input pipeline. The attack key is fed as a real
+	# key event and the observable effect is polled over a bounded number of frames (L-016);
+	# the player is re-placed inside reach each round because the creature keeps moving.
+	var attack_component := player.get_node_or_null("AttackComponent") as AttackComponent
+	assert_not_null(attack_component, "the player is armed")
+	if attack_component == null:
+		return
+	var start_hp: int = int(enemy.call("get_current_health"))
+	for _round in 40:
+		if bool(enemy.call("is_dead")):
+			break
+		player.global_position = enemy.global_position - Vector2(16, 0)
+		attack_component.set_facing(Vector2.RIGHT)
+		await _fire_action(&"attack")
+		for _i in 24:
+			await scene_tree.process_frame
+			if bool(enemy.call("is_dead")):
+				break
+	assert_true(int(enemy.call("get_current_health")) < start_hp,
+		"real attack keys damaged the creature (hp %d -> %d)"
+			% [start_hp, int(enemy.call("get_current_health"))])
+	assert_true(bool(enemy.call("is_dead")),
+		"and killed it (hp %d)" % int(enemy.call("get_current_health")))
+
+	# DEATH CLEANUP, observed in the real app rather than in a harness.
+	assert_false(registry.has(enemy.call("instance_id")),
+		"a corpse is no longer targetable, so the player stops swinging at nothing")
+	assert_eq(String(enemy.call("ai_state_name")), "IDLE", "its brain was reset")
+	var resting := enemy.global_position
+	var player_hp_before: int = int(player.call("get_current_health"))
+	for _i in 60:
+		await scene_tree.process_frame
+	assert_eq(enemy.global_position, resting, "it does not move after death")
+	assert_eq(int(player.call("get_current_health")), player_hp_before,
+		"and lands no hit from beyond the grave")
+	# THE PLAYER CAN CONTINUE: still alive, still armed, still able to act.
+	assert_false(bool(player.call("is_dead")), "the player survived the encounter")
+	assert_true(attack_component.is_armed(), "and can still attack")
+
+
 ## Prove the WHOLE combat path with a REAL attack key: InputService gate → `Player` →
 ## `AttackComponent` → `AttackStateMachine` → `CombatService` → the target's health.
 ##

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/entities/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://src/gameplay/components/stats_component.gd" id="2_stats"]
@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/player_proto.png" id="6_sprite"]
 [ext_resource type="Script" path="res://src/gameplay/components/attack_component.gd" id="7_attack"]
 [ext_resource type="Script" path="res://src/gameplay/components/hurtbox_component.gd" id="8_hurtbox"]
+[ext_resource type="Script" path="res://src/presentation/combat/attack_feedback.gd" id="90_feedback"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(18, 12)
@@ -42,3 +43,6 @@ script = ExtResource("7_attack")
 script = ExtResource("8_hurtbox")
 entity_id = &"player"
 radius = 10.0
+
+[node name="AttackFeedback" type="Node2D" parent="."]
+script = ExtResource("90_feedback")

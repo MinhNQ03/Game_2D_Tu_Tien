@@ -2764,3 +2764,110 @@ code; the fix is owned by the Phase-10 presentation package.
 - The RNG story has one owner and one seed, stated in the doc that previously contradicted it.
 - The analytic model cannot be "fixed" into Area2D by someone pattern-matching on terminology.
 - Presentation debt is tracked where the design lives, so it cannot be lost between phases.
+
+---
+
+## D-052 — Phase 10: deterministic, data-driven enemy AI
+**Status:** Accepted · **Phase:** 10 · **Scope:** data + domain + gameplay + presentation. No
+networking, no new autoload (budget still 5), no global manager.
+
+### The shape, and why each piece is where it is
+
+```
+EnemyData / AiProfileData / EnemySpawnTableData   (data: content, no logic)
+  → AiBrain            (DOMAIN: pure state machine; scalars in, INTENT out)
+  → AIComponent        (gameplay: intent -> MovementComponent / AttackComponent)
+  → AttackStateMachine → CombatService → DamageRules → Hurtbox   (Phase 09, reused as-is)
+CombatRuntime          (session: spawns, ticks, despawns, publishes the target view)
+```
+
+**The brain takes scalars and returns an INTENT KIND, never a vector.** Two consequences, and
+the second is the reason: it is unit-testable with plain numbers ("at 300px it gives up" is an
+assertion, not a scene), and it makes AI the mirror of player input —
+`AI DECISION → INTENT → gameplay resolution` against
+`PLAYER INPUT → INTENT → gameplay resolution` (`MULTIPLAYER_PLAN.md` §3). A brain returning
+world vectors would decide and resolve at once, which is what makes an AI impossible to move
+server-side later.
+
+**Seven states, each earned.** IDLE · PATROL · ALERT · CHASE · ATTACK · RECOVER · RETURN. The
+first creature uses all seven: ALERT is the *telegraph* (`COMBAT_DESIGN.md` §7 — a pause the
+player can see), and RECOVER is the archetype's signature (it disengages and re-closes, which
+is what punishes standing still). ATTACK is a one-tick commitment that hands timing straight
+back to `AttackStateMachine` rather than keeping a second copy of the lifecycle that could
+disagree with the real one.
+
+**The leash outranks a visible target**, and re-acquisition only happens once back inside it.
+Without that precedence a player who keeps backing away can walk one creature across the whole
+map, and a player standing just outside the leash can hold it in a permanent turn-around at
+the boundary.
+
+### Decisions worth recording
+
+**No seventh `Main/Systems` node.** `CombatRuntime` owns spawning, the AI tick and despawning,
+because "the combat session owns the fighters" is one cohesive responsibility with one
+lifetime: the service that resolves their hits, the registry that makes them targetable and the
+creatures themselves all start and end together. A separate `EnemyRuntime` would have needed
+the registry, the service and the RNG seam this node already holds — a node whose only content
+is a pointer to another one, plus another entry in `SESSION_START_ORDER` to keep in sync.
+
+**ONE session callback drives every brain.** No enemy has a `_physics_process`. That is what
+makes "AI costs X for N creatures" a number a budget test can assert, and it is asserted
+structurally (every enemy and every component reports `is_physics_processing() == false`) as
+well as by timing. An enemy-free map stops ticking entirely.
+
+**Decisions are throttled; movement is not.** Movement must be smooth, so it runs every tick;
+the brain is consulted every `decision_interval`. This produced PERF-003: zeroing the
+accumulator discarded the overshoot and the cadence silently ran 8% slow, and passing the
+NOMINAL interval instead of the elapsed time made the brain's clock run slower than the world
+under long frames. Both were invisible to every other gate.
+
+**Enemies have no `CharacterState`.** A `CharacterState` is the authoritative record of a
+PERSON — realm, sect, relationships, a place in the world simulation's cast. A frontier beast
+has none of those and nothing to remember between encounters, so it is a purely runtime entity
+and nothing about it is persistent. Putting wildlife in the character registry would also make
+the world simulation's population include animals. The day a creature must be remembered (a
+named boss, a tamed pet — P-16) it gets one, and nothing here is in the way.
+
+**A second creature is a `.tres` plus a spawn-table row.** There is no `if enemy_id == ...`
+anywhere; one `enemy.tscn` is configured entirely by `EnemyData`. `AiProfileData` is separate
+from `EnemyData` so a behaviour archetype can be shared without copying a dozen tuning values,
+and neither carries a `behaviour_type` enum — that would be AI logic smuggled into content. A
+new BEHAVIOUR is a new brain state (code, with a test); a new FLAVOUR is a profile.
+
+**A stream per subsystem, not per creature.** `RngService`'s `enemy_ai` stream is shared by all
+creatures, which stays deterministic because the tick order is deterministic (spawn order,
+kept in an array). Per-creature streams would bound the save's stream list by population
+instead of by subsystem. The trade: inserting a spawn row shifts later creatures' patrol
+choices — acceptable for wandering, and a scripted boss can derive its own id later.
+
+### The content
+
+**Vụ Lang**, the frontier mist wolf: a pale mist-grey quadruped with jade qi at the shoulders,
+`ai_frontier_skirmisher` tuning, a 0.26s-windup bite, 34 HP. Project-owned art generated by
+`tools/gen_prototype_assets.py` (32×32 frames on the same direction-rows × animation-columns
+grid as the characters), verified to animate and to differ per facing before being written.
+Two spawn points in the field map, both placed on ground verified clear of every spawn→exit
+line and off the flooded paddies (the L-036 discipline, applied with the map's own
+`is_paddy_cell()` rule over the sprite's full footprint).
+
+### The Phase-09 presentation debt is paid (D-051 §10b)
+
+`AttackFeedback` draws the lifecycle: a dim growing arc for WINDUP, a bright full-reach arc for
+ACTIVE, a fading one for RECOVERY — one arc whose radius, width and alpha change, no particles,
+no shader, no tween, every colour from `UIPalette`. It derives its progress from the state
+machine's own remaining time so the drawing cannot drift from the mechanics it depicts, and it
+costs nothing when idle. Verified by looking at a capture: the swing is now visible.
+
+A **target plaque** (`CombatTargetView` → HUD, on the D-050 `vitals_gauge` and panel seams)
+shows the creature's name, its advisory threat rating and its health. It carries no level, mana
+or realm, because nothing owns those yet and a bar for an unowned value is worse than no bar
+(`UI_UX_BIBLE.md` §4). It is published on the events the player cares about — engagement and
+damage — rather than polled; publishing on damage ALONE meant the player watched a creature
+notice them and close in with an empty plaque, which a capture caught.
+
+### Deferred, deliberately
+
+Enemy variety (one excellent creature beats five generic ones), aggro/threat tables, pathfinding
+around obstacles (the field is open ground), group coordination, defensive actions for the
+player (D-007 settled timing, not that model), status effects, projectiles, loot and XP (P-11+),
+and a death animation beyond the dimmed corpse.

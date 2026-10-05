@@ -17,7 +17,7 @@
 > dedicated real-application E2E processes (app-flow, player-flow, world-flow).
 >
 > **CI runs 10 gates** (see §5) and the in-runner suite reports
-> **`ran 536 test(s): 536 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> **`ran 572 test(s): 572 passed, 0 failed`** with zero `SCRIPT ERROR:` lines and **zero leaked
 > ObjectDB / resources at exit** — the count is the runner's own tally, not a hand count.
 > Combat (Phase 09) is covered: the attack lifecycle's frame-timing contract, hit resolution
 > and its determinism, the gameplay components and the session runtime, a performance budget,

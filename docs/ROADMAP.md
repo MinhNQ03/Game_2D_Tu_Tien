@@ -31,7 +31,14 @@
 > hurtbox registry (no physics sensors — L-016/L-017), crit from the seeded
 > `RngService.STREAM_COMBAT`, `CombatRuntime` as the sixth per-session node, a real target in
 > the hub map, the first health gauge on the D-050 UI foundation, and PERF-002.
-> **Phase 10 is NOT STARTED.**
+> **Phase 10 (Enemy AI) is IMPLEMENTED** — `EnemyData` + `AiProfileData` +
+> `EnemySpawnTableData` content; a pure-domain `AiBrain` (IDLE/PATROL/ALERT/CHASE/ATTACK/
+> RECOVER/RETURN) that returns INTENTS, not vectors; `AIComponent` executing them through
+> the same movement/attack seams the player uses; decisions throttled to the profile's
+> interval and driven by ONE session callback for all creatures; determinism from
+> `RngService`'s `enemy_ai` stream; the **Vụ Lang** frontier mist wolf authored into the
+> field map via a spawn table; and the Phase-09 presentation debt paid (a visible swing arc
+> plus a target plaque). **Phase 11 is NOT STARTED.**
 >
 > **Phase 07 hardening (2026-10-05, D-047 — not a phase, no new scope):** two lifecycle/invariant
 > holes a green CI could not see. (1) The normal return-to-menu had drifted to tearing the session

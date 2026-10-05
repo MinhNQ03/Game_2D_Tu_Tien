@@ -21,6 +21,14 @@
   that an idle attacker runs no physics callback at all, that a swing is LINEAR in candidates
   rather than quadratic, that each candidate is cheap to reject (~0.42 µs), and that the seeded
   stream advances once per HIT rather than per candidate. It produced **PERF-002**.
+- **Enemy AI has a budget** (Phase 10): `tests/performance/test_ai_budget.gd` asserts that
+  no enemy runs its own frame callback (ONE session callback drives every brain, so the cost
+  of N creatures is one measurable number), that an enemy-free map stops ticking entirely,
+  that DECISIONS are throttled to each profile's interval while movement is not, that the
+  tick is LINEAR in the population, and that a spawn/tick/despawn cycle leaks no orphans.
+  Measured: **40 creatures × 1800 frames = 289 ms**, scaling **10.3×** for a 10× cast
+  (linear, as designed), **4.0 µs per enemy per frame**, 149 decisions where 150 were
+  expected. It produced **PERF-003**.
 - **Still true, and still deliberate:** no Godot *profiler* session has been run on a
   representative combat scene. The budgets that exist are in-suite timing assertions, not
   profiler captures, and the shipped world has one combat target — so these numbers bound the
@@ -208,6 +216,32 @@ Template:
   budget, which is the property that actually matters. Sub-linear would need a spatial index,
   and nothing needs one yet.
 - **Links:** D-007 (Phase 09), `tests/unit/combat/test_combat_resolution.gd`.
+
+### PERF-003 — the AI decision cadence silently ran 8% slow  (2026-10-05)
+
+- **Problem:** `AIComponent` accumulated frame time and, on reaching the profile's
+  `decision_interval`, reset the accumulator to **zero** — discarding the overshoot. Twelve
+  frames at 60fps sum to `0.19999999999999998`, just *under* a 0.2s interval, so the decision
+  slipped to every **13th** frame: a 0.217s effective cadence against the 0.2s the content
+  authored. Every state timing downstream (`alert_seconds`, `recover_seconds`) inherited the
+  same 8% stretch.
+- **Cause:** found by `tests/performance/test_ai_budget.gd`, which counts decisions over a
+  known span instead of trusting the interval was honoured: it reported **138** decisions
+  where 150 were expected. Nothing else could see it — the AI behaved plausibly, every unit
+  test passed, and 8% is invisible to the eye.
+- **A SECOND bug the same test exposed:** the brain was being advanced by the NOMINAL interval
+  rather than by the time that actually elapsed, so under long frames its internal clock ran
+  *slower than the world* — at 5-second frames it experienced 0.2s per tick, and a creature
+  could sit in one state indefinitely. The long-frame integration test caught that one.
+- **Solution:** carry the remainder (`fmod(elapsed, interval)`) so the long-run average is
+  exactly the authored interval, and pass the REAL elapsed time to `AiBrain.decide()`.
+- **Impact:** cadence **138 → 149** decisions per 30s (expected 150); long-frame behaviour
+  correct instead of time-dilated. Throughput unchanged: **40 creatures × 1800 frames =
+  289 ms**, **4.0 µs per enemy per frame**, scaling **10.3×** for a 10× cast.
+- **Measured:** `tests/performance/test_ai_budget.gd` and
+  `tests/integration/test_enemy_encounter.gd`, Godot 4.7-stable headless.
+- **Links:** Phase 10, `docs/ROADMAP.md`.
+
 
 
 ## 5. Relationship to tests
