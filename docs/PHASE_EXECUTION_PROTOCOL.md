@@ -35,7 +35,9 @@ The evidence for this is in the project's own history, not in theory:
 Every one of those passed compilation, unit tests, integration tests, E2E and CI. So:
 
 > **A green CI is necessary and NOT sufficient. A phase is complete only when DESIGN + CODE +
-> TEST + PLAYER EXPERIENCE + UI + CLEANUP all pass.**
+> TEST + PLAYER EXPERIENCE + UI + VISUAL / PRESENTATION + PERFORMANCE + CLEANUP + DOCS all
+> pass** (the nine dimensions since D-056; VISUAL / PRESENTATION is gate §7b, PERFORMANCE §10,
+> DOCS §12).
 
 ### What each kind of evidence actually proves
 

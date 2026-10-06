@@ -567,8 +567,13 @@ Per-phase examples (illustrative — never force a phase to build presentation i
 ### Strengthened by D-056 — the PRESENTATION gate and the per-phase seeds
 
 Continuous Visual Integration now has a **gate** (`docs/PHASE_EXECUTION_PROTOCOL.md` §7b) and
-a **contract** (`docs/PRESENTATION_ARCHITECTURE_CONTRACT.md`). Three rules bind every phase
-from P12 on:
+a **contract** (`docs/PRESENTATION_ARCHITECTURE_CONTRACT.md`).
+
+**Every phase from P12 on is closed across NINE dimensions, and green CI is not one of them:**
+DESIGN · CODE · TEST · PLAYER EXPERIENCE · UI · **VISUAL / PRESENTATION** · PERFORMANCE ·
+CLEANUP · DOCS (gate-by-gate evidence: `docs/PHASE_EXECUTION_PROTOCOL.md` §1).
+
+Three rules bind every phase from P12 on:
 
 * **Every gameplay phase leaves behind at least one REUSABLE player-facing presentation
   capability** when its feature has a visible gameplay consequence — a seam the next feature

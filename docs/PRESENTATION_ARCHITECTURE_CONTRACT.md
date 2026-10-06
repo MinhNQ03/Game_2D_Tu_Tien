@@ -283,6 +283,18 @@ ProgressionView · CombatTargetView · SectMembershipView · SectPoliticsView ·
 Reserved cue names with no producer yet: `critical_hit`, `cast_started`, `cast_released`,
 `effect_started`, `effect_finished`, `world_event_started`, `world_event_finished`.
 
+The D-056 brief's vocabulary, mapped onto what already exists — so a later phase reaches for
+the existing producer instead of adding a synonym beside it:
+
+| Brief cue | Existing producer (no new signal added) |
+|---|---|
+| `attack_started` | `AttackComponent.attack_started` |
+| `attack_active` | `AttackComponent.state() == ACTIVE` (a lifecycle STATE, read by the action layer each frame); `attack_resolved` fires inside it when the hit window resolves |
+| `attack_recovered` | `AttackComponent.attack_finished` — and the READY state, which also covers `cancel()`, which emits nothing (§4) |
+| `damaged` / `critical_hit` | `HurtboxComponent.damaged(amount, is_critical)` — a critical is a flag on the same cue, not a second cue |
+| `defeated` | entity `died`; `CombatRuntime.enemy_defeated(reward_id, …)` for the reward-bearing fact |
+| `level_up` | `ProgressionRuntime.level_changed` |
+
 **The EventBus is NOT the cue transport, and no cue was added to it.** Its own scope rule
 limits it to signals with a real current producer *and* consumer, and it states that local
 component→owner communication uses direct signals. Combat and progression cues are local to an
