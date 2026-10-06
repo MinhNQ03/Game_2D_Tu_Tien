@@ -55,6 +55,15 @@ var _last_state_name := "IDLE"
 ## RATE rather than trusting the interval was honoured.
 var _decisions: int = 0
 
+## Effects a technique applies (Phase 15). GAMEPLAY: a stunned creature (Choáng) decides nothing
+## and its swing is cancelled; a knocked-back body slides along the push through its own
+## collision (`move_and_slide`), so a wall stops it.
+var _stun_left: float = 0.0
+var _knock_velocity: Vector2 = Vector2.ZERO
+
+## How long a knockback takes to play out; its velocity eases to rest across it.
+const KNOCKBACK_SECONDS := 0.2
+
 
 ## Arm this component. Returns false (loud) when it could not, so the spawner can fail closed
 ## rather than drop an inert creature into the world that merely looks alive.
@@ -124,6 +133,18 @@ func home() -> Vector2:
 ## advanced by the engine would be untestable — and AI timing is precisely what needs testing.
 func tick(delta: float) -> void:
 	if not is_armed() or _body == null or not is_instance_valid(_body):
+		return
+	if _knock_velocity.length_squared() > 1.0:
+		_body.velocity = _knock_velocity
+		_body.move_and_slide()
+		_knock_velocity = _knock_velocity.move_toward(Vector2.ZERO,
+			_knock_velocity.length() / maxf(KNOCKBACK_SECONDS, delta) * delta * 2.0)
+		if _stun_left <= 0.0:
+			return
+	if _stun_left > 0.0:
+		_stun_left = maxf(0.0, _stun_left - delta)
+		_movement.apply_intent(Vector2.ZERO, 0.0, delta)
+		_face(Vector2.ZERO, false)
 		return
 	_seconds_since_decision += delta
 	if _seconds_since_decision >= _profile.decision_interval:
@@ -225,6 +246,34 @@ func _face(direction: Vector2, moving: bool) -> void:
 		_visual.update_facing(direction, moving)
 
 
+## Choáng: suspend decisions for `seconds` (the longer of a running stun and this one) and cancel
+## any swing in flight — Lôi "buys interruption" (`COMBAT_DESIGN.md` §3).
+func apply_stun(seconds: float) -> void:
+	if seconds <= 0.0:
+		return
+	_stun_left = maxf(_stun_left, seconds)
+	if _attack != null:
+		_attack.cancel()
+
+
+func is_stunned() -> bool:
+	return _stun_left > 0.0
+
+
+func stun_remaining() -> float:
+	return _stun_left
+
+
+## Shove the body `displacement` px (Phong "buys repositioning"): played out over
+## KNOCKBACK_SECONDS as a velocity that eases to rest, through the body's own collision.
+func apply_knockback(displacement: Vector2) -> void:
+	_knock_velocity = displacement / KNOCKBACK_SECONDS
+
+
+func is_knocked_back() -> bool:
+	return _knock_velocity.length_squared() > 1.0
+
+
 ## Stop acting, permanently as far as this component is concerned.
 ##
 ## Called on death and on teardown. It resets the brain, drops the target, cancels any swing in
@@ -240,6 +289,8 @@ func stop() -> void:
 		_attack.cancel()
 	if _body != null and is_instance_valid(_body):
 		_body.velocity = Vector2.ZERO
+	_stun_left = 0.0
+	_knock_velocity = Vector2.ZERO
 
 
 ## A direct child of this component's PARENT, by node name.

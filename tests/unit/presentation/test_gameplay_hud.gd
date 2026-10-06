@@ -631,16 +631,16 @@ func _first_scroll(node: Node) -> ScrollContainer:
 ## owner (`ProgressionRuntime` + the authoritative `CharacterState.xp`), so the correct number
 ## was THREE; Phase 12 gives realm progress a real owner (`CultivationRuntime` + the
 ## authoritative `CharacterState.cultivation_progress`), so it is now FOUR. Mana is still owned
-## by nobody until P15, so a FIFTH gauge is still a lie, and the count is what catches one.
+## by nobody until P15 — which gives linh khí its owner (`SkillRuntime`), making it FIVE.
 ##
 ## The number is not the point — the pairing is. Each gauge is named, so swapping one for a
 ## mana bar fails even though the count would still be right.
 func test_hud_shows_a_gauge_for_exactly_the_stats_a_system_owns() -> void:
 	var hud := _hud()
-	assert_eq(_count_class(hud, "ProgressBar"), 4,
-		("exactly FOUR gauges — the player's health, the combat target's health, the "
-			+ "player's XP meter and the tu vi meter. A fifth means a bar was added for a stat "
-			+ "no system backs yet"))
+	assert_eq(_count_class(hud, "ProgressBar"), 5,
+		("exactly FIVE gauges — the player's health, the combat target's health, the "
+			+ "player's XP meter, the tu vi meter and the linh khí bar (Phase 15, owned by "
+			+ "SkillRuntime). A sixth means a bar was added for a stat no system backs yet"))
 	assert_false(hud.call("is_cultivation_visible"),
 		"the tu vi meter stays hidden until a cultivation view arrives")
 	assert_eq(_count_class(hud, "TextureProgressBar"), 0,
@@ -1007,6 +1007,7 @@ func test_only_the_attack_row_carries_the_attack_prompt() -> void:
 	_use_language("en")
 	hud.call("set_interact_available", true)
 	hud.call("set_cultivation_view", _cultivation_at_site())
+	hud.call("set_skill_view", _skills_learned())
 	var strip := hud.find_child("PromptStrip", true, false) as Control
 	assert_not_null(strip, "the prompt strip is found")
 	if strip == null:
@@ -1152,6 +1153,7 @@ func test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for() -> void:
 	# wrong three times (L-035).
 	hud.call("set_interact_available", true)
 	hud.call("set_cultivation_view", _cultivation_at_site())
+	hud.call("set_skill_view", _skills_learned())
 	# The LONGEST authored language, derived rather than guessed: vi is longer than en for
 	# every one of these words, and a reserve measured on the shorter one is wrong by exactly
 	# the amount that matters.
@@ -1375,6 +1377,7 @@ func test_the_hud_keeps_the_playfield_centre_clear_and_inside_its_area_budget() 
 	_populate_plaques(hud)
 	hud.call("set_interact_available", true)
 	hud.call("set_cultivation_view", _cultivation_at_site())
+	hud.call("set_skill_view", _skills_learned())
 	hud.call("set_target_view", null)  # permanent HUD first: no fight in progress
 	await scene_tree.process_frame
 	var root := _hud_root(hud)
@@ -1483,6 +1486,7 @@ func test_a_settled_hud_does_no_per_frame_work() -> void:
 	_populate_plaques(hud)
 	hud.call("set_interact_available", true)
 	hud.call("set_cultivation_view", _cultivation_at_site())
+	hud.call("set_skill_view", _skills_learned())
 	await scene_tree.process_frame
 	await scene_tree.process_frame
 	var busy: Array[String] = []
@@ -1591,3 +1595,17 @@ func test_the_satchel_takes_and_returns_input() -> void:
 	free_node(hud)
 	assert_true(bool(input.call("is_gameplay_active")), "freeing the HUD never strands the modal")
 	input.call("set_menu_context")
+
+
+## Both techniques learned: the skill dock is up (the populated HUD's worst case, Phase 15).
+func _skills_learned() -> SkillView:
+	var view := SkillView.new()
+	view.qi = 20.0
+	view.qi_max = 40
+	for slot in [1, 2]:
+		view.slots.append({"slot": slot, "technique_id": StringName("tech_%d" % slot),
+			"name_key": &"TECH_LOI_CHI_NAME",
+			"icon": load("res://assets/sprites/items/skill_loi_chi.png"),
+			"cooldown_left": 1.0, "cooldown_total": 4.0, "qi_cost": 16, "ready": false})
+	return view
+

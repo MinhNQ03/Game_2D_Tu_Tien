@@ -331,6 +331,8 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	_push_cultivation_view_to_active_map()
 	_connect_inventory_signals()
 	_push_inventory_view_to_active_map()
+	_connect_skill_signals()
+	_push_skill_view_to_active_map()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -792,6 +794,49 @@ func _on_item_use_requested(item_id: StringName, equipped: bool) -> void:
 			equipment.equip(item_id)
 		return
 	inventory.use(item_id)
+
+
+# --- Skills (Phase 15) -------------------------------------------------------------
+
+func refresh_active_map_skill_view() -> void:
+	_connect_skill_signals()
+	_push_skill_view_to_active_map()
+
+
+func _push_skill_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_skill_view"):
+		return
+	var skills := _find_sibling_of(SkillRuntime) as SkillRuntime
+	if skills == null or not skills.is_session_active():
+		return
+	_active_map.call("set_skill_view", skills.build_view())
+
+
+func _connect_skill_signals() -> void:
+	var skills := _find_sibling_of(SkillRuntime) as SkillRuntime
+	if skills == null:
+		return
+	if not skills.view_changed.is_connected(_push_skill_view_to_active_map):
+		skills.view_changed.connect(_push_skill_view_to_active_map)
+	if not skills.cast_refused.is_connected(_on_cast_refused):
+		skills.cast_refused.connect(_on_cast_refused)
+	if not skills.technique_learned.is_connected(_on_technique_learned):
+		skills.technique_learned.connect(_on_technique_learned)
+
+
+func _on_cast_refused(_technique_id: StringName, reason_key: StringName) -> void:
+	if _active_map != null and _active_map.has_method("announce"):
+		_active_map.call("announce", reason_key)
+
+
+func _on_technique_learned(technique_id: StringName) -> void:
+	var skills := _find_sibling_of(SkillRuntime) as SkillRuntime
+	if skills == null or _active_map == null or not _active_map.has_method("announce"):
+		return
+	var technique := skills.catalog().entry(technique_id)
+	if technique != null:
+		_active_map.call("announce", &"UI_SKILL_LEARNED", {"name": technique.name_key,
+			"key": StringName("skill_%d" % technique.slot)})
 
 
 ## The sibling under Main/Systems that is an instance of `type`, or null.

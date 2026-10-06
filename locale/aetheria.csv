@@ -210,3 +210,13 @@ UI_INVENTORY_WORN,worn,đang mang
 UI_EQUIP_NOT_EQUIPMENT,That cannot be worn.,Thứ này không mang được.
 UI_EQUIP_REALM,Your realm is too low to wield that.,Cảnh giới chưa đủ để dùng thứ này.
 UI_EQUIP_BUSY,Not in the middle of a strike.,Không thể đổi giữa đòn đánh.
+TECH_THANH_PHONG_CHUONG_NAME,Clear-Wind Palm,Thanh Phong Chưởng
+TECH_THANH_PHONG_CHUONG_DESC,"Phong: a palm that drives a wind before it, shoving back whatever stands in the arc.","Phong: một chưởng đẩy gió đi trước, hất lùi mọi thứ trong vòng cung."
+TECH_LOI_CHI_NAME,Thunder Finger,Lôi Chỉ
+TECH_LOI_CHI_DESC,Lôi: qi gathered to a fingertip and loosed as a bolt that numbs what it strikes (Choáng).,"Lôi: khí dồn về đầu ngón tay, phóng thành tia sét làm choáng thứ trúng phải."
+UI_SKILL_LEARNED,Technique learned: {name}  ({key}),Lĩnh hội công pháp: {name}  ({key})
+UI_SKILL_NOT_LEARNED,You have not learned that technique.,Ngươi chưa lĩnh hội công pháp này.
+UI_SKILL_BUSY,Not in the middle of another action.,Không thể thi triển giữa động tác khác.
+UI_SKILL_COOLDOWN,The technique has not recovered yet.,Công pháp chưa hồi phục.
+UI_SKILL_NO_QI,Not enough linh khí.,Không đủ linh khí.
+UI_SKILL_SEATED,Rise from cultivation first.,Hãy thu công trước.

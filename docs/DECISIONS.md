@@ -4169,3 +4169,41 @@ Kiếm's swing draws a crescent sweep, not a palm's air (`AttackFeedback`).
 
 **Satchel.** Worn items lead the list, marked; E on a worn item takes it off.
 
+## D-061 — Phase 15: Skills and techniques
+
+**Built.** `SkillData` (four canon elements only — Hỏa · Thủy · Phong · Lôi, `COMBAT_DESIGN.md`
+§3; four authored cast phases; cost, cooldown; CONE or BOLT delivery; knockback, stun) and
+`TechniqueData` (a công pháp: element, `required_knowledge`, realm gate, `incompatible_with`, its
+skill, its key) in a `TechniqueCatalogData` (one key per technique); `CastStateMachine` (READY →
+PREPARE → CHANNEL → RELEASE → RECOVER — CAST is ONE action whose phases are timing, reports the
+release exactly once, breakable only before it); `TechniqueService` (learned when the Knowledge
+Core holds the knowledge AND the body meets the realm AND nothing incompatible is known; the only
+writer of `CharacterState.technique_ids`, via `add_technique`); per-session `SkillRuntime` (last in
+the start order): learning on every knowledge gain or realm change, the linh khí pool (ceiling =
+the realm's `qi_capacity`, faster refill while seated), casts from the skill keys, qi and cooldown
+spent AT the release, a blow before it breaks the cast and spends nothing, rejection with a
+reason.
+
+**One formula.** A CONE resolves through `CombatService.resolve_hit` with the skill's geometry
+(`SkillData.as_attack()`); a BOLT is analytic (no physics body) and its damage is
+`DamageRules.compute_hit`. Effects are gameplay: Phong knocks the body back through its own
+collision (`AIComponent.apply_knockback`), Lôi stuns — Choáng suspends decisions and cancels the
+swing (`apply_stun`). Phong buys repositioning and Lôi buys interruption, as §3 says.
+
+**Two presentation families.** `CastFeedback` drives the body's CAST action (seal at the chest,
+held before the face, arm driven out — a new sheet for every archetype) by phase quarters, and
+draws Phong as air drawn into the palm then a crescent of wind sweeping the cone it hit with dust
+and a `WindField` gust (the impulse's SECOND consumer, after the breakthrough), Lôi as sparks
+building at the fingertip then a jagged bolt along its real path in world space with a strike
+burst; a broken or refused cast fizzles visibly. `StatusFeedback` shows Choáng over a stunned
+creature. No camera shake. The HUD's skill dock (bottom-right, hidden until a technique is
+learned) shows each technique's key, a draining cooldown shade, a dimmed slot when it cannot be
+cast, and the linh khí bar — the permanent HUD stays under its 15% budget with it counted.
+
+**Learning in play.** Thanh Phong Chưởng from the outer-disciple manual in Thôn Lạc Hà; Lôi Chỉ
+from a scorched page beside the broken vein in Rừng Vỡ Mạch. Both require Hậu Thiên 1.
+
+**Not done, on purpose.** No skill on keys 3-4 (two techniques are the brief); no weapon-gated
+technique (no second weapon family exists to make the rule mean something); no element
+resistances (the resistance side of the formula has no consumer yet).
+

@@ -164,6 +164,8 @@ var _faction_panel: FactionPanel
 # input context so the move keys choose a row instead of walking the player.
 var _inventory_panel: InventoryPanel
 var _inventory_modal: bool = false
+# The skill dock (Phase 15): bottom-right, hidden until a technique is learned.
+var _skill_dock: SkillDock
 var _politics_view: SectPoliticsView = null  # read-only politics view; may be null
 var _world_sim_view: WorldSimView = null  # read-only world-sim view (Phase 08); may be null
 # The full-rect Control every HUD element hangs off. Held so the safe-area inset can be
@@ -671,6 +673,14 @@ func _build_ui() -> void:
 		inventory_use_requested.emit(item_id, equipped))
 	root.add_child(_inventory_panel)
 
+	_skill_dock = SkillDock.new()
+	_skill_dock.name = "SkillDock"
+	_skill_dock.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_skill_dock.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_skill_dock.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_skill_dock.position = Vector2(-UIPalette.HUD_MARGIN, -UIPalette.HUD_MARGIN)
+	root.add_child(_skill_dock)
+
 	_faction_panel = FactionPanelScript.new() as FactionPanel
 	_bound_side_panel(_faction_panel, true)
 	_faction_panel.visible = false
@@ -1067,6 +1077,8 @@ func _refresh_notice() -> void:
 	# seventh permanent prompt in the strip.
 	if not args.is_empty() and not args.has("key"):
 		args["key"] = _display_label(INVENTORY_ACTION)
+	elif typeof(args.get("key")) == TYPE_STRING_NAME:
+		args["key"] = _display_label(args["key"])  # an ACTION named by the notice (a skill key)
 	# A knowledge or realm name arrives as a KEY; resolve it in the current language.
 	for k: Variant in args:
 		if typeof(args[k]) == TYPE_STRING_NAME:
@@ -1214,6 +1226,16 @@ func is_inventory_open() -> bool:
 
 func inventory_panel() -> InventoryPanel:
 	return _inventory_panel
+
+
+## Push the learned techniques and the linh khí pool (Phase 15).
+func set_skill_view(view: SkillView) -> void:
+	if _skill_dock != null:
+		_skill_dock.set_view(view)
+
+
+func skill_dock() -> SkillDock:
+	return _skill_dock
 
 
 ## Push the bag's contents (Phase 13), event-driven from the inventory runtime.

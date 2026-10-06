@@ -124,8 +124,17 @@ func set_cultivation(new_realm_id: StringName, new_layer: int, new_progress: int
 	realm_layer = maxi(0, new_layer)
 	cultivation_progress = maxi(0, new_progress)
 
-## Known công pháp ids. CONTRACT only.
+## Known công pháp ids (Phase 15: written only through `add_technique`, by `TechniqueService`).
 var technique_ids: Array[StringName] = []
+
+
+## STORAGE BOUNDARY for learning a technique (the same split as `set_total_xp`, D-055):
+## `TechniqueService.learn` decides; this only refuses a duplicate or an empty id.
+func add_technique(technique_id: StringName) -> bool:
+	if technique_id == &"" or technique_ids.has(technique_id):
+		return false
+	technique_ids.append(technique_id)
+	return true
 
 
 # --- Stats (persistent authority) --------------------------------------------

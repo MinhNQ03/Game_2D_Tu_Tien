@@ -52,6 +52,7 @@ var _world_sim_view: WorldSimView = null  # cached read-only world-sim view (Pha
 var _progression_view: ProgressionView = null  # cached read-only level/XP view (Phase 11)
 var _cultivation_view: CultivationView = null  # cached read-only cảnh giới view (Phase 12)
 var _inventory_view: InventoryView = null  # cached read-only bag view (Phase 13)
+var _skill_view: SkillView = null  # cached read-only skill dock view (Phase 15)
 ## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
 var _active_source: KnowledgeSource = null
 var _camera: Camera2D = null           # this map's camera; follows the player (D-036)
@@ -269,6 +270,13 @@ func set_cultivation_view(view: CultivationView) -> void:
 	_cultivation_view = view
 	if _hud != null:
 		_hud.set_cultivation_view(view)
+
+
+## Push the skill dock (Phase 15).
+func set_skill_view(view: SkillView) -> void:
+	_skill_view = view
+	if _hud != null:
+		_hud.set_skill_view(view)
 
 
 ## Push the bag's contents into this map's HUD (Phase 13).
@@ -537,6 +545,8 @@ func _refresh_hud() -> void:
 		_hud.set_cultivation_view(_cultivation_view)
 	if _inventory_view != null:
 		_hud.set_inventory_view(_inventory_view)
+	if _skill_view != null:
+		_hud.set_skill_view(_skill_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

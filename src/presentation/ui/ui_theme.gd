@@ -198,6 +198,19 @@ static func xp_meter() -> ProgressBar:
 	return _meter("XpMeter", UIPalette.XP_METER_HEIGHT, UIPalette.XP_METER_FILL)
 
 
+## The linh khí bar of the skill dock (Phase 15): thin, unlabelled (the dock is read at a glance;
+## the slots dim when a cast is unaffordable), the qi hue.
+static func qi_bar(height: int, fill: Color) -> ProgressBar:
+	var bar := ProgressBar.new()
+	bar.name = "QiBar"
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, height)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_theme_stylebox_override("background", _gauge_well_stylebox())
+	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(fill))
+	return bar
+
+
 ## The tu vi meter (Phase 12): the same construction as the XP meter, its own hue.
 static func cultivation_meter() -> ProgressBar:
 	return _meter("CultivationMeter", UIPalette.XP_METER_HEIGHT, UIPalette.CULTIVATION_METER_FILL)

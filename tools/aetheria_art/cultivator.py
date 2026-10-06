@@ -279,6 +279,10 @@ def _front_back_hand(shoulder_x, bob, fwd, up, view, inward):
     In the BACK view forward is away from the camera, so the hand rises past the shoulder line
     beside the head. A negative forward is the coil: the hand drawn back to the hip.
     """
+    if up >= 5 and fwd <= 0:
+        # A raised hand forms a seal: it comes IN to the body's centre line (hands meet at the
+        # chest, rising toward the face), never out past the shoulder, which read as flapping.
+        return (shoulder_x + inward * 6, 30 + bob - up)
     if fwd < 0:
         return (shoulder_x - inward, 29 + bob - up)
     if fwd <= 4:
@@ -627,3 +631,33 @@ ARCHETYPES = {
 
 # The meditation pose function is defined after ANIMATIONS (it reads the seated renderer).
 ANIMATIONS["meditate"] = (MEDITATE_FRAMES, False, meditate_pose)
+
+
+# --- CAST (thi triển, Phase 15) -------------------------------------------------------------
+#
+# ONE action, four phases, two columns each, mapped by phase rather than by time (the cast
+# presentation pushes PREPARE → [0, .25), CHANNEL → [.25, .5), RELEASE → [.5, .75), RECOVER →
+# [.75, 1]): both hands come to a seal at the chest, the seal rises before the face and holds
+# while qi gathers, the lead arm drives out, and the body settles back.
+CAST_FRAMES = 8
+_CAST = (
+    # bob, lean, near foot, far foot, lead hand, rear hand, palm, hair, twist
+    (1, -1, (1, 0, 0), (-1, 0, 0), (-2, 6), (-1, 5), "seal", 0, 0),
+    (2, -1, (2, 0, 0), (-2, 0, 0), (-1, 8), (0, 7), "seal", 1, -1),
+    (1, 0, (2, 0, 0), (-2, 0, 0), (0, 11), (-1, 7), "seal", 1, 0),
+    (2, 0, (2, 0, 0), (-2, 0, 0), (0, 12), (-1, 8), "seal", 3, 0),
+    (1, 2, (5, 0, 0), (-2, 0, 0), (11, 4), (-2, 1), "open", 2, 2),
+    (1, 3, (6, 0, 0), (-2, 0, 0), (12, 4), (-2, 1), "open", 4, 2),
+    (0, 1, (3, 0, 0), (-1, 0, 0), (5, 2), (0, 0), "relaxed", 1, 0),
+    (0, 0, (1, 0, 0), (-1, 0, 0), (1, 0), (0, 0), "relaxed", 0, 0),
+)
+
+
+def cast_pose(f):
+    b, ln, nr, fr, ld, rr, palm, hair, tw = _CAST[f]
+    return pose(bob=b, lean=ln, near=nr, far=fr, lead=ld, rear=rr, palm=palm, hair=hair,
+                twist=tw)
+
+
+ANIMATIONS["cast"] = (CAST_FRAMES, False, cast_pose)
+

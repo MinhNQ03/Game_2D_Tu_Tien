@@ -47,7 +47,8 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"EquipmentRuntime", &"InventoryRuntime", &"CultivationRuntime", &"KnowledgeRuntime",
+	&"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime", &"CultivationRuntime",
+	&"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
@@ -283,6 +284,9 @@ func test_real_world_map_flow() -> void:
 	# --- 4e. EQUIPMENT: wear and wield through the satchel with real keys (P14) ---------
 	await _prove_equipment(main, player, hub_map)
 
+	# --- 4f. TECHNIQUE A (Phong) on the training post through the real skill key (P15) ---
+	await _prove_technique_phong(main, player, hub_map)
+
 	# --- 5. first transition hub → field via REAL interact input -----------------
 	await _interact_to_transition(player, "map_hub")
 	assert_eq(router.get_current_key(), "map_field", "real interact transitioned hub → field")
@@ -294,6 +298,9 @@ func test_real_world_map_flow() -> void:
 
 	# --- 5b. A REAL ENCOUNTER in the field (Phase 10) ----------------------------
 	await _prove_encounter(main, player, field_map)
+
+	# --- 5c. TECHNIQUE B (Lôi): learn it in the woods, bolt a wolf (P15) -------------
+	await _prove_technique_loi(main, player, field_map)
 
 	# --- 6. >= 20 round trips, per-round invariants + no orphan leak -------------
 	await scene_tree.process_frame
@@ -1197,4 +1204,99 @@ func _prove_equipment(main: Node, player: Node2D, map: Node) -> void:
 		"the body is drawn in the Thanh Vân robe")
 	assert_eq(equipment.unequip_item(&"item_kiem_thanh_thiet"), &"", "and the jian comes off")
 	assert_eq(int(player.call("get_attack_power")), bare_attack, "attack back to bare")
+
+
+
+
+## Wait real physics frames until `predicate` holds (bounded).
+func _wait_until(predicate: Callable, frames: int) -> void:
+	for _i in frames:
+		if predicate.call():
+			return
+		await scene_tree.physics_frame
+
+
+## Prove technique A in the REAL app: the manual read in the satchel proof taught the Clear-Wind
+## Palm (the player is Hậu Thiên 1), the dock shows it, linh khí refills, and a REAL skill key
+## casts it at the training post: the cast roots the player, the post is struck, qi is spent and
+## the cooldown runs.
+func _prove_technique_phong(main: Node, player: Node2D, map: Node) -> void:
+	var skills := main.get_node_or_null("Systems/SkillRuntime") as SkillRuntime
+	assert_not_null(skills, "the SkillRuntime subsystem exists")
+	var hud := _find_hud(map)
+	var post := map.get_node_or_null("CombatTargets/TrainingDummy") as Node2D
+	if skills == null or hud == null or post == null:
+		return
+	assert_true(skills.knows(&"tech_thanh_phong_chuong"),
+		"reading the manual as a Hậu Thiên cultivator taught the Clear-Wind Palm")
+	assert_true(hud.skill_dock().visible and hud.skill_dock().slot_count() >= 1,
+		"the skill dock shows the learned technique")
+	await _wait_until(func() -> bool: return skills.qi() >= 10.0, 900)
+	assert_true(skills.qi() >= 10.0, "linh khí refilled over real frames (%.1f)" % skills.qi())
+	player.global_position = post.global_position + Vector2(-26, 2)
+	Input.action_press(&"move_right")
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	Input.action_release(&"move_right")
+	for _i in 4:
+		await scene_tree.physics_frame
+	var post_hp := int(post.call("get_current_health"))
+	var released: Array = []
+	skills.cast_released.connect(func(id: StringName, hits: int) -> void: released.append(hits))
+	for _attempt in 4:
+		await _press_through_physics(&"skill_1")
+		if skills.cast_state().is_casting() or not released.is_empty():
+			break
+	assert_true(bool(player.call("is_cast_rooted")) or not released.is_empty(),
+		"a real 1 key began the cast, and the caster is rooted")
+	await _wait_until(func() -> bool: return not released.is_empty(), 120)
+	assert_eq(released.size(), 1, "the palm was released once")
+	assert_true(int(post.call("get_current_health")) < post_hp or int(released[0]) > 0,
+		"the training post was struck by the wind")
+	assert_true(skills.cooldown_left(&"tech_thanh_phong_chuong") > 0.0, "the cooldown runs")
+
+
+## Prove technique B in the REAL app: walk onto the Thunder-Finger manual in the woods, read it
+## through the satchel's own use path, and loose a bolt at a living wolf with a REAL 2 key.
+func _prove_technique_loi(main: Node, player: Node2D, map: Node) -> void:
+	var skills := main.get_node_or_null("Systems/SkillRuntime") as SkillRuntime
+	var inventory := main.get_node_or_null("Systems/InventoryRuntime") as InventoryRuntime
+	var combat := main.get_node_or_null("Systems/CombatRuntime") as CombatRuntime
+	var manual := map.get_node_or_null("Pickups/FieldManualLoi") as Node2D
+	if skills == null or inventory == null or combat == null or manual == null:
+		assert_true(false, "the field has the Thunder-Finger manual and the runtimes exist")
+		return
+	player.global_position = manual.global_position
+	for _i in 6:
+		await scene_tree.physics_frame
+	assert_eq(inventory.count_of(&"item_manual_loi"), 1, "the manual was picked up")
+	assert_eq(inventory.use(&"item_manual_loi"), &"", "reading it teaches")
+	assert_true(skills.knows(&"tech_loi_chi"), "the Thunder Finger is learned")
+	var wolf: Enemy = null
+	for enemy in combat.enemies():
+		if not enemy.is_dead():
+			wolf = enemy
+	if wolf == null:
+		assert_true(false, "a living wolf remains to test the bolt on")
+		return
+	await _wait_until(func() -> bool: return skills.qi() >= 16.0, 1200)
+	var wolf_hp := wolf.get_current_health()
+	player.global_position = wolf.global_position + Vector2(-90, 0)
+	Input.action_press(&"move_right")
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	Input.action_release(&"move_right")
+	player.global_position = wolf.global_position + Vector2(-90, 0)
+	var struck: Array = []
+	skills.bolt_struck.connect(func(at: Vector2) -> void: struck.append(at))
+	for _attempt in 4:
+		await _press_through_physics(&"skill_2")
+		if skills.cast_state().is_casting():
+			break
+	await _wait_until(func() -> bool: return not struck.is_empty(), 180)
+	assert_eq(struck.size(), 1, "the bolt flew and struck once")
+	assert_true(wolf.get_current_health() < wolf_hp or wolf.is_dead(),
+		"the wolf was hurt by the bolt")
+	assert_true(wolf.is_dead() or wolf.ai().is_stunned(),
+		"and Lôi's Choáng landed: the wolf is stunned (or the bolt finished it)")
 

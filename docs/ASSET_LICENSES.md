@@ -47,6 +47,8 @@ though self-made art needs no external attribution.
 | P48 | `assets/sprites/props/prop_spirit_spring.png` (32×20), `prop_vein_fissure.png` (48×20), `prop_stele.png` (20×36) | prop sprites | self-made (`gen_cultivation_landmarks`) | project-owned | cultivation sites and the knowledge stele (Phase 12) | No |
 | P49 | `assets/sprites/items/*.png` (16×16 ×6) | item icons | self-made (`gen_item_icons`) | project-owned | ItemData icons, world pickups, the satchel (Phases 13-15) | No |
 | P50 | `assets/sprites/characters/player_daobao_*.png` (idle/walk/attack/meditate) | character sheets | self-made — `tools/aetheria_art/cultivator.py` (`player_daobao` palette) | project-owned | the Thanh Vân robe's `body_visual` (Phase 14) | No |
+| P51 | `assets/sprites/characters/*_cast.png` (256×192 = 8 frames × 4 directions, ×5 sets) | character sheets | self-made — `tools/aetheria_art/cultivator.py` | project-owned | CAST action (Phase 15) | No |
+| P52 | `assets/sprites/items/skill_thanh_phong_chuong.png`, `skill_loi_chi.png` (16×16) | skill icons | self-made (`gen_skill_icons`) | project-owned | the skill dock (Phase 15) | No |
 
 > **Prototype art note (Phase 03 reopen, D-022):** the maps and player now render REAL
 > self-made pixel-art PNG textures (P1/P2), not Polygon2D placeholders. The textures are

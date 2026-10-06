@@ -176,7 +176,7 @@ func test_an_unavailable_action_is_refused_and_locomotion_continues() -> void:
 ## implemented, and a reserved name must not silently render the attack sheet.
 func test_a_reserved_but_unimplemented_action_is_refused() -> void:
 	var component := _component(ACTOR_PROFILES[0])
-	for reserved in [&"cast", &"hit", &"stun", &"death", &"emote"]:
+	for reserved in [&"hit", &"stun", &"death", &"emote"]:
 		assert_false(component.play_action(reserved),
 			("'%s' is reserved vocabulary with no sheet and no implementation — it must be "
 				+ "refused, not quietly rendered as something else") % reserved)

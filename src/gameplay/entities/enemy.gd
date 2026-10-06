@@ -140,6 +140,17 @@ func get_defense() -> int:
 	return _stats.get_defense()
 
 
+## Technique effects (Phase 15), delegated to the brain-and-body owner.
+func apply_stun(seconds: float) -> void:
+	if _ai != null and not is_dead():
+		_ai.apply_stun(seconds)
+
+
+func apply_knockback(displacement: Vector2) -> void:
+	if _ai != null and not is_dead():
+		_ai.apply_knockback(displacement)
+
+
 func take_damage(amount: int) -> int:
 	return _health.apply_damage(amount)
 

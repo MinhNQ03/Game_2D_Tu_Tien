@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/entities/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://src/gameplay/components/stats_component.gd" id="2_stats"]
@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://src/presentation/combat/hit_reaction.gd" id="92_hitreaction"]
 [ext_resource type="Script" path="res://src/presentation/cultivation/cultivation_feedback.gd" id="93_cultfeedback"]
 [ext_resource type="Script" path="res://src/presentation/equipment/equipment_feedback.gd" id="94_equipfeedback"]
+[ext_resource type="Script" path="res://src/presentation/skills/cast_feedback.gd" id="96_cast"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(18, 12)
@@ -64,3 +65,6 @@ script = ExtResource("93_cultfeedback")
 
 [node name="EquipmentFeedback" type="Node2D" parent="."]
 script = ExtResource("94_equipfeedback")
+
+[node name="CastFeedback" type="Node2D" parent="."]
+script = ExtResource("96_cast")

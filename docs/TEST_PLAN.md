@@ -956,3 +956,14 @@ persist and a robe in the weapon slot is refused; the realm gate reads cultivati
 (`_prove_equipment`): pick up both, wear them through the satchel with real keys, attack power and
 the armed attack change, the robe is drawn, the jian comes off again.
 
+**Phase 15 (D-061):** `tests/unit/skills/test_skills.gd` (catalog valid and canon — Kim is not an
+Aetheria element — two deliveries; the cast is one action with four phases, releases once and is
+breakable only before; a technique WITHHELD without knowledge and without the realm, LEARNED the
+moment both hold; cost spent at the release, the cone strikes in front and not behind with the
+swing's own arc test, Phong knocks back, busy then cooldown refusals; running dry is refused and
+survivable; the bolt strikes the first target on its path and stops, Lôi stuns; a blow before the
+release breaks the cast and spends nothing; STRUCTURAL: only TechniqueService learns). HUD: five
+gauges, the dock counted in the area budget. E2E (`_prove_technique_phong`,
+`_prove_technique_loi`): a real 1 key casts at the training post (rooted, struck, cooldown); the
+woods' manual teaches Lôi and a real 2 key bolts and stuns a living wolf.
+

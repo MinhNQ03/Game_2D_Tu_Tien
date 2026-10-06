@@ -177,6 +177,8 @@ func _physics_process(delta: float) -> void:
 	var speed := _stats.get_move_speed()
 	if _attack != null:
 		speed *= _attack.movement_scale()
+	if _cast_rooted:
+		speed = 0.0  # a cast in progress roots the caster (Phase 15, SkillRuntime decides)
 	_movement.apply_intent(intent, speed, delta)
 
 	# Drive the data-driven visual facing/animation from the SAME intent (presentation only;
@@ -193,7 +195,7 @@ func _physics_process(delta: float) -> void:
 
 	# Edge-triggered attack INTENT. The service gates this on GAMEPLAY context, so an open
 	# menu/modal can never leak an attack to the world.
-	if _input.call("is_gameplay_action_just_pressed", ATTACK_ACTION):
+	if not _cast_rooted and _input.call("is_gameplay_action_just_pressed", ATTACK_ACTION):
 		# The signal is kept for the Phase-02 sandbox coordinator, which still resolves its
 		# own hit. In a real session the AttackComponent owns the swing, and it REFUSES while
 		# one is in flight — that refusal is the commitment rule, so it must not be worked
@@ -213,6 +215,19 @@ func get_defense() -> int:
 
 
 # --- Health access (intent-revealing; UI/coordinator never mutate fields directly) ---
+
+## A cast in progress roots the caster and holds the basic attack (Phase 15). Set by
+## `SkillRuntime`, which owns the cast's timing; the body only obeys.
+var _cast_rooted: bool = false
+
+
+func set_cast_rooted(rooted: bool) -> void:
+	_cast_rooted = rooted
+
+
+func is_cast_rooted() -> bool:
+	return _cast_rooted
+
 
 ## Apply what the player wears (Phase 14), from `EquipmentRuntime`: the stat bonus enters the
 ## damage formula through `StatsComponent`, the attack is swapped on the `AttackComponent`, and

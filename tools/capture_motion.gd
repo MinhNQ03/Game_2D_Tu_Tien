@@ -73,6 +73,9 @@ func _run() -> void:
 	if _only == "" or _only == "cultivation":
 		print("[capture_motion] scenario cultivation")
 		await _scenario_cultivation()
+	if _only == "" or _only == "techniques":
+		print("[capture_motion] scenario techniques")
+		await _scenario_techniques()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -189,6 +192,52 @@ func _scenario_cultivation() -> void:
 	await _settle()
 	Input.action_release(&"move_up")
 	await _settle()
+
+
+## Both techniques in the real app: the Clear-Wind Palm at the training post, then the Thunder
+## Finger at a wolf. Setup goes THROUGH the services (method + breakthrough + knowledge), never
+## around them; the casts are real skill keys.
+func _scenario_techniques() -> void:
+	var player := _player()
+	var knowledge := _main.get_node_or_null("Systems/KnowledgeRuntime") as KnowledgeRuntime
+	var cultivation := _main.get_node_or_null("Systems/CultivationRuntime") as CultivationRuntime
+	var skills := _main.get_node_or_null("Systems/SkillRuntime") as SkillRuntime
+	var post := _map_node("CombatTargets/TrainingDummy") as Node2D
+	if player == null or knowledge == null or skills == null or post == null:
+		_fail("techniques: pieces missing")
+		return
+	var state: CharacterState = player.call("get_character_state")
+	knowledge.grant(&"know_dan_khi_quyet", &"capture")
+	if state.realm_id == &"realm_pham":
+		cultivation.get_service().gather(state, 999)
+		cultivation.get_service().breakthrough(state)
+		cultivation.realm_advanced.emit(state.realm_id, state.realm_layer, true)
+	knowledge.grant(&"know_thanh_phong_chuong", &"capture")
+	knowledge.grant(&"know_loi_chi", &"capture")
+	while skills.qi() < 30.0:
+		await physics_frame
+	player.global_position = post.global_position + Vector2(-30, 2)
+	await _hold(&"move_right")
+	await _settle()
+	await _shot("scene_dock")
+	var focus := func() -> Vector2: return post.global_position + Vector2(-16, -14)
+	await _hold(&"skill_1")
+	var phong := await _strip(focus, 24, 1)
+	_save_strip("motion_phong", phong)
+	while skills.qi() < 16.0:
+		await physics_frame
+	player.global_position = post.global_position + Vector2(-110, 2)
+	for _i in 4:
+		await _settle()  # let the follow camera arrive before sampling
+	await _hold(&"skill_2")
+	var loi_focus := func() -> Vector2: return player.global_position + Vector2(50, -14)
+	var loi: Array[Image] = []
+	for i in 24:
+		await process_frame
+		loi.append(_cell(loi_focus.call()))
+		if i == 3 or i == 8:
+			await _shot("scene_loi_%d" % i)
+	_save_strip("motion_loi", loi)
 
 
 ## Hold an action across a few frames (the way a hand presses a key), then release.

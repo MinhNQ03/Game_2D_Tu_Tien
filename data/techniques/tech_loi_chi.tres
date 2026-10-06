@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="TechniqueData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/data/skills/technique_data.gd" id="1_tech"]
+[ext_resource type="Script" path="res://src/data/skills/skill_data.gd" id="2_skill"]
+[ext_resource type="Texture2D" path="res://assets/sprites/items/skill_loi_chi.png" id="3_icon"]
+
+[sub_resource type="Resource" id="Skill"]
+script = ExtResource("2_skill")
+id = &"skill_loi_chi"
+name_key = &"TECH_LOI_CHI_NAME"
+element = &"elem_loi"
+qi_cost = 16
+cooldown = 4.0
+prepare_seconds = 0.16
+channel_seconds = 0.34
+release_seconds = 0.08
+recover_seconds = 0.28
+power_multiplier = 1.6
+delivery = 1
+range_px = 230.0
+bolt_speed = 460.0
+bolt_radius = 10.0
+stun_seconds = 1.0
+icon = ExtResource("3_icon")
+
+[resource]
+script = ExtResource("1_tech")
+id = &"tech_loi_chi"
+name_key = &"TECH_LOI_CHI_NAME"
+desc_key = &"TECH_LOI_CHI_DESC"
+element = &"elem_loi"
+required_knowledge = Array[StringName]([&"know_loi_chi"])
+required_realm = &"realm_hau_thien"
+required_layer = 1
+skill = SubResource("Skill")
+slot = 2

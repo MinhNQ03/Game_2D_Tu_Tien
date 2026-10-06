@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TechniqueCatalogData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/data/skills/technique_catalog_data.gd" id="1_cat"]
+[ext_resource type="Script" path="res://src/data/skills/technique_data.gd" id="2_tech"]
+[ext_resource type="Resource" path="res://data/techniques/tech_thanh_phong_chuong.tres" id="3_phong"]
+[ext_resource type="Resource" path="res://data/techniques/tech_loi_chi.tres" id="4_loi"]
+
+[resource]
+script = ExtResource("1_cat")
+id = &"technique_catalog"
+entries = Array[ExtResource("2_tech")]([ExtResource("3_phong"), ExtResource("4_loi")])

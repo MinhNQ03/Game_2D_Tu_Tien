@@ -36,6 +36,7 @@ const ANIM_IDLE := &"idle"
 const ANIM_WALK := &"walk"
 const ANIM_ATTACK := &"attack"
 const ANIM_MEDITATE := &"meditate"
+const ANIM_CAST := &"cast"
 
 ## The shared anchor vocabulary (`CharacterAnchorData`): the striking point and the core.
 const POINT_PALM := &"palm"
@@ -72,6 +73,11 @@ const POINT_CORE := &"core"
 ## cultivation presentation drives: the first column is the descent, the rest the breath loop.
 ## Authored by every cultivator archetype; a creature has none.
 @export var meditate_sheet: Texture2D = null
+
+## The CAST sheet (OPTIONAL, Phase 15): one action, four phases, two columns each — the seal
+## gathered at the chest, raised and held, the arm driven out, the settle. The cast presentation
+## maps PREPARE / CHANNEL / RELEASE / RECOVER onto its quarters, whatever each phase's duration.
+@export var cast_sheet: Texture2D = null
 
 ## The pixel size of ONE animation frame (the art baseline, 32x48 since D-046). Collision
 ## footprint is independent of this (anchored at the feet) — see `docs/CHARACTER_ART_BIBLE.md`.
@@ -139,6 +145,8 @@ func validation_errors() -> Array[String]:
 		errors.append_array(_sheet_errors("attack_sheet", attack_sheet))
 	if meditate_sheet != null:
 		errors.append_array(_sheet_errors("meditate_sheet", meditate_sheet))
+	if cast_sheet != null:
+		errors.append_array(_sheet_errors("cast_sheet", cast_sheet))
 	if stride_px < 0.0:
 		errors.append("stride_px must be >= 0 (got %f)" % stride_px)
 	var walk_frames := frame_count_of(walk_sheet)
@@ -187,6 +195,8 @@ func sheet_for_anim(anim: StringName) -> Texture2D:
 			return attack_sheet
 		ANIM_MEDITATE:
 			return meditate_sheet
+		ANIM_CAST:
+			return cast_sheet
 		_:
 			return null
 

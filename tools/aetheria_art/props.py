@@ -422,3 +422,25 @@ def gen_item_icons(root):
     raster.rect(px, 2, 10, 14, 11, (60, 84, 128, 255))
     save("item_dao_bao_thanh_van", px)
 
+
+def gen_skill_icons(root):
+    """16x16 skill icons for the dock (Phase 15): a wind swirl for Phong, a forked bolt for Lôi.
+    Each element keeps ONE permanent colour (COMBAT_DESIGN.md §3)."""
+    px = raster.blank(16, 16)
+    wind = (150, 222, 176, 255)
+    raster.oval(px, 8, 8, 6, 6, (26, 48, 40, 255))
+    for (a, b) in (((4, 9), (8, 5)), ((8, 5), (12, 8)), ((6, 11), (11, 10)), ((5, 7), (9, 8))):
+        raster.line(px, a[0], a[1], b[0], b[1], wind)
+    raster.put(px, 12, 9, (230, 255, 240, 255))
+    raster.outline(px, INK)
+    _save(root, "assets/sprites/items/skill_thanh_phong_chuong.png", px)
+    px = raster.blank(16, 16)
+    raster.oval(px, 8, 8, 6, 6, (34, 26, 52, 255))
+    bolt = (196, 170, 255, 255)
+    raster.line(px, 10, 2, 7, 8, bolt)
+    raster.line(px, 7, 8, 10, 8, bolt)
+    raster.line(px, 10, 8, 6, 14, bolt)
+    raster.put(px, 7, 8, (250, 245, 255, 255))
+    raster.outline(px, INK)
+    _save(root, "assets/sprites/items/skill_loi_chi.png", px)
+

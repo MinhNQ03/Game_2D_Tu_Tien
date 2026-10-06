@@ -67,6 +67,10 @@ const ACTION_ATTACK := &"attack"
 ## descent is the first column, the breath loop the rest (`CultivationFeedback`).
 const ACTION_MEDITATE := &"meditate"
 
+## A technique's cast (Phase 15): one action, four phases, driven by `CastFeedback` from the
+## `CastStateMachine`'s own phase and progress.
+const ACTION_CAST := &"cast"
+
 ## How long a 180° turn shows the intermediate facing. Three frames at 60fps: long enough to
 ## read as the body turning, short enough that the input still feels instant (M-4.4).
 const TURN_SECONDS := 0.05
@@ -328,6 +332,8 @@ func _sheet_for_action(action: StringName) -> Texture2D:
 			return _profile.attack_sheet
 		ACTION_MEDITATE:
 			return _profile.meditate_sheet
+		ACTION_CAST:
+			return _profile.cast_sheet
 		_:
 			return null
 

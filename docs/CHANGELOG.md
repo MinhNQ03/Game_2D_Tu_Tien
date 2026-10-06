@@ -8,6 +8,16 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-06 — Techniques (Phase 15, D-061)
+
+- **Two công pháp, learned from manuals once your body has opened (Hậu Thiên):**
+  **Thanh Phong Chưởng** (key 1, Phong) — gather wind into the palm and drive it out in an arc
+  that shoves enemies back and flattens the grass; **Lôi Chỉ** (key 2, Lôi) — charge a fingertip
+  and loose a bolt that strikes the first enemy on its path and stuns it.
+- **Linh khí** fills to what your realm can hold, faster while you cultivate; casts cost it,
+  techniques have cooldowns, a blow before the release breaks a cast without spending anything,
+  and every refusal says why. A skill dock shows the keys, cooldowns and your linh khí.
+
 ### 2026-10-06 — Equipment (Phase 14, D-060)
 
 - **Wear and wield from the satchel.** A Thanh Thiết Kiếm by the training post: worn across the
