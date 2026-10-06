@@ -172,7 +172,7 @@ func test_a_hit_that_applied_no_damage_does_not_flash() -> void:
 	# `apply_hit(0, …)` returns 0 applied, so `damaged` never fires at all; drive the signal
 	# directly as well, so the component's own guard is exercised and not just the hurtbox's.
 	assert_eq(_hurtbox(entity).apply_hit(0, false), 0, "nothing was applied")
-	_hurtbox(entity).damaged.emit(0, false)
+	_hurtbox(entity).damaged.emit(0, false, Vector2.ZERO)
 	assert_false(feedback.is_flashing(), "a zero-damage hit starts no flash")
 	assert_eq(entity.modulate, resting, "and leaves the entity looking untouched")
 	free_node(entity)

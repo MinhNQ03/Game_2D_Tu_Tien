@@ -3974,3 +3974,112 @@ top-down camera cannot take; heartland grandeur presented as the frontier the ga
 
 No asset hunt, no future feature, no edit to the owner's pack files (only the Godot-generated
 sidecars were removed, under D-057). Recorded as **L-044** together with the import finding.
+
+## D-057B — Visual content foundation: a gait, anchors, a causal strike, a body that reacts, a world that moves
+
+**Status:** Accepted · **Scope:** presentation + art + ONE gameplay data field
+(`AttackData.committed_move_scale`) + one cue-contract field (`damaged.push_direction`).
+**No autoload, no manager, no networking, no P16+ system.** It is the proof that the D-056/D-057
+contracts produce a game that reads in motion, before P12 builds on them.
+
+### What was wrong, found by LOOKING (L-045)
+
+The D-056 cast animated, but at 1× and in motion: the walk was a clock that ran whenever the owner
+said "moving" (a body against a wall trod air; a slowed body strode at full cadence; every stop
+snapped the legs together; a 180° turn was a one-frame flip; a creature chasing on a diagonal
+flickered between two facings); the strike's arc was drawn around the FEET with no source; a
+struck target only changed colour; the player ran at full speed through every swing, so the
+strike pose slid across the floor; the world was a still painting, not depth-sorted, with three
+props standing in flooded paddies and a 2×-scaled 16px emblem standing in for a banner.
+
+### What was built
+
+* **Art (`tools/aetheria_art/`, stdlib only).** A pose-driven 32×48 humanoid: 6-beat breath,
+  8-frame two-step stride whose hem the legs drive, 8-frame palm strike (coil → upright palm →
+  follow-through → recover). A pose-driven 32×32 four-beat wolf with a wedge head and a ruff. A
+  mộc nhân training post. Moving props padded for their motion: broadleaf tree, banner pole +
+  cloth, lantern post + hanging lantern, three grass tufts, a low mist bank. Every sheet verified to
+  animate and to differ per facing; ANCHORS (`palm`, `rear_palm`, `core`, pixel centres, feet-
+  relative) written from the same poses into `CharacterAnchorData` resources. Qi is no longer
+  baked into a sheet.
+* **Locomotion as a gait** (`CharacterVisualComponent`): IDLE → WALK → SETTLE, the walk clocked by
+  measured displacement (`stride_px`), stall on no displacement, teleport guard, entry/exit on
+  `walk_rest_columns`, a 180° turn through an intermediate facing (instant mid-action), facing
+  hysteresis (cos 0.6), deterministic idle phase from placement. Action and locomotion now keep
+  separate cursors, so an action never resets the stride it interrupts.
+* **Anchors**: `anchor_point(name)` on the drawn frame, following sheet, row, column and reaction
+  offset; validated against the sheets by the profile.
+* **The strike as a causal effect** (`AttackFeedback` v2): release from the drawn `palm`, angled to
+  body height, dissipating through recovery; a hostile wind-up telegraphs its reach on the ground
+  (z -1, under bodies); the player's own swing draws no ring; behind the body when facing away.
+* **The body that reacts** (`HitReaction`, new, per entity scene): RECOIL (whole pixels, along the
+  blow, exact return) or PIVOT_WOBBLE (whole-pixel row shear about the footing, damped) by the law
+  of what was struck; a contact flash and material debris (straw falls, mist rises, cloth streaks)
+  in world space. `HurtboxComponent.damaged` carries `push_direction` (attacker → target).
+  `DamageFeedback.flash_strength`: the post warms (0.4) instead of turning into a red silhouette.
+* **Commitment** (gameplay data): `AttackData.committed_move_scale` — 0.3 for the palm strike, 0.0
+  for the bite — applied by `Player` and `AIComponent` through `AttackComponent.movement_scale()`.
+* **A world that moves** (`src/presentation/ambient/`): `pixel_sway.gdshader` — one law for
+  everything bent about a fixed point (grass, canopy, banner cloth, hanging lantern, the struck
+  post), per-material data (bend, amplitude, frequency, prevailing bias, ripple), phase from WORLD
+  position, a gust band travelling across the map; `mist_drift.gdshader` — banks that drift,
+  ripple by row and thin over seconds. Both shift WHOLE pixels: no rotation, no mixels.
+* **Maps**: depth-sorted world (root, Visual, Decor, CombatTargets, PlayerHost), floor at z -2,
+  ground decals at z -1; every prop base-anchored on dry ground; the hub's sect banners, the
+  field's mist.
+* **HUD**: combat takes the screen — engaging a live target closes the side panels (once).
+* **Tool**: `tools/capture_motion.gd` — frame strips from the real app, driven by semantic input.
+
+### Deliberation records (`MOTION_DESIGN_CONTRACT.md` §13)
+
+| | Walk / stop / turn | Basic strike | Target reaction | Ambient world |
+|---|---|---|---|---|
+| 1 What happens | the body travels | a palm is driven out | a body absorbs a blow | wind moves light things |
+| 2 Cause | move intent → displacement | the attack intent | `damaged` | prevailing breeze + passing gusts |
+| 3 Noticed first | the stride matching the ground | the coil, then the palm | the shove / the lean | nothing — micro scale |
+| 4 What moves | legs, hem, arms, hair; the body bobs 1px | arm, shoulder, weight; air leaves the hand | the drawn body; debris | tips of grass, the canopy, the cloth's free edge, the lantern |
+| 5 Law | humanoid / quadruped | humanoid + force | creature recoil / rigid pivot | flexible material; fluid (mist) |
+| 6 Key stages | rest → weight shift → stride → plant | coil → release → follow-through → recover | impact → shove → return / lean → rock → rest | sway, gust passes, settle |
+| 7 Timing, owner | DISTANCE (gameplay movement) | `AttackData` (gameplay) | 0.18s recoil / 0.75s wobble, transient | shader TIME, decides nothing |
+| 8 Consequence | the body arrives | the hit (gameplay) | the target was struck, visibly | the world is alive |
+| 9 Settle | feet finish the step | recovery frames | exact rest | continuous, never synchronized |
+| 10 Reused by | every actor | every actor's action; CAST next | every struck body; skills' impacts | P12 breakthrough + P15 Phong (wind impulse) |
+
+### Reference → Original (`XIANXIA_IDENTITY_CONTRACT.md` §13)
+
+```
+Reference studied:   the project's own painted portraits (proportion, hair, robe); real animal
+                     locomotion (canine four-beat walk, crouch-before-lunge); real cloth and
+                     grass in wind; Wing Chun wooden dummies (mộc nhân) for the training post.
+                     The Aetheria moodboards were consulted for costume language only.
+Observed principle:  a robe's hem is moved by the legs under it; a palm strike stands the palm
+                     upright; a canine's head is a wedge carried low, with a ruff; light things
+                     answer wind first and fast, heavy things later and slower; cloth delays
+                     down its length.
+Aetheria adaptation: no qi on a PHÀM body (qi becomes a runtime effect on anchors, from a source,
+                     when a realm earns it); orthodox motion is economical (a small step-in, a
+                     short follow-through); Thanh Vân's cloud sigil on its banner.
+Gameplay purpose:    readable commitment (the strike roots you), readable threat (the wolf's
+                     telegraph), readable consequence (the target is pushed), a world worth
+                     standing in.
+NOT copied:          no board image traced, cropped or recoloured; no glow decoration on mortal
+                     strikes; no camera shake on a basic hit; no fan, no five-phase motifs, no
+                     realm names from the boards.
+```
+
+### Evidence
+
+753 headless tests (up from 716), 0 failures, 0 leaks, 0 SCRIPT ERROR; the three E2E flows PASS;
+19 mutants of the new mechanisms all killed by the test named for each. Real-app frame strips read
+at 1× before and after each fix (L-045). Recorded as **L-045**.
+
+### Debt, named and owned
+
+* The hub portrait (UI art) shows a dark-haired figure while the sprite is white-haired — a pre-
+  existing mismatch between two project-owned arts. **Owner: the UI art pass (P26 polish).**
+* The wolf's back view still reads as a generic canine from behind. **Owner: the next creature
+  art pass (P17/P18 when a second creature lands).**
+* `enemy.tscn` carries the wolf's debris material for every enemy; a second enemy species moves
+  it to `EnemyData`. **Owner: the phase that adds the second species.**
+* The ambient wind has no IMPULSE input yet; its first two consumers are P12's breakthrough and
+  P15's Phong technique (M-14.2). **Owner: P12/P15.**

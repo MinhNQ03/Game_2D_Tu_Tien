@@ -28,9 +28,26 @@ class_name CharacterVisualComponent
 ## flash, corpse tint, level-up flash), is deliberately NOT here: it modulates whatever pose is
 ## showing and is owned by `DamageFeedback` / `LevelUpFeedback`.
 ##
-## `_process` is switched OFF whenever the active sheet holds a single frame and no action is
-## running, so a static character costs nothing per frame (`05-performance-testing.md`) — which
-## matters because every creature in the world carries one of these.
+## LOCOMOTION IS A GAIT, NOT A LOOP (D-057B). `IDLE → WALK → SETTLE → IDLE`:
+##
+##   * the WALK is clocked by the DISTANCE the component's own origin actually moved
+##     (`CharacterVisualProfileData.stride_px`), so the stride follows the real speed — a body
+##     slowed by a wall slows its feet, a blocked one stops them, and a remote character drawn
+##     from a position stream gets its cadence from that stream with no extra state;
+##   * it starts and ends on the profile's `walk_rest_columns`: the walk opens with a weight
+##     shift rather than a leap into full stride, and a stop lets the planted foot finish its
+##     step (SETTLE) instead of snapping the legs together;
+##   * a 180° turn passes through the side (or front) facing for `TURN_SECONDS`, so the body
+##     reads as turning rather than flipping; turning mid-ACTION stays instant, because a strike
+##     must face where it lands.
+##
+## The idle breath starts at a phase derived from where the character stands, so a pack of
+## wolves or a row of disciples never breathes in lockstep (M-8.1, M-10.1: no synchronized
+## loops) — deterministic, no RNG (M-8.2).
+##
+## `_process` is switched OFF whenever nothing can change the frame — a single-frame sheet, no
+## action, no gait in progress, no turn — so a static character costs nothing per frame
+## (`05-performance-testing.md`), which matters because every creature carries one of these.
 ##
 ## It reads NO gameplay rules and owns NO movement: the owner (`Player`) keeps
 ## `MovementComponent` as the movement authority and simply tells this component which way it
@@ -46,14 +63,64 @@ const ACTION_NONE := &""
 ## implementation here, on purpose — a reserved name is a name, not a feature.
 const ACTION_ATTACK := &"attack"
 
+## How long a 180° turn shows the intermediate facing. Three frames at 60fps: long enough to
+## read as the body turning, short enough that the input still feels instant (M-4.4).
+const TURN_SECONDS := 0.05
+
+## Seconds per walk frame while a stop SETTLES onto a rest column. The body has already
+## stopped, so this is the planted foot finishing its step — quick, never a second stride.
+const SETTLE_FRAME_SECONDS := 0.05
+
+## Moving intent with no measured displacement for this long reads as BLOCKED: the stride stops
+## and the body settles, instead of treading air against a wall. Long enough to ride out a
+## single physics frame with no movement.
+const STALL_SECONDS := 0.1
+
+## A per-frame displacement above this is a TELEPORT (a spawn, a map transfer), not a step, and
+## must not spin the stride through a dozen frames at once.
+const TELEPORT_PX := 48.0
+
+## Below this per-frame displacement (px) the body is treated as not moving.
+const MOVE_EPSILON_PX := 0.05
+
+## FACING HYSTERESIS: the current facing is kept while the facing vector stays within ~53° of it
+## (cosine 0.6), wider than the 45° boundary between cardinals. Without the band a creature
+## chasing along a diagonal flips between two facings every frame, and a diagonal key press
+## turns a character away from where it was looking.
+const FACING_HOLD_DOT := 0.6
+
+## The locomotion gait. Private to the component; `gait()` exposes it for tests/debug.
+enum Gait { IDLE, WALK, SETTLE }
+
 var _profile: CharacterVisualProfileData = null
 var _sprite: Sprite2D = null
-var _direction: int = CharacterVisualProfileData.Direction.DOWN
-var _moving: bool = false
+## The sprite's resting position (feet on the origin), so an offset a reaction applies can be
+## measured and an anchor lookup can follow the drawn body rather than the node origin.
+var _sprite_rest: Vector2 = Vector2.ZERO
 
-## Animation cursor: which column of the ACTIVE sheet is showing, and how long it has been.
+## The LOGICAL facing (what the owner asked for) and the RENDERED row. They differ only during
+## the brief intermediate frame of a 180° turn.
+var _direction: int = CharacterVisualProfileData.Direction.DOWN
+var _shown_direction: int = CharacterVisualProfileData.Direction.DOWN
+var _turn_left: float = 0.0
+## The last side facing, so a DOWN<->UP turn passes through the side the body last showed.
+var _last_side: int = CharacterVisualProfileData.Direction.RIGHT
+
+## The owner's movement INTENT, and the gait the component is actually rendering.
+var _moving: bool = false
+var _gait: int = Gait.IDLE
+
+## Locomotion cursor: which column of the locomotion sheet is showing, the time accumulator for
+## the clocked parts (idle, settle, a time-clocked walk), and the distance accumulator for a
+## distance-clocked walk.
 var _column: int = 0
 var _elapsed: float = 0.0
+var _stride_travel: float = 0.0
+var _still_time: float = 0.0
+
+## Where the origin was on the last tick, for the displacement the stride is clocked by.
+var _last_origin: Vector2 = Vector2.ZERO
+var _origin_known: bool = false
 
 # --- ACTION LAYER (D-056) ----------------------------------------------------
 #
@@ -65,6 +132,9 @@ var _elapsed: float = 0.0
 # than a comment: this component cannot drift from a lifecycle it does not time.
 var _action: StringName = ACTION_NONE
 var _action_progress: float = 0.0
+## The action's own column, a pure function of `_action_progress`. Separate from the locomotion
+## cursor, so an action never resets the stride it interrupts and locomotion resumes intact.
+var _action_column: int = 0
 
 ## The optional sibling that reports an attack lifecycle, resolved once.
 ##
@@ -164,25 +234,24 @@ func setup(profile: CharacterVisualProfileData) -> bool:
 	return true
 
 
-## Push the current facing (from a movement/intent vector) + whether the character is moving.
-## The owner calls this from its movement update; this component only chooses the frame. No
-## movement math happens here. A zero vector keeps the last facing (resting), not a snap to
+## Push the current facing (from a movement/intent vector) + whether the character INTENDS to
+## move. The owner calls this from its movement update; this component only chooses the frame.
+## No movement math happens here. A zero vector keeps the last facing (resting), not a snap to
 ## DOWN, so the character faces where it last walked.
 ##
-## Switching between idle and walk RESTARTS the cursor, because the two sheets may hold
-## different frame counts and a stale column could otherwise index past the shorter sheet.
-## Facing is SHARED between the layers, not owned by one: a character may turn mid-swing, so a
-## facing change moves the direction row without restarting or cancelling an action in flight.
-## Only the LOCOMOTION cursor reset is suppressed while an action plays — resetting it there
-## would be resetting a cursor the action owns.
+## `is_moving` is INTENT. Whether the stride actually advances is decided by the displacement
+## the component measures (see the gait notes above): an intent that moves nothing settles.
+## Facing is SHARED between the layers: a character may turn mid-swing, so a facing change moves
+## the direction row without restarting or cancelling an action in flight.
 func update_facing(facing_vector: Vector2, is_moving: bool) -> void:
+	if facing_vector != Vector2.ZERO:
+		_turn_to(_resolve_facing(facing_vector), facing_vector)
 	if is_moving != _moving:
 		_moving = is_moving
-		if _action == ACTION_NONE:
-			_column = 0
-			_elapsed = 0.0
-	if facing_vector != Vector2.ZERO:
-		_direction = CharacterVisualProfileData.direction_for_vector(facing_vector)
+		if _moving:
+			_begin_walk()
+		else:
+			_begin_stop()
 	_refresh_frame()
 
 
@@ -190,9 +259,6 @@ func update_facing(facing_vector: Vector2, is_moving: bool) -> void:
 
 ## Begin a one-shot action. Returns false when this profile has no sheet for it, in which case
 ## the character keeps playing locomotion — presentation DEGRADES, gameplay is unaffected.
-##
-## Starting an action resets the cursor, because the action sheet may hold a different number
-## of columns than the locomotion sheet that was showing.
 func play_action(action: StringName) -> bool:
 	if _profile == null or action == ACTION_NONE:
 		return false
@@ -200,8 +266,9 @@ func play_action(action: StringName) -> bool:
 		return false
 	_action = action
 	_action_progress = 0.0
-	_column = 0
-	_elapsed = 0.0
+	_action_column = 0
+	# A strike faces where it lands: an intermediate turn frame in flight resolves at once.
+	_finish_turn()
 	_refresh_frame()
 	set_process(true)
 	return true
@@ -222,14 +289,14 @@ func drive_action(progress: float) -> void:
 ## Finish the action and return to locomotion. Safe to call when nothing is playing.
 ##
 ## This is also the CANCEL path (`PRESENTATION_ARCHITECTURE_CONTRACT.md` §12): a rejected or
-## interrupted action must be recoverable, not leave a character frozen in a pose.
+## interrupted action must be recoverable, not leave a character frozen in a pose. Locomotion
+## resumes on its own cursor, which the action never touched.
 func end_action() -> void:
 	if _action == ACTION_NONE:
 		return
 	_action = ACTION_NONE
 	_action_progress = 0.0
-	_column = 0
-	_elapsed = 0.0
+	_action_column = 0
 	_refresh_frame()
 
 
@@ -259,45 +326,307 @@ func _sheet_for_action(action: StringName) -> Texture2D:
 			return null
 
 
+# === Anchors (D-057B) ========================================================
+
+## Where the named body point (`CharacterVisualProfileData.POINT_PALM`, `POINT_CORE`, …) is on
+## the frame SHOWING right now, in this node's local space (add `global_position` for world).
+##
+## It follows everything that moves the drawn body: the active sheet, the rendered facing row,
+## the column, and any offset a reaction has put on the sprite — so an effect that starts from
+## the palm starts from the palm that is drawn, on every facing and every frame. `fallback` when
+## the profile carries no anchors or does not name the point (the effect then starts at the
+## feet origin rather than at a guessed offset).
+func anchor_point(point: StringName, fallback: Vector2 = Vector2.ZERO) -> Vector2:
+	if _profile == null or _profile.anchors == null or _sprite == null:
+		return fallback
+	var anim := current_anim()
+	if not _profile.anchors.has_point(anim, point):
+		return fallback
+	return (_profile.anchors.point_at(anim, point, _shown_direction, get_column(), fallback)
+		+ (_sprite.position - _sprite_rest) + _feet_origin())
+
+
+## True when the bound profile names `point` for the animation showing right now.
+func has_anchor(point: StringName) -> bool:
+	return (_profile != null and _profile.anchors != null
+		and _profile.anchors.has_point(current_anim(), point))
+
+
+## The animation name of the sheet showing right now (`CharacterVisualProfileData.ANIM_*`) —
+## the key an anchor lookup is made under.
+func current_anim() -> StringName:
+	if _profile == null:
+		return CharacterVisualProfileData.ANIM_IDLE
+	if _action != ACTION_NONE and _sheet_for_action(_action) != null:
+		return _action
+	if _shows_walk():
+		return CharacterVisualProfileData.ANIM_WALK
+	return CharacterVisualProfileData.ANIM_IDLE
+
+
+## The drawn sprite's displacement from its resting place — a reaction's offset, read by an
+## effect that must follow the body. Zero at rest.
+func sprite_offset() -> Vector2:
+	return (_sprite.position - _sprite_rest) if _sprite != null else Vector2.ZERO
+
+
+## Displace the drawn body by `offset` from its resting place (a hit recoil). Presentation
+## only: the entity, its collision and its hurtbox stay where gameplay put them.
+func set_sprite_offset(offset: Vector2) -> void:
+	if _sprite != null:
+		_sprite.position = _sprite_rest + offset
+
+
+func _feet_origin() -> Vector2:
+	return _sprite_rest + Vector2(_profile.frame_size.x / 2.0, float(_profile.frame_size.y))
+
+
+# === Clock ===================================================================
+
 func _process(delta: float) -> void:
 	advance(delta)
 
 
-## Advance the animation clock by `delta` seconds. PUBLIC so a test can drive the animation
+## Advance the presentation by `delta` seconds. PUBLIC so a test can drive the animation
 ## deterministically instead of waiting on real frames (and without reaching for `_process`,
-## which would be a cross-file private access). Only does work while the active sheet has
-## more than one frame.
+## which would be a cross-file private access).
+##
+## The locomotion stride reads the displacement of this node's origin since the last call, so a
+## test that moves the node and then advances is exactly what a moving character does.
 func advance(delta: float) -> void:
 	if _profile == null:
 		return
+	var moved := _observe_displacement()
+	if _turn_left > 0.0:
+		_turn_left -= delta
+		if _turn_left <= 0.0:
+			_finish_turn()
 	if _action != ACTION_NONE:
 		# An action is running: it is DRIVEN, not clocked. Pull the progress from the
 		# authority that owns the action's timing instead of stepping a clock here, so the
-		# animation cannot run at a different rate from the mechanic it depicts.
+		# animation cannot run at a different rate from the mechanic it depicts. Locomotion
+		# holds its cursor underneath.
 		_sync_action_from_authority()
+		_refresh_frame()
 		return
+	match _gait:
+		Gait.WALK:
+			_advance_walk(delta, moved)
+		Gait.SETTLE:
+			_advance_settle(delta)
+		_:
+			if _moving and moved > MOVE_EPSILON_PX:
+				_begin_walk()  # a blocked body that moves again picks its stride back up
+			else:
+				_advance_clock(delta, _profile.frame_duration)
+	_refresh_frame()
+
+
+## How far the origin moved since the last tick, with a teleport counted as no step at all.
+func _observe_displacement() -> float:
+	var origin := global_position
+	if not _origin_known:
+		_origin_known = true
+		_last_origin = origin
+		_seed_idle_phase(origin)
+		return 0.0
+	var moved := origin.distance_to(_last_origin)
+	_last_origin = origin
+	return 0.0 if moved > TELEPORT_PX else moved
+
+
+## The idle breath starts at a phase derived from where the character first stands, so two
+## creatures placed apart never breathe in lockstep. Deterministic: the same placement always
+## gives the same phase (M-8.2) — no RNG, and no draw from a domain stream.
+func _seed_idle_phase(origin: Vector2) -> void:
+	if _gait != Gait.IDLE or _profile.frame_duration <= 0.0:
+		return
+	var frames := _profile.frame_count_of(_profile.idle_sheet)
+	if frames <= 1:
+		return
+	var cycle := _profile.frame_duration * float(frames)
+	var phase := fposmod(origin.x * 0.731 + origin.y * 0.547, cycle)
+	_column = int(phase / _profile.frame_duration) % frames
+	_elapsed = fposmod(phase, _profile.frame_duration)
+
+
+## Step the locomotion cursor by time (idle, or a walk with no `stride_px`).
+func _advance_clock(delta: float, step: float) -> void:
 	var total := _active_frame_count()
-	if total <= 1:
-		set_process(false)
-		return
-	var step := _profile.frame_duration
-	if step <= 0.0:
+	if total <= 1 or step <= 0.0:
 		return
 	_elapsed += delta
 	while _elapsed >= step:
 		_elapsed -= step
 		_column = (_column + 1) % total
-	_refresh_frame()
 
 
-## The animation column currently showing (for tests / debug readouts).
+## The stride: clocked by DISTANCE when the profile authors `stride_px`, else by time. Moving
+## intent that moves nothing for `STALL_SECONDS` stops the stride (blocked by a wall).
+func _advance_walk(delta: float, moved: float) -> void:
+	if _profile.stride_px <= 0.0:
+		_advance_clock(delta, _profile.frame_duration)
+		return
+	if moved <= MOVE_EPSILON_PX:
+		_still_time += delta
+		if _still_time >= STALL_SECONDS:
+			_begin_stop()
+		return
+	_still_time = 0.0
+	var total := _active_frame_count()
+	if total <= 1:
+		return
+	var step := _profile.stride_px / float(total)
+	_stride_travel += moved
+	while _stride_travel >= step:
+		_stride_travel -= step
+		_column = (_column + 1) % total
+
+
+## The stop: the stride finishes onto the next rest column, then the idle takes over.
+func _advance_settle(delta: float) -> void:
+	var total := _profile.frame_count_of(_profile.walk_sheet)
+	if total <= 1:
+		_enter_idle()
+		return
+	_elapsed += delta
+	while _elapsed >= SETTLE_FRAME_SECONDS:
+		_elapsed -= SETTLE_FRAME_SECONDS
+		_column = (_column + 1) % total
+		if _profile.walk_rest_columns.has(_column):
+			_enter_idle()
+			return
+
+
+# === Gait transitions ========================================================
+
+## Moving intent: start (or resume) the stride. From a SETTLE the stride continues where the
+## feet are — re-entering mid-stop must not jump the legs back to a rest pose.
+func _begin_walk() -> void:
+	if _profile == null or _profile.walk_sheet == null:
+		return  # the documented fallback: no walk sheet, the idle shows while moving
+	_still_time = 0.0
+	if _gait == Gait.WALK:
+		return
+	if _gait == Gait.IDLE:
+		_column = _profile.walk_rest_columns[0] if not _profile.walk_rest_columns.is_empty() \
+			else 0
+		_stride_travel = 0.0
+	_gait = Gait.WALK
+	_elapsed = 0.0
+	set_process(true)
+
+
+## Intent to stop (or a blocked stride): settle onto a rest column, or go straight to idle when
+## the feet already rest or the profile names no rest columns.
+func _begin_stop() -> void:
+	if _gait != Gait.WALK:
+		return
+	if _profile.walk_rest_columns.is_empty() or _profile.walk_rest_columns.has(_column):
+		_enter_idle()
+		return
+	_gait = Gait.SETTLE
+	_elapsed = 0.0
+
+
+## Back to the idle breath, from its first frame: a character that just stopped starts a breath.
+func _enter_idle() -> void:
+	_gait = Gait.IDLE
+	_column = 0
+	_elapsed = 0.0
+	_stride_travel = 0.0
+	_still_time = 0.0
+
+
+# === Facing ==================================================================
+
+## Turn to `direction`. A 180° reversal outside an action shows the intermediate facing first:
+## LEFT<->RIGHT turns through the front (DOWN) — a top-down character turns toward the viewer —
+## and DOWN<->UP through the side the input leans to, else the side last shown.
+func _turn_to(direction: int, facing_vector: Vector2) -> void:
+	if direction == _direction:
+		return
+	var reversing := _opposite(direction) == _direction
+	_direction = direction
+	if direction == CharacterVisualProfileData.Direction.LEFT \
+			or direction == CharacterVisualProfileData.Direction.RIGHT:
+		_last_side = direction
+	if not reversing or _action != ACTION_NONE or _profile == null:
+		_finish_turn()
+		return
+	if direction == CharacterVisualProfileData.Direction.LEFT \
+			or direction == CharacterVisualProfileData.Direction.RIGHT:
+		_shown_direction = CharacterVisualProfileData.Direction.DOWN
+	elif facing_vector.x > 0.0:
+		_shown_direction = CharacterVisualProfileData.Direction.RIGHT
+	elif facing_vector.x < 0.0:
+		_shown_direction = CharacterVisualProfileData.Direction.LEFT
+	else:
+		_shown_direction = _last_side
+	_turn_left = TURN_SECONDS
+	set_process(true)
+
+
+## The cardinal facing for `facing_vector`, holding the current one inside the hysteresis band.
+func _resolve_facing(facing_vector: Vector2) -> int:
+	var candidate := CharacterVisualProfileData.direction_for_vector(facing_vector)
+	if candidate == _direction:
+		return candidate
+	if facing_vector.normalized().dot(_unit(_direction)) >= FACING_HOLD_DOT:
+		return _direction
+	return candidate
+
+
+static func _unit(direction: int) -> Vector2:
+	match direction:
+		CharacterVisualProfileData.Direction.DOWN:
+			return Vector2.DOWN
+		CharacterVisualProfileData.Direction.UP:
+			return Vector2.UP
+		CharacterVisualProfileData.Direction.LEFT:
+			return Vector2.LEFT
+		_:
+			return Vector2.RIGHT
+
+
+func _finish_turn() -> void:
+	_turn_left = 0.0
+	_shown_direction = _direction
+
+
+static func _opposite(direction: int) -> int:
+	match direction:
+		CharacterVisualProfileData.Direction.DOWN:
+			return CharacterVisualProfileData.Direction.UP
+		CharacterVisualProfileData.Direction.UP:
+			return CharacterVisualProfileData.Direction.DOWN
+		CharacterVisualProfileData.Direction.LEFT:
+			return CharacterVisualProfileData.Direction.RIGHT
+		_:
+			return CharacterVisualProfileData.Direction.LEFT
+
+
+# === Readouts (tests / debug) ================================================
+
+## The animation column currently showing: the action's while one plays, else locomotion's.
 func get_column() -> int:
-	return _column
+	return _action_column if _action != ACTION_NONE else _column
 
 
-## The current facing Direction enum (for tests / debug readouts).
+## The LOGICAL facing Direction (what the owner asked for).
 func get_direction() -> int:
 	return _direction
+
+
+## The facing row actually RENDERED — differs from `get_direction()` only during the
+## intermediate frame of a 180° turn.
+func get_shown_direction() -> int:
+	return _shown_direction
+
+
+## The locomotion gait (`Gait`): IDLE, WALK or SETTLE.
+func gait() -> int:
+	return _gait
 
 
 ## The owned Sprite2D (for tests to assert dimensions/filter/anchor). May be null before build.
@@ -314,9 +643,11 @@ func _apply_profile_to_sprite() -> void:
 	_sprite.vframes = CharacterVisualProfileData.DIRECTION_COUNT
 	# Anchor at the feet: a non-centered sprite draws down-right from the origin, so lift it by
 	# its full height and apply the authored offset so the feet rest on the origin.
-	_sprite.position = Vector2(
+	_sprite_rest = Vector2(
 		-_profile.frame_size.x / 2.0 + _profile.anchor_offset.x,
 		-_profile.frame_size.y + _profile.anchor_offset.y)
+	_sprite.position = _sprite_rest
+	_gait = Gait.IDLE
 	_column = 0
 	_elapsed = 0.0
 	_refresh_frame()
@@ -354,10 +685,15 @@ func _sync_action_from_authority() -> void:
 	drive_action(elapsed / _swing_total)
 
 
+## True when locomotion is rendering the walk sheet: walking, or settling a stop.
+func _shows_walk() -> bool:
+	return _gait != Gait.IDLE and _profile.walk_sheet != null
+
+
 ## The sheet that should be showing right now.
 ##
-## PRECEDENCE: action, then walk, then idle. The action is checked FIRST because it out-ranks
-## locomotion — a character mid-swing shows the swing even while walking
+## PRECEDENCE: action, then walk (or its settle), then idle. The action is checked FIRST because
+## it out-ranks locomotion — a character mid-swing shows the swing even while walking
 ## (`PRESENTATION_ARCHITECTURE_CONTRACT.md` §2).
 func _active_sheet() -> Texture2D:
 	if _profile == null:
@@ -366,7 +702,7 @@ func _active_sheet() -> Texture2D:
 		var action_sheet := _sheet_for_action(_action)
 		if action_sheet != null:
 			return action_sheet
-	if _moving and _profile.walk_sheet != null:
+	if _shows_walk():
 		return _profile.walk_sheet
 	return _profile.idle_sheet
 
@@ -393,17 +729,22 @@ func _refresh_frame() -> void:
 	# (`05-performance-testing.md`). Only `frame` genuinely changes each tick.
 	if _sprite.hframes != total:
 		_sprite.hframes = total
+	var column := _column
 	if _action != ACTION_NONE:
 		# ONE-SHOT: the column is a pure function of the driven progress, CLAMPED to the last
 		# frame rather than wrapped. A modulo here would loop the swing, which is what makes an
 		# action different in kind from a locomotion cycle rather than just a different sheet.
-		_column = clampi(int(_action_progress * float(total)), 0, total - 1)
+		_action_column = clampi(int(_action_progress * float(total)), 0, total - 1)
+		column = _action_column
 	elif _column >= total:
 		_column = 0
+		column = 0
 	# Grid index: rows are directions, columns are animation frames.
-	_sprite.frame = _direction * total + _column
-	# Only pay for _process when there is actually something to animate. An action always
-	# needs the frame, even on a single-column sheet, because it must still be ENDED.
-	var should_process := total > 1 or _action != ACTION_NONE
+	_sprite.frame = _shown_direction * total + column
+	# Only pay for _process when something can change the frame: a multi-frame sheet, an action
+	# (it must still be ENDED), a gait in progress (the stride reads displacement), a moving
+	# intent (a blocked body must notice when it moves again) or a turn in flight.
+	var should_process := (total > 1 or _action != ACTION_NONE or _gait != Gait.IDLE
+		or _moving or _turn_left > 0.0)
 	if is_processing() != should_process:
 		set_process(should_process)

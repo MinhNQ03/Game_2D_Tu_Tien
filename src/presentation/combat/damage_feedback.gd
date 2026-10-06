@@ -42,6 +42,13 @@ class_name DamageFeedback
 ## also tints the entity's own drawn swing arc for those few frames; the whole creature
 ## flashing is a defensible reading of being hit, and it is the cheaper half of the trade.
 
+## How far toward the full hit tint a flash goes, in [0, 1] (D-057B). 1.0 for a living body —
+## the crimson flash is the language of "this creature was hurt". A struck OBJECT answers in
+## its own material instead (the straw post wobbles and sheds chaff, `HitReaction`), and a full
+## crimson flash turned the whole post into a red silhouette that hid both — so the post warms
+## for an instant rather than bleeding. The hue is unchanged; only the strength is authored.
+@export_range(0.0, 1.0) var flash_strength: float = 1.0
+
 ## The entity whose modulate is driven. Its own node, resolved once.
 var _target: CanvasItem = null
 
@@ -90,7 +97,7 @@ func _ready() -> void:
 
 ## A hit landed. `amount` is what was actually applied, so an absorbed hit reports 0 and must
 ## not flash — feedback for damage that did not happen is worse than none.
-func _on_damaged(amount: int, is_critical: bool) -> void:
+func _on_damaged(amount: int, is_critical: bool, _push_direction: Vector2 = Vector2.ZERO) -> void:
 	if amount <= 0:
 		return
 	if _is_dead():
@@ -98,7 +105,8 @@ func _on_damaged(amount: int, is_critical: bool) -> void:
 		# hurtbox reports what landed), so the corpse look is on and must not be flashed over.
 		_go_idle()
 		return
-	_tint = UIPalette.HIT_FLASH_TINT_CRITICAL if is_critical else UIPalette.HIT_FLASH_TINT
+	var full := UIPalette.HIT_FLASH_TINT_CRITICAL if is_critical else UIPalette.HIT_FLASH_TINT
+	_tint = Color.WHITE.lerp(full, flash_strength)
 	_duration = UIPalette.HIT_FLASH_SECONDS_CRITICAL if is_critical \
 		else UIPalette.HIT_FLASH_SECONDS
 	_elapsed = 0.0

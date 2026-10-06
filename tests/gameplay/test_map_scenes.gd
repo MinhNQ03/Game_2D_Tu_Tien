@@ -146,14 +146,20 @@ func test_field_map_structure() -> void:
 # filtered Sprite2D with a real texture of the authored pixel dimensions — a decoration that
 # fails to load (null/wrong-size texture) is a visual regression even though it never touches
 # gameplay. STRUCTURAL ONLY (not added to the tree, like the structure test above).
+#
+# D-057B replaced the 32x32 tree and the 16x24 lantern with props that MOVE (a broadleaf tree
+# padded for its sway, a lantern post whose paper lantern hangs and swings, a banner pole whose
+# cloth waves, grass tufts), and retired the 2x-scaled emblem that stood in for a banner — a
+# 16px emblem at scale 2 showed pixels twice the size of every pixel around it.
 const EXPECTED_PROP_SIZES := {
-	"res://assets/sprites/props/prop_lantern.png": Vector2i(16, 24),
-	"res://assets/sprites/props/prop_tree.png": Vector2i(32, 32),
+	"res://assets/sprites/props/prop_tree_broadleaf.png": Vector2i(40, 44),
+	"res://assets/sprites/props/prop_lantern_post.png": Vector2i(20, 48),
+	"res://assets/sprites/props/prop_banner_pole.png": Vector2i(16, 48),
+	"res://assets/sprites/props/prop_grass_1.png": Vector2i(16, 12),
+	"res://assets/sprites/props/prop_grass_2.png": Vector2i(16, 12),
+	"res://assets/sprites/props/prop_grass_3.png": Vector2i(16, 12),
 	"res://assets/sprites/props/prop_rock.png": Vector2i(16, 16),
 	"res://assets/sprites/props/prop_planter.png": Vector2i(16, 16),
-	# Phase 06: a sect banner (emblem) is a valid Visual/Decor decoration too.
-	"res://assets/sprites/sects/emblem_azure_cloud.png": Vector2i(16, 16),
-	"res://assets/sprites/sects/emblem_crimson_flame.png": Vector2i(16, 16),
 }
 
 
@@ -483,3 +489,114 @@ func test_paddy_layout_leaves_a_dry_walkway_and_clears_the_walls() -> void:
 		# Never added to the tree, so it is freed directly rather than via `free_node` (L-019:
 		# a Node created in a test must be released by that test either way).
 		map.free()
+
+
+# --- D-057B: the world's depth and its ambient motion --------------------------------------
+
+const SWAY_SHADER := "res://src/presentation/ambient/pixel_sway.gdshader"
+const MIST_SHADER := "res://src/presentation/ambient/mist_drift.gdshader"
+
+## Textures that MOVE in the wind, and so must wear the sway material.
+const SWAYING_TEXTURES := [
+	"res://assets/sprites/props/prop_tree_broadleaf.png",
+	"res://assets/sprites/props/prop_grass_1.png",
+	"res://assets/sprites/props/prop_grass_2.png",
+	"res://assets/sprites/props/prop_grass_3.png",
+]
+
+
+## The world is DEPTH-SORTED: a body walking behind a tree is drawn behind it. Before D-057B
+## the decor was drawn first and every body over it, so the player stood on top of a canopy.
+## The floor sits below the ground-decal layer (-1, the hostile telegraph), which sits below
+## the world.
+func test_the_world_is_depth_sorted_and_layered() -> void:
+	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
+		var map: Node2D = (entry[0] as PackedScene).instantiate()
+		var label := String(entry[1])
+		assert_true(map.y_sort_enabled, "%s root y-sorts its world" % label)
+		for path in ["Visual", "Visual/Decor", "CombatTargets", "PlayerHost"]:
+			var node := map.get_node_or_null(path) as Node2D
+			assert_true(node != null and node.y_sort_enabled,
+				"%s/%s takes part in the depth sort" % [label, path])
+		var ground := map.get_node_or_null("Visual/Ground") as CanvasItem
+		assert_true(ground != null and ground.z_index < -1,
+			"%s floor is under the ground-decal layer (z %d)" % [label,
+				ground.z_index if ground != null else 0])
+		map.free()
+
+
+## Every prop is ROOTED where it stands: its origin is its base (so the depth sort compares
+## feet with feet), and no prop stands in a flooded paddy cell.
+func test_decor_props_are_rooted_on_dry_ground() -> void:
+	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
+		var map: Node = (entry[0] as PackedScene).instantiate()
+		var label := String(entry[1])
+		var ground := map.get_node("Visual/Ground") as PrototypeGround
+		var checked := 0
+		for child in map.get_node("Visual/Decor").get_children():
+			var sprite := child as Sprite2D
+			if sprite == null or sprite.texture == null:
+				continue
+			checked += 1
+			assert_false(sprite.centered, "%s '%s' is base-anchored" % [label, sprite.name])
+			assert_true(sprite.offset.y <= -float(sprite.texture.get_height()) + 2.0,
+				"%s '%s' hangs its drawing ABOVE its origin (offset %s)"
+					% [label, sprite.name, str(sprite.offset)])
+			var cell := Vector2i(floori(sprite.position.x / 16.0),
+				floori(sprite.position.y / 16.0))
+			assert_false(ground.is_paddy_cell(cell),
+				"%s '%s' does not stand in a flooded paddy (cell %s)"
+					% [label, sprite.name, str(cell)])
+		assert_true(checked >= 10, "%s checked its props (%d)" % [label, checked])
+		map.free()
+
+
+## What moves in the wind wears the sway material — ONE shared material per kind, so a
+## field of grass is one material and the phase comes from world position, not per-instance
+## state. What hangs (cloth, a paper lantern) hangs from the TOP.
+func test_ambient_motion_is_wired_by_material() -> void:
+	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
+		var map: Node = (entry[0] as PackedScene).instantiate()
+		var label := String(entry[1])
+		var grass_materials := {}
+		var swaying := 0
+		var hanging := 0
+		for child in map.get_node("Visual/Decor").get_children():
+			var sprite := child as Sprite2D
+			if sprite == null or sprite.texture == null:
+				continue
+			if SWAYING_TEXTURES.has(sprite.texture.resource_path):
+				swaying += 1
+				var material := sprite.material as ShaderMaterial
+				assert_true(material != null and material.shader.resource_path == SWAY_SHADER,
+					"%s '%s' sways (pixel_sway material)" % [label, sprite.name])
+				if material != null and sprite.texture.resource_path.contains("grass"):
+					grass_materials[material.get_instance_id()] = true
+			for hung_name in ["Cloth", "Lantern"]:
+				var hung := sprite.get_node_or_null(hung_name) as Sprite2D
+				if hung == null:
+					continue
+				hanging += 1
+				var hung_material := hung.material as ShaderMaterial
+				assert_true(hung_material != null
+					and bool(hung_material.get_shader_parameter(&"hang")),
+					"%s %s/%s hangs from its top" % [label, sprite.name, hung_name])
+		assert_true(swaying >= 10, "%s has wind-moved props (%d)" % [label, swaying])
+		assert_true(hanging >= 2, "%s has hanging props (%d)" % [label, hanging])
+		assert_eq(grass_materials.size(), 1, "%s grass shares ONE material" % label)
+		map.free()
+
+
+## The field has low mist, on the ground-decal layer, drifting by its own shader.
+func test_the_field_has_drifting_mist() -> void:
+	var map: Node = FieldScene.instantiate()
+	var atmosphere := map.get_node_or_null("Visual/Atmosphere") as CanvasItem
+	assert_not_null(atmosphere, "the field has an Atmosphere layer")
+	if atmosphere != null:
+		assert_eq(atmosphere.z_index, -1, "mist lies on the ground-decal layer, under bodies")
+		assert_true(atmosphere.get_child_count() >= 4, "several banks of mist")
+		for bank in atmosphere.get_children():
+			var material := (bank as CanvasItem).material as ShaderMaterial
+			assert_true(material != null and material.shader.resource_path == MIST_SHADER,
+				"'%s' drifts (mist_drift material)" % bank.name)
+	map.free()

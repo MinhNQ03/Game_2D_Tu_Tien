@@ -475,6 +475,22 @@ const HIT_FLASH_TINT := Color(2.16, 0.78, 0.90)
 ## presentation can tell them apart without recomputing anything.
 const HIT_FLASH_TINT_CRITICAL := Color(2.52, 2.16, 1.26)
 
+## THE STRIKE'S AIR (D-057B): the pale streaks a palm strike drives out of the striking hand.
+## Near-white with a cool cast — moving AIR, not qi: a PHÀM body has no qi to show
+## (`XIANXIA_IDENTITY_CONTRACT.md`), so the basic attack is drawn as force, and glow is kept
+## for the realms that earn it.
+const STRIKE_TRAIL := Color(0.93, 0.96, 0.95)
+
+## The ground TELEGRAPH of a hostile swing's reach, drawn during its wind-up (D-057B): a warm
+## warning red, because a telegraph exists to be read and learned once (`COMBAT_DESIGN.md` §7,
+## M-6.4). The player's own swing draws none.
+const TELEGRAPH_HOSTILE := Color(0.95, 0.42, 0.30)
+
+## The contact flash where a blow lands (D-057B): near-white for a normal hit, gold for a
+## critical — the same distinction the body's hit tint makes, so the two layers agree.
+const IMPACT_FLASH := Color(1.0, 0.97, 0.88)
+const IMPACT_FLASH_CRITICAL := Color(1.0, 0.86, 0.46)
+
 ## How long a hit flash takes to decay back to the sprite's resting colour, in seconds.
 ## Short: long enough to register at 60fps, short enough that two quick hits read as two hits
 ## rather than as one long smear. A crit holds slightly longer because it is the rarer, more

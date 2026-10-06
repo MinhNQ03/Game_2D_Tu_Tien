@@ -172,7 +172,12 @@ func _physics_process(delta: float) -> void:
 	if _input == null:
 		return
 	var intent: Vector2 = _input.call("get_move_vector")
-	_movement.apply_intent(intent, _stats.get_move_speed(), delta)
+	# A swing in flight is a commitment: the attack's authored data decides how much speed the
+	# player keeps through it (D-057B), so the strike is planted rather than skated.
+	var speed := _stats.get_move_speed()
+	if _attack != null:
+		speed *= _attack.movement_scale()
+	_movement.apply_intent(intent, speed, delta)
 
 	# Drive the data-driven visual facing/animation from the SAME intent (presentation only;
 	# MovementComponent remains the movement authority). No-op when no profile is attached.

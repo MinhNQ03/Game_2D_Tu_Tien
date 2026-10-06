@@ -1,9 +1,10 @@
-[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/data/characters/character_visual_profile_data.gd" id="1_vis"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_idle.png" id="2_idle"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_walk.png" id="3_walk"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_attack.png" id="4_attack"]
+[ext_resource type="Resource" path="res://data/characters/visual/anchors/cultivator_anchors.tres" id="5_anchors"]
 
 [resource]
 script = ExtResource("1_vis")
@@ -12,5 +13,8 @@ idle_sheet = ExtResource("2_idle")
 walk_sheet = ExtResource("3_walk")
 attack_sheet = ExtResource("4_attack")
 frame_size = Vector2i(32, 48)
-frame_duration = 0.26
+frame_duration = 0.42
 anchor_offset = Vector2(0, 0)
+stride_px = 104
+walk_rest_columns = PackedInt32Array(1, 2, 3, 5, 6, 7)
+anchors = ExtResource("5_anchors")

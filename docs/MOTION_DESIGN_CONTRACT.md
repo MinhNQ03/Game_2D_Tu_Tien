@@ -208,12 +208,12 @@ HP drops" with no sense that it was struck is a defect.
 
 | Layer | Basic attack today | Note |
 |---|---|---|
-| 1. body animation | ✅ action layer (6-frame palm thrust; 4-frame wolf lunge) | |
+| 1. body animation | ✅ action layer (8-frame palm strike; 6-frame wolf lunge), D-057B redraw | the strike roots the striker: `AttackData.committed_move_scale` |
 | 2. object motion | — | no weapon object exists yet |
-| 3. VFX | ✅ the swing arc, phase-shaped | |
+| 3. VFX | ✅ D-057B: air released FROM the drawn palm (`palm` anchor), angled to body height, dissipating in recovery; a hostile wind-up telegraphs its reach on the ground | the player's own swing draws no ring (M-4.8) |
 | 4. SFX | ❌ | audio is P26; the cue timing already exists (§9) |
 | 5. camera response | — | **deliberately none**: a basic attack is seen a thousand times (M-4.8) |
-| 6. target reaction | ✅ hit flash · corpse look · gauge | physical recoil not yet — §20 |
+| 6. target reaction | ✅ hit flash · corpse look · gauge · D-057B: RECOIL (creature) / PIVOT WOBBLE (rooted post) along the blow, contact flash + material debris (`HitReaction`) | a struck object warms (`flash_strength`) instead of bleeding |
 | 7. UI feedback | ✅ target plaque, **Defeated** row | |
 | 8. environment reaction | — | nothing in the world reacts to a basic attack, correctly |
 
@@ -526,9 +526,9 @@ And the Aetheria identity review that follows it: `XIANXIA_IDENTITY_CONTRACT.md`
 | Debt | Why it is debt | Owner |
 |---|---|---|
 | **Level-up is below its own bar.** `PRESENTATION_ARCHITECTURE_CONTRACT.md` §9 requires recognition → buildup → light/vertical effect → **character response** → result; today it is a badge flash and a banner, and the character does not react. | It is a mid-scale celebration with no body. | **P12.** The breakthrough presentation seam is the level-up's second consumer (M-14.2), so the shared progression-celebration seam is built there — at a larger scale for breakthrough, smaller for level-up, never the same look (M-4.7). |
-| **No physical hit reaction.** A struck target flashes but does not recoil. | Half of M-5.1's "the target reacts". | **P15** (impact VFX). Design constraint recorded now: the recoil moves the VISUAL, never the body (the body is gameplay authority), and its direction is a cue fact that `damaged` does not carry yet — adding it is an explicit cue-contract change. |
+| ~~**No physical hit reaction.**~~ **Closed by D-057B.** `HurtboxComponent.damaged` now carries `push_direction` (an explicit cue-contract change); `HitReaction` recoils the VISUAL (never the body) or wobbles a rooted object, and draws the impact. | — | — |
 | **No death animation.** A corpse is a tint, not a fall. | `COMBAT_DESIGN.md` §10b already names it. | The phase that owns combat VFX (P15/P26). |
-| **No ambient world motion and no world-event presentation.** The world-sim line in the map plaque is the only sign the world moves. | §10 / §17. | P17 (NPC idle/variation), P20/P21 (world and environmental events), weather with its first consumer. |
+| **No world-event presentation.** Ambient motion exists since D-057B (grass, canopy, banner cloth, hanging lanterns, low mist — one `pixel_sway` law with per-material data, phase from world position, a travelling gust); world EVENTS still only show as a plaque line. | §10 / §17. | P17 (NPC idle/variation), P20/P21 (world and environmental events), weather with its first consumer. P12 breakthrough and the P15 Phong technique are the first two consumers of a wind IMPULSE (M-14.2). |
 | **No audio.** | M-9.5. | P26. |
 
 ---

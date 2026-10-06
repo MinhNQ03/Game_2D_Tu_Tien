@@ -51,10 +51,13 @@ func test_four_profiles_load_and_are_valid() -> void:
 
 # The generator and the data must agree on the frame COUNTS. If someone regenerates the art
 # with a different number of columns and forgets the profile, this is the drift guard (L-014).
+# D-057B redrew the cultivator: a 6-beat breath, an 8-frame two-step stride, an 8-frame palm
+# strike (two anticipation, two strike, four recovery).
 func test_player_sheets_have_the_authored_frame_counts() -> void:
 	var profile: Resource = load(PROFILE_PATHS[0])
-	assert_eq(profile.frame_count_of(profile.idle_sheet), 4, "idle is a 4-frame breath")
-	assert_eq(profile.frame_count_of(profile.walk_sheet), 6, "walk is a 6-frame stride")
+	assert_eq(profile.frame_count_of(profile.idle_sheet), 6, "idle is a 6-frame breath")
+	assert_eq(profile.frame_count_of(profile.walk_sheet), 8, "walk is an 8-frame stride")
+	assert_eq(profile.frame_count_of(profile.attack_sheet), 8, "the palm strike is 8 frames")
 
 
 # A sheet whose width is not a whole number of frames is REJECTED, not silently floored —
@@ -100,12 +103,14 @@ func test_facing_selects_direction_row() -> void:
 	var visual: Node = VisualScript.new()
 	add_to_tree(visual)
 	visual.setup(profile)
-	# Moving uses the walk sheet, so the row stride is the WALK frame count.
+	# Moving uses the walk sheet, so the row stride is the WALK frame count, and the walk opens
+	# on the profile's first rest column (a weight shift, not a leap into full stride).
 	var walk_frames: int = profile.frame_count_of(profile.walk_sheet)
+	var entry: int = profile.walk_rest_columns[0]
 	visual.update_facing(Vector2.RIGHT, true)
 	assert_eq(visual.get_direction(), ProfileScript.Direction.RIGHT, "faces RIGHT")
-	assert_eq(visual.get_sprite().frame, ProfileScript.Direction.RIGHT * walk_frames,
-		"RIGHT row, first column selected")
+	assert_eq(visual.get_sprite().frame, ProfileScript.Direction.RIGHT * walk_frames + entry,
+		"RIGHT row, the walk's entry column selected")
 	visual.update_facing(Vector2.UP, true)
 	assert_eq(visual.get_direction(), ProfileScript.Direction.UP, "faces UP")
 	# A diagonal with dominant Y maps to a cardinal; a zero vector keeps the last facing.
@@ -141,11 +146,13 @@ func test_animation_advances_within_the_row_and_wraps() -> void:
 	free_node(visual)
 
 
-# Switching idle<->walk must RESET the column. The sheets have different frame counts (4 vs 6),
-# so a column carried over from the longer sheet would index past the shorter one.
+# Switching walk->idle must land on the idle sheet's FIRST column. The sheets have different
+# frame counts (8 vs 6), so a column carried over from the longer sheet would index past the
+# shorter one. The walk is distance-clocked (D-057B), so the node is MOVED to advance it, and
+# the stop is taken on a rest column so it hands straight to the idle.
 func test_switching_animation_resets_the_column() -> void:
 	var profile: Resource = load(PROFILE_PATHS[0])
-	var visual: Node = VisualScript.new()
+	var visual: Node2D = VisualScript.new()
 	add_to_tree(visual)
 	visual.setup(profile)
 	var walk_frames: int = profile.frame_count_of(profile.walk_sheet)
@@ -153,12 +160,19 @@ func test_switching_animation_resets_the_column() -> void:
 	assert_true(walk_frames > idle_frames,
 		"this test only means something while walk (%d) is longer than idle (%d)"
 			% [walk_frames, idle_frames])
-	visual.update_facing(Vector2.DOWN, true)         # walk
-	for _i in range(walk_frames - 1):
-		visual.advance(profile.frame_duration)
-	assert_eq(visual.get_column(), walk_frames - 1, "advanced to the last walk column")
+	var step: float = profile.stride_px / float(walk_frames)
+	visual.advance(0.0)                              # first observation of the origin
+	visual.update_facing(Vector2.DOWN, true)         # walk, on the entry column
+	var last := walk_frames - 1
+	while visual.get_column() != last:
+		visual.position.y += step
+		visual.advance(0.016)
+	assert_eq(visual.get_column(), last, "advanced to the last walk column")
+	assert_true(profile.walk_rest_columns.has(last),
+		"the last column is a rest column, so the stop is immediate (fixture premise)")
 	visual.update_facing(Vector2.DOWN, false)        # back to idle (shorter sheet)
 	assert_eq(visual.get_column(), 0, "column reset on the animation switch")
+	assert_eq(visual.get_sprite().texture, profile.idle_sheet, "the idle sheet is showing")
 	assert_true(visual.get_sprite().frame < idle_frames * ProfileScript.DIRECTION_COUNT,
 		"the idle frame index stays inside the shorter idle sheet")
 	free_node(visual)

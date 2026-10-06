@@ -30,6 +30,16 @@ enum Direction { DOWN, UP, LEFT, RIGHT }
 
 const DIRECTION_COUNT := 4
 
+## The animation names a sheet is drawn and anchored under (the generator's names). The
+## component reports which one is showing, so an anchor lookup needs no knowledge of sheets.
+const ANIM_IDLE := &"idle"
+const ANIM_WALK := &"walk"
+const ANIM_ATTACK := &"attack"
+
+## The shared anchor vocabulary (`CharacterAnchorData`): the striking point and the core.
+const POINT_PALM := &"palm"
+const POINT_CORE := &"core"
+
 ## Stable id for this profile (so a template/preview can reference it + a test can assert it).
 @export var id: StringName = &""
 
@@ -52,7 +62,7 @@ const DIRECTION_COUNT := 4
 ## profile belonging to an entity that attacks authors this sheet.
 ##
 ## Its frames read as anticipation → contact → recovery. The COLUMN COUNT IS FREE: the player's
-## is 6 and the mist wolf's is 4, derived from texture width like every other sheet, and the
+## is 8 and the mist wolf's is 6, derived from texture width like every other sheet, and the
 ## action layer maps gameplay progress across however many there are.
 @export var attack_sheet: Texture2D = null
 
@@ -60,9 +70,33 @@ const DIRECTION_COUNT := 4
 ## footprint is independent of this (anchored at the feet) — see `docs/CHARACTER_ART_BIBLE.md`.
 @export var frame_size: Vector2i = Vector2i(32, 48)
 
-## Seconds per animation frame. Authored per profile so an elder can shuffle and a youth can
-## stride without a code change. Must be > 0; a single-frame sheet ignores it.
+## Seconds per IDLE frame (and per walk frame when `stride_px` is 0). Authored per profile so an
+## elder can breathe slower than a youth without a code change. Must be > 0; a single-frame
+## sheet ignores it.
 @export var frame_duration: float = 0.16
+
+## Ground distance (px) the body covers in ONE full walk cycle (D-057B). When > 0 the walk is
+## clocked by DISTANCE, not time: the component measures how far its own origin actually moved
+## and advances the stride by that, so the feet cadence follows the real speed — a slowed or
+## wall-blocked character slows or stops its stride instead of treading air at full cadence
+## (the sliding-feet defect, `MOTION_DESIGN_CONTRACT.md` M-3.3/M-3.5). A remote character
+## rendered from a position stream gets the right cadence for free, because the clock IS the
+## position. 0 keeps the time-clocked walk (a preview figure that never moves).
+@export var stride_px: float = 0.0
+
+## The walk columns whose feet are close enough to the idle stance to ENTER or LEAVE the walk on
+## (D-057B). The walk starts on the first of them (a weight shift onto one foot, not a leap into
+## a full stride) and, when the character stops on any other column, the stride finishes to the
+## next one before the idle takes over — the planted foot completes its step instead of the legs
+## snapping together. Empty: start on column 0 and stop at once (a quadruped's four-beat gait
+## has no feet-together frame, and a leg snap of 3px reads as a stop).
+@export var walk_rest_columns: PackedInt32Array = PackedInt32Array()
+
+## Where named body points are on every drawn frame (`CharacterAnchorData`). OPTIONAL — a prop
+## or a preview has no use for one — but every profile of an entity that ATTACKS authors it,
+## because its strike effect starts from the striking point (the same rule that made the
+## attack sheet mandatory for attackers, L-029).
+@export var anchors: CharacterAnchorData = null
 
 ## Y offset (px) from the node origin to the sprite's TOP so the character's FEET sit on the
 ## origin (anchor-at-feet). Default places a `frame_size.y` tall sprite with its bottom at the
@@ -96,7 +130,54 @@ func validation_errors() -> Array[String]:
 		errors.append_array(_sheet_errors("walk_sheet", walk_sheet))
 	if attack_sheet != null:
 		errors.append_array(_sheet_errors("attack_sheet", attack_sheet))
+	if stride_px < 0.0:
+		errors.append("stride_px must be >= 0 (got %f)" % stride_px)
+	var walk_frames := frame_count_of(walk_sheet)
+	for column in walk_rest_columns:
+		if column < 0 or column >= walk_frames:
+			errors.append("walk_rest_columns holds %d, outside the %d-frame walk sheet"
+				% [column, walk_frames])
+	if anchors != null:
+		errors.append_array(_anchor_errors())
 	return errors
+
+
+## The anchors must be measured in THIS profile's cell, and every anim they name must cover
+## exactly the frames its sheet holds — an anchor set drawn for a 6-frame idle bound to an
+## 8-frame one would put the palm of frame 6 nowhere.
+func _anchor_errors() -> Array[String]:
+	var out: Array[String] = []
+	for reason in anchors.validation_errors():
+		out.append("anchors: %s" % reason)
+	if anchors.frame_size != frame_size:
+		out.append("anchors measured in a %s cell, profile frame_size is %s" % [
+			str(anchors.frame_size), str(frame_size)])
+	for key: Variant in anchors.points:
+		var parts := String(key).split("/")
+		if parts.size() != 2:
+			continue  # already reported by anchors.validation_errors()
+		var anim := StringName(parts[0])
+		var sheet := sheet_for_anim(anim)
+		var frames := anchors.frame_count(anim, StringName(parts[1]))
+		if sheet == null:
+			out.append("anchors name '%s' but the profile has no %s sheet" % [String(key), anim])
+		elif frames != frame_count_of(sheet):
+			out.append("anchors '%s' cover %d frames, the %s sheet holds %d" % [
+				String(key), frames, anim, frame_count_of(sheet)])
+	return out
+
+
+## The sheet an anchor anim key names. The keys are the generator's animation names.
+func sheet_for_anim(anim: StringName) -> Texture2D:
+	match anim:
+		ANIM_IDLE:
+			return idle_sheet
+		ANIM_WALK:
+			return walk_sheet
+		ANIM_ATTACK:
+			return attack_sheet
+		_:
+			return null
 
 
 ## A sheet must be a whole number of frames wide and exactly DIRECTION_COUNT frames tall.

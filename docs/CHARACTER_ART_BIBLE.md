@@ -23,7 +23,7 @@
 - **Character baseline: `32 × 48`** (one frame) — exactly 2× the original 16×24, so the figure
   is 2 tiles wide and 3 tall and every scale factor stays an integer (D-046). It grew for a
   specific reason, not for detail's sake: the cast's defining features are waist-length hair, a
-  layered floor-length robe and a held qi orb, and none of those three survive a 6px-wide
+  layered floor-length robe and (once a realm earns it) visible qi, and none of those survive a 6px-wide
   torso. A further size change must be logged in `DECISIONS.md`.
 - **Nearest filtering, no mipmaps, integer scaling only.** No fractional/bilinear scaling
   that blurs edges. The project default texture filter is nearest; sprite nodes also set
@@ -33,8 +33,9 @@
   and `height = frame_size.y * 4`. **The frame count is derived from the texture width**, never
   authored, so art and data cannot drift apart. A width that is not a whole multiple of the
   frame width is rejected, not floored.
-  Idle and walk are separate sheets and MAY have different frame counts (currently a 4-frame
-  idle breath and a 6-frame walk stride). `idle` is required; `walk` is optional and falls back
+  Idle and walk are separate sheets and MAY have different frame counts (since D-057B a 6-beat
+  idle breath, an 8-frame walk stride and an 8-frame attack). `idle` is required; `walk` is
+  optional and falls back
   to idle — no fake animation. The previous layout was one row of 4 frames, i.e. a single pose
   per direction; combined with every profile leaving `walk_sheet` null it meant the cast never
   animated at all.
@@ -43,8 +44,10 @@
   must leave the component's `_process` off so a static character costs nothing per frame.
 - **RIGHT is LEFT mirrored** in the generator, so the two profiles can never drift apart.
 - **The outline is traced from the pixels**, not hand-drawn, so it stays correct for every pose
-  and frame. A soft glow (qi orb) is drawn AFTER the outline pass and the pass only considers
-  fully-opaque neighbours, so a halo is never outlined.
+  and frame. A soft glow (a paper lantern's light) is drawn AFTER the outline pass and the pass
+  only considers fully-opaque neighbours, so a halo is never outlined. **Qi is never baked into a
+  character sheet** (D-057B): a PHÀM body has none, and when a realm earns it, it is a runtime
+  effect placed on the frame's anchors — so it can appear, gather and vanish with the state.
 
 ## 3. Anchor & collision (the alignment rule)
 
@@ -92,7 +95,7 @@
   character faces where it last walked rather than snapping to DOWN.
 - **Animation states:** LOCOMOTION `idle` and `walk` (Phase 05), and the ACTION layer's `attack`
   sheet (D-056) — a one-shot whose frame is driven by the gameplay lifecycle, never by its own
-  clock (player 6 frames, mist wolf 4; the column count is free, derived from the width). Other
+  clock (player 8 frames, mist wolf 6 since D-057B; the column count is free, derived from the width). Other
   actions (`CAST`, `HIT`, `DEATH`, …) are reserved vocabulary
   (`PRESENTATION_ARCHITECTURE_CONTRACT.md` §5) and get a sheet only in the phase that authors the
   content using them. No off-screen/inactive animation (`.kiro/steering/05-performance-testing.md`).
@@ -111,6 +114,30 @@ that means at **32×48 seen from above**:
 - **Reference illustrations are not this style.** The Aetheria xianxia moodboards are painterly,
   front/side view, with slender anime proportions; they inform costume language and gesture,
   never proportion, rendering or view (`XIANXIA_IDENTITY_CONTRACT.md` §2.3 R-5, §4 `01`).
+
+### 6c. Gait, anchors and reactions (D-057B)
+
+- **Locomotion is a gait, not a loop.** The walk is clocked by the DISTANCE the figure moved
+  (`stride_px` = ground per full cycle), so cadence follows real speed and a body blocked by a wall
+  stops striding instead of treading air. It opens and closes on the profile's
+  `walk_rest_columns` (feet near the idle stance): a stop lets the planted foot finish its step.
+- **A 180° turn passes through the side or front facing** for a few frames; a diagonal holds the
+  current facing inside a ~53° band (hysteresis), so a creature chasing on a diagonal does not
+  flicker.
+- **Every sheet ships with ANCHORS** (`data/characters/visual/anchors/*.tres`,
+  `CharacterAnchorData`) written by the generator from the same pose that drew the frame, at the
+  pixel CENTRE, relative to the feet: `palm` (the striking point — a wolf's jaw is its `palm`),
+  `rear_palm`, `core`. An effect that starts from a body part asks the visual for the anchor of
+  the frame being drawn; it never guesses an offset.
+- **The front face ends at the chin.** Under the chin is the collar in shadow — never background
+  (outlined dark it read as a chinstrap) and never hair (it read as a beard on every archetype).
+- **The palm strike stands the palm UPRIGHT at the arm's tip** (heel forward, fingers up). A hand
+  hanging under a level sleeve reads as a limp reach.
+- **Side-view stride drives the hem**: the leading leg kicks the front of the robe out and lifts it
+  while it swings, and the shoes show below the hem. At 1× the hem IS the legs.
+- **A struck body reacts by its law**: a creature recoils (whole pixels, along the blow), a rooted
+  object wobbles about its base (whole-pixel row shear — never a rotation, which shows mixels at
+  2× zoom).
 
 ## 7. Modular layering (future)
 

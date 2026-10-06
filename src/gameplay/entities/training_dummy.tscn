@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/entities/training_dummy.gd" id="1_dummy"]
 [ext_resource type="Script" path="res://src/gameplay/components/stats_component.gd" id="2_stats"]
@@ -7,6 +7,15 @@
 [ext_resource type="Script" path="res://src/gameplay/components/hurtbox_component.gd" id="5_hurtbox"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/training_dummy.png" id="6_sprite"]
 [ext_resource type="Script" path="res://src/presentation/combat/damage_feedback.gd" id="91_dmgfeedback"]
+[ext_resource type="Script" path="res://src/presentation/combat/hit_reaction.gd" id="92_hitreaction"]
+[ext_resource type="Shader" path="res://src/presentation/ambient/pixel_sway.gdshader" id="93_sway"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
+resource_local_to_scene = true
+shader = ExtResource("93_sway")
+shader_parameter/pivot_row = 45.0
+shader_parameter/span_rows = 37.0
+shader_parameter/bend = 1.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_dummy"]
 size = Vector2(28, 28)
@@ -19,6 +28,7 @@ shape = SubResource("RectangleShape2D_dummy")
 
 [node name="Visual" type="Sprite2D" parent="."]
 texture_filter = 1
+material = SubResource("ShaderMaterial_post")
 centered = false
 offset = Vector2(-16, -40)
 texture = ExtResource("6_sprite")
@@ -38,3 +48,12 @@ radius = 14.0
 
 [node name="DamageFeedback" type="Node" parent="."]
 script = ExtResource("91_dmgfeedback")
+flash_strength = 0.4
+
+[node name="HitReaction" type="Node2D" parent="."]
+script = ExtResource("92_hitreaction")
+response = 1
+wobble_px = 3.0
+debris_colour = Color(0.86, 0.74, 0.43, 1)
+debris_gravity = 320.0
+impact_height = 13.0

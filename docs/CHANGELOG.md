@@ -8,6 +8,37 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-06 — Characters that walk, strikes that land, a world that breathes (D-057B)
+
+**What the player sees.**
+
+- **The walk follows the ground.** Feet cadence now comes from the distance actually travelled:
+  push into a wall and the stride stops instead of treading air; stop and the planted foot
+  finishes its step; turn around and the body turns through the front instead of flipping; a
+  wolf chasing on a diagonal no longer flickers between two facings.
+- **The cast was redrawn**: a breathing idle, a stride whose robe hem the legs push, a palm strike
+  whose palm stands upright at the end of the arm. Front-facing faces no longer read as bearded.
+  The mist wolf has a wolf's face. The training post is a mộc nhân (it read as a grave cross).
+- **A strike has a source.** The air of a palm strike leaves the hand that is drawn, angles down to
+  what it hits and thins out; a wolf's wind-up marks its reach on the ground in warning red. Your
+  own swing draws no ring at your feet. Swinging now roots you (you keep 30% of your speed), so the
+  strike pose no longer skates.
+- **A struck body reacts.** A wolf is shoved along the blow and recovers; the training post leans
+  away and rocks back; straw falls from the post, mist wisps rise from the wolf. The post warms
+  instead of flashing blood-red.
+- **The world moves.** Grass on the paddy banks, tree canopies, the Thanh Vân banners and the
+  paper lanterns move with the wind — each at its own weight, never in lockstep, with gusts that
+  travel across the map; low mist drifts over the field. Characters walk behind trees.
+- **Combat takes the screen**: engaging a creature closes the sect and politics panels.
+
+**Under it.** `CharacterAnchorData` (per-frame body points written with the art), `HitReaction`,
+`AttackFeedback` v2, two pixel-exact shaders, `AttackData.committed_move_scale`,
+`damaged(…, push_direction)`, a depth-sorted map, and `tools/capture_motion.gd` for frame strips
+from the real game. No autoload, no manager, no networking.
+
+753 tests (up from 716), 0 failures, 0 leaks; 19 mutants of the new mechanisms all killed; the
+three E2E flows pass.
+
 ### 2026-10-06 — A HUD that frames the game, a language for motion, and the reference library put in its place (D-057, D-057A)
 
 Foundation, not a phase: **no gameplay, no networking, no autoload, no presentation framework.

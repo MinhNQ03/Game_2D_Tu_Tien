@@ -51,6 +51,17 @@ class_name AttackData
 ## Lockout after the hit window closes, before the attacker is READY again.
 @export var recovery_seconds: float = 0.20
 
+## How much of its normal speed the attacker keeps while the swing is in flight (WINDUP, ACTIVE
+## and RECOVERY), in [0, 1] (D-057B). 1.0 moves freely, 0.0 roots the attacker.
+##
+## COMMITMENT IS GAMEPLAY, and this is where it is authored. Before it existed the player ran
+## at full speed through every swing, so the palm-strike pose slid across the floor at 180px/s —
+## the floating-feet defect (`MOTION_DESIGN_CONTRACT.md` M-3.5) — and a swing cost nothing
+## positionally. A low value makes the strike a planted commitment (a small drift still reads as
+## the drawn step-in); presentation reads nothing from it. The movers — `Player` and
+## `AIComponent` — multiply their speed by `AttackComponent.movement_scale()`.
+@export_range(0.0, 1.0) var committed_move_scale: float = 1.0
+
 # --- Geometry of the hit window ----------------------------------------------
 
 ## How far in front of the attacker the hit window reaches, in pixels. On the project's 16px
@@ -98,6 +109,9 @@ func is_valid() -> bool:
 		problems.append("active_seconds must be > 0 (got %.3f)" % active_seconds)
 	if recovery_seconds <= 0.0:
 		problems.append("recovery_seconds must be > 0 (got %.3f)" % recovery_seconds)
+	if committed_move_scale < 0.0 or committed_move_scale > 1.0:
+		problems.append("committed_move_scale must be in [0, 1] (got %.3f)"
+			% committed_move_scale)
 	if reach_pixels <= 0.0:
 		problems.append("reach_pixels must be > 0 (got %.2f)" % reach_pixels)
 	if arc_degrees <= 0.0 or arc_degrees > 360.0:

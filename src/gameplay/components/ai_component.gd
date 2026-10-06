@@ -201,8 +201,10 @@ func _execute(intent: int, delta: float) -> void:
 			return
 		_:
 			direction = Vector2.ZERO
+	if _attack != null:
+		speed_scale *= _attack.movement_scale()  # a swing in flight roots the body (D-057B)
 	_movement.apply_intent(direction, _speed * speed_scale, delta)
-	_face(direction, direction != Vector2.ZERO)
+	_face(direction, direction != Vector2.ZERO and speed_scale > 0.0)
 
 
 func _toward_target() -> Vector2:

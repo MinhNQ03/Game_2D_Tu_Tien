@@ -1,15 +1,62 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
 [ext_resource type="TileSet" path="res://data/maps/east_asian_tileset.tres" id="3_tileset"]
 [ext_resource type="Script" path="res://src/gameplay/maps/prototype_ground.gd" id="4_ground"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern.png" id="5_lantern"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_tree.png" id="6_tree"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="7_rock"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_planter.png" id="8_planter"]
-[ext_resource type="Texture2D" path="res://assets/sprites/sects/emblem_azure_cloud.png" id="9_emblem"]
 [ext_resource type="PackedScene" path="res://src/gameplay/entities/training_dummy.tscn" id="10_dummy"]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_banner_cloth.png" id="20_cloth"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_grass_1.png" id="20_grass1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_grass_2.png" id="20_grass2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_grass_3.png" id="20_grass3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern_hanging.png" id="20_lantern"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_planter.png" id="20_planter"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_banner_pole.png" id="20_pole"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern_post.png" id="20_post"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="20_rock"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_tree_broadleaf.png" id="20_tree"]
+[ext_resource type="Shader" path="res://src/presentation/ambient/pixel_sway.gdshader" id="30_sway"]
+
+[sub_resource type="ShaderMaterial" id="Mat_grass"]
+shader = ExtResource("30_sway")
+shader_parameter/pivot_row = 11.0
+shader_parameter/span_rows = 10.0
+shader_parameter/bend = 2.0
+shader_parameter/wind_px = 1.2
+shader_parameter/wind_hz = 0.55
+shader_parameter/gust_px = 1.0
+
+[sub_resource type="ShaderMaterial" id="Mat_tree"]
+shader = ExtResource("30_sway")
+shader_parameter/pivot_row = 43.0
+shader_parameter/span_rows = 40.0
+shader_parameter/bend = 2.6
+shader_parameter/wind_px = 1.5
+shader_parameter/wind_hz = 0.22
+shader_parameter/gust_px = 1.5
+
+[sub_resource type="ShaderMaterial" id="Mat_cloth"]
+shader = ExtResource("30_sway")
+shader_parameter/hang = true
+shader_parameter/pivot_row = 0.0
+shader_parameter/span_rows = 26.0
+shader_parameter/bend = 1.3
+shader_parameter/wind_px = 1.6
+shader_parameter/wind_hz = 0.45
+shader_parameter/wind_bias = 1.8
+shader_parameter/ripple = 0.28
+shader_parameter/gust_px = 2.0
+
+[sub_resource type="ShaderMaterial" id="Mat_lantern"]
+shader = ExtResource("30_sway")
+shader_parameter/hang = true
+shader_parameter/pivot_row = 0.0
+shader_parameter/span_rows = 22.0
+shader_parameter/bend = 1.0
+shader_parameter/wind_px = 1.2
+shader_parameter/wind_hz = 0.3
+shader_parameter/gust_px = 1.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
 size = Vector2(992, 16)
@@ -18,66 +65,388 @@ size = Vector2(992, 16)
 size = Vector2(40, 48)
 
 [node name="HubMap" type="Node2D"]
+y_sort_enabled = true
 script = ExtResource("1_map")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(496, 304)
 
 [node name="Visual" type="Node2D" parent="."]
+y_sort_enabled = true
 
 [node name="Ground" type="TileMapLayer" parent="Visual"]
+z_index = -2
 texture_filter = 1
 tile_set = ExtResource("3_tileset")
 script = ExtResource("4_ground")
 fill_rect = Rect2i(1, 1, 60, 36)
 
 [node name="Decor" type="Node2D" parent="Visual"]
+y_sort_enabled = true
 
-[node name="SectBanner" type="Sprite2D" parent="Visual/Decor"]
+[node name="BannerW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(496, 96)
-scale = Vector2(2, 2)
-texture = ExtResource("9_emblem")
+position = Vector2(500, 252)
+texture = ExtResource("20_pole")
+centered = false
+offset = Vector2(-8, -47)
+
+[node name="Cloth" type="Sprite2D" parent="Visual/Decor/BannerW"]
+texture_filter = 1
+material = SubResource("Mat_cloth")
+position = Vector2(-7, -40)
+texture = ExtResource("20_cloth")
+centered = false
+
+[node name="BannerE" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(540, 252)
+texture = ExtResource("20_pole")
+centered = false
+offset = Vector2(-8, -47)
+
+[node name="Cloth" type="Sprite2D" parent="Visual/Decor/BannerE"]
+texture_filter = 1
+material = SubResource("Mat_cloth")
+position = Vector2(-7, -40)
+texture = ExtResource("20_cloth")
+centered = false
 
 [node name="TreeNW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(120, 120)
-texture = ExtResource("6_tree")
+material = SubResource("Mat_tree")
+position = Vector2(40, 150)
+texture = ExtResource("20_tree")
+centered = false
+offset = Vector2(-20, -43)
 
 [node name="TreeSW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(120, 480)
-texture = ExtResource("6_tree")
+material = SubResource("Mat_tree")
+position = Vector2(40, 470)
+texture = ExtResource("20_tree")
+centered = false
+offset = Vector2(-20, -43)
 
-[node name="PlanterN" type="Sprite2D" parent="Visual/Decor"]
+[node name="TreeN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(320, 140)
-texture = ExtResource("8_planter")
+material = SubResource("Mat_tree")
+position = Vector2(200, 186)
+texture = ExtResource("20_tree")
+centered = false
+offset = Vector2(-20, -43)
 
-[node name="PlanterS" type="Sprite2D" parent="Visual/Decor"]
+[node name="TreeS" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(320, 460)
-texture = ExtResource("8_planter")
+material = SubResource("Mat_tree")
+position = Vector2(360, 444)
+texture = ExtResource("20_tree")
+centered = false
+offset = Vector2(-20, -43)
 
-[node name="RockN" type="Sprite2D" parent="Visual/Decor"]
+[node name="TreeNE" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(660, 152)
-texture = ExtResource("7_rock")
-
-[node name="RockS" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-position = Vector2(660, 452)
-texture = ExtResource("7_rock")
+material = SubResource("Mat_tree")
+position = Vector2(840, 186)
+texture = ExtResource("20_tree")
+centered = false
+offset = Vector2(-20, -43)
 
 [node name="LanternN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(900, 240)
-texture = ExtResource("5_lantern")
+position = Vector2(936, 250)
+texture = ExtResource("20_post")
+centered = false
+offset = Vector2(-5, -47)
+
+[node name="Lantern" type="Sprite2D" parent="Visual/Decor/LanternN"]
+texture_filter = 1
+material = SubResource("Mat_lantern")
+position = Vector2(2, -38)
+texture = ExtResource("20_lantern")
+centered = false
 
 [node name="LanternS" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(900, 368)
-texture = ExtResource("5_lantern")
+position = Vector2(936, 386)
+texture = ExtResource("20_post")
+centered = false
+offset = Vector2(-5, -47)
+
+[node name="Lantern" type="Sprite2D" parent="Visual/Decor/LanternS"]
+texture_filter = 1
+material = SubResource("Mat_lantern")
+position = Vector2(2, -38)
+texture = ExtResource("20_lantern")
+centered = false
+
+[node name="RockN" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(660, 168)
+texture = ExtResource("20_rock")
+centered = false
+offset = Vector2(-8, -15)
+
+[node name="RockS" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(676, 470)
+texture = ExtResource("20_rock")
+centered = false
+offset = Vector2(-8, -15)
+
+[node name="PlanterW" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(470, 262)
+texture = ExtResource("20_planter")
+centered = false
+offset = Vector2(-8, -15)
+
+[node name="PlanterE" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(570, 262)
+texture = ExtResource("20_planter")
+centered = false
+offset = Vector2(-8, -15)
+
+[node name="Grass00" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(73, 153)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass01" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(107, 153)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass02" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(76, 409)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass03" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(110, 409)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass04" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(70, 537)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass05" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(113, 537)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass06" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(233, 153)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass07" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(267, 153)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass08" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(236, 409)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass09" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(270, 409)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass10" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(230, 537)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass11" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(273, 537)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass12" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(393, 153)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass13" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(427, 153)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass14" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(396, 409)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass15" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(430, 409)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass16" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(390, 537)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass17" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(433, 537)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass18" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(553, 153)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass19" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(587, 153)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass20" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(556, 409)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass21" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(590, 409)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass22" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(550, 537)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass23" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(593, 537)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass24" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(713, 153)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass25" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(747, 153)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass26" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(716, 409)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass27" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(750, 409)
+texture = ExtResource("20_grass1")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass28" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(710, 537)
+texture = ExtResource("20_grass2")
+centered = false
+offset = Vector2(-8, -11)
+
+[node name="Grass29" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+material = SubResource("Mat_grass")
+position = Vector2(753, 537)
+texture = ExtResource("20_grass3")
+centered = false
+offset = Vector2(-8, -11)
 
 [node name="Collision" type="Node2D" parent="."]
 
@@ -110,11 +479,13 @@ rotation = 1.5707963
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="CombatTargets" type="Node2D" parent="."]
+y_sort_enabled = true
 
 [node name="TrainingDummy" parent="CombatTargets" instance=ExtResource("10_dummy")]
 position = Vector2(680, 408)
 
 [node name="PlayerHost" type="Node2D" parent="."]
+y_sort_enabled = true
 
 [node name="Spawns" type="Node2D" parent="."]
 

@@ -10,8 +10,8 @@ extends TestCase
 ##   2. **GAMEPLAY TIMING OWNS THE TRUTH** — the frame is a pure function of a progress value
 ##      pushed in; the component keeps no clock an action could drift against, and it cannot
 ##      advance the lifecycle it depicts.
-##   3. **ONE LAYER, MANY ACTORS** — the player (32x48, 6 frames) and the mist wolf (32x32,
-##      4 frames) go through the same methods with no actor-specific branch.
+##   3. **ONE LAYER, MANY ACTORS** — the player (32x48, 8 frames) and the mist wolf (32x32,
+##      6 frames) go through the same methods with no actor-specific branch.
 ##
 ## These drive the PUBLIC API only (`play_action` / `drive_action` / `end_action` /
 ## `is_action_playing`), never `_refresh_frame` or the private cursor, so the tests describe the
@@ -257,7 +257,7 @@ func test_advancing_time_does_not_move_a_driven_action() -> void:
 # === Two actors, one layer ==================================================
 
 ## THE §31 proof: both shipped actors run the same action contract. Different frame SIZE
-## (32x48 vs 32x32), different frame COUNT (6 vs 4), one code path, no actor branch.
+## (32x48 vs 32x32), different frame COUNT (8 vs 6), one code path, no actor branch.
 func test_the_same_action_contract_serves_both_shipped_actors() -> void:
 	var sizes := {}
 	var counts := {}

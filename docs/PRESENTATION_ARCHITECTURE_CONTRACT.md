@@ -146,6 +146,25 @@ cancel, death and teardown all end the action.
 
 ---
 
+### 4b. Locomotion as a gait, anchors, and the target's reaction (D-057B)
+
+* **LOCOMOTION** stays the component's own clock, but the WALK is clocked by the displacement the
+  component measures at its own origin (`CharacterVisualProfileData.stride_px`), not by time —
+  so a remote character rendered from a position stream gets its cadence from that stream, and
+  no "is walking" flag needs to cross the network. Intent with no displacement stalls the stride;
+  a teleport is not a step; the walk enters and leaves on `walk_rest_columns`; a 180° turn shows
+  an intermediate facing outside an action; facing has hysteresis.
+* **ANCHORS**: `CharacterVisualComponent.anchor_point(name)` answers where a named body point is on
+  the frame being DRAWN, following the sheet, facing row, column and any reaction offset.
+  `AttackFeedback` (release from `palm`) and `HitReaction` (contact at `core`) are its two
+  current consumers.
+* **TARGET REACTION**: `HitReaction` (presentation, per entity scene) listens to
+  `HurtboxComponent.damaged` and moves only the drawing — `RECOIL` through
+  `CharacterVisualComponent.set_sprite_offset`, `PIVOT_WOBBLE` through its material's `lean_px` —
+  and draws the impact in world space. The entity, its collision and its hurtbox never move.
+* **COMMITMENT is gameplay data**, not presentation: `AttackData.committed_move_scale` is read by
+  the movers (`Player`, `AIComponent`) through `AttackComponent.movement_scale()`.
+
 ## 5. SEMANTIC ACTION VOCABULARY
 
 **Implemented:** `BASIC_ATTACK` (as `&"attack"`).
@@ -182,8 +201,8 @@ visual profile, sprite set, silhouette, frame count, VFX profile and SFX profile
 **Forbidden:** `player_cast.gd`, `enemy_cast.gd`, `npc_cast.gd`, `boss_cast.gd`. Logic is
 shared; data differs.
 
-**Structurally validated by a concrete second use case:** the player (32×48 frames, 6-frame
-attack sheet) and the Vụ Lang mist wolf (32×32 frames, 4-frame attack sheet) run the same
+**Structurally validated by a concrete second use case:** the player (32×48 frames, 8-frame
+attack sheet) and the Vụ Lang mist wolf (32×32 frames, 6-frame attack sheet) run the same
 action layer through the same three methods with no actor-specific branch. Two different frame
 sizes and two different frame counts, one code path. A test asserts both resolve, and a
 structural test asserts no second animation controller exists.
@@ -237,13 +256,19 @@ file — one ROW per cardinal direction × N animation COLUMNS — so direction 
 filename:
 
 ```
-player_proto_idle.png     128x192   4 frames
-player_proto_walk.png     192x192   6 frames
-player_proto_attack.png   192x192   6 frames
-mist_wolf_idle.png         64x128   2 frames
-mist_wolf_walk.png        128x128   4 frames
-mist_wolf_attack.png      128x128   4 frames
+player_proto_idle.png     192x192   6 frames      (D-057B)
+player_proto_walk.png     256x192   8 frames
+player_proto_attack.png   256x192   8 frames
+mist_wolf_idle.png        192x128   6 frames
+mist_wolf_walk.png        256x128   8 frames
+mist_wolf_attack.png      192x128   6 frames
 ```
+
+Each actor's sheets ship one **anchor resource** beside them
+(`data/characters/visual/anchors/<actor>_anchors.tres`, `CharacterAnchorData`): per-frame,
+per-facing named points (`palm`, `rear_palm`, `core`) written by the generator from the pose
+that drew the frame. The profile validator refuses an anchor set measured in another cell size
+or covering a different number of frames than its sheet.
 
 This is **kept** rather than replaced with `player_attack_windup_down`-style per-frame files:
 the grid convention already derives the frame count from the texture width (so art and data
@@ -300,7 +325,8 @@ Existing cue vocabulary (all **direct local signals or view DTOs**, which is the
 
 ```
 attack_started · attack_resolved · attack_finished      AttackComponent
-damaged(amount, is_critical) · died · health_changed    HurtboxComponent / entity
+damaged(amount, is_critical, push_direction) · died · health_changed
+                                                        HurtboxComponent / entity
 enemy_defeated(reward_id, ...)                          CombatRuntime
 xp_gained · level_changed                               ProgressionRuntime
 ProgressionView · CombatTargetView · SectMembershipView · SectPoliticsView · WorldSimView
@@ -317,7 +343,7 @@ the existing producer instead of adding a synonym beside it:
 | `attack_started` | `AttackComponent.attack_started` |
 | `attack_active` | `AttackComponent.state() == ACTIVE` (a lifecycle STATE, read by the action layer each frame); `attack_resolved` fires inside it when the hit window resolves |
 | `attack_recovered` | `AttackComponent.attack_finished` — and the READY state, which also covers `cancel()`, which emits nothing (§4) |
-| `damaged` / `critical_hit` | `HurtboxComponent.damaged(amount, is_critical)` — a critical is a flag on the same cue, not a second cue |
+| `damaged` / `critical_hit` | `HurtboxComponent.damaged(amount, is_critical, push_direction)` — a critical is a flag on the same cue, not a second cue; `push_direction` (D-057B) is the unit direction the blow travelled, attacker → target, the fact a body's reaction needs and an authoritative "attack hit" event will carry |
 | `defeated` | entity `died`; `CombatRuntime.enemy_defeated(reward_id, …)` for the reward-bearing fact |
 | `level_up` | `ProgressionRuntime.level_changed` |
 

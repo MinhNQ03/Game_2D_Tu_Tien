@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://csar2iufse70s"
-path="res://.godot/imported/prop_lantern.png-8561e91dd0275e4227d357603eb577ca.ctex"
+uid="uid://cg2eqt23aw1ek"
+path="res://.godot/imported/prop_grass_3.png-e92b4c2a5b5cd174278441d93847992b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/props/prop_lantern.png"
-dest_files=["res://.godot/imported/prop_lantern.png-8561e91dd0275e4227d357603eb577ca.ctex"]
+source_file="res://assets/sprites/props/prop_grass_3.png"
+dest_files=["res://.godot/imported/prop_grass_3.png-e92b4c2a5b5cd174278441d93847992b.ctex"]
 
 [params]
 
@@ -37,4 +37,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=0
+detect_3d/compress_to=1

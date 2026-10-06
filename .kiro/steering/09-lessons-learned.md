@@ -1285,3 +1285,28 @@
   - Inspect a reference pack; do not trust its own metadata ("500+ images" described 13).
 - **Guards:** `tests/unit/framework/test_reference_library_isolation.gd`; the conflict record in
   `XIANXIA_IDENTITY_CONTRACT.md` §2.3.
+
+## L-045 — Art that passes at 6× and in a unit test can still be wrong at 1× in MOTION; a strip is the evidence
+- **Symptom (D-057B):** the redrawn cast and props were inspected magnified, frame by frame, and
+  every generator check passed. The first REAL capture — the running game, at its own 2× zoom —
+  showed six defects none of that saw: every front-facing archetype wore a BEARD (hair and an
+  outlined gap under the chin, unmistakable on the brown-haired merchant); the training post's
+  crossbar made a GRAVE CROSS; the striking palm HUNG under the sleeve like a limp reach; a
+  floor-length robe GLIDED, its hem unchanged by the stride; the palm's air passed OVER the wolf's
+  back while the wolf took the hit; and a full crimson flash turned the straw post into a red
+  silhouette that hid its own wobble and chaff. Two older ones surfaced with them: the map's trees,
+  planters and lanterns all stood in flooded paddies, and the world was not depth-sorted, so the
+  player was drawn over every canopy.
+- **Rule:**
+  - A still frame proves a pose; only a SEQUENCE proves a motion. Every motion change ships with a
+    frame strip from the real app (`tools/capture_motion.gd`), driven by semantic input, read the
+    way an animator reads a sheet: same box, consecutive frames, side by side.
+  - Judge a face, a symbol and a silhouette at 1× against EVERY palette, not only the hero's —
+    a defect that hides in white hair shows in brown.
+  - When an effect and its target are at different heights, aim the effect at the target's
+    height; "it lands" is decided by gameplay, but "it looks like it lands" is presentation's job.
+  - Anything placed in a world is checked against the world it is placed in (paddy cells,
+    depth sort) by a test, not by eye.
+- **Guards:** `tools/capture_motion.gd`; `test_decor_props_are_rooted_on_dry_ground`,
+  `test_the_world_is_depth_sorted_and_layered`; the strike-height and flash-strength assertions in
+  `test_attack_feedback.gd`.

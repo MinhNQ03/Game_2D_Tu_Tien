@@ -881,3 +881,50 @@ gameplay; every guard below was planted against and failed before it was trusted
     78 again fails it;
   * **a settled HUD does no per-frame work**, for the whole populated tree, with the walk itself
     asserted. Mutation: an always-on `_process` on the HUD root fails it, naming the node.
+
+**D-057B — the visual content foundation (a gait, anchors, a causal strike, a body that reacts, a
+world that moves). Every guard below was planted against: 19 mutants of the new mechanisms, all
+killed, each by the test named for it (scratch subset runner, recorded in DECISIONS D-057B):**
+- `tests/unit/presentation/test_character_locomotion.gd` — **NEW (17).** The shipped profiles
+  author `stride_px`, rest columns and VALID anchors; the validator refuses a rest column off the
+  sheet, a negative stride, anchors from another cell size or covering the wrong frame count, a
+  malformed key, a ragged track. The stride follows DISTANCE (three steps of ground = three
+  columns; time alone moves nothing; half the speed is half the cadence); intent that moves
+  nothing STALLS and settles, and the stride resumes when the body moves; a teleport is not a
+  step; a stop on a contact frame SETTLES to the next rest column, on a rest column it is
+  immediate, and walking again mid-settle continues the stride; the quadruped stops at once; a
+  reversal shows the intermediate facing (LEFT↔RIGHT through the front, DOWN↔UP through the last
+  side) and a quarter turn or a turn mid-action is instant; facing has hysteresis across 45°;
+  idle breaths of creatures placed apart differ and the same placement repeats; the `palm` anchor
+  is on the facing side, further out at the strike than the coil, exactly mirrored LEFT/RIGHT,
+  follows a reaction's sprite offset, and an unnamed point returns the caller's fallback.
+- `tests/unit/presentation/test_hit_reaction.gd` — **NEW (8).** A creature recoils `recoil_px`
+  along the blow in whole pixels and returns EXACTLY to rest while the entity never moves; the
+  direction is the blow's; a critical shoves further; a hit that applied 0 does nothing. A rooted
+  post starts upright, leans AWAY from the blow, rocks past upright (a damped oscillation) and
+  rests at exactly zero; struck from the other side it leans the other way. The impact sits on
+  the striker's side of the core, its debris flies along the blow, lives in world space (moving
+  the body does not drag it), is top-level (not tinted by the body's flash) and ends; straw chaff
+  falls and mist does not; consecutive impacts vary and the n-th impact is identical on every body.
+- `tests/unit/presentation/test_attack_feedback.gd` — **NEW (7).** The release starts at the
+  DRAWN palm anchor, runs along the facing and angles down toward body height; it dissipates by
+  the end of recovery and the node stops processing; facing away draws behind the body, any other
+  facing in front; only a HOSTILE wind-up telegraphs and the telegraph ends with the wind-up; a
+  swing in flight scales movement by `committed_move_scale` (0.3 for the palm strike, 0.0 for the
+  bite) and the data boundary refuses a value outside [0, 1]; `flash_strength` scales the hit tint
+  without changing its hue.
+- `tests/gameplay/test_map_scenes.gd` (extended, 4) — the world is depth-sorted (root, Visual,
+  Decor, CombatTargets, PlayerHost) and the floor sits under the ground-decal layer; every prop is
+  base-anchored and stands on dry ground (no prop in a flooded paddy — the old trees, planters and
+  lanterns all stood in water); wind-moved props wear `pixel_sway`, all grass shares ONE material,
+  hanging props hang from the top; the field's mist lies at z -1 and drifts by `mist_drift`.
+- `tests/unit/presentation/test_gameplay_hud.gd` (extended, 1) — engaging a live target closes the
+  side panels once; a panel re-opened mid-fight survives health updates and the kill; a new
+  engagement closes it again.
+- Updated for the redrawn art: the player sheets are 6/8/8 frames, the wolf's attack 6; the walk
+  opens on its entry column; the idle↔walk switch is driven by moving the node.
+- `tools/capture_motion.gd` — **NEW tool**, not a test: boots the real app, drives semantic input,
+  writes frame STRIPS (walk, stop, turn, strike the post, banner and tree wind, the wolf's bite,
+  striking the wolf). The strips found the beard, the grave cross, the limp palm, the gliding hem,
+  the strike passing over the wolf and the red-silhouetted post — none of which a test saw.
+

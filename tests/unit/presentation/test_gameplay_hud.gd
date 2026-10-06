@@ -1494,3 +1494,42 @@ func _collect_processing(node: Node, busy: Array[String]) -> int:
 
 func _class_of_resource(resource: Resource) -> String:
 	return "<null>" if resource == null else resource.get_class()
+
+
+## COMBAT TAKES THE SCREEN (D-057B). A side panel covers a third of the playfield; a fight that
+## starts behind one is a fight the player cannot see. Engaging a LIVE target closes any open
+## side panel — once, on the transition: a panel the player re-opens mid-fight stays open, and
+## a health update or a kill does not close it again.
+func test_engaging_a_live_target_closes_the_side_panels_once() -> void:
+	var hud := _hud()
+	var sect: Control = hud.get("_sect_panel")
+	var faction: Control = hud.get("_faction_panel")
+	sect.visible = true
+	faction.visible = true
+	var live := CombatTargetView.new()
+	live.has_target = true
+	live.name_key = &"ENEMY_MIST_WOLF_NAME"
+	live.current_health = 30
+	live.max_health = 34
+	hud.call("set_target_view", live)
+	assert_false(hud.call("is_sect_panel_open"), "engaging a live target closes the sect panel")
+	assert_false(hud.call("is_faction_panel_open"), "and the politics panel")
+
+	# The player re-opens one mid-fight: that is a choice, kept through health updates.
+	sect.visible = true
+	live.current_health = 20
+	hud.call("set_target_view", live)
+	assert_true(hud.call("is_sect_panel_open"),
+		"a panel re-opened mid-fight stays open through a health update")
+	var dead := CombatTargetView.new()
+	dead.has_target = true
+	dead.name_key = &"ENEMY_MIST_WOLF_NAME"
+	dead.max_health = 34
+	dead.is_dead = true
+	hud.call("set_target_view", dead)
+	assert_true(hud.call("is_sect_panel_open"), "and through the kill")
+
+	# A NEW engagement after the fight closes it again.
+	hud.call("set_target_view", live)
+	assert_false(hud.call("is_sect_panel_open"), "a new engagement takes the screen back")
+	free_node(hud)

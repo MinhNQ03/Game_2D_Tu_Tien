@@ -9,6 +9,7 @@ name_key = &"ATTACK_MIST_WOLF_BITE_NAME"
 windup_seconds = 0.26
 active_seconds = 0.08
 recovery_seconds = 0.34
+committed_move_scale = 0.0
 reach_pixels = 26.0
 arc_degrees = 90.0
 power_multiplier = 1.0

@@ -28,7 +28,13 @@ class_name HurtboxComponent
 ## Damage landed on this entity. `is_critical` is carried so presentation can distinguish a
 ## crit without recomputing anything, and `amount` is what was ACTUALLY applied (so a hit
 ## absorbed by an already-dead entity reports 0).
-signal damaged(amount: int, is_critical: bool)
+##
+## `push_direction` (D-057B) is the unit direction the blow travelled — attacker toward this
+## entity — or ZERO when the source has no direction. A SEMANTIC fact of the hit, exactly what an
+## authoritative "attack hit" event will carry (`MOTION_DESIGN_CONTRACT.md` M-12.1), so the
+## body's reaction can push the right way without presentation knowing who struck it. Nothing in
+## gameplay reads it: a basic attack has no knockback, and the reaction moves only the drawing.
+signal damaged(amount: int, is_critical: bool, push_direction: Vector2)
 
 ## Stable identity of the entity this hurtbox belongs to. Echoed back in a hit result so an
 ## attacker can map a result to an entity without relying on array order.
@@ -126,7 +132,7 @@ func to_target() -> Dictionary:
 ## `HealthComponent`: the entity owns its health and may have more to do than subtract a
 ## number (the player syncs its authoritative `CharacterState`). Going around it would make
 ## combat the second writer of a value the entity is responsible for.
-func apply_hit(amount: int, is_critical: bool) -> int:
+func apply_hit(amount: int, is_critical: bool, push_direction: Vector2 = Vector2.ZERO) -> int:
 	if _entity == null or not is_instance_valid(_entity):
 		return 0
 	if not _entity.has_method("take_damage"):
@@ -135,5 +141,5 @@ func apply_hit(amount: int, is_critical: bool) -> int:
 		return 0
 	var applied := int(_entity.call("take_damage", amount))
 	if applied > 0:
-		damaged.emit(applied, is_critical)
+		damaged.emit(applied, is_critical, push_direction.normalized())
 	return applied

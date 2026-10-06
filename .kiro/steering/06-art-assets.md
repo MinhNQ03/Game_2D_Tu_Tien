@@ -24,16 +24,28 @@
   and integer scaling are unchanged (the figure is 2 tiles wide, 3 tall). A character sheet is
   a **GRID**: one ROW per cardinal direction (DOWN, UP, LEFT, RIGHT) × N animation COLUMNS, so
   `width = 32 * frames` and `height = 48 * 4`. The frame count is **derived from the texture
-  width**, never authored separately. Current sheets: `*_proto_idle.png` 128×192 (4-frame
-  breath) and `*_proto_walk.png` 192×192 (6-frame stride); `player_proto.png` (32×48) is the
-  single static DOWN frame used only as `player.tscn`'s harness fallback.
-- The character is a **white-haired cultivator in a pale layered floor-length robe holding a qi
-  orb**, derived by SAMPLING the two painted references in
+  width**, never authored separately. Current sheets (D-057B): `*_proto_idle.png` 192×192 (6-beat
+  breath), `*_proto_walk.png` 256×192 (8-frame two-step stride), `*_proto_attack.png` 256×192
+  (8-frame palm strike); `player_proto.png` (32×48) is the single static DOWN frame used only as
+  `player.tscn`'s harness fallback. Each sheet set ships its per-frame ANCHORS
+  (`data/characters/visual/anchors/`), written by the generator from the same poses.
+- The character is a **white-haired cultivator in a pale layered floor-length robe**, derived by
+  SAMPLING the two painted references in
   `assets/sprites/characters/portraits/` (D-046) — still self-made/project-owned, still subject
   to later upgrade. **No licence-cleared pack ships a top-down four-direction tu-tiên figure**;
   a name scan across all nine supplied asset folders returned zero direction tokens, and the
   Xianxia character set is side-view platformer art (its terrain is `platform_top` + slopes).
   Do NOT import side-view character art into the top-down world.
+- **Qi is a runtime effect, never baked into a sheet** (D-057B). The references hold a qi orb; a
+  PHÀM character has no qi to show, and qi that is part of the drawing cannot gather, flow from a
+  vein, or vanish with the state. It is drawn at runtime on the frame's anchors.
+- **The generator is a package** (`tools/aetheria_art/`: raster, sheet + verifier + anchor export,
+  cultivator, beast, props), still stdlib-only. A sheet whose adjacent frames differ by < 2px, or
+  whose facings are identical, FAILS the generator (L-029).
+- **World props that move are padded** for their motion and drawn base-anchored; their motion is
+  a material (`src/presentation/ambient/pixel_sway.gdshader`, `mist_drift.gdshader`): whole-pixel
+  row shifts, per-material data, phase from world position. A prop is never rotated or scaled
+  (a 2×-scaled 16px emblem stood in for a banner until D-057B — mixed pixel density).
 - **Animation speed is DATA** (`CharacterVisualProfileData.frame_duration`), per archetype. A
   single-frame sheet must leave the component's `_process` switched off — a static character
   costs nothing per frame.

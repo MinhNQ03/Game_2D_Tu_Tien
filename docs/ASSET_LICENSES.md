@@ -29,13 +29,20 @@ though self-made art needs no external attribution.
 | P3 | Training Dummy `Polygon2D` shape | sprite (vector placeholder) | self-made (project) | project-owned | Phase-02 player sandbox only (not the Phase-03 maps) | No |
 | P22 | `assets/sprites/sects/emblem_azure_cloud.png` (16×16) | sect emblem (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_sect_emblems`) | project-owned | Azure Cloud Sect emblem — HUD chip + Sect panel + hub banner (Phase 06, D-032) | No |
 | P23 | `assets/sprites/sects/emblem_crimson_flame.png` (16×16) | sect emblem (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_sect_emblems`) | project-owned | Crimson Flame Sect emblem — Sect panel (Phase 06, D-032) | No |
-| P27 | `assets/sprites/enemies/mist_wolf_idle.png` (64×128 = 2 frames × 4 directions) | enemy sheet (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_enemies`) | project-owned | **Vụ Lang** (frontier mist wolf) idle visual — `mist_wolf_visual.tres` | No |
-| P28 | `assets/sprites/enemies/mist_wolf_walk.png` (128×128 = 4 frames × 4 directions) | enemy sheet (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_enemies`) | project-owned | Vụ Lang walk visual. 32×32 frames (a quadruped, not a standing figure), verified to animate and to differ per facing before writing. | No |
-| P26 | `assets/sprites/characters/training_dummy.png` (32×48, Phase 09) | sprite (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_training_dummy`) | project-owned | `training_dummy.tscn` `Visual` (`Sprite2D`) — the combat target authored into the hub map. Replaced the flat red `Polygon2D` that scene used to draw. | No |
-| P18 | `assets/sprites/props/prop_lantern.png` (16×24) | prop sprite (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_props`) | project-owned | hub + field map decorative `Sprite2D` under `Visual/Decor` (presentation only) | No |
-| P19 | `assets/sprites/props/prop_tree.png` (32×32) | prop sprite (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_props`) | project-owned | hub + field map decorative `Sprite2D` under `Visual/Decor` | No |
+| P27 | `assets/sprites/enemies/mist_wolf_idle.png` (**192×128** = 6 frames × 4 directions, redrawn D-057B) | enemy sheet (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_enemies`) | project-owned | **Vụ Lang** (frontier mist wolf) idle visual — `mist_wolf_visual.tres` | No |
+| P28 | `assets/sprites/enemies/mist_wolf_walk.png` (**256×128** = 8 frames × 4 directions, four-beat gait, redrawn D-057B) | enemy sheet (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_enemies`) | project-owned | Vụ Lang walk visual. 32×32 frames (a quadruped, not a standing figure), verified to animate and to differ per facing before writing. | No |
+| P26 | `assets/sprites/characters/training_dummy.png` (32×48, Phase 09; redrawn D-057B as a mộc nhân — head, arms at the shoulders, a target ring — the first redraw read as a grave cross) | sprite (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_training_dummy`) | project-owned | `training_dummy.tscn` `Visual` (`Sprite2D`) — the combat target authored into the hub map. Replaced the flat red `Polygon2D` that scene used to draw. | No |
+| P18 | ~~`assets/sprites/props/prop_lantern.png` (16×24)~~ | — | — | — | **RETIRED by D-057B** (deleted): replaced by P41/P42, a post and a lantern that hangs from it and swings | — |
+| P19 | ~~`assets/sprites/props/prop_tree.png` (32×32)~~ | — | — | — | **RETIRED by D-057B** (deleted): replaced by P40, a broadleaf tree padded for its sway | — |
 | P20 | `assets/sprites/props/prop_rock.png` (16×16) | prop sprite (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_props`) | project-owned | hub + field map decorative `Sprite2D` under `Visual/Decor` | No |
 | P21 | `assets/sprites/props/prop_planter.png` (16×16) | prop sprite (pixel art, PNG) | self-made — `tools/gen_prototype_assets.py` (`gen_props`) | project-owned | hub + field map decorative `Sprite2D` under `Visual/Decor` | No |
+| P40 | `assets/sprites/props/prop_tree_broadleaf.png` (40×44, 3px of air for the sway) | prop sprite | self-made — `tools/aetheria_art/props.py` (`gen_tree`) | project-owned | hub + field `Visual/Decor`, `pixel_sway` canopy | No |
+| P41 | `assets/sprites/props/prop_lantern_post.png` (20×48) | prop sprite | self-made (`gen_lantern_post`) | project-owned | hub + field lantern posts | No |
+| P42 | `assets/sprites/props/prop_lantern_hanging.png` (16×24) | prop sprite | self-made (`gen_lantern_post`) | project-owned | the paper lantern hanging from P41, swings (`pixel_sway`, hang) | No |
+| P43 | `assets/sprites/props/prop_banner_pole.png` (16×48) | prop sprite | self-made (`gen_banner`) | project-owned | hub sect banners (replaces the 2×-scaled emblem) | No |
+| P44 | `assets/sprites/props/prop_banner_cloth.png` (20×28, 6px of air for the wave) | prop sprite | self-made (`gen_banner`) | project-owned | the Thanh Vân cloth on P43, waves (`pixel_sway`, hang, ripple) | No |
+| P45 | `assets/sprites/props/prop_grass_1.png` … `prop_grass_3.png` (16×12 each) | prop sprites | self-made (`gen_grass`), floor palette measured from the Verdant ground | project-owned | grass on the paddy banks of both maps, sways | No |
+| P46 | `assets/sprites/props/prop_mist.png` (64×20, dithered alpha) | prop sprite | self-made (`gen_mist`) | project-owned | field low mist (`Visual/Atmosphere`, `mist_drift`) | No |
 
 > **Prototype art note (Phase 03 reopen, D-022):** the maps and player now render REAL
 > self-made pixel-art PNG textures (P1/P2), not Polygon2D placeholders. The textures are
@@ -140,7 +147,7 @@ Directional **idle + walk** sprite sheets for the four archetypes, generated by
 `tools/gen_prototype_assets.py` (`gen_character_sheets()`; pure-Python PNG writer, no
 download, no third-party library). Each sheet is a GRID: one ROW per direction
 (DOWN/UP/LEFT/RIGHT, top→bottom) × N animation COLUMNS, at **32×48** per frame — so a 4-frame
-idle sheet is 128×192 and a 6-frame walk sheet is 192×192. Authored to
+idle sheet is 192×192 and an 8-frame walk sheet is 256×192 (D-057B). Authored to
 `docs/CHARACTER_ART_BIBLE.md` (shared silhouette + ink, per-archetype palette), with the
 figure derived by SAMPLING the project-owned painted portraits. The generator refuses to write
 a sheet whose adjacent frames or direction rows are pixel-identical, so a regeneration cannot
@@ -149,14 +156,26 @@ silently produce a motionless "animation". Project-owned, no external license. C
 
 | # | Name | Type | Source / Author | License | Used in | Attribution required? |
 |---|------|------|-----------------|---------|---------|-----------------------|
-| P14 | `assets/sprites/characters/player_proto_idle.png` (**128×192** = 4 frames × 4 directions) | character sheet | self-made — `tools/gen_prototype_assets.py` | project-owned | player visual profile (`player_visual.tres`) | No |
-| P15 | `assets/sprites/characters/cultivator_f_proto_idle.png` (128×192) | character sheet | self-made | project-owned | female-cultivator visual profile | No |
-| P16 | `assets/sprites/characters/elder_proto_idle.png` (128×192) | character sheet | self-made | project-owned | elder visual profile | No |
-| P17 | `assets/sprites/characters/merchant_proto_idle.png` (128×192) | character sheet | self-made | project-owned | wandering-cultivator/merchant visual profile | No |
-| P22 | `assets/sprites/characters/player_proto_walk.png` (**192×192** = 6 frames × 4 directions) | character sheet | self-made — `tools/gen_prototype_assets.py` | project-owned | player visual profile `walk_sheet` | No |
-| P23 | `assets/sprites/characters/cultivator_f_proto_walk.png` (192×192) | character sheet | self-made | project-owned | female-cultivator `walk_sheet` | No |
-| P24 | `assets/sprites/characters/elder_proto_walk.png` (192×192) | character sheet | self-made | project-owned | elder `walk_sheet` | No |
-| P25 | `assets/sprites/characters/merchant_proto_walk.png` (192×192) | character sheet | self-made | project-owned | merchant `walk_sheet` | No |
+| P14 | `assets/sprites/characters/player_proto_idle.png` (**192×192** = 6 frames × 4 directions, D-057B) | character sheet | self-made — `tools/gen_prototype_assets.py` | project-owned | player visual profile (`player_visual.tres`) | No |
+| P15 | `assets/sprites/characters/cultivator_f_proto_idle.png` (192×192) | character sheet | self-made | project-owned | female-cultivator visual profile | No |
+| P16 | `assets/sprites/characters/elder_proto_idle.png` (192×192) | character sheet | self-made | project-owned | elder visual profile | No |
+| P17 | `assets/sprites/characters/merchant_proto_idle.png` (192×192) | character sheet | self-made | project-owned | wandering-cultivator/merchant visual profile | No |
+| P22 | `assets/sprites/characters/player_proto_walk.png` (**256×192** = 8 frames × 4 directions, D-057B) | character sheet | self-made — `tools/gen_prototype_assets.py` | project-owned | player visual profile `walk_sheet` | No |
+| P23 | `assets/sprites/characters/cultivator_f_proto_walk.png` (256×192) | character sheet | self-made | project-owned | female-cultivator `walk_sheet` | No |
+| P24 | `assets/sprites/characters/elder_proto_walk.png` (256×192) | character sheet | self-made | project-owned | elder `walk_sheet` | No |
+| P25 | `assets/sprites/characters/merchant_proto_walk.png` (256×192) | character sheet | self-made | project-owned | merchant `walk_sheet` | No |
+
+| P29 | `assets/sprites/characters/player_proto_attack.png` (256×192 = 8 frames × 4 directions; D-056, redrawn D-057B) | character sheet | self-made — `tools/gen_prototype_assets.py` | project-owned | player `attack_sheet` (the palm strike) | No |
+| P30 | `assets/sprites/characters/cultivator_f_proto_attack.png`, `elder_proto_attack.png`, `merchant_proto_attack.png` (256×192 each) | character sheets | self-made | project-owned | archetype `attack_sheet`s | No |
+| P31 | `assets/sprites/enemies/mist_wolf_attack.png` (192×128 = 6 frames × 4 directions; D-056, redrawn D-057B) | enemy sheet | self-made | project-owned | Vụ Lang `attack_sheet` (crouch → lunge → recover) | No |
+| P32 | `data/characters/visual/anchors/cultivator_anchors.tres`, `mist_wolf_anchors.tres` | DATA generated with the art (per-frame body points) | self-made — written by the same generator run as the sheets | project-owned | `CharacterVisualProfileData.anchors` | No |
+
+> **D-057B redraw (same files, NEW dimensions).** The generator became the `tools/aetheria_art/`
+> package (still stdlib-only): a POSE-driven 32×48 humanoid (6-beat breath, 8-frame two-step
+> stride whose hem the legs drive, 8-frame palm strike with an upright palm) and a pose-driven
+> 32×32 four-beat wolf. Qi is no longer baked into any sheet. P29–P31 had shipped with D-056
+> without rows here — recorded now. Every sheet is verified to animate and to differ per facing
+> before it is written, and its anchors are written from the same poses.
 
 > **D-046 character re-author (same files, NEW dimensions).** P1 and P14–P17 were regenerated
 > at the **32×48** baseline in the GRID layout (one row per direction × N animation columns),

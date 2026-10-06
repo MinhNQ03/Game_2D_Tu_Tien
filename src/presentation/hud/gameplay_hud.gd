@@ -112,6 +112,8 @@ var _target_linger: Timer
 ## The last target view pushed in, kept so `_refresh_text()` can re-resolve its keys on a
 ## language change without the combat session having to push again.
 var _target_view: CombatTargetView = null
+## True while a LIVE target is engaged, so engagement is detected as a transition.
+var _engaged: bool = false
 var _attack_row: UIPromptRow
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
@@ -803,6 +805,15 @@ func _refresh_progression() -> void:
 ## the HUD does no per-frame work (`05-performance-testing.md`). The view is cached so a
 ## language change can re-resolve its keys without the session pushing again.
 func set_target_view(view: CombatTargetView) -> void:
+	var engaging := view != null and view.has_target and not view.is_dead
+	# COMBAT TAKES THE SCREEN (D-057B, `UI_UX_BIBLE.md` §3c). The side panels are reading
+	# surfaces that cover a third of the playfield each; a fight that starts behind one is a
+	# fight the player cannot see. So the moment a LIVE target is engaged — the transition, not
+	# every health update — any open side panel closes. A panel the player re-opens mid-fight
+	# stays open: that is a choice, and the HUD does not fight the player for it.
+	if engaging and not _engaged:
+		_close_side_panels()
+	_engaged = engaging
 	_target_view = view
 	if _target_panel == null:
 		return
@@ -916,6 +927,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 		var vp := get_viewport()
 		if vp != null:
 			vp.set_input_as_handled()
+
+
+## Close both side panels (combat engaged). Safe when either is absent or already closed.
+func _close_side_panels() -> void:
+	if _sect_panel != null:
+		_sect_panel.visible = false
+	if _faction_panel != null:
+		_faction_panel.visible = false
 
 
 ## Is the Sect detail panel currently shown? (for tests)

@@ -132,6 +132,16 @@ func attack_data() -> AttackData:
 	return _attack
 
 
+## The fraction of normal speed the attacker keeps right now: 1.0 while READY, the authored
+## `AttackData.committed_move_scale` while a swing is in flight (D-057B). GAMEPLAY — the
+## movers (`Player`, `AIComponent`) multiply their speed by it, so a committed swing roots the
+## attacker the same way for every actor, and presentation never decides how far anyone moves.
+func movement_scale() -> float:
+	if _attack == null or state() == AttackStateMachine.State.READY:
+		return 1.0
+	return _attack.committed_move_scale
+
+
 ## Can this entity start a swing right now?
 func can_attack() -> bool:
 	return is_armed() and _fsm.can_begin()
@@ -191,7 +201,13 @@ func _resolve_hit_window() -> void:
 			# Registered when the swing resolved, gone by the time it was applied. Not an
 			# error: an entity freed mid-swing is normal, and the hit simply does not land.
 			continue
-		_damage_dealt += hurtbox.apply_hit(int(result["damage"]), bool(result["is_critical"]))
+		# The direction the blow travelled, attacker -> target (the facing when they overlap):
+		# a semantic fact of the hit that the struck body's reaction pushes along.
+		var push := origin.direction_to(hurtbox.world_position())
+		if push == Vector2.ZERO:
+			push = _facing
+		_damage_dealt += hurtbox.apply_hit(
+			int(result["damage"]), bool(result["is_critical"]), push)
 	_swings_resolved += 1
 	attack_resolved.emit(results)
 

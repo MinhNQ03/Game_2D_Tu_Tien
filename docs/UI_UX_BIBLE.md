@@ -187,6 +187,11 @@ measurements.
   "an empty label still occupies its row").
 - **A settled HUD does no per-frame work**, asserted for the whole populated HUD tree, not only
   for each feedback node.
+- **Combat takes the screen (D-057B).** The side panels are reading surfaces that cover a third
+  of the playfield each. The moment a LIVE target is engaged — the transition, not each health
+  update — any open side panel closes; a panel the player re-opens mid-fight stays open (a choice
+  the HUD does not fight). Tested by
+  `test_engaging_a_live_target_closes_the_side_panels_once`.
 - **Reference boards are filtered, not adopted.** The Aetheria `09_ui_composition` board shows
   mobile-MMORPG conventions — an MP bar, a skill-icon ring, a minimap, XP toasts — that this
   bible forbids (`XIANXIA_IDENTITY_CONTRACT.md` §2.3, R-7).

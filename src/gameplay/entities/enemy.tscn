@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/entities/enemy.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://src/gameplay/components/stats_component.gd" id="2_stats"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://src/gameplay/components/ai_component.gd" id="7_ai"]
 [ext_resource type="Script" path="res://src/presentation/combat/attack_feedback.gd" id="90_feedback"]
 [ext_resource type="Script" path="res://src/presentation/combat/damage_feedback.gd" id="91_dmgfeedback"]
+[ext_resource type="Script" path="res://src/presentation/combat/hit_reaction.gd" id="92_hitreaction"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_enemy"]
 size = Vector2(18, 12)
@@ -40,6 +41,13 @@ script = ExtResource("7_ai")
 
 [node name="AttackFeedback" type="Node2D" parent="."]
 script = ExtResource("90_feedback")
+hostile = true
 
 [node name="DamageFeedback" type="Node" parent="."]
 script = ExtResource("91_dmgfeedback")
+
+[node name="HitReaction" type="Node2D" parent="."]
+script = ExtResource("92_hitreaction")
+debris_colour = Color(0.78, 0.84, 0.92, 1)
+debris_gravity = -60.0
+impact_height = 12.0
