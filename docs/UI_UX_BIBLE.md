@@ -1,7 +1,7 @@
 # UI_UX_BIBLE — Aetheria
 
-> **Owner of:** the visual language, the information hierarchy, the screen inventory, and the
-> per-phase UI evolution plan.
+> **Owner of:** the visual language, the information hierarchy, HUD composition (§3c, D-057),
+> the screen inventory, and the per-phase UI evolution plan.
 > Token/asset implementation lives in `src/presentation/ui/ui_palette.gd` + `ui_theme.gd` (the
 > single source of truth for colours, type scale, spacing, texture paths and 9-slice margins) and
 > the asset rules in `.kiro/steering/06-art-assets.md`. This document owns the *design direction*;
@@ -141,6 +141,56 @@ that shipped.
   and writes no file for a panel that did not open. A capture that quietly lies is worse than a
   missing one, because the file's whole job is to be what a human reviews.
 
+## 3c. The HUD as presentation (D-057 — binding)
+
+§3a composed the screens and §3b came from looking at them. These came from MEASURING how much of
+the game the HUD covers — after D-057 found the whole HUD shifted by the desktop's own chrome and
+the key prompts dressed in the same ornate plaque as the player's identity. This section OWNS the
+HUD composition rules; `MOTION_DESIGN_CONTRACT.md` §11 owns how UI moves and records the
+measurements.
+
+- **Every permanent element earns its screen space** — by importance, frequency, context, visual
+  weight, size, contrast and occupancy. "One data object = one panel" is forbidden; information
+  that changes rarely or is read once is a candidate to collapse, become text-only or become
+  contextual before it is a candidate for a new plaque.
+- **Composition before components.** Before a HUD element is built, answer: what is the
+  composition? the focal point? what must stay visible? what can disappear, collapse, become
+  text-only or become contextual?
+- **The weight ladder.** Ornament is how this UI says *this matters*, so it is spent only on what
+  the player tracks:
+
+  | Rung | Surface (`UITheme`) | Carries |
+  |---|---|---|
+  | framed plaque | `panel_stylebox()` — ink inset, gold corners | identity · place · combat target · side panels |
+  | quiet band | `hint_band_stylebox()` — flat translucent ink, no frame | passive key prompts |
+  | bare outlined text | the theme's label outline | transient announcements (level-up) |
+
+  The band's alpha is a legibility bound, not a taste: over pure white it still measures under
+  `SURFACE_LIGHT_BRIGHTNESS_LIMIT`, so the prompts are legal over anything the world can show.
+- **Negative space, by number.** The permanent HUD covers at most
+  `UIPalette.HUD_PERMANENT_AREA_BUDGET` (**15%**) of the viewport — measured **14.3%** at 1280×720
+  and **12.9%** at 1280×800 at D-057, down from 16.5%. **No** HUD element, permanent or contextual,
+  enters `UIPalette.PLAYFIELD_CLEAR_ZONE` — the middle 50% × 50% of the screen, where the camera
+  keeps the player and the fight; the side panels are exempt because the player opens them on
+  purpose. Both are re-measured on a POPULATED HUD in the longer language at both aspect ratios
+  by `test_the_hud_keeps_the_playfield_centre_clear_and_inside_its_area_budget`, which WALKS the
+  HUD root, so a new element is measured without anyone adding it to a list.
+- **A reserve is bounded from both sides.** Too small, and the thing it protects is covered; too
+  large, and it is dead playfield. `PROMPT_STRIP_RESERVE` went 78 → 54 when the prompts moved onto
+  the band, and its test now bounds it from above as well as below.
+- **On desktop the HUD is framed by `HUD_MARGIN` alone.** `get_display_safe_area()` on a desktop
+  OS is the WORK AREA (screen minus docks and taskbars), not a notch; applied as an inset it put
+  the left plaques 85px from the edge and the right ones 18px. Only a mobile notch that overlaps
+  the window insets the HUD (`GameplayHUD.safe_area_insets`, tested; L-043).
+- **A row states a condition, or it does not exist.** A HUD row is never left blank: a defeated
+  target's plaque says *Defeated*, a live target with no rating has no rating row (§3b's
+  "an empty label still occupies its row").
+- **A settled HUD does no per-frame work**, asserted for the whole populated HUD tree, not only
+  for each feedback node.
+- **Reference boards are filtered, not adopted.** The Aetheria `09_ui_composition` board shows
+  mobile-MMORPG conventions — an MP bar, a skill-icon ring, a minimap, XP toasts — that this
+  bible forbids (`XIANXIA_IDENTITY_CONTRACT.md` §2.3, R-7).
+
 ## 4. Information hierarchy (frozen)
 
 - **Panel hierarchy:** world → HUD overlay → contextual panel → modal. A modal owns input while
@@ -158,8 +208,11 @@ that shipped.
   (the D-035 settings pattern: hide, don't free).
 - **Readability + localization expansion:** layouts must absorb **+40%** string length (vi↔en
   differ substantially) without clipping. Fixed-width labels are a bug.
-- **Safe area / resolution:** declared base viewport (1152×648, D-034) with `canvas_items`
-  stretch; no element may depend on an exact window size.
+- **Safe area / resolution:** the authored viewport is **1280×720** (`project.godot`, D-043 —
+  the 1152×648 this line recorded until D-057 was Godot's implicit default, superseded there),
+  with `canvas_items` + `expand` stretch; no element may depend on an exact window size. The
+  *safe area* means what PHYSICALLY covers the window — a phone's notch or cutout — and never a
+  desktop dock, panel or taskbar (§3c).
 
 ## 5. Screen inventory (direction only — none implemented by this document)
 

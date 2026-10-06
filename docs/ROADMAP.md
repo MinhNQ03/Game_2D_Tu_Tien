@@ -50,6 +50,11 @@
 > basic attack a HUD prompt — it had none, so the game's central verb was the one thing a
 > player could not discover from the screen.
 > **Phase 12 (Cultivation + Knowledge Core) is the next phase and is NOT STARTED.**
+> **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
+> production/multiplayer contract and the presentation spine; **D-057** froze the motion design
+> contract (`MOTION_DESIGN_CONTRACT.md`) and corrected the HUD's composition by measurement;
+> **D-057A** froze the xianxia identity contract and the reference library's authority
+> (`XIANXIA_IDENTITY_CONTRACT.md`).
 >
 > **Phase 10 review pass (2026-10-05, D-053 — not a phase, no new scope):** four defects on a
 > commit already green on all ten gates, two of them found by opening the playtest captures the
@@ -563,6 +568,8 @@ Per-phase examples (illustrative — never force a phase to build presentation i
 - **Phase 09 (Combat):** combat HUD / hit feedback / VFX if combat exposes presentation.
 - **Phase 13 (Item):** inventory UI. **Phase 14 (Equipment):** equipment UI.
 - **Phase 15 (Skill):** skill UI. **Phase 17 (NPC):** NPC/shop UI.
+- **Phase 18 (Dialogue):** dialogue UI. **Phase 19 (Quest):** quest UI.
+- **Phase 20 (Story):** story UI.
 
 ### Strengthened by D-056 — the PRESENTATION gate and the per-phase seeds
 
@@ -594,10 +601,10 @@ behind — vocabulary and intent, not a commitment to implement every item:
 
 | Phase | Seeds |
 |---|---|
-| **P12 Cultivation** | meditation state · subtle breathing idle variation · qi accumulation visual · cultivation feedback · a **breakthrough presentation seam** (reusing the action vocabulary at a larger scale, not a second one) |
+| **P12 Cultivation** | meditation state · subtle breathing idle variation · qi accumulation visual (drawn FROM the place — qi is not ambient) · cultivation feedback · a **breakthrough presentation seam** (reusing the action vocabulary at a larger scale, not a second one) — and, since D-057, the **shared progression-celebration seam**: the shipped level-up is below its REQUIRED bar and breakthrough is its real second consumer, so both are built here, macro for a realm and mid for a level, never the same look |
 | **P13 Item** | pickup feedback · use-item feedback · acquisition animation · small item VFX |
 | **P14 Equipment** | equip / unequip feedback · an equipment visual-state seam |
-| **P15 Skill / Technique** | **the phase that must prove this hardest:** `CAST` — anticipation → hand/body action → release → projectile/VFX → impact → recovery. This is where "tay co ra → duỗi tay → chưởng" becomes a reusable production foundation rather than one skill's effect |
+| **P15 Skill / Technique** | **the phase that must prove this hardest:** `CAST` — anticipation → hand/body action → release → projectile/VFX → impact → recovery. This is where "tay co ra → duỗi tay → chưởng" becomes a reusable production foundation rather than one skill's effect. `CAST_PREPARE / CHANNEL / RELEASE / RECOVER` are PHASES of ONE action (D-057), and the physical hit reaction (visual recoil, never the body) lands with impact VFX |
 | **P16 Pet** | summon · spawn · follow · idle · attack · dismiss |
 | **P17 NPC** | idle variation · walk · turn/facing · talk gesture · reaction |
 | **P18 Dialogue** | portrait reaction · emotion · gesture · dialogue focus · transition |
@@ -608,6 +615,12 @@ behind — vocabulary and intent, not a commitment to implement every item:
 | **P23 Save/Load** | save feedback · load transition · failure/recovery UX |
 | **P25+** | **consolidate — do not invent a second visual architecture** |
 
+**How a phase designs its presentation (D-057 / D-057A).** The seeds above say WHAT capability a
+phase leaves behind. HOW it is designed is owned elsewhere and binding: the motion laws, timing
+grammar, deliberation record and self-critique in `docs/MOTION_DESIGN_CONTRACT.md`; the identity
+gates, the reference categories each phase studies and the canon traps each must avoid in
+`docs/XIANXIA_IDENTITY_CONTRACT.md` §12; the HUD composition budgets in `docs/UI_UX_BIBLE.md` §3c.
+
 **Anti-dead-game scope.** Presentation is not only character animation. The architecture must
 avoid closing the door on: NPC movement · idle variation · turning · combat motion · skill
 casting · projectiles · hit reactions · death · level-up · cultivation · breakthrough · weather
@@ -615,8 +628,6 @@ casting · projectiles · hit reactions · death · level-up · cultivation · b
 effects · camera motion · screen shake · impact · telegraphing · audio feedback · ambient
 motion · UI transitions · dialogue reactions · boss phases · dungeon events · story moments.
 Not all of it must be built soon; none of it may be structurally blocked.
-- **Phase 18 (Dialogue):** dialogue UI. **Phase 19 (Quest):** quest UI.
-- **Phase 20 (Story):** story UI.
 
 ## Guardrails across all phases
 - Offline is the source of truth until the multiplayer phases are explicitly approved.

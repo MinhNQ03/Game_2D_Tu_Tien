@@ -1,0 +1,8 @@
+Godot ignores this directory entirely: nothing under docs/ is scanned, imported or exported.
+
+docs/ holds documentation and the LOCAL design-reference libraries under docs/design_refs/
+(reference-only material, never production assets). Without this file Godot imported the
+Aetheria xianxia moodboards into .godot/imported/ like any game texture - listed in the
+FileSystem dock, draggable into a scene, and included by an "export all resources" build.
+"Gitignored" is not "out of res://" (D-057, L-044). The file's CONTENT is ignored by Godot;
+only its presence matters.

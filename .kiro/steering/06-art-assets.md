@@ -86,6 +86,18 @@
 - Attribution-required assets must have their attribution satisfied (in-game credits
   and/or `ASSET_LICENSES.md`) before release.
 
+### Reference libraries are NOT assets (D-057 / D-057A)
+
+- `docs/design_refs/` holds LOCAL design-reference material — the Aetheria xianxia moodboards,
+  the Foozle/Kenney source packs. It is **reference-only**, classified in `ASSET_LICENSES.md`'s
+  design-reference table, gitignored, and **never imported**: the tracked `docs/.gdignore` keeps
+  everything under `docs/` out of Godot's scan, import and export. **Gitignored is not "out of
+  `res://`"** — until D-057 the moodboards were imported as game textures (L-044). Guarded by
+  `tests/unit/framework/test_reference_library_isolation.gd`.
+- How references are studied, their authority (below the bibles and canon) and the canon
+  conflicts already found in the Aetheria pack: `docs/XIANXIA_IDENTITY_CONTRACT.md`. Words on a
+  reference board — realm names, elements, taglines — are never content.
+
 ## Organization (proposed folder layout, created when first asset lands)
 
 ```

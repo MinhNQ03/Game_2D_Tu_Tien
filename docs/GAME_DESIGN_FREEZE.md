@@ -58,7 +58,11 @@ is a bug (L-014).
 | Quest taxonomy + quality rules | `docs/MAP_DUNGEON_DESIGN.md` §7 | reference |
 | System ownership, inputs/outputs, phase + risk, MP seams | `docs/SYSTEM_DEPENDENCY_MATRIX.md` | reference |
 | Content authoring templates (what fields a thing must have) | `docs/CONTENT_BIBLE.md` | reference |
-| Visual language, UI information hierarchy, per-phase UI evolution | `docs/UI_UX_BIBLE.md` | reference |
+| Visual language, UI information hierarchy, **HUD composition** (§3c), per-phase UI evolution | `docs/UI_UX_BIBLE.md` | reference |
+| Production/multiplayer TARGET: build topology, version domains, authority model, client/server split (D-056) | `docs/PRODUCTION_ARCHITECTURE_CONTRACT.md` | reference |
+| Presentation WIRING: layers, gameplay-timing authority, cue contract, presentation performance (D-056) | `docs/PRESENTATION_ARCHITECTURE_CONTRACT.md` | reference |
+| Motion and feedback DESIGN language, timing grammar, player-experience review (D-057) | `docs/MOTION_DESIGN_CONTRACT.md` | reference |
+| Aetheria xianxia identity, reference-library authority and study workflow (D-057A) | `docs/XIANXIA_IDENTITY_CONTRACT.md` | reference |
 | The runnable flow + per-system contracts | `docs/GAME_FLOW.md` | reference |
 | Phase numbers, order, exit criteria | `docs/ROADMAP.md` | reference |
 | Multiplayer seams + the narrative state split | `docs/MULTIPLAYER_PLAN.md` | reference |

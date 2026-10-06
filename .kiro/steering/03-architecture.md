@@ -33,6 +33,10 @@ must not reach up into presentation.
 - The player must **not** directly manage an inventory database/persistence. It owns
   an inventory *component*; persistence serializes it.
 - The domain layer must **not** import presentation.
+- Presentation must **not** write the simulation clock (`Engine.time_scale`, the physics tick).
+  A hit-stop holds an IMAGE — presentation freezing its own pose and effects — never the
+  simulation (D-057, `docs/MOTION_DESIGN_CONTRACT.md` M-4.3; guarded by
+  `tests/unit/presentation/test_motion_contract.gd`).
 
 ## Preferred mechanisms
 

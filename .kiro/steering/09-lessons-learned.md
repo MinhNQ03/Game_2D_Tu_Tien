@@ -1238,3 +1238,50 @@
   `test_painted_button_plate_background_is_transparent`,
   `test_painted_button_label_clears_every_ornament`, `test_record_numbering.gd`; and
   `test_nested_discovery.gd` now runs.
+
+## L-043 — A desktop "safe area" is the OS work area, not a notch, and a "no-op on desktop" was never run on one
+- **Symptom (D-057):** captures showed the HUD's left plaques 85px from the window edge and the
+  right ones 18px. `GameplayHUD._apply_safe_area()` (D-043) applied
+  `DisplayServer.get_display_safe_area()` as insets, and on a desktop that call returns the WORK
+  AREA — the screen minus docks, panels and taskbars, in screen coordinates. Measured: a work area
+  of `(66, 32, 1854×1048)` (a GNOME dock and top bar) around a window at `(353, 196)` wholly inside
+  it still pushed the HUD 66px right and 32px down. On Windows the same arithmetic lifts the
+  bottom-left prompts by the taskbar height. The comment beside the code said "on desktop the safe
+  area equals the screen … this is a no-op".
+- **Why nothing caught it:** the function read the live `DisplayServer`, and on the headless test
+  runner that API returns an empty rect, so every test took the early return. The one path that
+  ran on the developer's own desktop was the one no test could reach.
+- **Rule:**
+  - An API's name is not its semantics on every platform. MEASURE it on the platform before
+    building on it — and record the numbers, because they become the fixture.
+  - A platform-dependent calculation is extracted into a PURE function whose inputs are the
+    platform's values (`safe_area_insets(is_mobile, window_rect, safe_rect, canvas)`), and is tested
+    with the measured real-world values, not with values chosen to pass.
+  - "This is a no-op on X" is a claim, and a claim about X is tested on X.
+- **Guards:** `test_the_desktop_hud_is_never_inset_by_the_os_work_area`,
+  `test_a_mobile_notch_insets_only_the_window_edge_it_covers`.
+
+## L-044 — Gitignored is not "out of res://", and a reference board is not canon
+- **Symptom (D-057 / D-057A):** two failures around one folder.
+  1. The Aetheria xianxia moodboards, placed under `docs/design_refs/`, were imported by Godot as
+     game textures — 13 `CompressedTexture2D`s in `.godot/imported/`, listed in the FileSystem
+     dock, exportable — while `ASSET_LICENSES.md` said the directory was kept "out of `res://`".
+     It was out of GIT. The only `.gdignore` was an untracked one nested inside the older packs'
+     folder, so a new pack beside them was unprotected, and an open editor imported it within
+     minutes of it arriving.
+  2. The pack — a north star for FEEL — carried the conventional realm ladder that canon forbids
+     (CL-02/C-001), five-phase elements where canon has a closed set of four, a fan where canon has
+     five weapon families, elf-like and beastfolk races, and mobile-MMORPG HUD conventions. Read as
+     authoritative, it would have put "Trúc Cơ" into Phase 12's UI.
+- **Rule:**
+  - Keeping a tree out of the ENGINE is a different act from keeping it out of the REPOSITORY.
+    Every non-game tree under the project root gets a TRACKED `.gdignore` at its root, so a future
+    folder inside it is covered without anyone remembering, and "is anything under here imported?"
+    is asserted, not assumed.
+  - Reference material is filtered by canon BEFORE it is studied, and the conflicts are written
+    down as a standing record (`XIANXIA_IDENTITY_CONTRACT.md` §2.3), so the next contributor reads
+    them instead of rediscovering them by shipping them. Words on a reference board are never
+    content.
+  - Inspect a reference pack; do not trust its own metadata ("500+ images" described 13).
+- **Guards:** `tests/unit/framework/test_reference_library_isolation.gd`; the conflict record in
+  `XIANXIA_IDENTITY_CONTRACT.md` §2.3.

@@ -18,14 +18,14 @@ commit_result.txt
 push_result.txt
 gitlog_tmp.txt
 
-# Upstream asset SOURCE PACKS kept locally as design reference (D-056 §40).
+# LOCAL design-reference libraries (D-056 §40, D-057A) — reference-only, never assets.
 #
-# Classified, not ignored blindly: both packs carry an explicit CC0 1.0 licence file, and
-# `docs/ASSET_LICENSES.md` records the classification and where the promoted subset lives.
-# They stay OUT of git and OUT of `res://` because they are 34MB of upstream material from
-# which exactly three files were ever promoted — those three are tracked under
-# `assets/ui/kenney_borders/`. Nothing in the project references this directory.
-#
-# An asset whose licence is UNCLEAR must never enter `res://` at all; that rule is unchanged
-# and these two are not that case.
+# Classified, not ignored blindly (`docs/ASSET_LICENSES.md`, design-reference table):
+#   * ui/source_packs/ — two CC0 1.0 upstream UI packs (34MB); exactly three files were ever
+#     promoted, and those are tracked under `assets/ui/kenney_borders/`.
+#   * aetheria_xianxia/ — the Aetheria art-direction moodboards: generated images with NO
+#     recorded licence or rights, so research only (`docs/XIANXIA_IDENTITY_CONTRACT.md`).
+# They stay OUT of git here, and OUT of `res://` through the tracked `docs/.gdignore` — being
+# gitignored did not stop Godot importing the moodboards as game textures (D-057, L-044).
+# Nothing in the project references this directory.
 docs/design_refs/

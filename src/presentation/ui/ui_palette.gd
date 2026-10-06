@@ -160,7 +160,55 @@ const SIDE_PANEL_WIDTH := 330
 ## buried the prompt row in the bottom-left corner. A reserved strip plus screen-anchored
 ## panel bounds (see `GameplayHUD`) makes that impossible by construction rather than by
 ## hoping content stays short.
-const PROMPT_STRIP_RESERVE := 78
+##
+## **MEASURED, 78 -> 54 (D-057).** Derived the same way as `TOP_PLAQUE_RESERVE`: the populated
+## strip's height (all five prompts, in vi, the longer language) plus one `HUD_MARGIN` of
+## breathing room. Moving the prompts from a framed plaque (68px) onto the quiet hint band
+## (36px) made the old value 32px of DEAD playfield — reserved for nothing, keeping the side
+## panels and the level-up banner higher than anything required. A reserve far larger than
+## what it protects is as wrong as one that is too small, so the measuring test now bounds it
+## from ABOVE as well.
+const PROMPT_STRIP_RESERVE := 54
+
+## Opacity of the HINT BAND the control prompts sit on (D-057 — the HUD weight ladder).
+##
+## The prompts are passive, peripheral information: a player reads them a handful of times and
+## then knows the keys. They used to sit in the same ornate framed plaque as the identity and
+## the place name, which gave a row of key hints the visual weight of the things the player
+## actually tracks — and spent the ornament that is supposed to MEAN importance on the least
+## important text on screen. They now sit on a flat translucent band with no frame.
+##
+## The value is a LEGIBILITY bound, not a taste. The prompt text is the light-only palette, so
+## whatever shows through the band must still measure as a dark surface. Composited over PURE
+## WHITE — the worst background anything could put behind it — this band stays under
+## `SURFACE_LIGHT_BRIGHTNESS_LIMIT`, which makes it legal over every floor, prop and sprite the
+## game has or will have, rather than over the floors somebody happened to test.
+## `test_the_hint_band_is_a_legal_text_surface_over_any_background` re-derives that.
+const HINT_BAND_ALPHA := 0.65
+
+## The band's fill: the deepest ink in the palette, at `HINT_BAND_ALPHA`. An ALIAS of the
+## background token, not a new colour value (the D-050 B6 rule).
+const HINT_BAND_COLOR := Color(COLOR_BACKGROUND_DEEP, HINT_BAND_ALPHA)
+
+## The share of the viewport the PERMANENT HUD may cover (D-057 — negative space).
+##
+## A budget, like a frame-time budget: it does not say the HUD is good, it says the HUD cannot
+## quietly grow over the game. MEASURED at D-057 on a populated HUD in vi, the longer language:
+## identity 282x224 + map 268x177 + prompt band 585x36 = **14.3%** of the authored 1280x720
+## viewport (12.9% at 1280x800), down from **16.5%** before the prompts left their framed
+## plaque. The headroom to 15% is about one more plaque row: the next permanent element has to
+## be argued for (`UI_UX_BIBLE.md` §3c — every permanent element earns its space)
+## rather than slipped in. Contextual surfaces (the combat target, an open side panel, the
+## level-up banner) are not permanent and are governed by `PLAYFIELD_CLEAR_ZONE` instead.
+const HUD_PERMANENT_AREA_BUDGET := 0.15
+
+## The playfield centre NO HUD element may enter, as fractions of the viewport
+## (x, y, width, height) — permanent or contextual (D-057 — protect the combat space).
+##
+## The camera follows the player, so the middle of the screen is where the character, what it
+## is fighting and the effects between them actually are. The side panels are excluded by
+## design: the player opens them on purpose, as a modal-weight decision to read instead of play.
+const PLAYFIELD_CLEAR_ZONE := Rect2(0.25, 0.25, 0.5, 0.5)
 
 ## Side of the decorative corner ornaments in the menu composition.
 const ORNAMENT_PX := 56

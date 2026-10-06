@@ -90,8 +90,27 @@
   content choice in the sheet, not an engine hack.)
 - **Facing persists at rest:** a zero movement vector keeps the last facing, so a stopped
   character faces where it last walked rather than snapping to DOWN.
-- **Animation states (Phase 05):** `idle`, `walk`. `attack` and other states are DEFERRED to
-  the Combat phase. No off-screen/inactive animation (`.kiro/steering/05-performance-testing.md`).
+- **Animation states:** LOCOMOTION `idle` and `walk` (Phase 05), and the ACTION layer's `attack`
+  sheet (D-056) — a one-shot whose frame is driven by the gameplay lifecycle, never by its own
+  clock (player 6 frames, mist wolf 4; the column count is free, derived from the width). Other
+  actions (`CAST`, `HIT`, `DEATH`, …) are reserved vocabulary
+  (`PRESENTATION_ARCHITECTURE_CONTRACT.md` §5) and get a sheet only in the phase that authors the
+  content using them. No off-screen/inactive animation (`.kiro/steering/05-performance-testing.md`).
+
+### 6b. Motion at this scale (D-057)
+
+How a figure moves is owned by `docs/MOTION_DESIGN_CONTRACT.md` §3; what this bible adds is what
+that means at **32×48 seen from above**:
+
+- **The silhouette carries the motion.** Most of the joint chain is implied, not drawn, so a key
+  pose must change the silhouette enough to read at 1×, and weight shows as a 1px body shift.
+- **One limb does the whole gesture, and no limb teleports** — the arm that coils is the arm that
+  strikes, and it stays attached to the shoulder on every frame (both shipped once, D-056).
+- **No T-pose, no circle-hand shortcut, no broken joints, no floating feet.**
+- **Inspect magnified (6×–10×), then at 1× in a real capture**, before an action sheet ships.
+- **Reference illustrations are not this style.** The Aetheria xianxia moodboards are painterly,
+  front/side view, with slender anime proportions; they inform costume language and gesture,
+  never proportion, rendering or view (`XIANXIA_IDENTITY_CONTRACT.md` §2.3 R-5, §4 `01`).
 
 ## 7. Modular layering (future)
 
@@ -107,7 +126,11 @@ plugs into without changing `CharacterVisualComponent` or the profile contract.
   `tools/gen_prototype_assets.py` (pure-stdlib PNG writer; the runtime never depends on it).
   They are PROTOTYPE art — a real art pass replaces them later.
 - No screenshot/Pinterest/mirror/unknown-license/AI-of-unclear-rights asset ever enters the
-  project (`.kiro/steering/06-art-assets.md`). A verified CC0 base (e.g. an OpenGameArt
+  project (`.kiro/steering/06-art-assets.md`).
+- **Reference libraries are research, never source art.** Everything under `docs/design_refs/` —
+  including the Aetheria xianxia moodboards — is reference-only: never imported (`docs/.gdignore`),
+  never traced, cropped or recoloured into a sprite. Wanting what a reference shows means
+  RE-CREATING it as original art (`XIANXIA_IDENTITY_CONTRACT.md` §10). A verified CC0 base (e.g. an OpenGameArt
   "character base") may be adopted later ONLY from its official source with the license
   recorded, and only after it is normalized to this bible (density, anchor, palette) — never
   mixed in raw.
@@ -116,4 +139,6 @@ plugs into without changing `CharacterVisualComponent` or the profile contract.
 
 > Drop a new character next to the existing four: if it looks like it belongs in the same
 > game (same density, same anchor, same ink, one accent), it passes. If it looks pasted in
-> from another pack, it fails — fix the art, not the engine.
+> from another pack, it fails — fix the art, not the engine. And once it moves, it must move
+> like the cast (`MOTION_DESIGN_CONTRACT.md` §3) and behave like Aetheria
+> (`XIANXIA_IDENTITY_CONTRACT.md` §5).

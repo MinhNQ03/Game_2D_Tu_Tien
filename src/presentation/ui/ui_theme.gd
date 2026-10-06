@@ -538,6 +538,24 @@ static func accent_panel_stylebox() -> StyleBox:
 	return _fallback_surface_flat(UIPalette.COLOR_SURFACE_HOVER)
 
 
+## The quiet HINT BAND behind passive prompts (D-057 — the HUD weight ladder): a flat,
+## translucent ink fill with no frame and no ornament.
+##
+## Ornament is how this UI says "this matters": the gold-cornered plaque marks who the player
+## is, where they are and what they are fighting. A row of key hints is the least important
+## text on screen, so it gets the least weight that still keeps it legible — the band's alpha
+## is the legibility bound (see `UIPalette.HINT_BAND_ALPHA`), not a decoration. FLAT on purpose:
+## a band has no corners to protect, so there is no texture to 9-slice and no margin to measure.
+static func hint_band_stylebox() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = UIPalette.HINT_BAND_COLOR
+	box.content_margin_left = UIPalette.SPACE_MD
+	box.content_margin_right = UIPalette.SPACE_MD
+	box.content_margin_top = UIPalette.SPACE_SM
+	box.content_margin_bottom = UIPalette.SPACE_SM
+	return box
+
+
 ## A darker nested well inside a panel (secondary surface, e.g. a settings option list).
 static func inset_stylebox() -> StyleBox:
 	var box := _texture_box(UIPalette.TEX_PANEL_INSET, UIPalette.INSET_MARGIN,

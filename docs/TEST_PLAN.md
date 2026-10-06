@@ -27,10 +27,10 @@
 > CI job can run. Do not "reconcile" the two numbers.
 >
 > The in-runner suite tally is printed by the runner itself, never hand-counted, and is
-> reported in the `DECISIONS.md` entry for the change that moved it. At the D-056 review pass
-> the runner reports **`ran 704 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
-> ObjectDB / resources at exit** (three of the seven new ones are `tests/unit/framework/`
-> tests that existed since Phase 0 but had never run — see the tree below). On some machines
+> reported in the `DECISIONS.md` entry for the change that moved it. At D-057 the runner reports
+> **`ran 716 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked ObjectDB / resources
+> at exit** (704 at the D-056 review pass, three of whose seven new tests were
+> `tests/unit/framework/` tests that existed since Phase 0 but had never run). On some machines
 > that reads `N-2 passed, 2 failed`: the two failures
 > are the wall-clock performance budgets (`test_ai_budget`, `test_combat_budget`), which fail on
 > some development machines and pass on the CI runner — known environmental debt recorded in
@@ -155,6 +155,7 @@ tests/
 	framework/
 	  test_nested_discovery.gd  # proves recursive discovery + harness fail-detection
 	  test_record_numbering.gd  # every L-NNN lesson number used once, in order (D-056)
+	  test_reference_library_isolation.gd  # nothing under docs/ is a Godot resource (D-057)
 				   # RAN FOR THE FIRST TIME in the D-056 review pass: run_tests.gd excluded
 				   # the folder NAME `framework` at any depth, not just tests/framework/
   integration/     # components together (fresh instances; never the live autoloads)
@@ -843,3 +844,40 @@ unrecorded here:
   now asserts the two carriers that survive measurement (**hue** and **written text**) and that
   each meter CONTAINS its own label, instead of asserting the thinness that was the carrier
   unable to hold its own text.
+
+**D-057 — the motion design contract and the HUD composition correction (foundation, no
+gameplay; every guard below was planted against and failed before it was trusted):**
+- `tests/unit/framework/test_reference_library_isolation.gd` — **NEW.** Reference material never
+  enters the resource pipeline: `res://docs/.gdignore` exists (it IS the property — the only thing
+  Godot reads to exclude a directory), and no file under `docs/` carries an import sidecar. On a
+  clone without the local libraries the walk sees only Markdown, so the walk is asserted to have
+  visited the tree and the detection rule is proven on a planted list. Mutations: removing the
+  marker, and planting a sidecar, each fail exactly one test.
+- `tests/unit/presentation/test_motion_contract.gd` — **NEW.** Presentation never writes the
+  simulation clock (`Engine.time_scale`, the physics tick — assignment, compound assignment or
+  setter): hit-stop holds an image. A structural walk of `src/presentation` with the pattern
+  compiled ONCE, plus a matcher fixture proving it catches the shipped-everywhere recipe and
+  ignores reads, comparisons and comments. Mutation: `Engine.time_scale = 0.05` in
+  `DamageFeedback._process` fails it with `file:line`.
+- `tests/unit/presentation/test_gameplay_hud.gd` (extended) — the D-057 HUD composition:
+  * **the desktop HUD is never inset by the OS work area** — the measured dev-machine case (a
+    66px dock and 32px top bar around a window wholly inside the work area) and a full-screen
+    window over a Windows taskbar both produce zero, and the live runner HUD root has no inset;
+    **a mobile notch insets only the window edge it covers**, in canvas units, and a split-screen
+    window below the notch is not inset at all. Mutation: applying the work area on desktop fails it;
+  * **the weight ladder** — the prompts sit on the flat translucent hint band while identity, map
+    and target keep the framed plaque; and **the band is a legal text surface over pure white**,
+    derived from the tokens. Mutations: the framed plaque back (3 tests fail: the ladder, the area
+    budget at both ratios, the reserve), alpha 0.4 (the legibility test fails);
+  * **negative space, by number** — a POPULATED HUD in vi, rects computed from anchors, offsets,
+    minimum size and grow direction at 1280×720 and 1280×800 (not from the runner's window),
+    elements found by WALKING the root: the permanent HUD stays within
+    `HUD_PERMANENT_AREA_BUDGET` (measured 14.3% / 12.9%), and no element — the target plaque and
+    the level-up banner included — enters `PLAYFIELD_CLEAR_ZONE`. Mutation: the banner back at
+    the screen centre fails it (and D-054's own banner test);
+  * **a defeated target says so** instead of keeping an empty row; an unrated live target has no
+    row. Mutation: blanking the row again fails it;
+  * **the bottom reserve is bounded from above** — at most the strip plus one margin. Mutation:
+    78 again fails it;
+  * **a settled HUD does no per-frame work**, for the whole populated tree, with the walk itself
+    asserted. Mutation: an always-on `_process` on the HUD root fails it, naming the node.

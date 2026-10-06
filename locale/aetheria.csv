@@ -124,6 +124,7 @@ UI_HUD_WORLD_QUIET,The world is quiet.,Thế gian đang yên ắng.
 ATTACK_PLAYER_BASIC_NAME,Palm Strike,Chưởng Pháp
 ENEMY_MIST_WOLF_NAME,Mist Wolf,Vụ Lang
 THREAT_FRONTIER_LOW,Frontier · Low,Biên thùy · Thấp
+UI_HUD_TARGET_DEFEATED,Defeated,Đã hạ gục
 ATTACK_MIST_WOLF_BITE_NAME,Fanged Lunge,Nhiếp Nha
 UI_HUD_LEVEL,"Lv {level}","Cấp {level}"
 UI_HUD_XP_PROGRESS,"XP {into} / {cost}","KN {into} / {cost}"

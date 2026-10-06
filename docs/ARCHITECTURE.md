@@ -306,6 +306,12 @@ while presentation timing follows**. Two of the three upward references in the t
 documented there and in the production contract (`Player`/`Enemy` preloading a visual
 component); no gameplay or domain file may join them.
 
+What good motion and feedback ARE — and what makes them Aetheria's — is not an architecture
+question and lives beside it: `docs/MOTION_DESIGN_CONTRACT.md` (D-057: governing laws, timing
+grammar, hierarchy, the self-critique; one rule of which IS architectural — presentation never
+writes the simulation clock, so hit-stop holds an image, not `Engine.time_scale`) and
+`docs/XIANXIA_IDENTITY_CONTRACT.md` (D-057A). HUD composition is `docs/UI_UX_BIBLE.md` §3c.
+
 ## 11. What this architecture explicitly avoids
 
 - A God `GameManager` that knows combat + inventory + save + UI.

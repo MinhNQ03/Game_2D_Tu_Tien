@@ -3790,3 +3790,187 @@ The mandatory review pass (`08-ai-review-protocol.md`) was run on `e19e795` afte
 Recorded as **L-042**. 704 tests (697 + 7: two plate guards beyond the rewritten ones, three
 that had never run, two numbering guards), 0 failures, 0 `SCRIPT ERROR:`, 0 leaks; ten of ten
 gates green locally; captures re-taken at vi/en × 1280×720 / 1280×800 and opened.
+
+## D-057 — Universal motion, presentation & player-experience design contract, and the HUD composition correction
+
+**Status:** Accepted · **Phase:** foundation hardening **before** Phase 12 · **Scope:** one new
+contract (`docs/MOTION_DESIGN_CONTRACT.md`), a measured HUD composition correction, the
+reference-library isolation, two structural guards, and doc synchronisation. **No gameplay
+system, no networking, no autoload, no presentation framework, no domain rule changed. Phase 12
+remains NOT STARTED.**
+
+Reviewed at `1eb803d`.
+
+### Why
+
+D-056 froze how presentation is WIRED. Nothing yet said what good motion IS: a future phase could
+pass every wiring rule and still ship a skill that is a ball beside a motionless figure, or a
+screen in which everything glows and nothing reads. Both failure modes pass every automated gate,
+which is exactly why the language has to exist before the content explosion that starts at P12.
+
+### READ-FIRST — found before anything was changed
+
+* **The reference pack was inside the resource pipeline.** `docs/design_refs/aetheria_xianxia/`
+  (added by the owner minutes before the task) had been imported by Godot: 13 images as
+  `CompressedTexture2D` in `.godot/imported/` (~6MB), listed in the FileSystem dock, draggable
+  into a scene, exportable. "Gitignored" had been read as "out of `res://`"; the only ignore
+  marker was an untracked one inside `ui/source_packs/`. A frozen D-056 rule (an unclear-licence
+  image never enters `res://`) was being broken by a folder layout.
+* **The HUD was offset by the desktop's own chrome.** Captures showed the left plaques 85px from
+  the window edge and the right ones 18px. Measured on this machine:
+  `get_display_safe_area()` = the OS WORK AREA `(66, 32, 1854×1048)` — the GNOME dock and top
+  bar — while the window sat at `(353, 196)`, wholly inside it. `_apply_safe_area()` (D-043) applied
+  that work area as a notch inset; its comment said "on desktop … this is a no-op", which was
+  never true on a desktop with a dock or a taskbar (on Windows it lifts the bottom-left prompts
+  by the taskbar height).
+* **Doc drift:** the Art Bible still deferred `attack` to "the Combat phase"; the UI Bible still
+  declared a 1152×648 viewport (1280×720 since D-043); two ROADMAP lines were orphaned below the
+  D-056 block; the presentation contract still said "duck-typed" after the D-056 review typed the
+  reference; `SYSTEM_DEPENDENCY_MATRIX.md` routed audio/VFX through the EventBus while the
+  presentation contract said the bus is not the cue transport; `GAME_DESIGN_FREEZE.md`'s ownership
+  table did not list either D-056 contract.
+* **Presentation below its own bar:** a defeated target's plaque kept an EMPTY row for its whole
+  linger; the shipped level-up has no character response, which the presentation contract's §9
+  marks REQUIRED.
+
+### FROZEN NOW — `docs/MOTION_DESIGN_CONTRACT.md`
+
+Rules carry ids (`M-n.n`) so a review can cite them. In summary:
+
+* **Perception is the goal, not animation** (M-1): start from *what is happening and how should it
+  react*; every motion sits on CAUSE → INTENTION → STATE CHANGE → RESPONSE → CONSEQUENCE → SETTLE
+  (the basic attack is the worked example); nothing moves without a reason; not everything
+  animates; the "so what?" test.
+* **Classify, then apply the governing law** (M-2): humanoid, creature, rigid, flexible,
+  fluid/atmosphere, fire/smoke, energy, camera, UI, world event, narrative — each with its
+  principle and review questions. No visual logic from thin air.
+* **Humanoid motion at 32×48** (M-3): the joint chain; the silhouette carries motion; one limb does
+  the whole gesture and no limb teleports (both shipped once, D-056); inspect magnified.
+* **Timing grammar** (M-4): before → happening → result; presentation never lengthens a gameplay
+  action; **presentation never writes simulation time — hit-stop holds an image, not
+  `Engine.time_scale`** (guarded); stillness; rhythm; micro / mid / macro — **a level-up is mid,
+  a breakthrough macro, never the same look**; design for repeated viewing.
+* **Causal chain + layered feedback** (M-5): eight layers, ENOUGH not MOST; camera, effect, sound
+  and body derive from one lifecycle so they cannot disagree.
+* **Attention hierarchy, curiosity and world memory, variation, camera and sound, environment and
+  world events, multiplayer, the deliberation record, the second-use rule, quality ≠ quantity,
+  STATE/PIXEL/REFERENCE evidence, the anti-dead-game rule, and a 20-question self-critique**
+  (M-6 … M-19), plus an honest debt list (§20).
+* **Ownership split, stated to avoid a second copy:** HUD composition rules are owned by
+  `UI_UX_BIBLE.md` **§3c** (new); the motion contract owns how UI MOVES and records the
+  measurements.
+
+### IMPLEMENTED — the HUD composition correction, measured
+
+| Defect | Before | After |
+|---|---|---|
+| Desktop work area applied as a notch inset | left 85px / right 18px / top 50px | **18px on every side**. `GameplayHUD.safe_area_insets()` (a static pure function, tested): desktop never insets; mobile insets only the part of the WINDOW a notch covers (a split-screen window below a notch is not inset), converted to canvas units |
+| Key prompts in a framed plaque | ~609×68, gold corners — the weight of the identity plaque | **585×36 quiet band** — `UITheme.hint_band_stylebox()`, ink at `HINT_BAND_ALPHA` 0.65, which over PURE WHITE still measures under the 120 brightness limit, so the prompts are legal over anything |
+| Bottom reserve | 78px, 32px of it reserving nothing | **54px** (strip + one `HUD_MARGIN`), bounded from above by its test; the side panels gained 24px and the vi sect panel stopped clipping its resources line at 720p |
+| Defeated target | empty row between name and gauge | **Defeated / Đã hạ gục** (`UI_HUD_TARGET_DEFEATED`); an unrated live target has no row at all |
+| Permanent HUD occupancy | **16.5%** of 1280×720 | **14.3%** (12.9% at 1280×800) — `HUD_PERMANENT_AREA_BUDGET` 15% |
+
+The weight ladder (framed plaque → quiet band → bare outlined text) and the negative-space budgets
+(`HUD_PERMANENT_AREA_BUDGET`, `PLAYFIELD_CLEAR_ZONE` — the middle 50%×50% no HUD element may enter)
+are `UI_UX_BIBLE.md` §3c.
+
+**Provenance:** a TRACKED `docs/.gdignore` excludes all of `docs/` from Godot's scan, import and
+export, so every clone and every future pack is covered. The Godot-generated `.import` sidecars
+(3 moodboards at 13:04, 10 crops at 13:10 — created by an open editor) and their cache were
+removed; the owner's 17 pack files were not touched. A second `--import` with the marker in place
+created nothing.
+
+**Reused, not added:** no manager, no autoload, no node type. `safe_area_insets` is an extraction
+for testability; `hint_band_stylebox` is a theme token, which the UI Bible requires a screen to ask
+for rather than build (precedent: `badge_stylebox`, also a single consumer). The second-use rule
+governs abstractions; neither is one.
+
+### DELIBERATELY DEFERRED — named, owned (`MOTION_DESIGN_CONTRACT.md` §20)
+
+* **Level-up character response → P12.** Breakthrough is the level-up's real SECOND consumer, so
+  the shared progression-celebration seam is built there, at two scales. Building it now would be
+  an abstraction with one consumer.
+* **Physical hit reaction → P15** (moves the visual, never the body; its direction needs a cue fact
+  `damaged` does not carry — an explicit cue-contract change).
+* **Death animation, ambient world motion, world-event presentation, camera responses, audio** →
+  their owning phases (P15/P26, P17, P20/P21, first consumer, P26).
+
+### Verification
+
+* **716 tests** (704 + 12: 3 reference-isolation, 7 HUD, 2 motion-contract), 0 failed, 0
+  `SCRIPT ERROR:`, 0 leaks; lint clean; all ten gates green locally.
+* **Every new guard planted against before it was trusted** — nine mutations, each failing exactly
+  the intended test(s) and restored: the work area applied on desktop · the prompts back in a
+  framed plaque (3 tests) · band alpha 0.4 · the defeated row blanked · the level-up banner at the
+  screen centre (this guard and D-054's) · an always-on `_process` on the HUD root · `Engine.
+  time_scale = 0.05` in `DamageFeedback` · the reserve back at 78 · the `.gdignore` removed / an
+  import sidecar planted.
+* **STATE evidence:** the tests above. **PIXEL evidence:** `capture_ui.gd` at vi/en ×
+  1280×720 / 1280×800, opened — symmetric 18px framing, the quiet band legible over moss and
+  paddy (inspected at 3×), side panels clear of the band by one margin; `playtest_flow.gd` 22/22
+  steps in all four configurations, the kill capture showing *Vụ Lang · Đã hạ gục · 0 / 34* and
+  the level-up banner clear of the player.
+* **No performance entry:** nothing was optimized; the HUD's per-frame cost was already zero and is
+  now asserted for the whole tree.
+
+## D-057A — Aetheria xianxia identity contract, and the reference library's authority
+
+**Status:** Accepted · **Scope:** DOCUMENTATION ONLY — `docs/XIANXIA_IDENTITY_CONTRACT.md` plus the
+references to it. **No gameplay, no Phase 12, no networking, no manager, no new abstraction.**
+
+### "The existing D-057A" did not exist
+
+The finalization patch was written against a D-057A that had an "Aetheria Xianxia Identity"
+section; no such document or decision was in the repository (`grep -r D-057` returned nothing).
+It was therefore written from the patch's twenty-five sections, the owner's per-folder design
+questions, and the canon — and the pack was INSPECTED rather than assumed: all 3 moodboards and
+all 10 crops were opened.
+
+### What the pack actually is
+
+13 PNGs and 4 Markdown notes: three 1312×1199 moodboards (generated illustrations — painterly,
+anime-proportioned, front/side view, with garbled pseudo-text) and ten ~263×385 crops of moodboard
+03, low-resolution and bleeding into the neighbouring panel. Its README and manifest say
+"REFERENCE ONLY"; nothing records who generated it or with which rights.
+
+**It contradicts canon in eleven recorded ways** (`XIANXIA_IDENTITY_CONTRACT.md` §2.3), the
+dangerous ones for the next phases being: the conventional realm ladder (Luyện Khí … Phi Thăng —
+CL-02/C-001 forbid it, and P12 is cultivation); five-phase elements and Âm Dương (canon is the
+closed set Hỏa · Thủy · Phong · Lôi — P15); a "Fan" weapon (CL-10); Elf-like and Beastfolk races;
+mobile-MMORPG HUD conventions (an MP bar, a skill ring, a minimap, XP toasts); camera angles a
+top-down camera cannot take; heartland grandeur presented as the frontier the game starts in.
+
+### FROZEN NOW
+
+* **The authority order** — product intent and canon > Art Bible > UI/UX Bible > architecture and
+  readability > D-057 > D-057A > the Aetheria pack > external packs > decoration. Aetheria rules
+  win; the pack's own five-level manifest is the same order.
+* **The definition and status of the library**: visual north star and research material; never a
+  production asset, a sprite library, gameplay data, runtime content, authoritative state, a
+  licence to copy, or canon. **Words on a board are never content.** Local, untracked, never
+  imported.
+* **The study workflow** REFERENCE → OBSERVE → ANALYZE → PRINCIPLE → ABSTRACT → ADAPT → CHECK
+  READABILITY → CHECK THE ART BIBLE → ORIGINAL RESULT → REAL-SCREEN QA; "copy/assemble" and "it is
+  already here, it looks good" are forbidden.
+* **A category guide for the ten folders**, each with its design question, what to study, its
+  Aetheria adaptation grounded in canon, and what NOT to take from that board.
+* **Identity is behaviour**, derived from canon rather than from xianxia in general: qi is not
+  ambient — it wells up through veins, so every qi visual has a source and a direction, and only a
+  broken vein makes it misbehave; a realm changes PERCEPTION, so a breakthrough is a change in what
+  a character perceives and radiates; Thanh Vân Tông "tempers the heart before the blade", so
+  orthodox motion is economical and composed while heterodox power visibly costs the body; the
+  frontier is thin and the heartland is earned; the UI is never an omniscient narrator because
+  records are artefacts. The decoration formula (ornament + blue glow + mist + sword trail) is
+  forbidden.
+* **Gates:** the generic fantasy drift gate (a bad answer means REDESIGN, never more decoration);
+  the dual check BELIEVABLE (D-057) **and** AETHERIA (D-057A); the Aetheria Identity Review.
+* **Coherence without uniformity**, the **UI references** (Foozle — CC0, reference only; Kenney —
+  CC0, 3 files promoted; the Aetheria `09` board — filtered), the **provenance boundary**
+  (promotion means re-creation; no ownership claimed for the pack), **REFERENCE vs IMPLEMENTATION
+  evidence**, the **P12–P22 mapping** with each phase's canon trap, the **Reference → Original
+  note**, and the **stop condition** (no reference → identify the question, do not invent a canon).
+
+### Not done, on purpose
+
+No asset hunt, no future feature, no edit to the owner's pack files (only the Godot-generated
+sidecars were removed, under D-057). Recorded as **L-044** together with the import finding.

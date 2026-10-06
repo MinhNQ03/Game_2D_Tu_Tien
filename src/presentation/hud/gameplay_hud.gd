@@ -2,8 +2,11 @@ extends CanvasLayer
 class_name GameplayHUD
 ## GameplayHUD — Aetheria presentation (in-map heads-up display, asset-backed pass).
 ##
-## A screen-space (`CanvasLayer`) overlay that RENDERS a view of the running session inside
-## framed pixel-art panels (shared `UITheme`/`UIPalette` 9-slice assets):
+## A screen-space (`CanvasLayer`) overlay that RENDERS a view of the running session. Its
+## surfaces follow a WEIGHT LADDER (D-057, `docs/UI_UX_BIBLE.md` §3c): what the player
+## tracks — identity, place, target — sits in framed pixel-art plaques (shared
+## `UITheme`/`UIPalette` 9-slice assets); passive key hints sit on a quiet unframed band;
+## transient announcements are bare outlined text.
 ##   - top-left   : the IDENTITY PLAQUE — portrait slot + name/title + level badge + health
 ##                  gauge + XP meter + sect chip, read as ONE unit under an ornamental
 ##                  divider (D-041; level/XP added in Phase 11),
@@ -166,10 +169,10 @@ func _build_ui() -> void:
 	# asset-backed styles AND the text outline that keeps light text readable over map art.
 	root.theme = UITheme.build()
 	add_child(root)
-	# Keep the whole HUD inside the device's usable area (notch / rounded corners / camera
-	# cutout) and re-apply it whenever the viewport changes — a rotation or a window resize
-	# changes the safe area, and a HUD that only reads it once would leave content under the
-	# notch for the rest of the session.
+	# Keep the whole HUD clear of whatever physically covers the window (a phone's notch,
+	# rounded corners, a camera cutout — never a desktop dock, see `safe_area_insets`) and
+	# re-apply it whenever the viewport changes: a rotation or a window resize changes what is
+	# covered, and a HUD that only read it once would leave content under the notch.
 	_apply_safe_area()
 	var vp := get_viewport()
 	if vp != null and not vp.size_changed.is_connected(_on_viewport_resized):
@@ -492,8 +495,11 @@ func _build_ui() -> void:
 	_target_linger.timeout.connect(_on_target_linger_timeout)
 	_target_panel.add_child(_target_linger)
 
-	# --- Bottom-left: control-prompt panel (graphic key badges) -------------------
-	var prompt_panel := _panel()
+	# --- Bottom-left: control-prompt strip (graphic key badges) -------------------
+	# On the quiet HINT BAND, not in a framed plaque (D-057): the prompts are the least
+	# important text on screen, so they get the least weight that keeps them legible, and the
+	# gold-cornered frame is kept for what the player actually tracks.
+	var prompt_panel := _hint_band()
 	prompt_panel.name = "PromptStrip"
 	prompt_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	prompt_panel.position = Vector2(UIPalette.HUD_MARGIN, -UIPalette.HUD_MARGIN)
@@ -597,34 +603,57 @@ func _bound_side_panel(panel: Control, on_left: bool) -> void:
 	panel.grow_vertical = Control.GROW_DIRECTION_END
 
 
-## Inset the whole HUD by the device's safe area (notch, rounded corners, camera cutout).
-##
-## `DisplayServer.get_display_safe_area()` is in native SCREEN pixels while the HUD lives in
-## the stretched canvas, so the inset is converted through the viewport/window ratio — without
-## that conversion the inset would be wrong by exactly the stretch factor on every device that
-## actually has a notch. On desktop the safe area equals the screen, so every inset is 0 and
-## this is a no-op.
+## Inset the whole HUD by whatever PHYSICALLY covers the window (notch, rounded corners,
+## camera cutout). The arithmetic lives in `safe_area_insets` so it can be tested without a
+## real display.
 func _apply_safe_area() -> void:
 	if _root == null:
 		return
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var window_size := DisplayServer.window_get_size()
-	if window_size.x <= 0 or window_size.y <= 0:
-		return
-	var safe := DisplayServer.get_display_safe_area()
-	var screen := DisplayServer.screen_get_size()
-	if screen.x <= 0 or screen.y <= 0 or safe.size.x <= 0 or safe.size.y <= 0:
-		return
 	var vp := get_viewport()
 	if vp == null:
 		return
-	var canvas := vp.get_visible_rect().size
-	var sx := canvas.x / float(window_size.x)
-	var sy := canvas.y / float(window_size.y)
-	_root.offset_left = maxf(0.0, float(safe.position.x) * sx)
-	_root.offset_top = maxf(0.0, float(safe.position.y) * sy)
-	_root.offset_right = -maxf(0.0, float(screen.x - safe.end.x) * sx)
-	_root.offset_bottom = -maxf(0.0, float(screen.y - safe.end.y) * sy)
+	var insets := safe_area_insets(OS.has_feature("mobile"),
+		Rect2i(DisplayServer.window_get_position(), DisplayServer.window_get_size()),
+		DisplayServer.get_display_safe_area(), vp.get_visible_rect().size)
+	_root.offset_left = insets.x
+	_root.offset_top = insets.y
+	_root.offset_right = -insets.z
+	_root.offset_bottom = -insets.w
+
+
+## How far the HUD must inset each edge, as `Vector4(left, top, right, bottom)` in CANVAS units.
+##
+## DESKTOP IS ALWAYS ZERO, and that is a fix, not a shortcut (D-057). On a desktop OS
+## `get_display_safe_area()` is the WORK AREA — the screen minus docks, panels and taskbars, in
+## screen coordinates — not a notch. Applying it as an inset shifted the whole HUD by the size
+## of the OS chrome wherever the window actually was: measured on the dev machine, a window at
+## (353, 196) wholly inside a work area starting at (66, 32) still had its HUD pushed 66px right
+## and 32px down, so the left plaques sat 85px from the edge and the right ones 18px. On Windows
+## the same arithmetic lifts the prompt strip by the taskbar height. A desktop window manager
+## never draws over the game's own content, so there is nothing to inset for.
+##
+## On MOBILE the safe area is the real hazard, and only the part of it that overlaps the WINDOW
+## matters — a split-screen window below a notch is not covered by it. The overlap is in screen
+## pixels and the HUD lives in the stretched canvas, so it is converted through the
+## canvas/window ratio; without that the inset is wrong by exactly the stretch factor.
+static func safe_area_insets(is_mobile: bool, window_rect: Rect2i, safe_rect: Rect2i,
+		canvas_size: Vector2) -> Vector4:
+	if not is_mobile:
+		return Vector4.ZERO
+	if window_rect.size.x <= 0 or window_rect.size.y <= 0 \
+			or safe_rect.size.x <= 0 or safe_rect.size.y <= 0:
+		return Vector4.ZERO
+	var covered_left := clampi(safe_rect.position.x - window_rect.position.x, 0,
+		window_rect.size.x)
+	var covered_top := clampi(safe_rect.position.y - window_rect.position.y, 0,
+		window_rect.size.y)
+	var covered_right := clampi(window_rect.end.x - safe_rect.end.x, 0, window_rect.size.x)
+	var covered_bottom := clampi(window_rect.end.y - safe_rect.end.y, 0, window_rect.size.y)
+	var sx := canvas_size.x / float(window_rect.size.x)
+	var sy := canvas_size.y / float(window_rect.size.y)
+	return Vector4(covered_left * sx, covered_top * sy, covered_right * sx,
+		covered_bottom * sy)
 
 
 func _on_viewport_resized() -> void:
@@ -633,10 +662,22 @@ func _on_viewport_resized() -> void:
 
 # --- Builders ----------------------------------------------------------------
 
-## A framed HUD panel wearing the shared 9-slice panel style.
+## A framed HUD panel wearing the shared 9-slice panel style — the top rung of the weight
+## ladder, for what the player tracks.
 func _panel() -> PanelContainer:
+	return _surface(UITheme.panel_stylebox())
+
+
+## An unframed container on the quiet hint band (D-057 — the bottom rung of the weight ladder).
+func _hint_band() -> PanelContainer:
+	return _surface(UITheme.hint_band_stylebox())
+
+
+## A HUD container wearing `style`. Mouse-transparent: the HUD never eats a click meant for
+## the world.
+func _surface(style: StyleBox) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UITheme.panel_stylebox())
+	p.add_theme_stylebox_override("panel", style)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return p
 
@@ -798,12 +839,20 @@ func _refresh_target_text() -> void:
 	if _target_view == null or not _target_view.has_target or _loc == null:
 		return
 	_target_name_label.text = _resolve(_target_view.name_key)
-	# A dead target keeps its name and gauge but loses its threat line: the rating describes a
-	# live danger, and leaving it up over a corpse reads as the UI not having noticed.
-	if _target_view.is_dead or _target_view.threat_key == &"":
-		_target_threat_label.text = ""
+	# The second row states the target's CONDITION. Alive, that is its threat rating. Dead, it
+	# says so (D-057): the rating describes a live danger, so leaving it over a corpse reads as
+	# the UI not having noticed — and blanking it, as this used to, left an empty row between
+	# the name and the gauge for the whole linger, a gap that read as a broken layout in every
+	# kill capture. "Defeated" is the consequence the player just caused, in the one place they
+	# are already looking. A live target with no authored rating has no row at all.
+	if _target_view.is_dead:
+		_target_threat_label.text = _text("UI_HUD_TARGET_DEFEATED")
+		_target_threat_label.visible = true
+	elif _target_view.threat_key == &"":
+		_target_threat_label.visible = false
 	else:
 		_target_threat_label.text = _resolve(_target_view.threat_key)
+		_target_threat_label.visible = true
 
 
 ## Set the current map's name localization key.

@@ -103,14 +103,19 @@ cannot answer this has built infrastructure and should say so plainly.
 Where the phase adds content: does it fit the frozen world, the canon vocabulary
 (`02-game-design.md`), and the licence/provenance rules (`06-art-assets.md`)? A generic
 fantasy creature in a tu-tiên world is a content defect even if it functions.
-**Evidence:** the content's identity stated in Aetheria's own terms, and its
-`ASSET_LICENSES.md` row.
+**Since D-057A this gate also covers how the phase LOOKS AND MOVES:** run the generic fantasy
+drift gate, the believable-AND-Aetheria dual check and the Aetheria Identity Review
+(`XIANXIA_IDENTITY_CONTRACT.md` §6, §7, §15). Reference boards are research, filtered by canon —
+a realm name, element or tagline read off a board is never content (§2.3).
+**Evidence:** the content's identity stated in Aetheria's own terms, its `ASSET_LICENSES.md`
+row, and the identity review answered in prose.
 
 ### 7. UI — is the new state visible, and does it use the foundation?
 Anything the player must know has to be on screen, using the D-050 shared seams
 (`UI_UX_BIBLE.md` §3b/§8b) — never ad-hoc styling and never default Godot look. **Do not render
 a gauge for a value no system owns** (§4): a bar that shows nothing real is worse than an
-absent one.
+absent one. A new permanent HUD element must earn its space and keep the HUD inside its
+negative-space budgets (`UI_UX_BIBLE.md` §3c) — the budget test fails if it does not.
 **Evidence:** the seam used, and a capture showing it.
 
 ### 7b. PRESENTATION — what reusable capability does the phase leave behind? (D-056)
@@ -136,6 +141,11 @@ Three rules bind every phase from P12 on:
   second consumer exercises it — different assets, different frame counts, same contract. One
   actor is a feature; two is a seam.
 
+**Designed before it is built (D-057):** each major visual feature carries the deliberation
+record (`MOTION_DESIGN_CONTRACT.md` §13) and the Reference → Original note
+(`XIANXIA_IDENTITY_CONTRACT.md` §13), written before the code, and closes with the self-critique
+(`MOTION_DESIGN_CONTRACT.md` §19).
+
 **Evidence:** the capability named, the second consumer named, and a capture showing the
 anticipation → action → recovery (or the equivalent beats) actually on screen. A state
 variable reading `true` is not evidence that anything was drawn.
@@ -159,6 +169,11 @@ Generating an image and declaring success is the exact failure D-050 was created
 a UI-changing phase: **two genuinely different ASPECT RATIOS**, both languages. 1600×900 next
 to 1280×720 is *not* two layout tests — with `canvas_items` + `expand` a same-aspect window is
 a pure uniform scale and produces two identical images.
+
+Report three kinds of evidence and never let one stand in for another
+(`MOTION_DESIGN_CONTRACT.md` M-16.1, `XIANXIA_IDENTITY_CONTRACT.md` §11): **STATE** (a test read a
+value), **PIXEL** (a capture was opened and judged — naturalness, motion, silhouette, timing,
+readability, hierarchy, composition) and **REFERENCE** (the research a design came from).
 **Evidence:** the defects found by looking, and the re-capture after fixing them.
 
 ### 10. PERFORMANCE — measure the claim the design makes
@@ -220,7 +235,8 @@ Ask: is the new thing understandable? does it feel alive rather than scripted? c
 predict it? is the timing readable? does the player understand *why* something happened to
 them? does it feel different from the test fixture it grew out of? does success feel
 meaningful? is the scene visually coherent? does the UI help or obstruct? **does it feel like
-Aetheria rather than a generic Godot demo?**
+Aetheria rather than a generic Godot demo?** — and the D-057 tests: the player-experience test,
+"would a player notice?" and "so what?" (`MOTION_DESIGN_CONTRACT.md` M-16.3, M-16.4, M-1.6).
 
 Score 1–5: **UX · Visual · Readability · Performance · Maintainability**.
 

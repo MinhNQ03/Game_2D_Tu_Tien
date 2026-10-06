@@ -12,6 +12,11 @@
 >
 > Presentation is therefore a system that develops **alongside** gameplay, with its own gate in
 > `docs/PHASE_EXECUTION_PROTOCOL.md`, not a polish pass at the end.
+>
+> **Its two companions (D-057).** This document owns how presentation is WIRED. What good motion
+> and feedback ARE — the governing laws, timing grammar, hierarchy, curiosity, the self-critique —
+> is `docs/MOTION_DESIGN_CONTRACT.md`; what makes it look and behave like AETHERIA, and how the
+> reference library is used, is `docs/XIANXIA_IDENTITY_CONTRACT.md` (D-057A).
 
 ---
 
@@ -92,6 +97,13 @@ the default above is absolute.
 **This is also a multiplayer requirement, not only a tidiness one.** A remote client's frame
 rate, asset set and animation length must not be able to change an outcome.
 
+**Hit-stop holds an IMAGE, never the simulation (D-057).** A held frame on impact is
+presentation freezing its OWN pose and effects. `Engine.time_scale` and the physics tick belong to
+the simulation: the one-line Godot recipe for hit-stop slows the attack lifecycle, AI, movement
+and every timer because an effect said so, and an authoritative server could never honour it.
+Presentation never writes them — guarded by `tests/unit/presentation/test_motion_contract.gd`
+(`MOTION_DESIGN_CONTRACT.md` M-4.3).
+
 ---
 
 ## 4. THE ACTION LAYER (implemented)
@@ -120,8 +132,9 @@ column = clamp(int(progress * frame_count), 0, frame_count - 1)
 No magic phase split, no per-phase frame budget to keep in sync with authored durations.
 
 **Wiring is deliberately CONCRETE and single.** The component resolves an optional sibling that
-reports an attack lifecycle (the same duck-typed sibling resolution `AttackFeedback` and
-`DamageFeedback` use; absence is legal and silent). It does **not** define an "action source
+reports an attack lifecycle — a typed `AttackComponent` reference, resolved the same optional way
+`AttackFeedback` and `DamageFeedback` resolve theirs (absence is legal and silent; the reads on
+the hot path are direct calls, not `call()`, since the D-056 review pass). It does **not** define an "action source
 interface", because a second action *source* does not exist yet — per the anti-over-engineering
 rule, the abstraction arrives with its second consumer. When `CAST` lands, it calls the same
 three methods and the layer does not change.
@@ -145,6 +158,12 @@ BASIC_ATTACK                          (action; implemented)
 CAST  HIT  STUN  DEATH  EMOTE
 INTERACT  LEVEL_UP  BREAKTHROUGH      (action; reserved)
 ```
+
+**`CAST` is ONE action, not four (D-057).** P15's cast lifecycle — prepare → channel → release
+→ recover — is a set of PHASES of one action, exactly as WINDUP / ACTIVE / RECOVERY are phases of
+`BASIC_ATTACK`: the lifecycle reports its phase and progress, the action layer derives the frame.
+`CAST_PREPARE`, `CAST_CHANNEL`, `CAST_RELEASE` and `CAST_RECOVER` are phase names, never four
+separate actions or four sheets wired by hand.
 
 A reserved name is a name, not a feature. **An optional field no shipped data authors is a
 no-op with documentation** — the project has shipped that mistake once already (a walk sheet
@@ -257,6 +276,13 @@ REQUIRED level-up:    recognition cue → buildup → light/vertical effect → 
 Breakthrough (Phase 12+) must **reuse this vocabulary at a larger scale**, not invent a second
 one.
 
+**Honest status (D-057): the shipped level-up does NOT meet the REQUIRED bar above** — it is a
+badge flash and a banner, with no buildup and no character response. It is owned by **P12**: the
+breakthrough presentation seam is the level-up's real second consumer, so the shared
+progression-celebration seam is built there, at macro scale for a breakthrough and mid scale for a
+level-up — never the same look, because a level and a realm are different axes
+(`MOTION_DESIGN_CONTRACT.md` §20, M-4.7).
+
 **Generated pixel art is inspected magnified before it ships.** This has caught defects no
 assertion could: a draw order that put skin over hair on every UP frame, walk deltas of ±1px
 that animated nothing a player could see, and a dither pass speckling the transparent canvas
@@ -295,11 +321,22 @@ the existing producer instead of adding a synonym beside it:
 | `defeated` | entity `died`; `CombatRuntime.enemy_defeated(reward_id, …)` for the reward-bearing fact |
 | `level_up` | `ProgressionRuntime.level_changed` |
 
-**The EventBus is NOT the cue transport, and no cue was added to it.** Its own scope rule
-limits it to signals with a real current producer *and* consumer, and it states that local
-component→owner communication uses direct signals. Combat and progression cues are local to an
-entity or a session; routing them through a global bus would add indirection and a second
+**The EventBus is NOT the cue transport for local cues, and no cue was added to it.** Its own
+scope rule limits it to signals with a real current producer *and* consumer, and it states that
+local component→owner communication uses direct signals. Combat and progression cues are local to
+an entity or a session; routing them through a global bus would add indirection and a second
 place to look. **No new autoload was added for presentation, and none may be.**
+
+**Two tiers, stated once (D-057)** — so `SYSTEM_DEPENDENCY_MATRIX.md`'s "audio/VFX listen to the
+EventBus" and this section cannot be read as a contradiction:
+
+| Cue scope | Transport | Examples |
+|---|---|---|
+| **entity- or session-local** | direct signals / view DTOs | attack lifecycle, `damaged`, `died`, `level_changed` |
+| **world-scale**, with a real global producer AND consumer | the EventBus, under its scope rule | a world event starting or resolving (reserved), `language_changed` |
+
+A future audio or VFX service listens on whichever tier the cue already lives in; it does not
+move a local cue onto the bus to make listening easier.
 
 Where typed data is warranted, use a small typed view DTO (the five above are the precedent),
 not an untyped `Dictionary` bag.
@@ -419,3 +456,8 @@ listed in `docs/ROADMAP.md`; the gate that enforces it is in
 reusable seam before the content explosion. First skill → skill presentation seam → second
 skill reuses it. First NPC → locomotion/reaction seam. First boss → phase/telegraph seam.
 Never: boss A bespoke, boss B bespoke, boss C copies B.
+
+**And it is designed before it is built (D-057):** the deliberation record
+(`MOTION_DESIGN_CONTRACT.md` §13), the Reference → Original note
+(`XIANXIA_IDENTITY_CONTRACT.md` §13), and — at the end — the self-critique and the Aetheria
+Identity Review.

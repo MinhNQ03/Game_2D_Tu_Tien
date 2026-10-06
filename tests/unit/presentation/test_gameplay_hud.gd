@@ -1160,6 +1160,16 @@ func test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for() -> void:
 			+ "panels and the level-up banner both inset by this token, so a strip taller "
 			+ "than the reserve is covered by them.")
 			% [UIPalette.PROMPT_STRIP_RESERVE, int(needed.y)])
+	# ...and must not be far LARGER than it (D-057). A reserve that protects nothing is dead
+	# playfield the side panels and the banner are kept out of: when the prompts left their
+	# framed plaque the old 78 reserved 32px for nothing. Derived as the strip plus one margin,
+	# like TOP_PLAQUE_RESERVE; SPACE_SM of slack absorbs a font metric, not a design decision.
+	var ceiling := needed.y + float(UIPalette.HUD_MARGIN + UIPalette.SPACE_SM)
+	assert_true(float(UIPalette.PROMPT_STRIP_RESERVE) <= ceiling,
+		("PROMPT_STRIP_RESERVE (%d) is the strip (%d) plus one HUD_MARGIN (%d), not more — "
+			+ "anything above %d reserves playfield for nothing")
+			% [UIPalette.PROMPT_STRIP_RESERVE, int(needed.y), UIPalette.HUD_MARGIN,
+				int(ceiling)])
 
 	# The banner is centred, so the strip may occupy the left half and no more.
 	#
@@ -1199,3 +1209,288 @@ func _collect_prompt_rows(node: Node, out: Array[UIPromptRow]) -> void:
 		else:
 			# A prompt row's own children are a badge + a label, never another row.
 			_collect_prompt_rows(child, out)
+
+
+# === D-057: HUD composition =================================================================
+
+
+## A desktop HUD is never inset by the OS work area (D-057).
+##
+## `get_display_safe_area()` on a desktop is the WORK AREA — the screen minus docks, panels and
+## taskbars, in SCREEN coordinates. Treated as a notch, it pushed the whole HUD by the size of
+## the OS chrome wherever the window was. These are the MEASURED dev-machine numbers: a GNOME
+## dock (66px) and top bar (32px), with the game window wholly inside the work area — which put
+## the left plaques 85px from the window edge and the right ones 18px.
+func test_the_desktop_hud_is_never_inset_by_the_os_work_area() -> void:
+	var canvas := Vector2(1280, 720)
+	var dev_machine_work_area := Rect2i(66, 32, 1854, 1048)
+	var window_inside_it := Rect2i(353, 196, 1280, 720)
+	assert_eq(GameplayHUD.safe_area_insets(false, window_inside_it, dev_machine_work_area,
+			canvas), Vector4.ZERO,
+		"a windowed desktop game is not inset by a dock and a top bar it does not overlap")
+	# Full screen over a Windows taskbar: the taskbar is hidden, the work area still excludes
+	# it, and the old arithmetic lifted the prompt strip by its 48px.
+	assert_eq(GameplayHUD.safe_area_insets(false, Rect2i(0, 0, 1920, 1080),
+			Rect2i(0, 0, 1920, 1032), canvas), Vector4.ZERO,
+		"nor is a full-screen desktop game inset by a taskbar it covers")
+	# And the HUD actually built in this (desktop) runner carries no inset at all.
+	var hud := _hud()
+	var root := _hud_root(hud)
+	assert_not_null(root, "the HUD builds its root Control")
+	if root != null:
+		assert_eq(Vector4(root.offset_left, root.offset_top, root.offset_right,
+				root.offset_bottom), Vector4.ZERO,
+			"the live desktop HUD root is the full viewport, framed only by HUD_MARGIN")
+	free_node(hud)
+
+
+## On mobile the inset is the part of the WINDOW a notch covers, in CANVAS units (D-057).
+func test_a_mobile_notch_insets_only_the_window_edge_it_covers() -> void:
+	# Landscape phone: a 90px notch on the left of a 2400x1080 screen, the window full-screen,
+	# a 1280x576 canvas — so one screen pixel is 1280/2400 of a canvas pixel.
+	var screen := Rect2i(0, 0, 2400, 1080)
+	var insets := GameplayHUD.safe_area_insets(true, screen, Rect2i(90, 0, 2310, 1080),
+		Vector2(1280, 576))
+	assert_true(is_equal_approx(insets.x, 90.0 * 1280.0 / 2400.0),
+		"the notch edge is inset by the notch, converted to canvas units (got %.2f)" % insets.x)
+	assert_eq(Vector3(insets.y, insets.z, insets.w), Vector3.ZERO,
+		"and the three uncovered edges are not inset at all")
+	# Split screen: the app owns the LOWER half of a portrait phone whose notch is at the top
+	# of the screen. The notch is outside this window, so nothing is covered.
+	assert_eq(GameplayHUD.safe_area_insets(true, Rect2i(0, 1200, 1080, 1200),
+			Rect2i(0, 80, 1080, 2320), Vector2(1280, 1422)), Vector4.ZERO,
+		"a notch outside the window covers nothing in it")
+	# A display that reports nothing usable is not an excuse to inset by garbage.
+	assert_eq(GameplayHUD.safe_area_insets(true, screen, Rect2i(), Vector2(1280, 576)),
+		Vector4.ZERO, "an empty safe area produces no inset")
+
+
+## The weight ladder (D-057): framed plaques for what the player TRACKS, a quiet band for hints.
+##
+## Ornament is how this UI says "this matters". The prompt strip used to wear the same
+## gold-cornered plaque as the identity and the place name, which spent that signal on the least
+## important text on screen and made the HUD read as four boxes rather than a frame around the
+## game.
+func test_the_prompt_strip_sits_on_a_quiet_band_and_the_tracked_plaques_stay_framed() -> void:
+	var hud := _hud()
+	var strip := hud.find_child("PromptStrip", true, false) as Control
+	assert_not_null(strip, "the prompt strip is found by name")
+	if strip != null:
+		var band := strip.get_theme_stylebox("panel")
+		assert_true(band is StyleBoxFlat,
+			"the prompts sit on the flat hint band, not a textured frame (got %s)"
+				% _class_of_resource(band))
+		if band is StyleBoxFlat:
+			assert_true((band as StyleBoxFlat).bg_color.a < 1.0,
+				"and the band is translucent, so the world shows through a passive hint")
+	if UITheme.textures_present():
+		for plaque_name in ["IdentityPlaque", "MapPlaque", "TargetPlaque"]:
+			var plaque := hud.find_child(plaque_name, true, false) as Control
+			assert_not_null(plaque, "%s is found by name" % plaque_name)
+			if plaque != null:
+				assert_true(plaque.get_theme_stylebox("panel") is StyleBoxTexture,
+					"%s keeps the framed 9-slice plaque — it is what the player tracks"
+						% plaque_name)
+	free_node(hud)
+
+
+## The hint band is a LEGAL text surface over ANY background (D-057).
+##
+## The prompts are the light-only text palette, so what shows through the band must still
+## measure as a dark surface. Composited over pure white — the worst thing any floor, prop or
+## sprite could put behind it — the band must stay under the brightness limit the whole UI
+## uses. Derived from the tokens, so retuning the alpha below legibility fails here.
+func test_the_hint_band_is_a_legal_text_surface_over_any_background() -> void:
+	var band := UITheme.hint_band_stylebox()
+	var fill := band.bg_color
+	var over_white := fill.lerp(Color.WHITE, 1.0 - fill.a)
+	var brightness := 255.0 * (0.299 * over_white.r + 0.587 * over_white.g
+		+ 0.114 * over_white.b)
+	assert_true(brightness < UIPalette.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
+		("the band over pure white measures %.0f, under the %d limit for a surface carrying "
+			+ "light text — so the prompts are legible over anything the world can show")
+			% [brightness, UIPalette.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
+	assert_true(fill.a < 1.0,
+		"and it is still translucent: an opaque band is just a frameless box (alpha %.2f)"
+			% fill.a)
+
+
+## A defeated target's plaque states the outcome instead of keeping an empty row (D-057).
+##
+## The second row describes the target's CONDITION. It used to be blanked on a kill, leaving a
+## gap between the name and the gauge for the whole linger — an empty row in every kill capture.
+func test_a_defeated_target_says_so_instead_of_leaving_an_empty_row() -> void:
+	var hud := _hud()
+	var row := hud.find_child("TargetThreat", true, false) as Label
+	assert_not_null(row, "the target's condition row is found by name")
+	if row == null:
+		free_node(hud)
+		return
+	var target := CombatTargetView.new()
+	target.has_target = true
+	target.name_key = &"ENEMY_MIST_WOLF_NAME"
+	target.threat_key = &"THREAT_FRONTIER_LOW"
+	target.current_health = 20
+	target.max_health = 34
+	hud.call("set_target_view", target)
+	assert_eq(row.text, _localized("THREAT_FRONTIER_LOW"), "alive, the row is the threat rating")
+	target.current_health = 0
+	target.is_dead = true
+	hud.call("set_target_view", target)
+	assert_true(row.visible and row.text == _localized("UI_HUD_TARGET_DEFEATED"),
+		"defeated, the row says so (got visible=%s text='%s')" % [row.visible, row.text])
+	assert_ne(row.text, "", "and is never left as an empty row")
+	# A live target with no authored rating has no condition to state: no row, not a blank one.
+	var unrated := CombatTargetView.new()
+	unrated.has_target = true
+	unrated.name_key = &"ENEMY_MIST_WOLF_NAME"
+	unrated.current_health = 5
+	unrated.max_health = 34
+	hud.call("set_target_view", unrated)
+	assert_false(row.visible, "an unrated live target hides the row instead of blanking it")
+	free_node(hud)
+
+
+## Negative space, enforced (D-057): the HUD keeps the playfield centre clear, and the
+## PERMANENT HUD stays inside its area budget, at both authored aspect ratios.
+##
+## Rects are computed from each element's anchors, offsets, minimum size and grow direction —
+## the arithmetic Godot's layout uses — rather than read from the runner's window, so the
+## assertion is about the HUD at a NAMED resolution (A15). Elements are found by WALKING the
+## HUD root, never by a list of names (UI_UX_BIBLE §3b): a new plaque is measured automatically.
+func test_the_hud_keeps_the_playfield_centre_clear_and_inside_its_area_budget() -> void:
+	var hud := _hud()
+	var original := String(scene_tree.root.get_node("Localization").call("get_language"))
+	_use_language("vi")  # the longer language sizes every plaque
+	_populate_plaques(hud)
+	hud.call("set_interact_available", true)
+	hud.call("set_target_view", null)  # permanent HUD first: no fight in progress
+	await scene_tree.process_frame
+	var root := _hud_root(hud)
+	if root == null:
+		free_node(hud)
+		_use_language(original)
+		return
+	for viewport: Vector2 in [Vector2(1280, 720), Vector2(1280, 800)]:
+		var permanent := _visible_hud_rects(root, viewport)
+		assert_true(permanent.size() >= 3,
+			"the permanent identity, map and prompt elements were measured at %s (got %d)"
+				% [str(viewport), permanent.size()])
+		var area := 0.0
+		for entry: Dictionary in permanent:
+			var rect: Rect2 = entry["rect"]
+			area += rect.get_area()
+		var share := area / (viewport.x * viewport.y)
+		assert_true(share <= UIPalette.HUD_PERMANENT_AREA_BUDGET,
+			("at %s the permanent HUD covers %.1f%% of the screen, over its %.0f%% budget: "
+				+ "%s") % [str(viewport), share * 100.0,
+					UIPalette.HUD_PERMANENT_AREA_BUDGET * 100.0, _describe(permanent)])
+	# Now the contextual surfaces too: a live target and a level-up announcement.
+	var target := CombatTargetView.new()
+	target.has_target = true
+	target.name_key = &"ENEMY_MIST_WOLF_NAME"
+	target.threat_key = &"THREAT_FRONTIER_LOW"
+	target.current_health = 20
+	target.max_health = 34
+	hud.call("set_target_view", target)
+	hud.call("celebrate_level_up", 20)
+	await scene_tree.process_frame
+	for viewport: Vector2 in [Vector2(1280, 720), Vector2(1280, 800)]:
+		var everything := _visible_hud_rects(root, viewport)
+		assert_true(everything.size() >= 5,
+			"the target plaque and the level-up banner were measured too (got %d)"
+				% everything.size())
+		var zone := UIPalette.PLAYFIELD_CLEAR_ZONE
+		var centre := Rect2(zone.position * viewport, zone.size * viewport)
+		for entry: Dictionary in everything:
+			var rect: Rect2 = entry["rect"]
+			assert_false(rect.intersects(centre),
+				("at %s, %s %s enters the playfield centre %s — the camera keeps the player "
+					+ "there, so the HUD must not") % [str(viewport), entry["name"],
+						str(rect), str(centre)])
+	hud.call("level_up_feedback").call("cancel")
+	free_node(hud)
+	_use_language(original)
+
+
+## Every VISIBLE direct child of the HUD root except an open side panel, with its rect in a
+## viewport of the given size. Side panels are excluded by design: the player opens them on
+## purpose, as a decision to read instead of play.
+func _visible_hud_rects(root: Control, viewport: Vector2) -> Array:
+	var out := []
+	for child in root.get_children():
+		var control := child as Control
+		if control == null or not control.visible:
+			continue
+		if control.anchor_top == 0.0 and control.anchor_bottom == 1.0:
+			continue  # a bounded side panel
+		out.append({"name": String(control.name), "rect": _layout_rect(control, viewport)})
+	return out
+
+
+func _describe(entries: Array) -> String:
+	var parts: Array[String] = []
+	for entry in entries:
+		var rect: Rect2 = entry["rect"]
+		parts.append("%s %dx%d" % [entry["name"], int(rect.size.x), int(rect.size.y)])
+	return ", ".join(parts)
+
+
+## Where `control` sits in a viewport of `viewport` size: anchors and offsets give the authored
+## box, and a box smaller than the control's minimum grows the way the control says it grows.
+func _layout_rect(control: Control, viewport: Vector2) -> Rect2:
+	var minimum := control.get_combined_minimum_size()
+	var h := _grow(control.anchor_left * viewport.x + control.offset_left,
+		control.anchor_right * viewport.x + control.offset_right, minimum.x,
+		control.grow_horizontal)
+	var v := _grow(control.anchor_top * viewport.y + control.offset_top,
+		control.anchor_bottom * viewport.y + control.offset_bottom, minimum.y,
+		control.grow_vertical)
+	return Rect2(h.x, v.x, h.y - h.x, v.y - v.x)
+
+
+func _grow(start: float, end: float, minimum: float, direction: int) -> Vector2:
+	if end - start >= minimum:
+		return Vector2(start, end)
+	match direction:
+		Control.GROW_DIRECTION_BEGIN:
+			return Vector2(end - minimum, end)
+		Control.GROW_DIRECTION_BOTH:
+			var middle := (start + end) * 0.5
+			return Vector2(middle - minimum * 0.5, middle + minimum * 0.5)
+		_:
+			return Vector2(start, start + minimum)
+
+
+## A settled HUD does no per-frame work (D-057 — no permanent processing for static things).
+##
+## Every feedback node switches itself off when idle, and each has its own test. This is the
+## guard at the level that matters for the frame: the WHOLE populated HUD, walked, so a widget
+## added later with an always-on `_process` is caught even if nobody wrote a test for it.
+func test_a_settled_hud_does_no_per_frame_work() -> void:
+	var hud := _hud()
+	_populate_plaques(hud)
+	hud.call("set_interact_available", true)
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	var busy: Array[String] = []
+	var visited := _collect_processing(hud, busy)
+	assert_true(visited >= 20,
+		"the walk covered the HUD tree (%d nodes) — a broken walk would pass vacuously"
+			% visited)
+	assert_eq(busy, [],
+		"no node in a settled HUD processes per frame; these do: %s" % str(busy))
+	free_node(hud)
+
+
+func _collect_processing(node: Node, busy: Array[String]) -> int:
+	if node.is_processing() or node.is_physics_processing():
+		busy.append("%s (%s)" % [node.name, node.get_class()])
+	var visited := 1
+	for child in node.get_children():
+		visited += _collect_processing(child, busy)
+	return visited
+
+
+func _class_of_resource(resource: Resource) -> String:
+	return "<null>" if resource == null else resource.get_class()

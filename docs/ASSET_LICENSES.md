@@ -391,6 +391,7 @@ file in each pack** and by checking whether anything in the project references i
 |---|---|---|---|
 | `ui/source_packs/foozle_lucifer` — Foozle "Lucifer RPG UI" 1.0 (commissioned from Baldur) | `Readme.txt`: **CC0 1.0**, free for commercial use, attribution not required | **REFERENCE ONLY.** Already classified "B — supporting only" (D-028) and "REFERENCE ONLY, not promoted" (D-050): its icon density is 16×16 and its language is western fantasy. | No |
 | `ui/source_packs/second_pack` — Kenney "Fantasy UI Borders" 1.0 | `License.txt`: **CC0 1.0**, personal/educational/commercial, credit appreciated not required | **UPSTREAM SOURCE of a live asset set.** This is the pack D-050 promoted 3 files from; they are tracked at `assets/ui/kenney_borders/` and are what `UITheme.ornament_divider()` / `ornament_frame()` load. | Yes — **3 files**, already recorded above |
+| `aetheria_xianxia/` — "Aetheria Xianxia Art Direction Reference Pack" v1.1 (added 2026-10-06, classified by D-057A) | **No licence and no author/tool/rights statement in the pack.** Its own README: *"design/reference material for Aetheria. NOT production assets."* 3 generated moodboards (1312×1199) + 10 category crops (~263×385) + 4 Markdown notes | **REFERENCE ONLY — research material, provenance NOT recorded.** Generated illustrations of unrecorded origin: the owner's D-044 confirmation covered the painted UI pack, not this one, so no ownership is claimed here. It also contradicts canon in places (realm ladder, elements, weapons, races — `XIANXIA_IDENTITY_CONTRACT.md` §2.3). How it may be used: that contract. | **Never** — nothing is promoted, traced or cropped from it; wanting what it shows means re-creating it as original art |
 
 **Decision: keep the source packs LOCAL (gitignored), keep the promoted subset tracked.**
 
@@ -398,6 +399,13 @@ file in each pack** and by checking whether anything in the project references i
   the unknown-licence case, which may never enter `res://` under any circumstances.
 * `grep` for `design_refs` across every `.gd` / `.tscn` / `.tres` / `.import` returns
   **nothing** — the directory is not a runtime dependency and removing it breaks no load.
+* **Out of `res://` is enforced by ONE tracked file, `docs/.gdignore` (D-057).** This section's
+  title claimed it from D-056 on, but the only ignore marker was an untracked one inside
+  `ui/source_packs/`: when the `aetheria_xianxia/` pack arrived beside it, Godot imported all 13 of
+  its images as game textures (`.godot/imported/*.ctex`, ~6MB) — visible in the FileSystem dock and
+  exportable. The generated `.import` sidecars and cache were removed, and
+  `tests/unit/framework/test_reference_library_isolation.gd` now asserts the marker exists and that
+  nothing under `docs/` carries an import sidecar. **Gitignored is not out of `res://`** (L-044).
 * Committing 34MB of upstream packs would bloat the repository to carry material from which
   three files were ever used, and those three are already tracked with provenance.
 * The `.gitignore` entry carries this reasoning inline, so the next person sees *why* it is

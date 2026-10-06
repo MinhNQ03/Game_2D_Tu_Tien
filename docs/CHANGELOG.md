@@ -8,6 +8,55 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-06 — A HUD that frames the game, a language for motion, and the reference library put in its place (D-057, D-057A)
+
+Foundation, not a phase: **no gameplay, no networking, no autoload, no presentation framework.
+Phase 12 remains NOT STARTED.**
+
+**What the player sees.**
+
+- **The HUD sits in the corners again.** On a desktop with a dock or a taskbar, the whole HUD was
+  pushed inward by the OS's own chrome — the left plaques 85px from the window edge, the right
+  ones 18px — because the "safe area" a desktop reports is its work area, not a notch. Every edge
+  is now one 18px margin; only a phone's notch insets the HUD.
+- **The key prompts are quieter.** They sat in the same gold-cornered plaque as the player's
+  identity; they now sit on a flat translucent band (36px instead of 68px) that stays legible over
+  anything — even pure white. The side panels gained 24px, and the Vietnamese sect panel no longer
+  clips its resources line at 1280×720.
+- **A kill says so.** A defeated target's plaque used to keep an empty row for two and a half
+  seconds; it now reads *Defeated / Đã hạ gục*.
+- The permanent HUD went from **16.5% to 14.3%** of a 1280×720 screen, and a test now keeps it
+  under 15% and keeps every HUD element out of the middle of the screen.
+
+**Two contracts.**
+
+- `docs/MOTION_DESIGN_CONTRACT.md` (**D-057**) — what good motion and feedback ARE: start from what
+  is happening, never from "what animation"; classify, then apply the right governing law;
+  anticipation → action → consequence → recovery; presentation never lengthens a gameplay action
+  and never writes simulation time (hit-stop holds an image — guarded); a level-up is mid-scale and
+  a breakthrough macro; attention hierarchy, causal curiosity, world memory, a deliberation record
+  before code and a 20-question self-critique after — and an honest list of presentation debt with
+  owners (the level-up's missing character response belongs to P12, where breakthrough becomes its
+  second consumer).
+- `docs/XIANXIA_IDENTITY_CONTRACT.md` (**D-057A**) — what makes it *Aetheria*: an authority order
+  in which canon and the bibles beat any reference; a study workflow that forbids copying; a guide
+  to all ten reference folders; identity derived from canon (qi wells up through veins, so it
+  always has a source; a realm changes perception; orthodox motion is composed while heterodox
+  power costs the body); the generic-fantasy drift gate; and the Aetheria Identity Review.
+
+**The reference library, inspected and put in its place.** The new moodboard pack was being
+imported by Godot as game textures; a tracked `docs/.gdignore` now keeps all of `docs/` out of the
+engine, guarded by a test. The pack itself turned out to contradict canon eleven ways — including
+the conventional realm ladder canon forbids, five-phase elements where Aetheria has four, a fan
+weapon and elf-like races — all recorded so Phase 12 cannot copy them into its UI.
+
+**Docs that had drifted:** the Art Bible's animation states, the UI Bible's viewport (1152×648 →
+1280×720), two orphaned ROADMAP lines, the presentation contract's "duck-typed", the dependency
+matrix's cue transport, and the design-freeze index that did not list the D-056 contracts.
+
+716 tests (up from 704), 0 failures, 0 leaks; every new guard planted against and failing before it
+was trusted; captures at vi/en × 1280×720 / 1280×800 opened; real-input playtest 22/22 in all four.
+
 ### 2026-10-06 — Production/multiplayer contract, and characters that actually move (D-056)
 
 A foundation hardening milestone **before** Phase 12. No networking, no new gameplay system, no
