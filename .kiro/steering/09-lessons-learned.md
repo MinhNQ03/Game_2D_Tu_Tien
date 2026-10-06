@@ -1105,6 +1105,25 @@
   (`setup{…} movement{…} attack{…}`), measure a setup value at the moment it is still a fact,
   and make the structural claim an assertion rather than prose: `placements == 1` belongs in the
   PASS condition, not in a comment saying "placed once".
+- **Also (a value that cannot be wrong is not evidence):** the first version of that fix wrote
+  `var placements := 1` — a literal, next to the single write. It reads like a count and is
+  incapable of disagreeing with the claim it supports: add a second write and it still reports
+  `1`, so the pass condition can never fail. Initialise to `0` and increment AT the write, then
+  prove it by PLANTING the extra write (it reported `placements=4` and failed the step). The
+  general form: when a number is in a report to prove a structural property, ask what edit would
+  make it wrong — if the answer is "none", it is decoration.
+- **Also (a guard that walks the tree is a hot loop):** these matchers run once per line of
+  every `.gd` under `src` — 97 files, ~21,000 lines. Growing one from a single pattern to six
+  while compiling inside the function turned ~21,000 `RegEx.new()`+`compile()` calls into
+  ~126,000, i.e. a per-iteration allocation in a hot loop, added by the commit that was
+  tightening the guard. Compile once into a lazy cache (a compiled `RegEx` cannot be a `const`).
+  And when reporting the effect, separate the structural reason from the timing: a whole-suite
+  wall clock on a shared machine is noisy, and a test-harness allocation fix does not belong in
+  `docs/PERFORMANCE.md`, which tracks the GAME.
+- **Also (grep finding nothing is ambiguous):** a search for a helper returned no hits, which
+  looked like dead code left by a rewrite and was actually the rewrite having already removed
+  it. "Dead" and "absent" grep identically and call for opposite actions — confirm which before
+  editing.
 - **Also (fix the stale half, do not overcorrect):** `GAME_FLOW.md`'s global status block had
   been restructured precisely to stop "combat exists only in the sandbox" claims, and the stale
   sentence survived in a per-system CONTRACT that the restructure never touched. When you fix a

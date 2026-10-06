@@ -247,9 +247,7 @@ func test_the_grant_xp_call_guard_distinguishes_a_call_from_a_declaration() -> v
 func _writes_xp(line: String) -> bool:
 	if "set_total_xp(" in line:
 		return true
-	for pattern in XP_WRITE_PATTERNS:
-		var re := RegEx.new()
-		re.compile(pattern)
+	for re in _compiled(XP_WRITE_PATTERNS, _xp_res):
 		if re.search(line) != null:
 			return true
 	return false
@@ -289,9 +287,7 @@ func _calls_grant_xp(line: String) -> bool:
 		return false
 	if "grant_xp(" in line:
 		return true
-	for pattern in GRANT_DYNAMIC_PATTERNS:
-		var re := RegEx.new()
-		re.compile(pattern)
+	for re in _compiled(GRANT_DYNAMIC_PATTERNS, _grant_res):
 		if re.search(line) != null:
 			return true
 	return false
@@ -351,3 +347,25 @@ func _relative(full: String) -> String:
 ## assert it directly instead of planting a decoy file in the source tree.
 func _is_allowed(relative: String, allowed: Array) -> bool:
 	return relative in allowed
+
+
+## Compiled-once regex caches.
+##
+## `_writes_xp` and `_calls_grant_xp` run ONCE PER LINE of every `.gd` under `src` — 97 files
+## and ~21,000 lines today. Compiling the patterns inside those functions meant roughly 126,000
+## `RegEx.new()` + `compile()` calls per suite run, which is exactly the per-iteration
+## allocation in a hot loop that `05-performance-testing.md` forbids — introduced by the change
+## that grew the loop from one pattern to six. Built lazily because a compiled `RegEx` cannot
+## be a `const`, and reused for the rest of the run.
+var _xp_res: Array[RegEx] = []
+var _grant_res: Array[RegEx] = []
+
+
+## The compiled form of `patterns`, built into `cache` on first use and reused afterwards.
+func _compiled(patterns: Array, cache: Array[RegEx]) -> Array[RegEx]:
+	if cache.is_empty():
+		for pattern in patterns:
+			var re := RegEx.new()
+			re.compile(String(pattern))
+			cache.append(re)
+	return cache

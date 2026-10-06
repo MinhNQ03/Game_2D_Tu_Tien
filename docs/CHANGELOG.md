@@ -45,6 +45,17 @@ changed, no new system, no change to the XP/Level model or the D-054 budgets.
 680 tests, 0 leaks, four screenshot combinations (vi/en × 1280×720/1280×800) opened and
 inspected. Every new guard was proven to fail against the prohibited pattern.
 
+The review pass on this work then found two defects in the fixes themselves:
+
+- **`placements` was a fake counter.** It shipped as a literal `1`, so the `placements == 1`
+  pass condition could never fail — the exact "do not fake a counter for the report" trap. Now
+  incremented at the write; a planted per-swing reposition reports `placements=4` and fails the
+  step.
+- **The strengthened matchers compiled a regex per line.** Growing them from one pattern to six
+  while compiling inside the function meant ~126,000 `RegEx` compiles per suite run across
+  `src`'s 21,000 lines. Now compiled once into a lazy cache. (A test-harness fix, deliberately
+  not logged as a game-runtime optimization.)
+
 ### 2026-10-05 — Phase-11 close-out hardening: the guards, and the key nobody could find (D-055)
 
 No new gameplay. A close-out pass over Phase 11 that turned three documented claims into

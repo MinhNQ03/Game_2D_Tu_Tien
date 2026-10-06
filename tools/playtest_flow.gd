@@ -545,9 +545,14 @@ func _step_natural_encounter(main: Node) -> void:
 	# the claim the step makes. `initial_gap_px` is measured HERE, after the placement has
 	# settled, because that is the only moment at which "the gap the player started from" is a
 	# fact — the creature hunts, so any later distance is a different quantity.
+	# `placements` is a REAL count, incremented at the write. Starting it at a literal `1` was
+	# the "fake counter" this step was told not to build: it would still have reported 1 after
+	# someone added a second write, so the `placements == 1` pass condition could never fail —
+	# evidence that cannot be wrong is not evidence.
+	var placements := 0
 	var approach_from := living.global_position + Vector2(96, 0)
 	player.global_position = approach_from
-	var placements := 1
+	placements += 1
 	await _settle()
 	var initial_gap := player.global_position.distance_to(living.global_position)
 	var xp_before := _progression_xp()

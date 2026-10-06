@@ -3531,3 +3531,37 @@ record what shipped then, which is what a changelog is for.
 * **The D-054 budgets** are byte-identical (`git diff tests/performance/ docs/PERFORMANCE.md`
   is empty). The prompt anticipated two known wall-clock failures; locally there were none —
   `680 passed, 0 failed` — so there is nothing to record as environment-specific.
+
+### Review pass on this follow-up — two defects in the fixes themselves
+
+The mandatory review pass (`08-ai-review-protocol.md`) was run on `e4c5a16` after CI went green,
+and found two problems in the work above. Recorded because the pattern is now consistent across
+four phases: a green pipeline says the code runs, not that the change is right.
+
+**1. `placements` was a fake counter — the exact thing the task forbade.** Finding D shipped
+`var placements := 1`, a literal, next to the single placement. It reads like evidence and
+cannot be wrong: add a second `player.global_position = …` write and it still reports `1`, so
+the `placements == 1` pass condition could never fail. It is now initialised to `0` and
+incremented AT the write. Proven by planting a per-swing reposition inside Mode B's loop: the
+step reports `placements=4` and FAILS, naming itself. With the literal it would have passed
+while teleporting before every swing — which is precisely the Mode A behaviour Mode B exists to
+be the opposite of.
+
+**2. The strengthened matchers allocated a regex per line.** `_writes_xp` and `_calls_grant_xp`
+run once per line of every `.gd` under `src` (97 files, ~21,000 lines). Growing them from one
+pattern to six while compiling inside the function meant roughly **126,000** `RegEx.new()` +
+`compile()` calls per suite run, up from ~21,000 — a per-iteration allocation in a hot loop,
+which `05-performance-testing.md` forbids, introduced by the commit that added the patterns.
+Now compiled once into a lazy cache (a compiled `RegEx` cannot be a `const`).
+
+Suite wall clock went 8.02 s → 7.42–7.65 s across runs. That is **consistent with** removing the
+compiles and is **not** offered as a measured speedup: the suite is dominated by the two
+performance tests and a single wall-clock sample on a shared machine is noisy. The justification
+is structural — the allocation should not have been in the loop — not the timing. **This is a
+TEST-HARNESS change and is deliberately NOT logged in `docs/PERFORMANCE.md`**, which tracks game
+runtime; recording it there would overstate it as a game optimization.
+
+A third suspicion did not survive checking: a grep for `_collect_filenames` returned nothing,
+which looked like dead code left behind by the allow-list rewrite. It was simply already gone —
+the rewrite had replaced it. Worth noting only because "grep found nothing" reads the same for
+"dead" and "absent", and the two call for opposite actions.

@@ -476,9 +476,15 @@ against an unmodified baseline run.
   derived hybrid look like setup evidence. The step now groups its evidence by what produced it:
   `setup{placements=1 initial_gap_px=96} movement{final_gap_px=18} attack{hp 34 → 0 landed=true
   killed=true}`, with `initial_gap_px` measured immediately after the single permitted placement
-  and `final_gap_px` at capture. `placements` is a real count of the harness's own writes and is
-  part of the PASS condition, so "placed once" is asserted rather than asserted-in-prose. The
-  two gap values differing is itself the evidence that neither side was teleported.
+  and `final_gap_px` at capture. `placements` is incremented AT the write and `placements == 1`
+  is part of the PASS condition, so "placed once" is asserted rather than claimed in prose. The
+  two gap values differing is itself the evidence that neither side was teleported — and
+  `initial_gap_px` reads 87–88 rather than the constructed 96, because the creature is already
+  hunting during the settle, which is why it is measured instead of assumed.
+  *(The first version of this fix initialised `placements` to a literal `1`. The review pass
+  caught it: a value that cannot change is not evidence — it would have reported `1` after
+  someone added a second write and the pass condition could never have failed. Proven by
+  planting a per-swing reposition, which now reports `placements=4` and FAILS the step.)*
 
 **Phase 05 added Relationship + character-visual tests (high-risk: relationship state / save seam):**
 - `tests/unit/relationship/test_relationship_config.gd` — `RelationshipConfigData` validity
