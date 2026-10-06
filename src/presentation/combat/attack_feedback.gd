@@ -239,6 +239,10 @@ func _draw() -> void:
 			alpha = 0.7 * (1.0 - _progress) * (1.0 - _progress)
 		_:
 			return
+	var data := _attack_data()
+	if data != null and data.weapon_family == &"weapon_kiem":
+		_draw_blade_sweep(alpha)
+		return
 	var side := _facing.orthogonal()
 	for i in STREAK_OFFSETS.size():
 		var segment := _streak_segment(STREAK_LAGS[i])
@@ -271,3 +275,22 @@ func _draw_telegraph() -> void:
 	for edge in [centre - half, centre + half]:
 		var dir := Vector2.from_angle(edge)
 		_telegraph.draw_line((dir * (_reach - 3.0)).round(), (dir * _reach).round(), colour, 1.0)
+
+
+## A Kiếm draws a CRESCENT, not air: the edge sweeping across the arc it actually covers, at body
+## height, growing through the hit window and thinning through the recovery (Phase 14). The
+## palm's air streaks would claim a palm strike while a sword is in the hand.
+func _draw_blade_sweep(alpha: float) -> void:
+	var half := deg_to_rad(_arc_degrees * 0.5 * ARC_FRACTION)
+	var start := _facing.angle() - half
+	var sweep := 1.0
+	if _state == AttackStateMachine.State.ACTIVE:
+		sweep = 1.0 - (1.0 - _progress) * (1.0 - _progress)
+	var centre := Vector2(0.0, STRIKE_HEIGHT * 0.8)
+	var radius := _reach * 0.8
+	var colour := UIPalette.STRIKE_TRAIL
+	colour.a = alpha
+	draw_arc(centre, radius, start, start + 2.0 * half * sweep, ARC_SEGMENTS, colour, 2.0)
+	colour.a = alpha * 0.45
+	draw_arc(centre, radius - 3.0, start, start + 2.0 * half * sweep, ARC_SEGMENTS, colour, 1.0)
+

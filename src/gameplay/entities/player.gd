@@ -214,6 +214,26 @@ func get_defense() -> int:
 
 # --- Health access (intent-revealing; UI/coordinator never mutate fields directly) ---
 
+## Apply what the player wears (Phase 14), from `EquipmentRuntime`: the stat bonus enters the
+## damage formula through `StatsComponent`, the attack is swapped on the `AttackComponent`, and
+## the body is redrawn from the garment's visual profile (or the template's own when null).
+func apply_equipment(attack_bonus: int, defense_bonus: int, attack: AttackData,
+		body_visual: CharacterVisualProfileData) -> bool:
+	_stats.set_equipment_bonus(attack_bonus, defense_bonus)
+	var ok := true
+	if attack != null and _attack != null:
+		ok = _attack.swap_attack(attack)
+	var profile := body_visual
+	if profile == null and _visual_profile_path != "":
+		profile = load(_visual_profile_path) as CharacterVisualProfileData
+	if profile != null and _visual != null and is_instance_valid(_visual):
+		_visual.setup(profile)
+	var weapon_look := get_node_or_null("EquipmentFeedback")
+	if weapon_look != null and weapon_look.has_method("show_weapon"):
+		weapon_look.call("show_weapon", attack.weapon_family if attack != null else &"")
+	return ok
+
+
 func take_damage(amount: int) -> int:
 	return _health.apply_damage(amount)
 

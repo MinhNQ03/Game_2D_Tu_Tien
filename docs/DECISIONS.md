@@ -4145,3 +4145,27 @@ satchel key (no seventh permanent prompt).
 (absorption); a currency with no sink would break the economy rule. No drop/loot tables: the
 first enemy loot belongs with a second consumer of loot.
 
+## D-060 — Phase 14: Equipment
+
+**Built.** `EquipmentData` (slot WEAPON / BODY; `attack_bonus` / `defense_bonus`; a weapon's own
+`AttackData` whose `weapon_family` must be canon — `AttackData.WEAPON_FAMILIES`, CL-10, validated
+on both; a garment's `body_visual`; an optional realm gate read through `CultivationService.meets`);
+`EquipmentState` (one item id per slot, hydrate refuses an item in the wrong slot);
+per-session `EquipmentRuntime` (last in the start order) that MOVES items between satchel and
+slot (the previous piece returns to the satchel), refuses mid-swing changes, and tells the body
+once: `Player.apply_equipment(attack_bonus, defense_bonus, attack, body_visual)`.
+
+**Through the formula, not beside it.** The bonuses are a VIEW modifier in `StatsComponent`
+(`get_attack` / `get_defense` feed `DamageRules.compute_hit` exactly as before); the base stats in
+`CharacterState` are never touched, so a save cannot bake a sword into a body. The jian swings
+`attack_player_kiem` (reach 36, arc 100, power 1.3) via `AttackComponent.swap_attack` (refused
+while a swing is in flight).
+
+**Visual layering.** The Thanh Vân robe is a whole drawn set (`player_daobao_*`, same skeleton,
+same anchors), so it is exact on every frame, facing and action. The jian is layered through the
+anchors (`EquipmentFeedback`): across the back from the `core` when sheathed (behind the body
+when it faces the viewer), in the `palm` during a swing, pointing where the strike goes — and a
+Kiếm's swing draws a crescent sweep, not a palm's air (`AttackFeedback`).
+
+**Satchel.** Worn items lead the list, marked; E on a worn item takes it off.
+

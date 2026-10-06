@@ -607,6 +607,15 @@ ARCHETYPES = {
         "robe_dk": (98, 106, 112, 255), "trim": (180, 160, 100, 255),
         "shoe": (44, 40, 38, 255),
     }),
+    # The Thanh Vân outer-disciple robe (Phase 14 equipment): the player's drawing in the sect's
+    # deep jade-blue. A whole palette, so the robe is exact on every frame and facing.
+    "player_daobao": _derive({
+        "hair": (230, 232, 242, 255), "hair_hi": (250, 252, 255, 255),
+        "hair_dk": (196, 184, 190, 255), "skin": (236, 206, 178, 255),
+        "robe_hi": (122, 178, 196, 255), "robe": (62, 120, 146, 255),
+        "robe_dk": (40, 82, 110, 255), "trim": (214, 186, 116, 255),
+        "inner": (226, 232, 236, 255),
+    }),
     "merchant_proto": _derive({
         "hair": (86, 64, 50, 255), "hair_hi": (124, 96, 72, 255),
         "hair_dk": (52, 38, 30, 255), "skin": (232, 196, 160, 255),

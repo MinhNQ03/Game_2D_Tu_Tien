@@ -47,7 +47,7 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"InventoryRuntime", &"CultivationRuntime", &"KnowledgeRuntime",
+	&"EquipmentRuntime", &"InventoryRuntime", &"CultivationRuntime", &"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
@@ -279,6 +279,9 @@ func test_real_world_map_flow() -> void:
 
 	# --- 4d. ITEMS: pick up, open the satchel, choose and use through real keys (P13) ---
 	await _prove_inventory(main, player, hub_map)
+
+	# --- 4e. EQUIPMENT: wear and wield through the satchel with real keys (P14) ---------
+	await _prove_equipment(main, player, hub_map)
 
 	# --- 5. first transition hub → field via REAL interact input -----------------
 	await _interact_to_transition(player, "map_hub")
@@ -1122,12 +1125,14 @@ func _prove_inventory(main: Node, player: Node2D, map: Node) -> void:
 			break
 	assert_true(hud.is_inventory_open(), "a real I key opened the satchel")
 	var panel := hud.inventory_panel()
-	assert_eq(panel.row_count(), 2, "it lists the two kinds of item held")
+	# Other pickups lie on paths earlier proofs walk (the jian by the training post), so the
+	# satchel holds AT LEAST the pills and the manual.
+	assert_true(panel.row_count() >= 2, "it lists every kind of item held (%d)" % panel.row_count())
 	var start := player.global_position
-	for _attempt in 6:
-		await _fire_action(&"move_down")
+	for _attempt in 8:
 		if panel.selected_item_id() == &"item_manual_phong":
 			break
+		await _fire_action(&"move_down")
 	assert_eq(panel.selected_item_id(), &"item_manual_phong", "a real move key chose the manual")
 	assert_true(player.global_position.distance_to(start) < 1.0,
 		"and the player did not walk while the satchel was open")
@@ -1145,4 +1150,51 @@ func _prove_inventory(main: Node, player: Node2D, map: Node) -> void:
 	assert_false(hud.is_inventory_open(), "the key closed it")
 	var input := scene_tree.root.get_node_or_null("InputService")
 	assert_true(bool(input.call("is_gameplay_active")), "and input is back with the world")
+
+
+## Prove Phase 14 in the REAL app: pick up the jian and the robe, wear both through the satchel
+## with real keys, and see the body change — attack power up through the stat view, the jian's
+## thrust armed, the robe drawn — then take the jian off again.
+func _prove_equipment(main: Node, player: Node2D, map: Node) -> void:
+	var equipment := main.get_node_or_null("Systems/EquipmentRuntime") as EquipmentRuntime
+	assert_not_null(equipment, "the EquipmentRuntime subsystem exists")
+	var hud := _find_hud(map)
+	if equipment == null or hud == null:
+		return
+	for path in ["Pickups/HubSword", "Pickups/HubRobe"]:
+		var pickup := map.get_node_or_null(path) as Node2D
+		assert_not_null(pickup, "%s exists" % path)
+		if pickup != null:
+			player.global_position = pickup.global_position
+			for _i in 6:
+				await scene_tree.physics_frame
+	var bare_attack := int(player.call("get_attack_power"))
+	for item_id in [&"item_kiem_thanh_thiet", &"item_dao_bao_thanh_van"]:
+		for _attempt in 6:
+			await _fire_action(&"inventory")
+			if hud.is_inventory_open():
+				break
+		var panel := hud.inventory_panel()
+		for _attempt in 8:
+			if panel.selected_item_id() == item_id and not panel.selected_is_equipped():
+				break
+			await _fire_action(&"move_down")
+		for _attempt in 6:
+			await _fire_action(INTERACT)
+			if equipment.is_worn(item_id):
+				break
+		assert_true(equipment.is_worn(item_id), "a real E wore '%s'" % item_id)
+		for _attempt in 6:
+			await _fire_action(&"inventory")
+			if not hud.is_inventory_open():
+				break
+	assert_eq(int(player.call("get_attack_power")), bare_attack + 3,
+		"the jian adds its attack through the stat view")
+	var attack := player.get_node("AttackComponent") as AttackComponent
+	assert_eq(attack.attack_data().id, &"attack_player_kiem", "the jian's thrust is armed")
+	var visual := player.call("get_visual_component") as CharacterVisualComponent
+	assert_eq(visual.get_sprite().texture.resource_path.get_file(), "player_daobao_idle.png",
+		"the body is drawn in the Thanh Vân robe")
+	assert_eq(equipment.unequip_item(&"item_kiem_thanh_thiet"), &"", "and the jian comes off")
+	assert_eq(int(player.call("get_attack_power")), bare_attack, "attack back to bare")
 

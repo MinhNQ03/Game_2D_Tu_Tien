@@ -51,6 +51,14 @@ class_name AttackData
 ## Lockout after the hit window closes, before the attacker is READY again.
 @export var recovery_seconds: float = 0.20
 
+## The canon weapon families (CL-10). An attack made WITH a weapon names its family, so a
+## technique's weapon compatibility (P15) and the swing's look (a blade's trail, not a palm's air)
+## read one fact. Empty = unarmed (the palm strike, a bite).
+const WEAPON_FAMILIES: Array[StringName] = [&"weapon_kiem", &"weapon_dao", &"weapon_thuong",
+	&"weapon_cung", &"weapon_phap_truong"]
+
+@export var weapon_family: StringName = &""
+
 ## How much of its normal speed the attacker keeps while the swing is in flight (WINDUP, ACTIVE
 ## and RECOVERY), in [0, 1] (D-057B). 1.0 moves freely, 0.0 roots the attacker.
 ##
@@ -112,6 +120,8 @@ func is_valid() -> bool:
 	if committed_move_scale < 0.0 or committed_move_scale > 1.0:
 		problems.append("committed_move_scale must be in [0, 1] (got %.3f)"
 			% committed_move_scale)
+	if weapon_family != &"" and not WEAPON_FAMILIES.has(weapon_family):
+		problems.append("weapon_family '%s' is not canon (CL-10)" % weapon_family)
 	if reach_pixels <= 0.0:
 		problems.append("reach_pixels must be > 0 (got %.2f)" % reach_pixels)
 	if arc_degrees <= 0.0 or arc_degrees > 360.0:

@@ -124,6 +124,14 @@ func give(item_id: StringName, count: int) -> int:
 	return added
 
 
+## Remove `count` of `item_id` WITHOUT using it (equipping moves an item out of the bag).
+func take(item_id: StringName, count: int) -> bool:
+	if not _session_active or not _bag.remove(item_id, count):
+		return false
+	inventory_changed.emit()
+	return true
+
+
 ## Use one `item_id`. Returns &"" on success, else the refusal's localization key (also emitted).
 func use(item_id: StringName) -> StringName:
 	if not _session_active:

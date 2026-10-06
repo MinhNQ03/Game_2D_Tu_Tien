@@ -32,7 +32,7 @@ const MAIN_SOURCE_PATH := "res://src/bootstrap/main.gd"
 ## The frozen teardown order, written out as a literal rather than derived, so this file says
 ## what the contract IS instead of only saying "the reverse of whatever start happens to be".
 const EXPECTED_TEARDOWN := [
-	&"InventoryRuntime", &"CultivationRuntime", &"KnowledgeRuntime",
+	&"EquipmentRuntime", &"InventoryRuntime", &"CultivationRuntime", &"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
@@ -50,6 +50,7 @@ const SUBSYSTEM_SCRIPTS := {
 	"KnowledgeRuntime": "res://src/gameplay/world/knowledge_runtime.gd",
 	"CultivationRuntime": "res://src/gameplay/world/cultivation_runtime.gd",
 	"InventoryRuntime": "res://src/gameplay/world/inventory_runtime.gd",
+	"EquipmentRuntime": "res://src/gameplay/world/equipment_runtime.gd",
 }
 
 ## How the bootstrap actually ends a session: the runtimes are duck-typed (`Node`-typed
@@ -63,7 +64,7 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 10, "ten per-session subsystems (got %s)" % str(order))
+	assert_eq(order.size(), 11, "eleven per-session subsystems (got %s)" % str(order))
 	assert_eq(order[0], &"WorldRuntime",
 		"the world session is first: it owns the character registry everything else resolves "
 		+ "through, and the player's CharacterState")
@@ -81,6 +82,8 @@ func test_01_start_order_is_the_frozen_dependency_order() -> void:
 		+ "and points at entities the world realized, so it must start after both (Phase 09)")
 	assert_eq(order[7], &"KnowledgeRuntime",
 		"the Knowledge Core follows progression: cultivation READS it (Phase 12, D-040)")
+	assert_eq(order[10], &"EquipmentRuntime",
+		"equipment is LAST: it moves items out of the inventory (Phase 14)")
 	assert_eq(order[9], &"InventoryRuntime",
 		"the inventory is LAST: using an item acts THROUGH cultivation, knowledge and the "
 		+ "player's body, so it starts after them and ends first (Phase 13)")

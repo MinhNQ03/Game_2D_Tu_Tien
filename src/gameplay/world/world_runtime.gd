@@ -730,7 +730,8 @@ func _push_inventory_view_to_active_map() -> void:
 	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
 	if inventory == null or not inventory.is_session_active():
 		return
-	_active_map.call("set_inventory_view", InventoryView.make(inventory))
+	_active_map.call("set_inventory_view", InventoryView.make(inventory,
+		_find_sibling_of(EquipmentRuntime) as EquipmentRuntime))
 
 
 func _connect_inventory_signals() -> void:
@@ -745,6 +746,12 @@ func _connect_inventory_signals() -> void:
 		inventory.use_refused.connect(_on_item_refused)
 	if not inventory.item_used.is_connected(_on_item_used):
 		inventory.item_used.connect(_on_item_used)
+	var equipment := _find_sibling_of(EquipmentRuntime) as EquipmentRuntime
+	if equipment != null:
+		if not equipment.equipment_changed.is_connected(_push_inventory_view_to_active_map):
+			equipment.equipment_changed.connect(_push_inventory_view_to_active_map)
+		if not equipment.equip_refused.is_connected(_on_item_refused):
+			equipment.equip_refused.connect(_on_item_refused)
 
 
 func _on_item_gained(item_id: StringName, count: int) -> void:
@@ -769,10 +776,22 @@ func _announce_item(key: StringName, item_id: StringName, count: int) -> void:
 		_active_map.call("announce", key, {"name": item.name_key, "count": count})
 
 
-func _on_item_use_requested(item_id: StringName) -> void:
+## Route a satchel request to its owner (Phase 13/14): something worn is taken off, equipment is
+## put on, anything else is used.
+func _on_item_use_requested(item_id: StringName, equipped: bool) -> void:
 	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
-	if inventory != null and inventory.is_session_active():
-		inventory.use(item_id)
+	if inventory == null or not inventory.is_session_active():
+		return
+	var equipment := _find_sibling_of(EquipmentRuntime) as EquipmentRuntime
+	var item := inventory.get_catalog().entry(item_id)
+	if equipment != null and equipment.is_session_active() and item != null \
+			and item.category == ItemData.Category.EQUIPMENT:
+		if equipped:
+			equipment.unequip_item(item_id)
+		else:
+			equipment.equip(item_id)
+		return
+	inventory.use(item_id)
 
 
 ## The sibling under Main/Systems that is an instance of `type`, or null.

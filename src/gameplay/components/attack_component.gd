@@ -88,6 +88,19 @@ func arm(
 	return _fsm.is_armed()
 
 
+## Swap the attack this component swings with (Phase 14: equipping a weapon brings its own
+## attack). Refused while a swing is in flight — the lifecycle in progress keeps the data it
+## started with — and for invalid data.
+func swap_attack(attack: AttackData) -> bool:
+	if attack == null or not attack.is_valid() or not is_armed():
+		return false
+	if state() != AttackStateMachine.State.READY:
+		return false
+	_attack = attack
+	_fsm = AttackStateMachine.new(attack)
+	return _fsm.is_armed()
+
+
 ## True once this component can actually swing.
 func is_armed() -> bool:
 	return _fsm != null and _fsm.is_armed()

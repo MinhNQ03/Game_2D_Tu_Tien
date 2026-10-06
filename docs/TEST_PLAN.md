@@ -948,3 +948,11 @@ its owner and a wasted use burning nothing); HUD: the satchel takes and returns 
 (`_prove_inventory`): walk onto pickups, a real I opens the satchel, real move keys choose the
 manual without walking, a real E reads it (Knowledge Core), I closes and input returns.
 
+**Phase 14 (D-060):** `tests/unit/equipment/test_equipment.gd` (shipped equipment valid and
+canon, a non-canon family refused; the bonus changes damage deterministically through
+`DamageRules` and never touches base stats; a weapon swaps the attack but never mid-swing;
+equipping moves items and tells the body once, bonuses sum, unequipping restores the palm; slots
+persist and a robe in the weapon slot is refused; the realm gate reads cultivation). E2E
+(`_prove_equipment`): pick up both, wear them through the satchel with real keys, attack power and
+the armed attack change, the robe is drawn, the jian comes off again.
+

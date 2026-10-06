@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="ItemCatalogData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="ItemCatalogData" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://src/data/items/item_catalog_data.gd" id="1_cat"]
 [ext_resource type="Script" path="res://src/data/items/item_data.gd" id="2_item"]
@@ -6,8 +6,10 @@
 [ext_resource type="Resource" path="res://data/items/item_linh_thach.tres" id="r_item_linh_thach"]
 [ext_resource type="Resource" path="res://data/items/item_manual_phong.tres" id="r_item_manual_phong"]
 [ext_resource type="Resource" path="res://data/items/item_manual_loi.tres" id="r_item_manual_loi"]
+[ext_resource type="Resource" path="res://data/items/item_kiem_thanh_thiet.tres" id="r_item_kiem_thanh_thiet"]
+[ext_resource type="Resource" path="res://data/items/item_dao_bao_thanh_van.tres" id="r_item_dao_bao_thanh_van"]
 
 [resource]
 script = ExtResource("1_cat")
 id = &"item_catalog"
-entries = Array[ExtResource("2_item")]([ExtResource("r_item_bo_huyet_dan"), ExtResource("r_item_linh_thach"), ExtResource("r_item_manual_phong"), ExtResource("r_item_manual_loi")])
+entries = Array[ExtResource("2_item")]([ExtResource("r_item_bo_huyet_dan"), ExtResource("r_item_linh_thach"), ExtResource("r_item_manual_phong"), ExtResource("r_item_manual_loi"), ExtResource("r_item_kiem_thanh_thiet"), ExtResource("r_item_dao_bao_thanh_van")])

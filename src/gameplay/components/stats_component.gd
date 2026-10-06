@@ -29,6 +29,17 @@ class_name StatsComponent
 ## tests). Set once by the owner via `bind_character_state()`; never mutated here.
 var _character_state: CharacterState = null
 
+## What worn equipment adds (Phase 14). A VIEW-side modifier: the authoritative base stays in
+## `CharacterState`; the equipment state is persisted by its own runtime, so a save never bakes a
+## sword's bonus into the body.
+var _bonus_attack: int = 0
+var _bonus_defense: int = 0
+
+
+func set_equipment_bonus(attack_bonus: int, defense_bonus: int) -> void:
+	_bonus_attack = maxi(0, attack_bonus)
+	_bonus_defense = maxi(0, defense_bonus)
+
 
 ## Bind the authoritative CharacterState this component views. The owner (Player) calls this
 ## once after the state is created, so stat reads come from the one domain source of truth
@@ -79,7 +90,7 @@ func get_max_hp() -> int:
 
 func get_attack() -> int:
 	if _character_state != null:
-		return max(0, _character_state.attack)
+		return max(0, _character_state.attack) + _bonus_attack
 	if stat_block == null:
 		push_warning("[stats] get_attack with no StatBlock; returning 0")
 		return 0
@@ -88,7 +99,7 @@ func get_attack() -> int:
 
 func get_defense() -> int:
 	if _character_state != null:
-		return max(0, _character_state.defense)
+		return max(0, _character_state.defense) + _bonus_defense
 	if stat_block == null:
 		push_warning("[stats] get_defense with no StatBlock; returning 0")
 		return 0

@@ -201,3 +201,12 @@ UI_ITEM_NO_METHOD,You do not know how to draw qi from a stone.,Ngươi chưa bi�
 UI_ITEM_STEP_FULL,Your cultivation is full; break through first.,Tu vi đã đầy; hãy đột phá trước.
 UI_ITEM_ALREADY_KNOWN,You have nothing more to learn from it.,Ngươi đã lĩnh hội hết điều trong đó.
 UI_ITEM_BAG_FULL,The satchel is full.,Túi đã đầy.
+ITEM_KIEM_THANH_THIET_NAME,Blue-Iron Jian,Thanh Thiết Kiếm
+ITEM_KIEM_THANH_THIET_DESC,A plain training jian of blue iron. Longer reach than a palm; attack +3.,Thanh kiếm tập bằng thép xanh mộc mạc. Tầm xa hơn chưởng; công +3.
+ITEM_DAO_BAO_THANH_VAN_NAME,Thanh Vân Outer Robe,Đạo bào Thanh Vân
+ITEM_DAO_BAO_THANH_VAN_DESC,The jade-blue robe of a Thanh Vân outer disciple. Defense +4.,Đạo bào xanh ngọc của ngoại môn đệ tử Thanh Vân. Thủ +4.
+ATTACK_PLAYER_KIEM_NAME,Jian Thrust,Kiếm Thích
+UI_INVENTORY_WORN,worn,đang mang
+UI_EQUIP_NOT_EQUIPMENT,That cannot be worn.,Thứ này không mang được.
+UI_EQUIP_REALM,Your realm is too low to wield that.,Cảnh giới chưa đủ để dùng thứ này.
+UI_EQUIP_BUSY,Not in the middle of a strike.,Không thể đổi giữa đòn đánh.

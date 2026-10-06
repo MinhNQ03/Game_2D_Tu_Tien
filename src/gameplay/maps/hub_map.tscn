@@ -1,4 +1,4 @@
-[gd_scene load_steps=34 format=3]
+[gd_scene load_steps=36 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -31,6 +31,9 @@
 [ext_resource type="Resource" path="res://data/items/item_manual_phong.tres" id="51_1"]
 
 [ext_resource type="Script" path="res://src/presentation/inventory/pickup_feedback.gd" id="52_pickuplook"]
+
+[ext_resource type="Resource" path="res://data/items/item_kiem_thanh_thiet.tres" id="53_sword"]
+[ext_resource type="Resource" path="res://data/items/item_dao_bao_thanh_van.tres" id="54_robe"]
 
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
@@ -594,4 +597,24 @@ pickup_id = &"pickup_hubmanualphong"
 script = ExtResource("52_pickuplook")
 
 [node name="Look" type="Node2D" parent="Pickups/HubManualPhong"]
+script = ExtResource("52_pickuplook")
+
+[node name="HubSword" type="Node2D" parent="Pickups"]
+position = Vector2(650, 410)
+script = ExtResource("50_witem")
+item = ExtResource("53_sword")
+count = 1
+pickup_id = &"pickup_hubsword"
+
+[node name="Look" type="Node2D" parent="Pickups/HubSword"]
+script = ExtResource("52_pickuplook")
+
+[node name="HubRobe" type="Node2D" parent="Pickups"]
+position = Vector2(530, 268)
+script = ExtResource("50_witem")
+item = ExtResource("54_robe")
+count = 1
+pickup_id = &"pickup_hubrobe"
+
+[node name="Look" type="Node2D" parent="Pickups/HubRobe"]
 script = ExtResource("52_pickuplook")

@@ -68,6 +68,7 @@ const PROGRESSION_RUNTIME_SCRIPT := "res://src/gameplay/world/progression_runtim
 const KNOWLEDGE_RUNTIME_SCRIPT := "res://src/gameplay/world/knowledge_runtime.gd"
 const CULTIVATION_RUNTIME_SCRIPT := "res://src/gameplay/world/cultivation_runtime.gd"
 const INVENTORY_RUNTIME_SCRIPT := "res://src/gameplay/world/inventory_runtime.gd"
+const EQUIPMENT_RUNTIME_SCRIPT := "res://src/gameplay/world/equipment_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -111,7 +112,7 @@ const REQUIRED_AUTOLOADS := [
 const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
 	&"WorldSimulationRuntime", &"CombatRuntime", &"ProgressionRuntime",
-	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime",
+	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime", &"EquipmentRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -145,6 +146,8 @@ var _cultivation: Node = null
 # InventoryRuntime (Phase 13): uses items THROUGH cultivation, knowledge and the player's body,
 # so it starts after all of them and ends first.
 var _inventory: Node = null
+# EquipmentRuntime (Phase 14): moves items out of the inventory into slots.
+var _equipment: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -230,6 +233,7 @@ func _boot() -> void:
 	_knowledge = _create_runtime(KNOWLEDGE_RUNTIME_SCRIPT, "KnowledgeRuntime")
 	_cultivation = _create_runtime(CULTIVATION_RUNTIME_SCRIPT, "CultivationRuntime")
 	_inventory = _create_runtime(INVENTORY_RUNTIME_SCRIPT, "InventoryRuntime")
+	_equipment = _create_runtime(EQUIPMENT_RUNTIME_SCRIPT, "EquipmentRuntime")
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -586,6 +590,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _cultivation
 		&"InventoryRuntime":
 			return _inventory
+		&"EquipmentRuntime":
+			return _equipment
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -884,6 +890,9 @@ func _start_cultivation_sessions() -> bool:
 		_world.call("refresh_active_map_cultivation_view")
 	if _inventory == null or not bool(_inventory.call("start_session", player_character, _world,
 			_knowledge, _cultivation)):
+		return false
+	if _equipment == null or not bool(_equipment.call("start_session", player_character, _world,
+			_inventory, _cultivation)):
 		return false
 	if _world.has_method("refresh_active_map_inventory_view"):
 		_world.call("refresh_active_map_inventory_view")

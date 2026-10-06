@@ -32,7 +32,7 @@ signal exit_requested(to_map_id: StringName, entry_point: StringName)
 signal knowledge_source_read(source_id: StringName, grants: Array[StringName])
 
 ## The player asked to use an item from the bag (Phase 13), forwarded from the HUD.
-signal item_use_requested(item_id: StringName)
+signal item_use_requested(item_id: StringName, equipped: bool)
 ## Intent to leave the world back to the menu (same contract the sandbox/prologue used).
 signal return_to_menu_requested()
 
@@ -503,8 +503,8 @@ func _setup_hud() -> void:
 	_hud = GameplayHUDScript.new() as GameplayHUD
 	_hud.name = "GameplayHUD"
 	add_child(_hud)
-	_hud.inventory_use_requested.connect(func(item_id: StringName) -> void:
-		item_use_requested.emit(item_id))
+	_hud.inventory_use_requested.connect(func(item_id: StringName, equipped: bool) -> void:
+		item_use_requested.emit(item_id, equipped))
 
 
 func _refresh_hud() -> void:

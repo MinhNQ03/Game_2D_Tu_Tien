@@ -8,6 +8,13 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-06 — Equipment (Phase 14, D-060)
+
+- **Wear and wield from the satchel.** A Thanh Thiết Kiếm by the training post: worn across the
+  back, in the hand when you strike, a longer thrust with a blade's crescent; +3 attack through
+  the same damage formula. The Thanh Vân outer robe redraws you in the sect's jade-blue; +4
+  defense. E on a worn item takes it off.
+
 ### 2026-10-06 — Cultivation, knowledge, and a satchel (Phase 12 + Phase 13, D-058 / D-059)
 
 - **Cultivate (C) at a vein.** Read the stele in Thôn Lạc Hà (E) to learn Dẫn Khí Quyết, sit at

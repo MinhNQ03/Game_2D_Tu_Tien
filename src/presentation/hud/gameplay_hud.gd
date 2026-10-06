@@ -63,7 +63,7 @@ const INVENTORY_ACTION := &"inventory"
 
 ## The player asked to use an item from the bag (Phase 13). The HUD decides nothing: MapBase
 ## forwards it to WorldRuntime → InventoryRuntime.
-signal inventory_use_requested(item_id: StringName)
+signal inventory_use_requested(item_id: StringName, equipped: bool)
 
 ## Side of the small sect emblem chip in the identity panel. HUD-local: nothing else in the
 ## UI draws a chip this size, so it stays here rather than widening the shared palette.
@@ -667,8 +667,8 @@ func _build_ui() -> void:
 	_inventory_panel.name = "InventoryPanel"
 	_bound_side_panel(_inventory_panel, true)
 	_inventory_panel.visible = false
-	_inventory_panel.use_requested.connect(func(item_id: StringName) -> void:
-		inventory_use_requested.emit(item_id))
+	_inventory_panel.use_requested.connect(func(item_id: StringName, equipped: bool) -> void:
+		inventory_use_requested.emit(item_id, equipped))
 	root.add_child(_inventory_panel)
 
 	_faction_panel = FactionPanelScript.new() as FactionPanel

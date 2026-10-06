@@ -50,7 +50,7 @@
 > basic attack a HUD prompt — it had none, so the game's central verb was the one thing a
 > player could not discover from the screen.
 > **Phase 12 (Cultivation + Knowledge Core) — DONE (D-058).** **Phase 13 (Item) — DONE (D-059).**
-> Phase 14 (Equipment) and Phase 15 (Skill/Technique) follow in D-060 / D-061.
+> **Phase 14 (Equipment) — DONE (D-060).** Phase 15 (Skill/Technique) follows in D-061.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
 > contract (`MOTION_DESIGN_CONTRACT.md`) and corrected the HUD's composition by measurement;

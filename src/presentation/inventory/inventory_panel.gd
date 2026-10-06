@@ -10,7 +10,8 @@ class_name InventoryPanel
 ## (`use_requested`) and the `InventoryRuntime` decides; the outcome comes back as a new view and
 ## a HUD notice.
 
-signal use_requested(item_id: StringName)
+## `equipped`: the row was something worn (WorldRuntime takes it off instead of using it).
+signal use_requested(item_id: StringName, equipped: bool)
 
 const PANEL_MIN_WIDTH := 300
 const ICON_PX := 32
@@ -61,6 +62,13 @@ func selected_index() -> int:
 	return _selected
 
 
+## True when the selected row is something WORN (using it takes it off).
+func selected_is_equipped() -> bool:
+	if _view == null or _view.rows.is_empty():
+		return false
+	return bool(_view.rows[clampi(_selected, 0, _view.rows.size() - 1)].get("equipped", false))
+
+
 func selected_item_id() -> StringName:
 	if _view == null or _view.rows.is_empty():
 		return &""
@@ -83,7 +91,7 @@ func move_selection(step: int) -> void:
 func request_use() -> void:
 	var item_id := selected_item_id()
 	if item_id != &"":
-		use_requested.emit(item_id)
+		use_requested.emit(item_id, selected_is_equipped())
 
 
 ## Read the modal keys while open (the HUD turns processing on and off with visibility).
@@ -147,7 +155,8 @@ func _row(row: Dictionary, selected: bool) -> Control:
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.add_child(name_label)
 	var count := _label(UIPalette.FONT_SIZE_BODY, UIPalette.GOLD_PRIMARY)
-	count.text = "×%d" % int(row["count"])
+	count.text = _t("UI_INVENTORY_WORN") if bool(row.get("equipped", false)) \
+		else "×%d" % int(row["count"])
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.add_child(count)
 	return frame
