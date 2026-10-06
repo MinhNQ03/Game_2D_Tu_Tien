@@ -27,9 +27,11 @@
 > CI job can run. Do not "reconcile" the two numbers.
 >
 > The in-runner suite tally is printed by the runner itself, never hand-counted, and is
-> reported in the `DECISIONS.md` entry for the change that moved it. At the D-055 close-out the
-> runner reports **`ran 697 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
-> ObjectDB / resources at exit**. Locally that reads `676 passed, 2 failed`: the two failures
+> reported in the `DECISIONS.md` entry for the change that moved it. At the D-056 review pass
+> the runner reports **`ran 704 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> ObjectDB / resources at exit** (three of the seven new ones are `tests/unit/framework/`
+> tests that existed since Phase 0 but had never run — see the tree below). On some machines
+> that reads `N-2 passed, 2 failed`: the two failures
 > are the wall-clock performance budgets (`test_ai_budget`, `test_combat_budget`), which fail on
 > some development machines and pass on the CI runner — known environmental debt recorded in
 > D-054, deliberately not "fixed" by loosening another phase's gate. **The authoritative
@@ -152,6 +154,9 @@ tests/
   unit/
 	framework/
 	  test_nested_discovery.gd  # proves recursive discovery + harness fail-detection
+	  test_record_numbering.gd  # every L-NNN lesson number used once, in order (D-056)
+				   # RAN FOR THE FIRST TIME in the D-056 review pass: run_tests.gd excluded
+				   # the folder NAME `framework` at any depth, not just tests/framework/
   integration/     # components together (fresh instances; never the live autoloads)
   e2e/             # real-application flow — OWN process (D-019), excluded from run_tests.gd
 				   #   run_world_flow.gd + world_flow_case.gd (Phase 03 — world/map)

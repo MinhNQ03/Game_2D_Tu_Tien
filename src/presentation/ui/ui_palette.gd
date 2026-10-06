@@ -125,10 +125,10 @@ const MENU_BUTTON_WIDTH := 332
 ## Uniform action-button height, so the menu column reads as one engraved stack rather than
 ## buttons of slightly different sizes.
 ##
-## 64, not 48: the painted plate is 245x90 (D-044), and 332x64 keeps the drawn aspect close
-## enough to the authored one that the flat centre absorbs the resize invisibly. At 48 the
-## vertical 9-slice bands (14+14) would eat too much of the box and the plate would read as
-## squashed.
+## 64, not 48: the painted plate (D-044) needs the height for its emblem to read, and since
+## the D-056 UI pass the plate SHIPS at exactly 64px tall (`tools/repair_button_plate.py
+## --height`), so at this height nothing is stretched vertically at all. Change the two
+## together, or the emblem in the side band is squashed again.
 const BUTTON_HEIGHT := 64
 
 ## Gap between the title treatment and the action column.
@@ -357,9 +357,14 @@ const TEX_PORTRAIT_FRAME := UI_ASSET_DIR + "/frames/portrait_frame.png"
 
 const PAINTED_UI_DIR := "res://assets/ui/aetheria"
 
-## The painted button plate. MEASURED: 245x90, centre brightness 29 (DARK) — which is why it
+## The painted button plate. MEASURED: 201x64, centre brightness 32 (DARK) — which is why it
 ## can legally carry this project's light-only text palette, unlike the xianxia
 ## `button_normal.png` at 202 (see SURFACE_LIGHT_BRIGHTNESS_LIMIT below).
+##
+## DERIVED, not the raw crop (D-056 UI pass): `tools/repair_button_plate.py` completes the
+## right end-cap the crop cut off, clears the opaque background around the chamfered
+## silhouette, and resamples once to exactly `BUTTON_HEIGHT`. Re-derive with that tool rather
+## than editing the PNG by hand.
 const TEX_BUTTON_PAINTED := PAINTED_UI_DIR + "/buttons/button_jade.png"
 
 ## A violet variant of the same plate, for a role that must read as clearly apart.
@@ -601,17 +606,35 @@ const PORTRAIT_DIR := "res://assets/sprites/characters/portraits"
 const TEX_PORTRAIT_MALE := PORTRAIT_DIR + "/cultivator_male.png"
 const TEX_PORTRAIT_FEMALE := PORTRAIT_DIR + "/cultivator_female.png"
 
-## 9-slice border of the painted button plate: the gold corner filigree runs ~44px in from
-## each side and the gold frame sits ~14px from the top/bottom. Those bands are NOT stretched,
-## so the ornaments stay intact while the flat centre absorbs the resize.
-const PAINTED_BUTTON_MARGIN_H := 44
+## 9-slice bands of the painted button plate, MEASURED on the 201x64 plate (D-056 UI pass).
+##
+## ASYMMETRIC, because the art is. The LEFT band holds the whole qi-swirl emblem and its gold
+## crescent (ends at x≈66); the RIGHT band holds the whole cloud motif and the gold end-cap
+## (the cloud starts at x≈105 of 201). Only the 36px of flat well between them is stretched.
+##
+## They used to be 44/44 on the raw 245x90 crop, which put most of the ~95px emblem INSIDE the
+## stretched centre — drawn ~1.6x wide and squashed vertically — and stretched the clouds with
+## it. The plate now ships at exactly `BUTTON_HEIGHT`, so there is no vertical stretch at the
+## authored height either; the vertical bands only matter for a taller button.
+const PAINTED_BUTTON_SLICE_LEFT := 68
+const PAINTED_BUTTON_SLICE_RIGHT := 97
 const PAINTED_BUTTON_MARGIN_V := 14
 
-## Text inset for the painted button. Wider than the 9-slice margin (the project's
-## `content_margin >= texture_margin` rule) AND wide enough to clear the qi-swirl emblem on
-## the left and the cloud motif on the right, so a label never collides with the artwork.
-const PAINTED_BUTTON_PAD_H := 62
+## Text inset for the painted button: how far the LABEL keeps from each end.
+##
+## The rule is "a label never lies on an ORNAMENT" — the emblem and the gold — not "a label
+## never lies on a stretched band". On the left the two coincide, so the pad clears the slice.
+## On the right they do NOT: the right slice is wide only so the cloud motif is not stretched,
+## and that cloud is a faint background wash a label may sit over (it is ~105px of a 201px
+## plate; reserving it all would leave a long label like "Tiếng Việt — đang dùng" no room). So
+## the right pad clears the gold end-cap (starts at x≈165) plus a gap, and no more.
+const PAINTED_BUTTON_PAD_LEFT := 74
+const PAINTED_BUTTON_PAD_RIGHT := 44
 const PAINTED_BUTTON_PAD_V := 14
+
+## Width of the gold end-cap on the right of the plate, measured (x≈165..201). The label's
+## right pad must clear it — `test_painted_button_label_clears_every_ornament` pins that.
+const PAINTED_BUTTON_GOLD_RIGHT := 36
 
 ## Fraction of the screen height the painted backdrop scene occupies, centred. Keeps the
 ## upscale modest; the surrounding fill is the same navy as the art's own ground.

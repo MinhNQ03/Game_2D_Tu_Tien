@@ -444,8 +444,9 @@ static func build() -> Theme:
 ## carry the light-only text palette. D-034 found exactly this defect for panels and fixed it
 ## there (`panel.png` 231 -> the dark `panel_inset.png` at 15) but left the BUTTONS on the
 ## light plate, where only the text outline was holding legibility together. The painted plate
-## measures **29**, so this swap makes the button surface legal for the first time and removes
-## the "bright plastic" read in one change.
+## measures **32** (29 as the raw crop, before the D-056 re-derivation), so this swap makes
+## the button surface legal for the first time and removes the "bright plastic" read in one
+## change.
 ##
 ## All five states come from ONE texture, differentiated by modulation in `role_modulate` and
 ## by the per-state tints here. Five separate painted files would have to stay in sync with
@@ -460,9 +461,10 @@ static func button_stylebox(state: String) -> StyleBox:
 
 ## The painted plate as a 9-slice box, or null if the art is absent.
 ##
-## The ornate gold ENDS are protected by a wide horizontal margin and the gold frame by a thin
-## vertical one, so the filigree is never stretched — only the flat centre absorbs the resize.
-## That is what makes a 245x90 painted plate usable at 332x64 without visible distortion.
+## The ornate ENDS — the qi-swirl emblem on the left, the cloud motif and gold cap on the
+## right — sit wholly inside asymmetric side bands, so they are never stretched; only the
+## flat well between them absorbs the resize. The plate ships at `BUTTON_HEIGHT`, so at the
+## authored height nothing is stretched vertically either.
 static func _painted_button_box(state: String) -> StyleBoxTexture:
 	var tex_path := UIPalette.TEX_BUTTON_PAINTED
 	if not ResourceLoader.exists(tex_path):
@@ -470,20 +472,22 @@ static func _painted_button_box(state: String) -> StyleBoxTexture:
 	var tex := load(tex_path) as Texture2D
 	if tex == null:
 		return null
-	var pad_h := UIPalette.PAINTED_BUTTON_PAD_H
+	var pad_left := UIPalette.PAINTED_BUTTON_PAD_LEFT
+	var pad_right := UIPalette.PAINTED_BUTTON_PAD_RIGHT
 	var pad_v := UIPalette.PAINTED_BUTTON_PAD_V
 	# The focus ring overlays the normal box, so it must not add padding of its own.
 	if state == "focus":
-		pad_h = UIPalette.PAINTED_BUTTON_MARGIN_H
+		pad_left = UIPalette.PAINTED_BUTTON_SLICE_LEFT
+		pad_right = UIPalette.PAINTED_BUTTON_SLICE_RIGHT
 		pad_v = UIPalette.PAINTED_BUTTON_MARGIN_V
 	var box := StyleBoxTexture.new()
 	box.texture = tex
-	box.texture_margin_left = UIPalette.PAINTED_BUTTON_MARGIN_H
-	box.texture_margin_right = UIPalette.PAINTED_BUTTON_MARGIN_H
+	box.texture_margin_left = UIPalette.PAINTED_BUTTON_SLICE_LEFT
+	box.texture_margin_right = UIPalette.PAINTED_BUTTON_SLICE_RIGHT
 	box.texture_margin_top = UIPalette.PAINTED_BUTTON_MARGIN_V
 	box.texture_margin_bottom = UIPalette.PAINTED_BUTTON_MARGIN_V
-	box.content_margin_left = pad_h
-	box.content_margin_right = pad_h
+	box.content_margin_left = pad_left
+	box.content_margin_right = pad_right
 	box.content_margin_top = pad_v
 	box.content_margin_bottom = pad_v
 	box.modulate_color = state_modulate(state)

@@ -267,37 +267,58 @@ func test_button_surface_is_dark_enough_for_light_text() -> void:
 			continue
 		assert_not_null(box.texture, "the '%s' button carries a texture" % state)
 		assert_eq(box.texture.resource_path, UIPaletteScript.TEX_BUTTON_PAINTED,
-			("the '%s' button uses the DARK painted plate (measured centre 29), never the "
+			("the '%s' button uses the DARK painted plate (measured centre 32), never the "
 				+ "light xianxia plate (202) — the light one breaks the %d brightness limit "
 				+ "that the text palette depends on")
 				% [state, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
 
 
 ## Every per-state tint must keep the plate dark. The tints are multiplicative, so a factor
-## above ~4 would be needed to cross the limit from 29 — but a future "let's brighten hover"
-## edit is exactly the kind of change that would reintroduce the defect, so the headroom is
-## pinned rather than assumed.
+## above ~3.7 would be needed to cross the limit from the plate's centre — but a future "let's
+## brighten hover" edit is exactly the kind of change that would reintroduce the defect, so the
+## headroom is pinned rather than assumed.
+##
+## The centre brightness is MEASURED from the shipped plate, not typed beside it (L-029): it
+## was a literal 29 while the art was the raw crop, and a re-derived plate (D-056 UI pass, 32)
+## would have left the literal quietly describing a file that no longer exists.
 func test_button_state_tints_cannot_brighten_past_the_limit() -> void:
-	var headroom := float(UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT) / 29.0
+	var image := _painted_plate_image()
+	assert_not_null(image, "the painted plate yields an image to measure")
+	if image == null:
+		return
+	var centre := image.get_pixel(image.get_width() / 2, image.get_height() / 2)
+	var brightness := 255.0 * (0.299 * centre.r + 0.587 * centre.g + 0.114 * centre.b)
+	assert_true(brightness > 0.0 and brightness < UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
+		"the plate's measured centre (%.0f) is a DARK surface under the %d limit"
+			% [brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
+	var headroom := float(UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT) / maxf(brightness, 1.0)
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		var tint := UIThemeScript.state_modulate(state)
 		var strongest := maxf(maxf(tint.r, tint.g), tint.b)
 		assert_true(strongest < headroom,
-			("the '%s' tint (max channel %.2f) keeps the measured centre brightness 29 under "
+			("the '%s' tint (max channel %.2f) keeps the measured centre brightness %.0f under "
 				+ "the %d limit (headroom %.2fx)")
-				% [state, strongest, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT, headroom])
+				% [state, strongest, brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
+					headroom])
 
 
-## The button content margin must still clear the 9-slice border on the painted plate, or the
-## label is drawn on top of the gold filigree.
-func test_painted_button_content_margin_clears_its_ornament() -> void:
+## A label never lies on an ORNAMENT of the painted plate (D-056 UI pass).
+##
+## This used to assert `content_margin >= texture_margin` on every side, which was the right
+## proxy only while the slice bands were symmetric. They no longer are: the RIGHT band is wide
+## so the cloud motif is not stretched, and the cloud is a faint wash a label may sit over —
+## so the right-hand rule is now stated as what it always meant: clear the GOLD end-cap.
+## On the left the emblem fills the whole band, so there the old rule IS the intent.
+func test_painted_button_label_clears_every_ornament() -> void:
 	if not UIThemeScript.textures_present():
 		return
 	var box := UIThemeScript.button_stylebox("normal") as StyleBoxTexture
 	assert_true(box.content_margin_left >= box.texture_margin_left,
-		"the label clears the left gold corner")
-	assert_true(box.content_margin_right >= box.texture_margin_right,
-		"and the right one")
+		("the label (pad %d) clears the qi-swirl emblem, which fills the whole left band (%d)")
+			% [int(box.content_margin_left), int(box.texture_margin_left)])
+	assert_true(box.content_margin_right > UIPaletteScript.PAINTED_BUTTON_GOLD_RIGHT,
+		"and (pad %d) clears the gold end-cap on the right (%dpx)"
+			% [int(box.content_margin_right), UIPaletteScript.PAINTED_BUTTON_GOLD_RIGHT])
 	assert_true(box.content_margin_top >= box.texture_margin_top, "and the top frame")
 	assert_true(box.content_margin_bottom >= box.texture_margin_bottom, "and the bottom")
 	# The vertical 9-slice bands must fit inside the authored button height, or they collapse
@@ -307,6 +328,65 @@ func test_painted_button_content_margin_clears_its_ornament() -> void:
 		"the unstretched vertical bands (%d+%d) fit inside BUTTON_HEIGHT (%d)"
 			% [int(box.texture_margin_top), int(box.texture_margin_bottom),
 				UIPaletteScript.BUTTON_HEIGHT])
+
+
+## The painted plate is drawn UNDISTORTED at the authored button size (D-056 UI pass).
+##
+## Found by opening a capture at 3x, invisible to every assertion before this one: the raw
+## 245x90 crop was 9-sliced into a 64px box with 44px side bands, so most of the ~95px emblem
+## sat in the STRETCHED centre (drawn ~1.6x wide) and the side bands were squashed vertically.
+## Each of the three conditions below is one way that comes back.
+func test_painted_button_plate_is_not_distorted_at_the_authored_size() -> void:
+	var image := _painted_plate_image()
+	assert_not_null(image, "the painted plate yields an image to measure")
+	if image == null:
+		return
+	# 1. It ships at the button's height, so the side bands are drawn 1:1 vertically.
+	assert_eq(image.get_height(), UIPaletteScript.BUTTON_HEIGHT,
+		("the plate is exactly BUTTON_HEIGHT (%d) tall — at any other height the emblem in "
+			+ "the side band is squashed or stretched vertically") % UIPaletteScript.BUTTON_HEIGHT)
+	# 2. The two protected bands leave a stretchable centre INSIDE the plate.
+	var slices := (UIPaletteScript.PAINTED_BUTTON_SLICE_LEFT
+		+ UIPaletteScript.PAINTED_BUTTON_SLICE_RIGHT)
+	assert_true(slices < image.get_width(),
+		"the side bands (%d) leave a stretchable centre in the %dpx plate"
+			% [slices, image.get_width()])
+	# 3. And at the authored width the centre only ever STRETCHES, never compresses the bands.
+	assert_true(slices < UIPaletteScript.MENU_BUTTON_WIDTH,
+		"the side bands (%d) fit inside MENU_BUTTON_WIDTH (%d)"
+			% [slices, UIPaletteScript.MENU_BUTTON_WIDTH])
+
+
+## The plate has no opaque background around its chamfered silhouette (D-056 UI pass).
+##
+## The raw crop was opaque navy edge to edge, so every menu button drew a dark RECTANGLE
+## around the plate, which read as a box behind the button rather than as the button. This
+## measures the four corners — outside the chamfer by construction — so swapping the raw crop
+## back in fails here.
+func test_painted_button_plate_background_is_transparent() -> void:
+	var image := _painted_plate_image()
+	assert_not_null(image, "the painted plate yields an image to measure")
+	if image == null:
+		return
+	var w := image.get_width() - 1
+	var h := image.get_height() - 1
+	for corner in [Vector2i(0, 0), Vector2i(w, 0), Vector2i(0, h), Vector2i(w, h)]:
+		assert_true(image.get_pixelv(corner).a < 0.05,
+			"the plate's corner %s is transparent (alpha %.2f), not an opaque background"
+				% [str(corner), image.get_pixelv(corner).a])
+	# The WELL is still solid: a fill that leaked through the frame would hollow the button.
+	assert_true(image.get_pixel(image.get_width() / 2, image.get_height() / 2).a > 0.99,
+		"and the well the label sits on is fully opaque")
+
+
+func _painted_plate_image() -> Image:
+	var texture := load(UIPaletteScript.TEX_BUTTON_PAINTED) as Texture2D
+	if texture == null:
+		return null
+	var image := texture.get_image()
+	if image != null and image.is_compressed():
+		image.decompress()
+	return image
 
 
 ## The painted backdrop and the portrait crop must actually resolve — these are the two assets

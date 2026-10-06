@@ -150,6 +150,12 @@ func _apply_visual_profile() -> void:
 			% _visual_profile_path)
 		return
 	_visual = VisualComponentScript.new() as CharacterVisualComponent
+	# NAMED, like the enemy's (D-056 review pass). It was the one anonymous visual component
+	# in the project, so it could only be reached through `get_visual_component()` or by class
+	# — which is why `AIComponent` resolves it by CLASS with a comment about scenes naming
+	# freely. An anonymous node also means a debug readout or a failing assertion can only
+	# quote Godot's generated name (L-040).
+	_visual.name = "CharacterVisualComponent"
 	add_child(_visual)
 	if not _visual.setup(profile):
 		# Invalid profile: drop the component, keep the static fallback sprite.

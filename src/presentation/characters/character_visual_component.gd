@@ -68,15 +68,22 @@ var _action_progress: float = 0.0
 
 ## The optional sibling that reports an attack lifecycle, resolved once.
 ##
-## Duck-typed and OPTIONAL, the same way `AttackFeedback` and `DamageFeedback` resolve their
-## siblings: an entity that cannot attack (a preview archetype, a prop) legitimately has none,
-## and that is a correct scene rather than a mis-wired one.
+## OPTIONAL, the same way `AttackFeedback` and `DamageFeedback` resolve their siblings: an
+## entity that cannot attack (a preview archetype, a prop) legitimately has none, and that is a
+## correct scene rather than a mis-wired one.
 ##
 ## This wiring is deliberately CONCRETE and single. There is no "action source interface",
 ## because a second action SOURCE does not exist yet and inventing one would be the speculative
 ## abstraction `03-architecture.md` forbids. When CAST arrives it calls the same three public
 ## methods and nothing in this layer changes.
-var _attack_source: Node = null
+##
+## TYPED, like `AttackFeedback`'s reference. It was declared `Node` and read through
+## `call("state")` / `call("time_remaining")` — two dynamic dispatches per frame of every swing
+## on every attacking creature, plus `call("attack_data")` once per swing — where a typed
+## reference costs none and a renamed method fails at parse time instead of at runtime. The
+## resolution stays OPTIONAL: a missing sibling, or a node of that name that is not an
+## `AttackComponent`, casts to null and leaves the action layer unbound.
+var _attack_source: AttackComponent = null
 
 ## The authored phase durations of the swing in flight, read ONCE per swing rather than every
 ## frame (`05-performance-testing.md`: no redundant per-frame work on a node every creature
@@ -101,18 +108,18 @@ func _bind_attack_source() -> void:
 	var parent := get_parent()
 	if parent == null:
 		return
-	var source := parent.get_node_or_null("AttackComponent")
-	if source == null or not source.has_signal("attack_started"):
+	var source := parent.get_node_or_null("AttackComponent") as AttackComponent
+	if source == null:
 		return
 	_attack_source = source
-	source.connect("attack_started", _on_attack_started)
-	source.connect("attack_finished", _on_attack_finished)
+	source.attack_started.connect(_on_attack_started)
+	source.attack_finished.connect(_on_attack_finished)
 
 
 func _on_attack_started() -> void:
 	# Cache the authored phase durations for this swing. They come from the AttackData the
 	# component is armed with, so a retuned attack moves the animation with it.
-	var data: AttackData = _attack_source.call("attack_data")
+	var data := _attack_source.attack_data()
 	if data == null:
 		return
 	_swing_windup = data.windup_seconds
@@ -329,11 +336,11 @@ func _sync_action_from_authority() -> void:
 	if _swing_total <= 0.0:
 		end_action()
 		return
-	var state := int(_attack_source.call("state"))
+	var state := _attack_source.state()
 	if state == AttackStateMachine.State.READY:
 		end_action()
 		return
-	var remaining := float(_attack_source.call("time_remaining"))
+	var remaining := _attack_source.time_remaining()
 	# Elapsed time INTO the swing, accumulated across completed phases. The lifecycle reports
 	# the time left in the CURRENT phase, so the phases before it are complete by definition.
 	var elapsed := 0.0

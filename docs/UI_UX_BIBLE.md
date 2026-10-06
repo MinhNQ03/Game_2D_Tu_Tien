@@ -52,7 +52,12 @@ spacing, states, iconography and accessibility across screens that already work.
 **The measured-asset rule (L-021/D-034, binding):** before wiring any texture into a
 `StyleBox`/`TextureRect`/`NinePatchRect`, measure its pixel size, centre alpha and centre
 brightness. A surface that carries text must contrast with the text palette;
-`content_margin >= texture_margin` on every 9-slice box; a frame belongs in a `NinePatchRect`; a
+`content_margin >= texture_margin` on every 9-slice box — the one stated exception being the
+painted button's RIGHT side, whose band is wide only so the faint cloud motif is not
+stretched; there the label must clear the gold end-cap instead (D-056 review pass,
+`test_painted_button_label_clears_every_ornament`). 9-slice bands are **measured on the art**
+so each band holds a WHOLE ornament — a symmetric margin on asymmetric art stretches whatever
+the shorter band cut in half. A frame belongs in a `NinePatchRect`; a
 `TextureRect` used as a fixed-size slot must set `expand_mode = EXPAND_IGNORE_SIZE`.
 
 ## 3a. Composition rules (integrated in D-041 — binding on every new screen)

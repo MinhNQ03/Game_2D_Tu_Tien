@@ -66,6 +66,35 @@ promoted subset stays tracked.
 Integration is now a **gate** (`PHASE_EXECUTION_PROTOCOL.md` §7b) with per-phase presentation
 seeds in the roadmap and the rule **foundation first, content second**.
 
+The review pass on this work (after CI went green on `e19e795`) found:
+
+- **The player's own swing had no proof on the real path.** The integration suite covered the
+  mist wolf only. The world E2E now asserts that the real attack key put the **player's**
+  sprite into its action layer and moved it through more than one frame, during the same swing
+  that landed the hit. Proven non-vacuous twice: unbinding the attack source fails both
+  assertions, freezing the progress at 0 fails the frame-advance one.
+- **The action layer read its attack source through `call()` every frame.** Now a typed
+  `AttackComponent` reference, like `AttackFeedback`'s: no dynamic dispatch on the hot path, and
+  a renamed method fails at parse time. The player's visual node is also **named** now (it was
+  the only anonymous one).
+- **Every menu button drew a dark box, a sliced-off end and a stretched emblem.** Seen at 3× in
+  a real capture: the painted plate was a raw crop with an opaque background and a truncated
+  right end-cap, 9-sliced with 44px bands around a ~95px emblem, so a long label ("Tiếng Việt —
+  đang dùng") was laid over it. The plate is now **derived** by
+  `tools/repair_button_plate.py` (mirrored tip spliced in, background cleared, resampled once
+  to exactly `BUTTON_HEIGHT`) and sliced with **measured, asymmetric** bands (68 / 97).
+  Three new guards re-measure the shipped plate.
+- **The runner never ran `tests/unit/framework/`.** Its exclusion list matched the folder NAME
+  `framework` at any depth, so `test_nested_discovery.gd` — the proof that the runner finds
+  nested tests and detects failures — had never executed. Exclusions are now full paths.
+- **Two lesson numbers were used twice** (`L-038`, `L-039`); renumbered to `L-040` / `L-041`,
+  with a guard that fails on a reused or out-of-order lesson number.
+- **The UI capture tool failed one run in four** on a cold shader cache (a single check for the
+  menu after a fixed wait); it now polls with a bound.
+
+704 tests (697 + 2 plate guards + 3 that had never run + 2 numbering guards), 0 failures, 0
+`SCRIPT ERROR:`, 0 leaks.
+
 ### 2026-10-06 — Phase-11 final hardening: guarding the property, not its spelling (D-055 follow-up)
 
 Five findings on `ddf2276`, which was green on all ten gates and on CI. No gameplay rule

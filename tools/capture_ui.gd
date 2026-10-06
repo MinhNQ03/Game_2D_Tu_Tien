@@ -37,6 +37,10 @@ const MAIN_SCENE := "res://main.tscn"
 ## single-frame wait captures a half-built screen and would make every capture a lie.
 const SETTLE_FRAMES := 12
 
+## Upper bound on frames to wait for the main menu to exist (see `_await_menu`). Generous,
+## because it only costs time on the slow path; a run that never finds a menu still fails.
+const MENU_WAIT_FRAMES := 240
+
 var _out_dir := "user://ui_captures"
 var _language := "vi"
 var _written: Array[String] = []
@@ -72,10 +76,9 @@ func _run() -> void:
 		return
 	await _settle()
 
-	var ui: Node = main.get_node_or_null("UI")
-	var menu: Node = ui.get_child(0) if (ui != null and ui.get_child_count() > 0) else null
+	var menu := await _await_menu(main)
 	if menu == null:
-		push_error("[capture] no main menu under Main/UI")
+		push_error("[capture] no main menu under Main/UI after %d frames" % MENU_WAIT_FRAMES)
 		quit(1)
 		return
 
@@ -200,6 +203,24 @@ func _toggle_panel(hud: Node, property: String) -> bool:
 func _settle() -> void:
 	for _i in SETTLE_FRAMES:
 		await process_frame
+
+
+## The live main menu under `Main/UI`, polled for a BOUNDED number of frames.
+##
+## A single check after `_settle()` failed one run in four (D-056 UI pass, the first run after
+## a re-import): the language switch rebuilds the menu, and on a cold shader cache the rebuild
+## had not landed within `SETTLE_FRAMES`. Polling with a cap keeps the run fast when it is
+## fast and still fails LOUD when there is genuinely no menu. A child already queued for
+## deletion is the menu being replaced, not the menu.
+func _await_menu(main: Node) -> Node:
+	for _i in MENU_WAIT_FRAMES:
+		var ui := main.get_node_or_null("UI")
+		if ui != null:
+			for child in ui.get_children():
+				if not child.is_queued_for_deletion():
+					return child
+		await process_frame
+	return null
 
 
 ## Write the current viewport to `<out>/<language>_<width>x<height>_<name>.png`.

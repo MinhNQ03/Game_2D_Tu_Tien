@@ -1057,7 +1057,12 @@
   on both axes; and the playtest gained a **Mode B** encounter that closes the distance with real
   movement keys and swings with the key the HUD is showing.
 
-## L-038 — A guard can protect the SPELLING instead of the thing, and a whole-screen search cannot say which widget it read
+## L-040 — A guard can protect the SPELLING instead of the thing, and a whole-screen search cannot say which widget it read
+
+> **Renumbered (D-056 review pass).** Recorded as a second `L-038` by `e4c5a16`, colliding with
+> the existing entry of that number; a citation of `L-038` could not say which lesson it meant.
+> Commit messages before the renumbering still say `L-038` for this entry.
+
 - **Symptom (Phase 11 final hardening, D-055 follow-up):** the previous pass had added
   structural guards, proven them non-vacuous with fixtures, and documented them — and all three
   were bypassable, each in a different way.
@@ -1138,7 +1143,12 @@
   `tools/playtest_flow.gd`; `GAME_FLOW.md` §3.3. Every new guard verified to fail against the
   prohibited pattern, two of them by planting it in a real production file.
 
-## L-039 — Technically correct can still fail the product, and a limb that teleports is not a limb
+## L-041 — Technically correct can still fail the product, and a limb that teleports is not a limb
+
+> **Renumbered (D-056 review pass).** Recorded as a second `L-039` by `e19e795`, colliding with
+> the existing entry of that number; a citation of `L-039` could not say which lesson it meant.
+> Commit messages before the renumbering still say `L-039` for this entry.
+
 - **Symptom (D-056):** the brief asked for a production/multiplayer contract and a presentation
   spine. The audit's first finding was that **the seam already existed**: `AttackComponent` had
   emitted `attack_started`/`attack_finished` and exposed `state()` / `time_remaining()` /
@@ -1201,3 +1211,30 @@
   bridge + the explicit lead arm), `GAUGE_HEIGHT`/`XP_METER_HEIGHT`/`TOP_PLAQUE_RESERVE`
   re-measured, `tests/unit/presentation/test_character_action_layer.gd`, two integration proofs
   in `test_enemy_encounter.gd`, and the PRESENTATION gate in `PHASE_EXECUTION_PROTOCOL.md` §7b.
+
+## L-042 — An exclusion by NAME excludes every folder of that name, and a 9-slice band that cuts an ornament in half stretches the half it missed
+- **Symptom (D-056 review pass):** three defects that had each survived a fully green pipeline.
+  1. `tests/run_tests.gd` skipped `["framework", "e2e"]` by comparing the bare folder name at
+     every depth. It meant `tests/framework/` (support code) and silently also meant
+     `tests/unit/framework/` — the home of `test_nested_discovery.gd`, the runner's own proof
+     of fail-detection. It had never run, and a checklist row said it had run in CI.
+  2. The painted button was 9-sliced with SYMMETRIC 44px bands around ASYMMETRIC art (a ~95px
+     emblem on the left, a cloud wash on the right), so half the emblem sat in the stretched
+     centre and was drawn ~1.6× wide; the raw crop's opaque background drew a box round every
+     button and its right end-cap was cut off. No assertion could see any of it; a 3× crop of
+     a capture showed all three at once.
+  3. Two lessons were numbered from memory, colliding with existing numbers, and a new comment
+     then cited the wrong lesson.
+- **Rule:**
+  - An exclusion, allow-list or skip names the ONE thing it means — a full path, not a name that
+    happens to match today. (Same family as L-040's basename allow-lists.)
+  - A proof that the harness works must itself be observed running: grep the runner's output
+    for the file, do not infer it from "the suite is green".
+  - 9-slice bands are MEASURED on the art so each holds a whole ornament; ship the plate at the
+    height it is drawn at when the side bands contain an emblem; a margin rule is restated as
+    its intent ("the label never lies on an ornament") when the proxy stops matching.
+  - Number a new record from the last heading in the file — and let a test read the file.
+- **Guards:** `test_painted_button_plate_is_not_distorted_at_the_authored_size`,
+  `test_painted_button_plate_background_is_transparent`,
+  `test_painted_button_label_clears_every_ornament`, `test_record_numbering.gd`; and
+  `test_nested_discovery.gd` now runs.

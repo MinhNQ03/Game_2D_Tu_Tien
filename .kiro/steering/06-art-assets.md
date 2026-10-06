@@ -130,7 +130,12 @@ There are now **two** UI asset classes, and they do not share rules:
 - **Painted** (`assets/ui/aetheria/`, self-made/project-owned) — **LINEAR** filter, and
   non-integer stretching is acceptable. Forcing nearest on a soft gradient or on fine gold
   filigree stair-steps it; the nearest/integer rule exists to protect a PIXEL GRID, and painted
-  art has none. 9-slice margins still apply, to protect ornate ENDS from being stretched.
+  art has none. 9-slice margins still apply, to protect ornate ENDS from being stretched —
+  **measured per side on the art** so each band holds a WHOLE ornament (asymmetric art gets
+  asymmetric bands), and a plate whose side band holds an emblem ships at the height it is
+  drawn at, so the band is never squashed vertically. A raw generated crop is not shippable
+  as-is: check for an opaque background and a truncated end, and derive the shipped file with
+  a committed tool (`tools/repair_button_plate.py`), never by hand (D-056 review pass, L-042).
 
 They live in separate folders with separate `UIPalette` constants **on purpose** — so the two
 rule sets cannot be confused. This exception is UI-only: the world, tiles, props and character

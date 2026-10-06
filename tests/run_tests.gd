@@ -27,7 +27,14 @@ const TESTS_ROOT := "res://tests"
 ## entrypoint (`tests/e2e/run_app_flow.gd`) in a separate Godot process (D-019); it must
 ## NOT run inside this shared runner, where booting Main would contaminate the shared
 ## /root autoloads.
-const EXCLUDED_DIRS := ["framework", "e2e"]
+##
+## FULL PATHS, not folder names (D-056 review pass). This was `["framework", "e2e"]` matched
+## against the bare folder name at ANY depth, so it also skipped `tests/unit/framework/` —
+## the folder holding `test_nested_discovery.gd`, the file whose whole job is to prove this
+## runner finds nested tests and detects failures. It never ran, while the Phase-0 exit
+## checklist recorded it as having run in CI. An exclusion is a statement about ONE folder,
+## so it names that folder.
+const EXCLUDED_DIRS := ["res://tests/framework", "res://tests/e2e"]
 
 ## The suite must always contain this smoke test; its absence fails the suite so the
 ## suite can't silently shrink to nothing and report green.
@@ -190,7 +197,7 @@ func _discover_tests(start_dir: String) -> Array[String]:
 				continue
 			var full := "%s/%s" % [dir_path, entry]
 			if dir.current_is_dir():
-				if not EXCLUDED_DIRS.has(entry) and not entry.begins_with("."):
+				if not EXCLUDED_DIRS.has(full) and not entry.begins_with("."):
 					pending.append(full)
 			elif entry.begins_with("test_") and entry.ends_with(".gd"):
 				out.append(full)

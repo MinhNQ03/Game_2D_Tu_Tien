@@ -810,6 +810,23 @@ func _prove_combat(main: Node, player: Node2D, map: Node) -> void:
 		"and CombatRuntime armed it (an unarmed player is a dead attack key)")
 	attack_component.set_facing(Vector2.RIGHT)
 
+	# The PLAYER's own visual, so the action animation can be observed on the primary actor
+	# (D-056). The integration suite proves the creature's; this is the only place the PLAYER's
+	# runs on the real path — built at runtime by `Player._apply_visual_profile()` from the
+	# template's `sprite_set_ref`, and required to find its sibling `AttackComponent` itself.
+	# Reached through the PUBLIC accessor, not by node name: `get_visual_component()` is the
+	# documented seam, so this cannot break on a node rename — and it is called TYPED, so a
+	# renamed accessor fails at parse time instead of as a runtime `call()` error.
+	var typed_player := player as Player
+	assert_not_null(typed_player, "the persistent player is a Player")
+	var visual: CharacterVisualComponent = (
+		typed_player.get_visual_component() if typed_player != null else null)
+	assert_not_null(visual,
+		("the player built a CharacterVisualComponent from its template's sprite_set_ref — "
+			+ "without it there is no action layer to drive on the actor the player controls"))
+	var action_seen := false
+	var action_columns := {}
+
 	# Feed the REAL key and let the lifecycle run. The hit lands in ACTIVE, which is one
 	# windup away, so the effect is polled over a bounded number of frames rather than
 	# guessed at a single one (L-016: `is_action_just_pressed` timing after a synthetic press
@@ -818,6 +835,11 @@ func _prove_combat(main: Node, player: Node2D, map: Node) -> void:
 	var after := before
 	for _i in 240:
 		await scene_tree.process_frame
+		# Sampled inside the SAME loop that waits for the damage, so what is observed is the
+		# animation during the very swing that landed the hit — not a later one.
+		if visual != null and visual.is_action_playing():
+			action_seen = true
+			action_columns[visual.get_column()] = true
 		after = int(target.call("get_current_health"))
 		if after < before:
 			break
@@ -828,6 +850,20 @@ func _prove_combat(main: Node, player: Node2D, map: Node) -> void:
 	assert_true(attack_component.damage_dealt() > 0,
 		"and the component recorded the damage it applied (%d)"
 			% attack_component.damage_dealt())
+
+	# AND THE PLAYER VISIBLY SWUNG (D-056). The same real key that produced the damage above
+	# put the player's own sprite into its ACTION layer and moved it through more than one
+	# frame. Without this the feature's evidence for its PRIMARY actor was "a screenshot looks
+	# different", which is an inference, not a proof — the integration suite only ever covered
+	# the creature.
+	assert_true(action_seen,
+		("the real attack key drove the PLAYER's action animation, not only the damage — if "
+			+ "this fails the player's visual never bound to its AttackComponent and the "
+			+ "character swings with no animation at all"))
+	assert_true(action_columns.size() >= 2,
+		("and the animation advanced through more than one frame during the swing (saw %s) — "
+			+ "a pose that renders one frame is a freeze, not a swing") % str(
+				action_columns.keys()))
 
 
 ## Prove the REAL progression loop paid for the kill that just happened (Phase 11).

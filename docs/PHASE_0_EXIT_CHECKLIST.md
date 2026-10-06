@@ -22,7 +22,7 @@
 | 6 | Runtime headless boot passes | [x] | CI step "Runtime boot smoke" (`--quit-after 2`) succeeded on `651c16f` — project booted `main_scene`, `Main._ready()` ran, clean exit |
 | 7 | Custom test runner passes | [x] | CI step "Headless test suite" succeeded on `651c16f`; also statically clean via GDScript diagnostics |
 | 8 | Failure ⇒ exit code != 0 | [x] | `run_tests.gd` quits 1 on fail/empty/missing-required; fail-detection proven by `test_nested_discovery` + `test_runner_detects_failure`; the suite's non-zero-on-failure contract would have failed the CI job — the job passed, confirming the pass path |
-| 9 | Nested test discovery | [x] | `_discover_tests` recursive (stack-based); `tests/unit/framework/test_nested_discovery.gd` (2 levels deep) ran as part of the green CI suite on `651c16f` |
+| 9 | Nested test discovery | [x] | `_discover_tests` recursive (stack-based); `tests/unit/framework/test_nested_discovery.gd` (2 levels deep). **CORRECTION (D-056 review pass): it did NOT run** on `651c16f` or any commit until the D-056 review pass — `EXCLUDED_DIRS` matched the folder name `framework` at any depth. Recursion itself was real (every other nested folder ran); the file meant to prove it was skipped. Exclusions are now full paths and it runs. |
 | 10 | CI present & no swallowed failures | [x] | `.github/workflows/ci.yml` 6 gates, `set -euo pipefail`, no `\|\| true`; run on `651c16f` = `conclusion=success` (GitHub check-runs API) |
 | 11 | No stale docs | [x] | Doc audit (D-013 items 1–7) fixed; `grep` for stale phrases clean |
 | 12 | Character design docs exist | [x] | `docs/CHARACTER_SYSTEM.md` |

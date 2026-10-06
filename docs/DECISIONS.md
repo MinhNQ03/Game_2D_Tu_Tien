@@ -3749,3 +3749,44 @@ caught.
 **No performance entry.** This pass added no per-frame cost — `_process` stays off unless
 something is animating, and an action needs it only while it runs — so `docs/PERFORMANCE.md`
 is unchanged. Recording a non-existent optimization there would be a false claim.
+
+### Review pass on D-056 — what a green `e19e795` still hid
+
+The mandatory review pass (`08-ai-review-protocol.md`) was run on `e19e795` after CI went green
+(697 passed). No gameplay rule, no contract section and no new system changed. Six findings:
+
+1. **The PRIMARY actor's swing was unproven on the real path.** The integration suite drove the
+   mist wolf; the player's action layer was evidenced by "a capture looks different". The world
+   E2E now samples the player's `CharacterVisualComponent` inside the same loop that waits for
+   the hit, and asserts the action played AND advanced through >= 2 columns. Non-vacuous:
+   unbinding the attack source fails both, pinning progress at 0 fails the second (`saw [0]`).
+   The player's visual node is now NAMED (it was the only anonymous one, L-040).
+2. **Dynamic dispatch on the action layer's hot path.** `_attack_source` was a `Node` read via
+   `call("state")` / `call("time_remaining")` every frame of every swing. Now a typed
+   `AttackComponent`, matching `AttackFeedback`. Structural, not measured: no PERFORMANCE.md
+   entry, because a claimed speedup with no measurement is the claim that file forbids.
+3. **The painted button plate was distorted, boxed and truncated** — invisible to every
+   assertion, seen at 3× in a real capture. Fix is in the ASSET plus measured constants, not in
+   a runtime workaround: `tools/repair_button_plate.py` derives the shipped plate (mirrored tip
+   spliced where it matches best, outer background flood-filled to transparent, one Lanczos
+   resample to exactly `BUTTON_HEIGHT`), and the 9-slice bands are ASYMMETRIC (68 / 97) so each
+   holds a whole ornament. The old `content_margin >= texture_margin` assertion is restated as
+   its intent — the label clears every ORNAMENT — because the right band is wide only to keep
+   the cloud wash unstretched. Three guards re-measure the PNG (height, slice fit, transparent
+   corners + opaque well) and the tint-headroom test now measures the centre instead of
+   carrying a literal `29`. Each was planted against (raw crop back; 44px left pad) and failed.
+4. **`run_tests.gd` excluded `framework` by NAME at any depth**, so `tests/unit/framework/`
+   never ran — including `test_nested_discovery.gd`, the runner's own fail-detection proof,
+   which `PHASE_0_EXIT_CHECKLIST.md` recorded as having run in CI. Exclusions are full paths
+   now; the three tests run and pass, and a planted failure in one fails the suite.
+5. **Lesson numbers collided twice** (`L-038` from `e4c5a16`, `L-039` from `e19e795`), so a new
+   code comment cited the wrong lesson. Renumbered `L-040` / `L-041` with a note at each; a
+   guard now fails on a reused or decreasing `## L-NNN`. Gaps are allowed (`L-012` was never
+   written; renumbering 29 lessons to close it would break every citation to fix nothing).
+6. **`tools/capture_ui.gd` failed one run in four** (first run after a re-import): it checked
+   for the menu once after a fixed settle. It now polls up to `MENU_WAIT_FRAMES` and still
+   fails loud if no menu appears.
+
+Recorded as **L-042**. 704 tests (697 + 7: two plate guards beyond the rewritten ones, three
+that had never run, two numbering guards), 0 failures, 0 `SCRIPT ERROR:`, 0 leaks; ten of ten
+gates green locally; captures re-taken at vi/en × 1280×720 / 1280×800 and opened.
