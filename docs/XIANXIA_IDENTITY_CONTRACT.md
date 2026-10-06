@@ -1,7 +1,8 @@
 # XIANXIA IDENTITY CONTRACT — Aetheria
 
 > **Status: DESIGN CONTRACT, frozen by D-057A (2026-10-06). Documentation only** — it implements
-> nothing and starts no phase. Phase 12 is NOT started.
+> nothing and starts no phase. (Phase 12 had not started then; P12-P15 are implemented since
+> D-058…D-061.)
 >
 > **Owner of:** what makes a feature look and behave like *Aetheria* rather than generic
 > fantasy or generic xianxia; the authority of reference material; the Aetheria Xianxia

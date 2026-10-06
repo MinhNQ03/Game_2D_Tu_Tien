@@ -16,7 +16,14 @@
 > Phase 09 (real-time action Combat) is **IMPLEMENTED**, Phase 10 (Enemy AI) is
 > **IMPLEMENTED** (D-052, reviewed in D-053), and Phase 11 (Level/XP Progression) is
 > **IMPLEMENTED and CLOSED** (D-054, hardened in D-055).
-> **Phase 12 (Cultivation + Knowledge Core) is NOT STARTED.**
+> Phase 12 (Cultivation + Knowledge Core) is **IMPLEMENTED** (D-058), Phase 13 (Item) is
+> **IMPLEMENTED** (D-059), Phase 14 (Equipment) is **IMPLEMENTED** (D-060) and Phase 15
+> (Skill/Technique) is **IMPLEMENTED** (D-061), on the D-057B visual foundation (gait, anchors,
+> causal strike, hit reaction, ambient motion). **Phase 16+ is NOT STARTED.**
+> The per-session runtimes under `Main/Systems` now start in this order (and end in reverse):
+> World → Relationship → Sect → Faction → WorldSimulation → Combat → Progression → Knowledge →
+> Cultivation → Inventory → Equipment → Skill (`main.gd` `SESSION_START_ORDER`). Still five
+> autoloads; no manager.
 > The live UI is the CC0 Xianxia Pixel Pack set (D-028) and the visible world/character art is
 > at the **production-foundation** tier (D-029) — both presentation-only, no gameplay/domain
 > change. The repo boots to a playable world/map slice where the player is a real Character,

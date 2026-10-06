@@ -31,7 +31,8 @@
   right moment.
 - **Resolution — RESOLVED.** The conventional ladder was only ever an *illustrative example* in
   a glossary row, never authored anywhere: no realm id, no `.tres`, no locale key, and no code
-  references it (Phase 12 is NOT STARTED). The freeze adopts the original five-macro-realm
+  references it (Phase 12 had not started at the time; it is implemented since D-058 with the
+  canon ladder, `data/progression/realm_ladder.tres`, which enforces the canon ids and order). The freeze adopts the original five-macro-realm
   hierarchy **PHÀM → HẬU THIÊN → TIÊN THIÊN → NGỰ THIÊN → TRỌNG THIÊN**, plus the two
   structural-only tiers **THÁI THIÊN** and **VÔ THIÊN**. Steering 02's glossary row is corrected
   to point at the owner instead of carrying an example ladder.

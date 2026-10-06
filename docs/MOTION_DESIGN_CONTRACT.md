@@ -18,7 +18,8 @@
 > **What D-057 implemented** — deliberately little: the HUD composition correction measured in
 > §11 (rules in `UI_UX_BIBLE.md` §3c), the reference-library isolation (`XIANXIA_IDENTITY_CONTRACT.md`
 > §2.2) and the simulation-clock guard (§4). Everything else here is design law that future
-> phases are reviewed against. Phase 12 is NOT started.
+> phases are reviewed against. (Phase 12 had not started when D-057 froze this; P12-P15 are
+> implemented since D-058…D-061 and were reviewed against it.)
 
 ---
 
