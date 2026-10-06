@@ -103,6 +103,8 @@ def gen_props():
     props.gen_tree(ROOT)
     props.gen_lantern_post(ROOT)
     props.gen_mist(ROOT)
+    props.gen_cultivation_landmarks(ROOT)
+    props.gen_item_icons(ROOT)
     props.gen_training_post(ROOT)
     props.gen_rock(ROOT)
     props.gen_planter(ROOT)

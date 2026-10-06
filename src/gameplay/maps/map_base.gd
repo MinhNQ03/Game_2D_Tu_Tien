@@ -26,6 +26,13 @@ class_name MapBase
 
 ## Intent to leave to another map. WorldRuntime resolves it through SceneRouter.
 signal exit_requested(to_map_id: StringName, entry_point: StringName)
+
+## The player read a `KnowledgeSource` (Phase 12) through the semantic `interact` intent.
+## `WorldRuntime` forwards it to the `KnowledgeRuntime`; the map grants nothing itself.
+signal knowledge_source_read(source_id: StringName, grants: Array[StringName])
+
+## The player asked to use an item from the bag (Phase 13), forwarded from the HUD.
+signal item_use_requested(item_id: StringName)
 ## Intent to leave the world back to the menu (same contract the sandbox/prologue used).
 signal return_to_menu_requested()
 
@@ -43,6 +50,10 @@ var _sect_view: SectMembershipView = null  # cached read-only sect view (Phase 0
 var _politics_view: SectPoliticsView = null  # cached read-only politics view (Phase 07)
 var _world_sim_view: WorldSimView = null  # cached read-only world-sim view (Phase 08)
 var _progression_view: ProgressionView = null  # cached read-only level/XP view (Phase 11)
+var _cultivation_view: CultivationView = null  # cached read-only cảnh giới view (Phase 12)
+var _inventory_view: InventoryView = null  # cached read-only bag view (Phase 13)
+## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
+var _active_source: KnowledgeSource = null
 var _camera: Camera2D = null           # this map's camera; follows the player (D-036)
 var _follow_target: Node2D = null      # the player node the camera tracks (resolved lazily)
 
@@ -215,6 +226,68 @@ func _physics_process(_delta: float) -> void:
 		# connection would silently find nothing and the gauge would stay empty forever.
 		_bind_player_health(_follow_target)
 	_camera.global_position = _follow_target.global_position
+	_track_knowledge_source(_follow_target.global_position)
+
+
+## Which knowledge source (a stele) the player can read from where it stands. A DISTANCE test,
+## not an `Area2D`: it works headless (L-016) and a map has a handful of sources. The HUD prompt
+## is refreshed only when the answer CHANGES, never per frame.
+func _track_knowledge_source(player_position: Vector2) -> void:
+	var found: KnowledgeSource = null
+	var host := get_node_or_null("KnowledgeSources")
+	if host != null:
+		for child in host.get_children():
+			var source := child as KnowledgeSource
+			if source != null and source.reaches(player_position):
+				found = source
+				break
+	if found != _active_source:
+		_active_source = found
+		_refresh_hud()
+
+
+## The knowledge source in reach, or null (for tests and the E2E).
+func active_knowledge_source() -> KnowledgeSource:
+	return _active_source
+
+
+## Every cultivation site this map declares (Phase 12): children of `CultivationSites`.
+func get_cultivation_sites() -> Array[Node]:
+	var out: Array[Node] = []
+	var host := get_node_or_null("CultivationSites")
+	if host == null:
+		return out
+	for child in host.get_children():
+		if child is CultivationSite:
+			out.append(child)
+	return out
+
+
+## Push the cảnh giới view into this map's HUD (Phase 12). Cached like the progression view so a
+## refreshed HUD still shows it.
+func set_cultivation_view(view: CultivationView) -> void:
+	_cultivation_view = view
+	if _hud != null:
+		_hud.set_cultivation_view(view)
+
+
+## Push the bag's contents into this map's HUD (Phase 13).
+func set_inventory_view(view: InventoryView) -> void:
+	_inventory_view = view
+	if _hud != null:
+		_hud.set_inventory_view(view)
+
+
+## One transient HUD sentence (a refused cultivate, knowledge learned).
+func announce(text_key: StringName, args: Dictionary = {}) -> void:
+	if _hud != null:
+		_hud.announce(text_key, args)
+
+
+## The MACRO breakthrough announcement.
+func celebrate_breakthrough(realm_name_key: StringName, layer: int, changed_realm: bool) -> void:
+	if _hud != null:
+		_hud.celebrate_breakthrough(realm_name_key, layer, changed_realm)
 
 
 ## Connect the player's health to the HUD gauge and push the current value immediately.
@@ -379,6 +452,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 		var dest: StringName = _active_exit.to_map_id
 		var entry: StringName = _active_exit.entry_point
 		exit_requested.emit(dest, entry)
+		return
+	# Read the knowledge source in reach (Phase 12). The map only REPORTS the reading; the
+	# Knowledge Core decides what was learned.
+	if _active_source != null and _input.call("is_gameplay_action_just_pressed", INTERACT_ACTION):
+		var vp2 := get_viewport()
+		if vp2 != null:
+			vp2.set_input_as_handled()
+		knowledge_source_read.emit(_active_source.source_id, _active_source.grants)
 
 
 func _on_exit_body_entered(body: Node, zone: MapExitZone) -> void:
@@ -422,6 +503,8 @@ func _setup_hud() -> void:
 	_hud = GameplayHUDScript.new() as GameplayHUD
 	_hud.name = "GameplayHUD"
 	add_child(_hud)
+	_hud.inventory_use_requested.connect(func(item_id: StringName) -> void:
+		item_use_requested.emit(item_id))
 
 
 func _refresh_hud() -> void:
@@ -432,7 +515,14 @@ func _refresh_hud() -> void:
 	var map_name_key: StringName = StringName(_map_data.name_key) if _map_data != null else &""
 	_hud.set_map_name(map_name_key)
 	_hud.set_character(_find_player_character())
-	_hud.set_interact_available(_active_exit != null)
+	# An exit wins over a stele if both were ever in reach: leaving is the commoner intent, and
+	# the prompt must name the action the key will actually take.
+	if _active_exit != null:
+		_hud.set_interact_available(true)
+	elif _active_source != null:
+		_hud.set_interact_available(true, _active_source.prompt_key)
+	else:
+		_hud.set_interact_available(false)
 	# Re-apply the cached sect view so a fresh HUD (new map) still shows the player's sect.
 	if _sect_view != null:
 		_hud.set_sect_view(_sect_view)
@@ -442,6 +532,11 @@ func _refresh_hud() -> void:
 	# And the player's level/XP (Phase 11), so a new map's HUD does not start blank.
 	if _progression_view != null:
 		_hud.set_progression_view(_progression_view)
+	# And the cảnh giới (Phase 12).
+	if _cultivation_view != null:
+		_hud.set_cultivation_view(_cultivation_view)
+	if _inventory_view != null:
+		_hud.set_inventory_view(_inventory_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

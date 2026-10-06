@@ -23,7 +23,8 @@ const SEMANTIC_ACTIONS := [
 	"move_up", "move_down", "move_left", "move_right",
 	"interact", "attack",
 	"skill_1", "skill_2", "skill_3", "skill_4",
-	"dodge", "open_menu", "pause", "sect_panel", "faction_panel",
+	"dodge", "open_menu", "pause", "sect_panel", "faction_panel", "cultivate",
+	"inventory",
 ]
 
 ## Context stack. Bottom is the implicit baseline; we start in a non-gameplay MENU at boot.
@@ -103,6 +104,15 @@ func is_gameplay_action_pressed(action: StringName) -> bool:
 ## Edge-triggered variant for "just pressed" gameplay intent.
 func is_gameplay_action_just_pressed(action: StringName) -> bool:
 	if not is_gameplay_active():
+		return false
+	return InputMap.has_action(action) and Input.is_action_just_pressed(action)
+
+
+## Edge-triggered intent while a UI MODAL owns input (Phase 13: the inventory panel navigates
+## with the same semantic move/interact actions the world uses, but only while it is on top —
+## so the player cannot walk while choosing a pill).
+func is_modal_action_just_pressed(action: StringName) -> bool:
+	if current_context() != Context.UI_MODAL:
 		return false
 	return InputMap.has_action(action) and Input.is_action_just_pressed(action)
 

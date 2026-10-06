@@ -69,6 +69,7 @@ func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 	if loc != null:
 		loc.call("set_language", "en")
 	hud.set_interact_available(true)
+	hud.set_cultivation_view(_cultivation_at_site())
 
 	# Gather all label text + confirm the key badges exist as graphic chips (UIKeyBadge is a
 	# PanelContainer wearing an asset-backed stylebox — not plain floating text).
@@ -88,8 +89,9 @@ func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 	# sect, politics, menu) and interact is visible here, so all five carry a badge — the old
 	# ">= 2 (interact + menu)" was written when the strip had two rows and had stopped
 	# describing the HUD three prompts ago.
-	assert_eq(_key_badge_count(hud), 5,
-		("each of the five prompts (attack, interact, sect, politics, menu) has a graphic "
+	assert_eq(_key_badge_count(hud), 6,
+		("each of the six prompts (attack, interact, cultivate, sect, politics, menu) has a "
+			+ "graphic "
 			+ "key badge, got %d") % _key_badge_count(hud))
 	free_node(hud)
 
@@ -413,8 +415,8 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 		assert_eq(int(absf(panel.offset_right - panel.offset_left)),
 			UIPalette.SIDE_PANEL_WIDTH,
 			"its width comes from SIDE_PANEL_WIDTH, not from its content")
-	assert_eq(side_panels, 2,
-		"both toggleable side panels (sect + politics) are bounded boxes (got %d)"
+	assert_eq(side_panels, 3,
+		"all three side panels (sect, politics, satchel) are bounded boxes (got %d)"
 			% side_panels)
 	free_node(hud)
 
@@ -606,7 +608,7 @@ func test_side_panels_scroll_their_content() -> void:
 		assert_eq(int(scroll.mouse_filter), int(Control.MOUSE_FILTER_STOP),
 			"and it accepts mouse input, or the wheel passes through and clipped content "
 				+ "becomes unreachable (every other node in the panel is IGNORE)")
-	assert_eq(scrollers, 2, "both side panels scroll (got %d)" % scrollers)
+	assert_eq(scrollers, 3, "all three side panels scroll (got %d)" % scrollers)
 	free_node(hud)
 
 
@@ -627,17 +629,20 @@ func _first_scroll(node: Node) -> ScrollContainer:
 ## nothing in a running session owned health, so the correct number of gauges was zero; combat
 ## owning health made it one, and the combat target made it two; Phase 11 gives XP a real
 ## owner (`ProgressionRuntime` + the authoritative `CharacterState.xp`), so the correct number
-## is now THREE. Mana and realm progress are still owned by nobody, so a FOURTH gauge is still
-## a lie, and the count is what catches one appearing.
+## was THREE; Phase 12 gives realm progress a real owner (`CultivationRuntime` + the
+## authoritative `CharacterState.cultivation_progress`), so it is now FOUR. Mana is still owned
+## by nobody until P15, so a FIFTH gauge is still a lie, and the count is what catches one.
 ##
 ## The number is not the point — the pairing is. Each gauge is named, so swapping one for a
 ## mana bar fails even though the count would still be right.
 func test_hud_shows_a_gauge_for_exactly_the_stats_a_system_owns() -> void:
 	var hud := _hud()
-	assert_eq(_count_class(hud, "ProgressBar"), 3,
-		("exactly THREE gauges — the player's health, the combat target's health, and the "
-			+ "player's XP meter. A fourth means a bar was added for mana or realm progress, "
-			+ "which no system backs yet"))
+	assert_eq(_count_class(hud, "ProgressBar"), 4,
+		("exactly FOUR gauges — the player's health, the combat target's health, the "
+			+ "player's XP meter and the tu vi meter. A fifth means a bar was added for a stat "
+			+ "no system backs yet"))
+	assert_false(hud.call("is_cultivation_visible"),
+		"the tu vi meter stays hidden until a cultivation view arrives")
 	assert_eq(_count_class(hud, "TextureProgressBar"), 0,
 		"and no textured gauge for an unbound stat")
 
@@ -784,6 +789,7 @@ func test_hud_behaviour_survived_the_visual_pass() -> void:
 	hud.set_character(_player_state())
 	hud.set_map_name(&"UI_MAP_HUB_NAME")
 	hud.set_interact_available(true)
+	hud.set_cultivation_view(_cultivation_at_site())
 
 	var all_text := _all_label_text(hud)
 	assert_true("Wanderer" in all_text, "the character name still renders")
@@ -1000,13 +1006,14 @@ func test_only_the_attack_row_carries_the_attack_prompt() -> void:
 	var hud := _hud()
 	_use_language("en")
 	hud.call("set_interact_available", true)
+	hud.call("set_cultivation_view", _cultivation_at_site())
 	var strip := hud.find_child("PromptStrip", true, false) as Control
 	assert_not_null(strip, "the prompt strip is found")
 	if strip == null:
 		free_node(hud)
 		return
 	var rows := _prompt_rows(strip)
-	assert_eq(rows.size(), 5, "all five prompts are present")
+	assert_eq(rows.size(), 6, "all six prompts are present")
 
 	var attack_word := _localized("UI_HUD_ATTACK_ACTION")
 	var carriers: Array[String] = []
@@ -1025,6 +1032,8 @@ func test_only_the_attack_row_carries_the_attack_prompt() -> void:
 	# is exactly why the action word is the discriminator here.)
 	var words := {}
 	for row in rows:
+		if not row.visible:
+			continue  # a CONTEXTUAL prompt with nothing to offer here says nothing (Phase 12)
 		var word := _row_action_text(row)
 		assert_ne(word, "", "row '%s' renders an action word" % row.name)
 		assert_false(words.has(word),
@@ -1142,6 +1151,7 @@ func test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for() -> void:
 	# one row short of its widest real state — the hidden-child trap that made the TOP reserve
 	# wrong three times (L-035).
 	hud.call("set_interact_available", true)
+	hud.call("set_cultivation_view", _cultivation_at_site())
 	# The LONGEST authored language, derived rather than guessed: vi is longer than en for
 	# every one of these words, and a reserve measured on the shorter one is wrong by exactly
 	# the amount that matters.
@@ -1190,8 +1200,8 @@ func test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for() -> void:
 
 	# And the strip really does carry all five prompts, or the measurement above is of a
 	# smaller thing than the player sees.
-	assert_eq(_prompt_rows(strip).size(), 5,
-		"all five prompts (attack, interact, sect, politics, menu) were measured")
+	assert_eq(_prompt_rows(strip).size(), 6,
+		"all six prompts (attack, interact, cultivate, sect, politics, menu) were measured")
 	free_node(hud)
 
 
@@ -1364,6 +1374,7 @@ func test_the_hud_keeps_the_playfield_centre_clear_and_inside_its_area_budget() 
 	_use_language("vi")  # the longer language sizes every plaque
 	_populate_plaques(hud)
 	hud.call("set_interact_available", true)
+	hud.call("set_cultivation_view", _cultivation_at_site())
 	hud.call("set_target_view", null)  # permanent HUD first: no fight in progress
 	await scene_tree.process_frame
 	var root := _hud_root(hud)
@@ -1471,6 +1482,7 @@ func test_a_settled_hud_does_no_per_frame_work() -> void:
 	var hud := _hud()
 	_populate_plaques(hud)
 	hud.call("set_interact_available", true)
+	hud.call("set_cultivation_view", _cultivation_at_site())
 	await scene_tree.process_frame
 	await scene_tree.process_frame
 	var busy: Array[String] = []
@@ -1533,3 +1545,49 @@ func test_engaging_a_live_target_closes_the_side_panels_once() -> void:
 	hud.call("set_target_view", live)
 	assert_false(hud.call("is_sect_panel_open"), "a new engagement takes the screen back")
 	free_node(hud)
+
+
+## A cultivation view standing at a vein: the cultivate prompt is visible (the strip's worst case).
+func _cultivation_at_site() -> CultivationView:
+	var view := CultivationView.new()
+	view.available = true
+	view.realm_name_key = &"REALM_HAU_THIEN_NAME"
+	view.layer = 9
+	view.progress = 190
+	view.step_cost = 240
+	view.site_in_reach = true
+	return view
+
+
+## Two notices in a row are BOTH shown, in order (Phase 12, capture-found: reading the stele
+## teaches two things, and the second notice used to erase the breathing method's).
+func test_notices_queue_instead_of_overwriting() -> void:
+	var hud := _hud()
+	hud.call("announce", &"UI_KNOWLEDGE_NOTHING_NEW")
+	var first: String = hud.call("notice_text")
+	hud.call("announce", &"UI_CULTIVATE_NO_SITE")
+	assert_eq(hud.call("notice_text"), first, "the first notice stays up for its full time")
+	(hud.find_child("NoticeHold", true, false) as Timer).timeout.emit()
+	assert_eq(hud.call("notice_text"), _localized("UI_CULTIVATE_NO_SITE"),
+		"then the second takes its turn")
+	free_node(hud)
+
+
+## The satchel is MODAL: opening it hands input to the panel (the world stops reading the move
+## keys), closing it gives input back — and closing the HUD never strands a modal context.
+func test_the_satchel_takes_and_returns_input() -> void:
+	var hud := _hud()
+	var input := scene_tree.root.get_node_or_null("InputService")
+	if input == null:
+		free_node(hud)
+		return
+	input.call("set_gameplay_context")
+	hud.call("open_inventory")
+	assert_true(hud.call("is_inventory_open"), "open")
+	assert_false(bool(input.call("is_gameplay_active")), "gameplay input is suspended")
+	hud.call("close_inventory")
+	assert_true(bool(input.call("is_gameplay_active")), "and handed back on close")
+	hud.call("open_inventory")
+	free_node(hud)
+	assert_true(bool(input.call("is_gameplay_active")), "freeing the HUD never strands the modal")
+	input.call("set_menu_context")

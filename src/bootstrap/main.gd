@@ -65,6 +65,9 @@ const FACTION_RUNTIME_SCRIPT := "res://src/gameplay/world/faction_runtime.gd"
 const WORLD_SIM_RUNTIME_SCRIPT := "res://src/gameplay/world/world_sim_runtime.gd"
 const COMBAT_RUNTIME_SCRIPT := "res://src/gameplay/world/combat_runtime.gd"
 const PROGRESSION_RUNTIME_SCRIPT := "res://src/gameplay/world/progression_runtime.gd"
+const KNOWLEDGE_RUNTIME_SCRIPT := "res://src/gameplay/world/knowledge_runtime.gd"
+const CULTIVATION_RUNTIME_SCRIPT := "res://src/gameplay/world/cultivation_runtime.gd"
+const INVENTORY_RUNTIME_SCRIPT := "res://src/gameplay/world/inventory_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -108,6 +111,7 @@ const REQUIRED_AUTOLOADS := [
 const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
 	&"WorldSimulationRuntime", &"CombatRuntime", &"ProgressionRuntime",
+	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -133,6 +137,14 @@ var _combat: Node = null
 # ProgressionRuntime (per-session level/XP seam: the authored curve + the one service that
 # mutates XP), under Systems (Phase 11).
 var _progression: Node = null
+
+# KnowledgeRuntime (the Knowledge Core's per-session home) and CultivationRuntime (tọa thiền +
+# đột phá), Phase 12. Cultivation READS knowledge, so Knowledge starts first and ends after it.
+var _knowledge: Node = null
+var _cultivation: Node = null
+# InventoryRuntime (Phase 13): uses items THROUGH cultivation, knowledge and the player's body,
+# so it starts after all of them and ends first.
+var _inventory: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -214,6 +226,10 @@ func _boot() -> void:
 	# And the ProgressionRuntime (Phase 11), which reads the world's player and listens to
 	# combat — so it is created last and started last.
 	_create_progression_runtime()
+	# Phase 12: the Knowledge Core, then cultivation (which reads it).
+	_knowledge = _create_runtime(KNOWLEDGE_RUNTIME_SCRIPT, "KnowledgeRuntime")
+	_cultivation = _create_runtime(CULTIVATION_RUNTIME_SCRIPT, "CultivationRuntime")
+	_inventory = _create_runtime(INVENTORY_RUNTIME_SCRIPT, "InventoryRuntime")
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -485,6 +501,13 @@ func _on_new_game_pressed() -> void:
 		_unwind_failed_session()
 		return
 
+	# Phase 12: the Knowledge Core, then cultivation. Both FATAL: a session where a stele
+	# teaches nothing or the cultivate key does nothing is broken, not merely unbalanced.
+	if not _start_cultivation_sessions():
+		push_error("[main] knowledge/cultivation session failed to start; returning to menu")
+		_unwind_failed_session()
+		return
+
 	# confirm_session_running (STARTING_SESSION -> RUNNING) is a REQUIRED step. If rejected,
 	# the first map is up but the lifecycle is wrong, so do not pretend we are RUNNING.
 	if not bool(gs.call("confirm_session_running")):
@@ -557,6 +580,12 @@ func _session_node(subsystem: StringName) -> Node:
 			return _combat
 		&"ProgressionRuntime":
 			return _progression
+		&"KnowledgeRuntime":
+			return _knowledge
+		&"CultivationRuntime":
+			return _cultivation
+		&"InventoryRuntime":
+			return _inventory
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -822,6 +851,42 @@ func _start_progression_session() -> bool:
 	if _world != null and is_instance_valid(_world) \
 			and _world.has_method("refresh_active_map_progression_view"):
 		_world.call("refresh_active_map_progression_view")
+	return true
+
+
+## Create one per-session runtime node under Systems (Phase 12). Null (loud) on a missing script.
+func _create_runtime(script_path: String, node_name: String) -> Node:
+	var script: Script = load(script_path)
+	if script == null:
+		push_error("[boot] failed to load %s: %s" % [node_name, script_path])
+		return null
+	var node := Node.new()
+	node.name = node_name
+	node.set_script(script)
+	get_node(CONTAINER_SYSTEMS).add_child(node)
+	return node
+
+
+## Start the Knowledge Core and the cultivation session (Phase 12), in that order.
+func _start_cultivation_sessions() -> bool:
+	if _knowledge == null or _cultivation == null or _world == null:
+		push_error("[main] cannot start cultivation: a Phase-12 runtime is missing")
+		return false
+	if not bool(_knowledge.call("start_session")):
+		return false
+	var player_character: CharacterState = _world.call("get_player_character")
+	if player_character == null:
+		push_error("[main] cannot start cultivation: no player CharacterState")
+		return false
+	if not bool(_cultivation.call("start_session", player_character, _knowledge, _world)):
+		return false
+	if _world.has_method("refresh_active_map_cultivation_view"):
+		_world.call("refresh_active_map_cultivation_view")
+	if _inventory == null or not bool(_inventory.call("start_session", player_character, _world,
+			_knowledge, _cultivation)):
+		return false
+	if _world.has_method("refresh_active_map_inventory_view"):
+		_world.call("refresh_active_map_inventory_view")
 	return true
 
 

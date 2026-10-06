@@ -545,6 +545,25 @@ const XP_METER_FILL := GOLD_PRIMARY
 ## reading, so a maxed meter is visibly a different state from one that is merely nearly full.
 const XP_METER_FILL_COMPLETE := COLOR_ACCENT
 
+## The CULTIVATION (tu vi) meter (Phase 12): the second progression axis gets its own hue, a pale
+## qi cyan — never the XP gold (the two axes must not read as one, §1 / D-054) and never the
+## health jade (the plaque already stacks two bars). Its WRITTEN value names the realm, so the
+## distinction does not rest on colour (`UI_UX_BIBLE.md` §4).
+const CULTIVATION_METER_FILL := Color(0.52, 0.80, 0.92)
+## A full step that can be broken through: the meter turns gold — attainment, the same token
+## the level badge uses for "you earned this", because a breakthrough waiting IS one.
+const CULTIVATION_METER_FILL_READY := GOLD_PRIMARY
+
+## How long a transient HUD notice (knowledge learned, a refused cultivate) stays up, and how
+## long the breakthrough announcement holds. A breakthrough is MACRO (M-4.7): it holds longer
+## than the level-up banner, and it is bigger — but it still lives in the bottom band, never
+## over the playfield centre (`UI_UX_BIBLE.md` §3c).
+const HUD_NOTICE_SECONDS := 3.0
+const BREAKTHROUGH_BANNER_SECONDS := 3.2
+## The breakthrough banner and the notice line sit one banner-row ABOVE the level-up banner, so
+## a level-up landing during a breakthrough announcement can never print over it.
+const ANNOUNCE_BOTTOM_INSET := LEVEL_UP_BANNER_BOTTOM_INSET + 34
+
 ## Minimum width of the level badge, so `Lv 1` and `Lv 20` do not resize the identity plaque
 ## as the player levels. A FLOOR, like `HUD_MAP_PANEL_WIDTH`.
 const LEVEL_BADGE_MIN_WIDTH := 52

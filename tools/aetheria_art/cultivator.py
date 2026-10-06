@@ -126,6 +126,7 @@ ANIMATIONS = {
     "idle": (IDLE_FRAMES, True, idle_pose),
     "walk": (WALK_FRAMES, True, walk_pose),
     "attack": (ATTACK_FRAMES, False, attack_pose),
+    # "meditate" is registered at the end of the module, after its seated renderer.
 }
 
 
@@ -401,19 +402,7 @@ def _render_side(pal, p):
     raster.rect(px, body - 4, 26 + bob, body + 5, 27 + bob, raster.shade(pal["trim"], 1.2))
     raster.inner_shadow(px, pal["robe"], raster.shade(pal["robe"], 0.82), 1)
 
-    # HEAD in profile: hair behind first (fills the nape), then the face forward (left).
-    raster.rect(px, body - 1, t + 3, body + 5, t + 14, pal["hair_dk"])
-    raster.rect(px, body - 1, t + 11, body + 2, t + 15, raster.shade(pal["skin"], 0.78))  # neck
-    raster.rect(px, body - 4, t + 3, body + 3, t + 10, pal["skin"])
-    raster.rect(px, body - 3, t + 10, body + 2, t + 12, pal["skin"])
-    raster.put(px, body - 5, t + 7, pal["skin"])                             # nose
-    raster.rect(px, body - 4, t, body + 4, t + 4, pal["hair"])
-    raster.rect(px, body - 4, t, body + 4, t + 2, pal["hair_hi"])
-    raster.rect(px, body - 1, t + 3, body + 5, t + 9, pal["hair"])          # over the ear
-    raster.rect(px, body - 4, t + 3, body - 1, t + 4, pal["hair_dk"])       # fringe
-    raster.rect(px, body - 1, t - 1, body + 3, t + 1, pal["trim"])          # crown pin
-    raster.put(px, body - 3, t + 7, pal["eye"])
-    raster.put(px, body - 3, t + 6, pal["hair_dk"])
+    _head_profile(px, pal, body, t, eyes_closed=False)
 
     # NEAR ARM (in front of the body). Forward = -x; an extended arm rises toward shoulder
     # height, so a strike reads as a push at chest level rather than a hand dropped forward.
@@ -437,8 +426,119 @@ def _render_side(pal, p):
     return px, (n_hx, n_hy), (f_hx, f_hy)
 
 
+def _head_profile(px, pal, body, t, eyes_closed):
+    """The head in profile, facing LEFT: hair behind first (fills the nape), then the face."""
+    raster.rect(px, body - 1, t + 3, body + 5, t + 14, pal["hair_dk"])
+    raster.rect(px, body - 1, t + 11, body + 2, t + 15, raster.shade(pal["skin"], 0.78))  # neck
+    raster.rect(px, body - 4, t + 3, body + 3, t + 10, pal["skin"])
+    raster.rect(px, body - 3, t + 10, body + 2, t + 12, pal["skin"])
+    raster.put(px, body - 5, t + 7, pal["skin"])                             # nose
+    raster.rect(px, body - 4, t, body + 4, t + 4, pal["hair"])
+    raster.rect(px, body - 4, t, body + 4, t + 2, pal["hair_hi"])
+    raster.rect(px, body - 1, t + 3, body + 5, t + 9, pal["hair"])          # over the ear
+    raster.rect(px, body - 4, t + 3, body - 1, t + 4, pal["hair_dk"])       # fringe
+    raster.rect(px, body - 1, t - 1, body + 3, t + 1, pal["trim"])          # crown pin
+    if eyes_closed:
+        raster.put(px, body - 3, t + 7, raster.shade(pal["skin"], 0.62))     # lid, lowered
+    else:
+        raster.put(px, body - 3, t + 7, pal["eye"])
+        raster.put(px, body - 3, t + 6, pal["hair_dk"])
+
+
+# --- MEDITATION (tọa thiền, Phase 12) -----------------------------------------------------
+#
+# Seated cross-legged, the robe spread into a wide stable base, the hands joined in a seal at
+# the dantian, the eyes closed. Frame 0 is the descent (the body still half-risen: a cultivator
+# lowers into the seat, he does not teleport into it); frames 1-3 are ONE slow breath, played
+# as a loop by the runtime. It is the body's stillness that reads as cultivation — the qi that
+# gathers is a runtime effect from the vein, never part of this drawing.
+
+MEDITATE_FRAMES = 4
+_SEAT_DROP = 11                        # how far the head sits below its standing height
+_MEDITATE = ((5, 0, 1), (0, 0, 0), (0, -1, 1), (0, 0, 2))    # (rise, breath, hair)
+
+
+def meditate_pose(f):
+    rise, breath, hair = _MEDITATE[f]
+    p = pose(bob=_SEAT_DROP - rise + breath, hair=hair)
+    p["seated"] = rise
+    p["breath"] = breath
+    return p
+
+
+def _render_seated(view, pal, p):
+    px = raster.blank(W, H)
+    rise = p["seated"]
+    bob = p["bob"]
+    x = CX
+    raster.oval(px, CX, 46.5, 11, 1.6, SHADOW)
+    # The crossed legs under the robe: a broad base with the knees as two low mounds.
+    base_top = 38                      # the folded legs are on the ground in every frame
+    if view == SIDE:
+        raster.polygon(px, [(CX - 12, 46), (CX + 6, 46), (CX + 7, base_top + 1),
+                            (CX - 5, base_top), (CX - 12, 42)], pal["robe"])
+        raster.oval(px, CX - 9, 43, 4, 2.6, pal["robe_hi"])                 # the near knee
+        raster.rect(px, CX - 12, 45, CX + 6, 46, pal["robe_dk"])
+    else:
+        raster.polygon(px, [(CX - 12, 46), (CX + 12, 46), (CX + 8, base_top),
+                            (CX - 8, base_top)], pal["robe"])
+        for kx in (CX - 7, CX + 7):
+            raster.oval(px, kx, 43, 5, 2.6, pal["robe_hi"])
+        raster.rect(px, CX - 12, 45, CX + 12, 46, pal["robe_dk"])
+    if view == SIDE:
+        body = CX
+        t = 2 + bob
+        # Hair down the back, the torso upright, the head; the near arm rests to the lap.
+        raster.polygon(px, [(body - 1, t + 3), (body + 6, t + 3), (body + 7, t + 20),
+                            (body + 3, t + 24), (body, t + 16)], pal["hair"])
+        top = 16 + bob
+        raster.polygon(px, [(body - 5, top + 1), (body + 4, top), (body + 5, base_top),
+                            (body - 4, base_top)], pal["robe"])
+        raster.rect(px, body - 4, top, body + 4, top + 2, pal["robe_hi"])
+        raster.line(px, body - 4, top + 1, body - 1, top + 7, pal["trim"])
+        raster.rect(px, body - 4, 26 + bob, body + 5, 29 + bob, pal["trim"])
+        raster.inner_shadow(px, pal["robe"], raster.shade(pal["robe"], 0.82), 1)
+        _head_profile(px, pal, body, t, eyes_closed=True)
+        hx, hy = body - 4, 36 - rise
+        _sleeve(px, pal, body - 1, 18 + bob, hx, hy)
+        _hand(px, pal, hx, hy, "seal")
+        raster.outline(px, INK)
+        return px, (hx, hy), (body + 1, hy)
+    # The lap: the robe from the waist down to the folded legs, so a body still lowering into
+    # the seat (frame 0) is one continuous figure rather than a torso floating over its base.
+    raster.polygon(px, [(x - 6, 27 + bob), (x + 6, 27 + bob), (x + 8, base_top + 1),
+                        (x - 8, base_top + 1)], pal["robe"])
+    _torso_front(px, pal, bob, x, 0, view)
+    if view == FRONT:
+        # Both sleeves come down and in to meet at the dantian; the hands join in a seal there.
+        hy = 36 - rise
+        _sleeve(px, pal, x - 8, 18 + bob, x - 2, hy)
+        _sleeve(px, pal, x + 8, 18 + bob, x + 2, hy)
+        _hand(px, pal, x, hy, "seal")
+        _hair_behind(px, pal, bob, x)
+        _head_front(px, pal, bob, x)
+        _hair_front(px, pal, bob, x, p["hair"])
+        # Eyes CLOSED: a lowered lid, a pixel wide, where the eye was.
+        y = 9 + bob
+        lid = raster.shade(pal["skin"], 0.62)
+        raster.put(px, x - 3, y, lid)
+        raster.put(px, x + 2, y, lid)
+        raster.put(px, x - 1, y + 3, raster.shade(pal["skin"], 0.8))
+        raster.outline(px, INK)
+        return px, (x, hy), (x, hy)
+    # BACK: the shoulders and the long hair; the hands are in front of the body, hidden.
+    for sx in (x - 8, x + 8):
+        _sleeve(px, pal, sx, 18 + bob, sx + (3 if sx < x else -3), 34 - rise)
+    _head_front(px, pal, bob, x)
+    _hair_back(px, pal, bob, x, p["hair"])
+    raster.outline(px, INK)
+    return px, (x, 36 - rise), (x, 36 - rise)
+
+
 def render(view, pal, p):
     """Render one 32x48 frame. Returns (canvas, lead hand, rear hand) in cell pixels."""
+    if p.get("seated") is not None:
+        return _render_seated(view, pal, p)
     if view == SIDE:
         return _render_side(pal, p)
     return _render_front_back(pal, p, view)
@@ -458,6 +558,8 @@ def render_facing(direction, pal, p):
 
 def core_point(direction, p):
     """The dantian — where cultivation gathers qi — for this pose and facing."""
+    if p.get("seated") is not None:
+        return (CX, 35 - p["seated"])
     shift = 0
     if direction in (0, 1):
         shift = p["lateral"]
@@ -513,3 +615,6 @@ ARCHETYPES = {
         "shoe": (60, 44, 34, 255),
     }),
 }
+
+# The meditation pose function is defined after ANIMATIONS (it reads the seated renderer).
+ANIMATIONS["meditate"] = (MEDITATE_FRAMES, False, meditate_pose)

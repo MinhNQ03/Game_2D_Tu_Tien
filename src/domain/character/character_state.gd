@@ -101,13 +101,28 @@ func set_total_xp(value: int) -> void:
 	xp = maxi(0, value)
 
 
-# --- Cultivation CONTRACT (persistent; mechanics are a later phase) ----------
+# --- Cultivation (persistent authority; rules in `CultivationService`, Phase 12) ---
 
-## Current cảnh giới id (starts from the template's `starting_realm`). CONTRACT only.
+## Current cảnh giới id (starts from the template's `starting_realm`).
 var realm_id: StringName = &""
 
-## Progress toward the next realm. CONTRACT only — no breakthrough math in Phase 04.
+## The layer inside `realm_id` (1..9 for a numbered realm; 0 for PHÀM, which has no layers).
+var realm_layer: int = 0
+
+## Tu vi gathered toward the NEXT step (the next layer, or the next realm from the last layer).
+## Reset to 0 by a breakthrough. Deliberately not `xp`: the two axes never merge (§1).
 var cultivation_progress: int = 0
+
+
+## Set the authoritative cultivation position. A STORAGE BOUNDARY, not a gameplay mutator —
+## the same split as `set_total_xp` (D-055): `CultivationService` alone DECIDES a new position
+## (gathering, breaking through), and this is the only place its invariants are enforced
+## (`layer >= 0`, `progress >= 0`). `tests/unit/cultivation/test_cultivation_authority.gd` walks
+## `src/` and fails if any production file outside this class and the service writes it.
+func set_cultivation(new_realm_id: StringName, new_layer: int, new_progress: int) -> void:
+	realm_id = new_realm_id
+	realm_layer = maxi(0, new_layer)
+	cultivation_progress = maxi(0, new_progress)
 
 ## Known công pháp ids. CONTRACT only.
 var technique_ids: Array[StringName] = []
@@ -280,6 +295,7 @@ func to_dict() -> Dictionary:
 		"profession": profession,
 		"xp": xp,
 		"realm_id": String(realm_id),
+		"realm_layer": realm_layer,
 		"cultivation_progress": cultivation_progress,
 		"technique_ids": _string_name_array_to_strings(technique_ids),
 		"max_hp": max_hp,
@@ -344,6 +360,17 @@ func from_dict(data: Dictionary) -> bool:
 	if in_xp < 0:
 		push_error("[character] from_dict: xp must be >= 0 (got %d)" % in_xp)
 		return false
+	# Cultivation is type-CHECKED for the same reason XP is (L-024): a float or a string in
+	# these fields would otherwise be coerced into a plausible realm position. Missing keys are
+	# legal (pre-Phase-12 saves) and mean "a mortal with no progress".
+	var raw_layer: Variant = data.get("realm_layer", 0)
+	var raw_progress: Variant = data.get("cultivation_progress", 0)
+	if typeof(raw_layer) != TYPE_INT or typeof(raw_progress) != TYPE_INT:
+		push_error("[character] from_dict: realm_layer and cultivation_progress must be ints")
+		return false
+	if int(raw_layer) < 0 or int(raw_progress) < 0:
+		push_error("[character] from_dict: realm_layer/cultivation_progress must be >= 0")
+		return false
 
 	instance_id = in_instance_id
 	template_id = StringName(String(data.get("template_id", "")))
@@ -357,7 +384,8 @@ func from_dict(data: Dictionary) -> bool:
 	profession = int(data.get("profession", 0))
 	xp = in_xp
 	realm_id = StringName(String(data.get("realm_id", "")))
-	cultivation_progress = int(data.get("cultivation_progress", 0))
+	realm_layer = int(raw_layer)
+	cultivation_progress = int(raw_progress)
 	technique_ids = _strings_to_string_name_array(data.get("technique_ids", []))
 	max_hp = in_max_hp
 	attack = int(data.get("attack", 0))

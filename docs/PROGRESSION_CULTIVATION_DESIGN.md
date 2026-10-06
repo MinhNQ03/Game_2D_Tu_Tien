@@ -12,8 +12,13 @@
 > a gold `Cấp N` badge plus an XP meter in the HUD. §11's "XP curve shape is NOT frozen" still
 > holds — the shipped curve is a first tuning pass, not canon.
 >
-> The CẢNH GIỚI axis — §2's hierarchy, §3's nine layers, §4's capability contract, §5's paths —
-> remains **unimplemented**; Phase 12 owns it. Level is not it, and nothing in the Phase-11 code
+> **The CẢNH GIỚI axis is implemented (Phase 12, D-058):** the ladder is
+> `data/progression/realm_ladder.tres` (`RealmLadderData` of seven `RealmData`, canon order
+> enforced), the one decider is `CultivationService` (`gather`, `breakthrough`, capability
+> reads, `meets`), the state is `CharacterState.realm_id` / `realm_layer` /
+> `cultivation_progress` (storage boundary `set_cultivation`), and the Knowledge Core
+> (`KnowledgeStore` + `KnowledgeService`, §7a) gates entry into Hậu Thiên. §5's paths are still
+> unimplemented (no path content exists yet). Level is not it, and nothing in the Phase-11 code
 > may be read as it: `ProgressionView` carries no realm-shaped field and the progression UI
 > deliberately avoids the words *tu vi*, *đột phá* and *cảnh giới* so the player is never told
 > the two axes are the same thing (D-054).

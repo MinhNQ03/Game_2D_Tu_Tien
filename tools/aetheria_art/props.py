@@ -333,3 +333,92 @@ def gen_prototype_tileset(root):
         px[y][ox + TILE - 1] = (52, 60, 74, 255)
     raster.rect(px, ox, TILE - 1, ox + TILE, TILE, (52, 60, 74, 255))
     _save(root, "assets/tiles/prototype/prototype_tileset.png", px)
+
+def gen_cultivation_landmarks(root):
+    """The PHYSICAL marks of a vein (Phase 12) — what a mortal sees where qi surfaces. The qi
+    itself is a runtime effect gated by perception; these are stone, water and torn earth."""
+    stone = (118, 120, 126, 255)
+    stone_hi = raster.shade(stone, 1.25)
+    stone_dk = raster.shade(stone, 0.7)
+    # Lạc Hà spring: a ring of stones around a small clear pool.
+    px = raster.blank(32, 20)
+    raster.oval(px, 16, 11, 14, 7, stone_dk)
+    raster.oval(px, 16, 10, 13, 6, stone)
+    raster.oval(px, 16, 11, 10, 4.2, (40, 92, 120, 255))
+    raster.oval(px, 14, 10, 6, 2, (70, 140, 168, 255))
+    raster.put(px, 12, 9, (200, 236, 240, 255))
+    for (x, y) in ((4, 9), (9, 5), (16, 4), (23, 5), (28, 9), (25, 15), (8, 15), (16, 17)):
+        raster.oval(px, x, y, 2, 1.6, stone_hi)
+    raster.outline(px, INK)
+    _save(root, "assets/sprites/props/prop_spirit_spring.png", px)
+    # The vein fissure: torn earth with jade-green crystal glints in the crack.
+    px = raster.blank(48, 20)
+    earth = (86, 70, 54, 255)
+    raster.oval(px, 24, 11, 22, 7, earth)
+    raster.oval(px, 24, 10, 20, 5, raster.shade(earth, 1.15))
+    crack = [(4, 12), (11, 9), (17, 12), (24, 8), (31, 12), (38, 9), (44, 11)]
+    for a, b in zip(crack, crack[1:]):
+        raster.line(px, a[0], a[1], b[0], b[1], (24, 20, 18, 255))
+        raster.line(px, a[0], a[1] + 1, b[0], b[1] + 1, (36, 30, 26, 255))
+    for (x, y) in ((11, 8), (24, 7), (38, 8), (30, 11)):
+        raster.put(px, x, y, (110, 210, 170, 255))
+        raster.put(px, x, y - 1, (180, 250, 220, 255))
+    raster.outline(px, INK)
+    _save(root, "assets/sprites/props/prop_vein_fissure.png", px)
+    # The Lạc Hà stele: an upright carved stone on a low plinth.
+    px = raster.blank(20, 36)
+    raster.oval(px, 10, 34, 8, 1.6, (12, 16, 22, 96))
+    raster.rect(px, 3, 29, 17, 34, stone_dk)
+    raster.rect(px, 3, 29, 17, 30, stone)
+    raster.rect(px, 5, 4, 15, 30, stone)
+    raster.rect(px, 5, 4, 7, 30, stone_hi)
+    raster.oval(px, 10, 5, 5, 3, stone)
+    for y in range(9, 27, 3):
+        raster.rect(px, 9, y, 13, y + 1, stone_dk)       # carved lines of text
+    raster.rect(px, 8, 6, 14, 7, (150, 128, 80, 255))   # a weathered gilt heading
+    raster.outline(px, INK)
+    _save(root, "assets/sprites/props/prop_stele.png", px)
+
+
+def gen_item_icons(root):
+    """16x16 item icons (Phase 13-15): what the bag and the ground show. One silhouette per
+    item, readable at 1x on the floor and in a panel row."""
+    def save(name, px):
+        raster.outline(px, INK)
+        _save(root, "assets/sprites/items/%s.png" % name, px)
+    # Bổ Huyết Đan: a deep-red pill with a gold sheen.
+    px = raster.blank(16, 16)
+    raster.oval(px, 8, 9, 4.5, 4.5, (150, 34, 40, 255))
+    raster.oval(px, 7, 8, 2.5, 2.5, (196, 60, 60, 255))
+    raster.put(px, 6, 7, (240, 210, 140, 255))
+    save("item_bo_huyet_dan", px)
+    # Linh Thạch: a pale cyan crystal, faceted.
+    px = raster.blank(16, 16)
+    raster.polygon(px, [(8, 2), (12, 7), (10, 14), (6, 14), (4, 7)], (120, 196, 220, 255))
+    raster.polygon(px, [(8, 2), (8, 14), (6, 14), (4, 7)], (170, 226, 240, 255))
+    raster.put(px, 7, 5, (240, 252, 255, 255))
+    save("item_linh_thach", px)
+    # A technique manual: a bound scroll with a colour band per element.
+    for name, band in (("item_manual_phong", (150, 214, 170, 255)),
+                       ("item_manual_loi", (176, 150, 236, 255))):
+        px = raster.blank(16, 16)
+        raster.rect(px, 3, 3, 13, 13, (220, 200, 150, 255))
+        raster.rect(px, 3, 3, 5, 13, (176, 150, 100, 255))
+        raster.rect(px, 7, 6, 12, 8, band)
+        raster.rect(px, 7, 10, 11, 11, (150, 128, 90, 255))
+        save(name, px)
+    # Kiếm: an iron jian, diagonal.
+    px = raster.blank(16, 16)
+    raster.line(px, 3, 13, 12, 4, (200, 210, 220, 255))
+    raster.line(px, 4, 13, 13, 4, (150, 160, 172, 255))
+    raster.line(px, 2, 11, 5, 14, (190, 160, 90, 255))
+    raster.rect(px, 2, 13, 4, 15, (110, 70, 40, 255))
+    save("item_kiem_thanh_thiet", px)
+    # Đạo bào: a folded robe.
+    px = raster.blank(16, 16)
+    raster.polygon(px, [(3, 4), (13, 4), (14, 13), (2, 13)], (90, 120, 170, 255))
+    raster.line(px, 6, 4, 9, 9, (210, 180, 110, 255))
+    raster.line(px, 10, 4, 8, 7, (210, 180, 110, 255))
+    raster.rect(px, 2, 10, 14, 11, (60, 84, 128, 255))
+    save("item_dao_bao_thanh_van", px)
+

@@ -1,0 +1,91 @@
+[gd_resource type="Resource" script_class="RealmLadderData" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://src/data/progression/realm_ladder_data.gd" id="1_ladder"]
+[ext_resource type="Script" path="res://src/data/progression/realm_data.gd" id="2_realm"]
+
+[sub_resource type="Resource" id="R_realm_pham"]
+script = ExtResource("2_realm")
+id = &"realm_pham"
+name_key = &"REALM_PHAM_NAME"
+desc_key = &"REALM_PHAM_DESC"
+order = 0
+layer_count = 0
+step_costs = PackedInt32Array(30)
+perception_px = PackedFloat32Array(0)
+qi_capacity = PackedInt32Array(0)
+gather_efficiency = PackedFloat32Array(0.6)
+
+[sub_resource type="Resource" id="R_realm_hau_thien"]
+script = ExtResource("2_realm")
+id = &"realm_hau_thien"
+name_key = &"REALM_HAU_THIEN_NAME"
+desc_key = &"REALM_HAU_THIEN_DESC"
+order = 1
+layer_count = 9
+step_costs = PackedInt32Array(40, 55, 70, 90, 110, 135, 160, 190, 240)
+entry_knowledge = Array[StringName]([&"know_dan_khi_quyet"])
+perception_px = PackedFloat32Array(96, 112, 128, 144, 160, 176, 200, 216, 240)
+qi_capacity = PackedInt32Array(30, 40, 50, 60, 72, 84, 100, 112, 128)
+gather_efficiency = PackedFloat32Array(1, 1.06, 1.12, 1.18, 1.24, 1.3, 1.4, 1.46, 1.55)
+
+[sub_resource type="Resource" id="R_realm_tien_thien"]
+script = ExtResource("2_realm")
+id = &"realm_tien_thien"
+name_key = &"REALM_TIEN_THIEN_NAME"
+desc_key = &"REALM_TIEN_THIEN_DESC"
+order = 2
+layer_count = 9
+step_costs = PackedInt32Array(300, 340, 380, 420, 470, 520, 580, 640, 720)
+entry_knowledge = Array[StringName]([&"know_tien_thien_threshold"])
+perception_px = PackedFloat32Array(272, 288, 304, 320, 336, 352, 384, 400, 432)
+qi_capacity = PackedInt32Array(160, 180, 200, 220, 245, 270, 300, 325, 355)
+gather_efficiency = PackedFloat32Array(1.7, 1.76, 1.82, 1.88, 1.94, 2, 2.1, 2.16, 2.25)
+
+[sub_resource type="Resource" id="R_realm_ngu_thien"]
+script = ExtResource("2_realm")
+id = &"realm_ngu_thien"
+name_key = &"REALM_NGU_THIEN_NAME"
+desc_key = &"REALM_NGU_THIEN_DESC"
+order = 3
+layer_count = 9
+step_costs = PackedInt32Array(900, 980, 1060, 1140, 1230, 1320, 1420, 1520, 1640)
+entry_knowledge = Array[StringName]([&"know_ngu_thien_domain"])
+perception_px = PackedFloat32Array(480, 512, 544, 576, 608, 640, 688, 720, 768)
+qi_capacity = PackedInt32Array(420, 460, 500, 540, 585, 630, 690, 735, 790)
+gather_efficiency = PackedFloat32Array(2.4, 2.48, 2.56, 2.64, 2.72, 2.8, 2.92, 3, 3.1)
+
+[sub_resource type="Resource" id="R_realm_trong_thien"]
+script = ExtResource("2_realm")
+id = &"realm_trong_thien"
+name_key = &"REALM_TRONG_THIEN_NAME"
+desc_key = &"REALM_TRONG_THIEN_DESC"
+order = 4
+layer_count = 9
+step_costs = PackedInt32Array(2000, 2150, 2300, 2450, 2600, 2800, 3000, 3200, 3500)
+entry_knowledge = Array[StringName]([&"know_trong_thien_law"])
+perception_px = PackedFloat32Array(832, 864, 896, 928, 960, 992, 1040, 1072, 1120)
+qi_capacity = PackedInt32Array(900, 960, 1020, 1080, 1150, 1220, 1300, 1370, 1450)
+gather_efficiency = PackedFloat32Array(3.3, 3.38, 3.46, 3.54, 3.62, 3.7, 3.82, 3.9, 4)
+
+[sub_resource type="Resource" id="R_realm_thai_thien"]
+script = ExtResource("2_realm")
+id = &"realm_thai_thien"
+name_key = &"REALM_THAI_THIEN_NAME"
+desc_key = &"REALM_THAI_THIEN_DESC"
+order = 5
+layer_count = 0
+structural = true
+
+[sub_resource type="Resource" id="R_realm_vo_thien"]
+script = ExtResource("2_realm")
+id = &"realm_vo_thien"
+name_key = &"REALM_VO_THIEN_NAME"
+desc_key = &"REALM_VO_THIEN_DESC"
+order = 6
+layer_count = 0
+structural = true
+
+[resource]
+script = ExtResource("1_ladder")
+id = &"ladder_canon"
+realms = Array[ExtResource("2_realm")]([SubResource("R_realm_pham"), SubResource("R_realm_hau_thien"), SubResource("R_realm_tien_thien"), SubResource("R_realm_ngu_thien"), SubResource("R_realm_trong_thien"), SubResource("R_realm_thai_thien"), SubResource("R_realm_vo_thien")])

@@ -4083,3 +4083,65 @@ at 1× before and after each fix (L-045). Recorded as **L-045**.
   it to `EnemyData`. **Owner: the phase that adds the second species.**
 * The ambient wind has no IMPULSE input yet; its first two consumers are P12's breakthrough and
   P15's Phong technique (M-14.2). **Owner: P12/P15.**
+
+## D-058 — Phase 12: Cultivation (cảnh giới) and the Knowledge Core
+
+**Status:** Accepted · **Scope:** P12 exactly — no P16+ system, no save system, no autoload.
+
+**Built.** `RealmData` / `RealmLadderData` (seven canon tiers, CL-02 ids and order enforced; every
+layer must move a non-damage dimension — perception, qi capacity, gather efficiency — or the
+validator refuses it, §3); `CultivationService` (the ONE decider: `gather` capped at the step,
+surplus lost; `breakthrough` when the step is full AND the next realm's `entry_knowledge` is held,
+read through the Knowledge Core; structural tiers never attemptable; deterministic, no roll —
+rates are not frozen, §11); `CharacterState.realm_layer` + `set_cultivation` storage boundary
+(type-checked hydrate, L-024); `KnowledgeStore` + `KnowledgeService` (catalog-checked,
+idempotent grants, query by kind, all-or-nothing hydrate); per-session `KnowledgeRuntime` and
+`CultivationRuntime` appended to `SESSION_START_ORDER` (cultivation reads knowledge, so it starts
+after and ends first); `CultivationSite` (a vein surfacing in a map: steady Lạc Hà spring; broken
+vein under Rừng Vỡ Mạch — surging flow, survivable only from Hậu Thiên 1, §4 "which methods are
+survivable"); `KnowledgeSource` (the Lạc Hà stele: Dẫn Khí Quyết + its record);
+the `cultivate` action (C).
+
+**The gating chain the exit asks for.** A mortal cannot draw qi until the stele teaches the
+method; the step into Hậu Thiên requires it again (read through `KnowledgeService`); Hậu Thiên 9
+→ Tiên Thiên requires `know_tien_thien_threshold`, which nothing in this build grants — the
+honest cap of current content. Hậu Thiên changes PERCEPTION (qi at a vein becomes visible within
+the realm's radius, `QiWellFeedback`), the broken vein becomes survivable, and sitting there with
+a body that can sense it teaches `know_broken_vein_flow` — a non-gating payoff that foreshadows
+CL-08 without answering it (M-7.2).
+
+**Presentation** (deliberation per M-13 in the code notes): a seated meditation sheet (descent +
+one breath, eyes closed, a seal at the dantian) driven as the MEDITATE action; qi motes FROM the
+vein INTO the `core` anchor, as visible as the body perceives; the breakthrough gathers, RELEASES
+at the instant the realm changes (ring, light column, a wind impulse through the new `WindField`
+— the impulse's first consumer, P15 Phong the second) and settles; the HUD's tu vi meter (own
+hue; names the realm; gold when a breakthrough waits), a contextual cultivate prompt, a two-line
+MACRO breakthrough banner in the bottom band, queued notices (capture-found: the second of two
+grants erased the first). The level-up's missing character response (§20 debt) is closed: a
+mid-scale gold ring rising on the body.
+
+**HUD budget.** The title row ("Mortal Seeker") yields to the tu vi meter once a realm is shown —
+it restated the realm, and the plaque must stay inside the 15% budget (measured 15.5% otherwise).
+One contextual prompt at a time keeps the strip in the left half.
+
+**Canon display text.** `map_hub` / `map_field` now display Thôn Lạc Hà / Rừng Vỡ Mạch (CL-11;
+display text may be revised, ids unchanged).
+
+## D-059 — Phase 13: Items and the satchel
+
+**Built.** `ItemData` (use kinds HEAL / ABSORB_QI / READ; every item has a sink) and
+`ItemCatalogData`; `InventoryState` (bounded stacks, all-or-nothing hydrate validated against
+the catalog); per-session `InventoryRuntime` (after cultivation in the start order) that collects
+`WorldItem` pickups by distance and remembers collected ids for the run, and USES items through
+their owners — the body's `heal`, `CultivationService.gather` (needs the method), the Knowledge
+Core (manuals). A use that does nothing is REFUSED with a reason and burns nothing. The
+`InventoryPanel` (key I) is MODAL: `InputService.is_modal_action_just_pressed` lets the move keys
+choose rows and interact use one without walking the player; Esc closes the panel rather than
+leaving the game; engaging a live target closes it. Pickups: Bổ Huyết Đan in the village, Linh
+Thạch beside the broken vein, and the two technique manuals P15 consumes. Gain notices name the
+satchel key (no seventh permanent prompt).
+
+**Not done, on purpose.** No player currency yet: Linh Thạch is an item with a real sink
+(absorption); a currency with no sink would break the economy rule. No drop/loot tables: the
+first enemy loot belongs with a second consumer of loot.
+

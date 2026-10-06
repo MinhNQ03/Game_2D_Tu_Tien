@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CultivationSiteData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/cultivation/cultivation_site_data.gd" id="1_site"]
+
+[resource]
+script = ExtResource("1_site")
+id = &"site_broken_vein"
+name_key = &"SITE_BROKEN_VEIN_NAME"
+qi_per_second = 5
+stability = 1
+radius_px = 52
+required_realm = &"realm_hau_thien"
+required_layer = 1
+required_knowledge = Array[StringName]([&"know_dan_khi_quyet"])

@@ -58,6 +58,12 @@ const INTERACT_ACTION := &"interact"
 const OPEN_MENU_ACTION := &"open_menu"
 const SECT_PANEL_ACTION := &"sect_panel"
 const FACTION_PANEL_ACTION := &"faction_panel"
+const CULTIVATE_ACTION := &"cultivate"
+const INVENTORY_ACTION := &"inventory"
+
+## The player asked to use an item from the bag (Phase 13). The HUD decides nothing: MapBase
+## forwards it to WorldRuntime → InventoryRuntime.
+signal inventory_use_requested(item_id: StringName)
 
 ## Side of the small sect emblem chip in the identity panel. HUD-local: nothing else in the
 ## UI draws a chip this size, so it stays here rather than widening the shared palette.
@@ -114,6 +120,30 @@ var _target_linger: Timer
 var _target_view: CombatTargetView = null
 ## True while a LIVE target is engaged, so engagement is detected as a transition.
 var _engaged: bool = false
+## The tu vi meter (Phase 12) under the XP meter; hidden until a cultivation view arrives.
+var _cultivation_meter: ProgressBar
+var _cultivation_view: CultivationView = null
+## The contextual cultivate prompt: sit / rise / break through, by what the view allows.
+var _cultivate_row: UIPromptRow
+## The verb the interact prompt shows: "Interact" at an exit, "Read" at a stele (Phase 12).
+var _interact_label_key: StringName = &"UI_HUD_INTERACT_ACTION"
+## A transient line in the bottom band (knowledge learned, a refused cultivate), and the MACRO
+## breakthrough announcement, which holds the same band. Both re-render on a language change.
+var _notice_label: Label
+var _notice_timer: Timer
+var _notice_key: StringName = &""
+var _notice_args: Dictionary = {}
+## Notices waiting their turn: two things learned in one reading must BOTH be read — the second
+## replacing the first erased the breathing method, the one line that mattered (capture-found).
+var _notice_queue: Array = []
+const NOTICE_QUEUE_MAX := 4
+var _breakthrough_banner: VBoxContainer
+var _breakthrough_title: Label
+var _breakthrough_realm: Label
+var _breakthrough_timer: Timer
+var _breakthrough_realm_key: StringName = &""
+var _breakthrough_layer: int = 0
+var _breakthrough_changed_realm: bool = false
 var _attack_row: UIPromptRow
 var _interact_row: UIPromptRow
 var _menu_row: UIPromptRow
@@ -130,6 +160,10 @@ var _sect_panel: SectPanel
 # from the sect panel so the player can read membership and politics side by side rather than
 # having one cover the other.
 var _faction_panel: FactionPanel
+# The inventory panel (Phase 13): a MODAL reading surface — while open the HUD holds a UI_MODAL
+# input context so the move keys choose a row instead of walking the player.
+var _inventory_panel: InventoryPanel
+var _inventory_modal: bool = false
 var _politics_view: SectPoliticsView = null  # read-only politics view; may be null
 var _world_sim_view: WorldSimView = null  # read-only world-sim view (Phase 08); may be null
 # The full-rect Control every HUD element hangs off. Held so the safe-area inset can be
@@ -148,6 +182,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	close_inventory()
 	# Stop the level-up celebration before the HUD leaves the tree. A map transition or a
 	# return to the menu can land mid-effect, and an effect still decaying toward a colour on
 	# a node that is being freed is writing `modulate` on a dangling target.
@@ -310,6 +345,13 @@ func _build_ui() -> void:
 	_xp_meter.visible = false
 	identity_text.add_child(_xp_meter)
 
+	# The tu vi meter (Phase 12): the SECOND progression axis, in its own row and its own hue,
+	# and it writes the realm's name in its value — "Phàm Nhân · 12/30" — so the player reads
+	# WHAT they are becoming, not just how full a bar is. Hidden until a cultivation view arrives.
+	_cultivation_meter = UITheme.cultivation_meter()
+	_cultivation_meter.visible = false
+	identity_text.add_child(_cultivation_meter)
+
 	# The level-up celebration drives the BADGE, not the meter: the meter's job is to be read
 	# accurately, and a flashing bar is harder to read, while a badge catching light is
 	# exactly the "something happened to me" signal a level-up wants. Presentation-only, and
@@ -349,6 +391,59 @@ func _build_ui() -> void:
 	add_child(_level_up)
 	_level_up.bind_target(_level_label)
 	_level_up.bind_banner(_level_up_banner)
+
+	# The BREAKTHROUGH announcement (Phase 12): macro scale, so it is larger and holds longer
+	# than the level-up banner — and it is two lines, the event and what the player became. It
+	# lives in the bottom band like every announcement, one row above the level-up banner so the
+	# two can never print over each other, and never over the playfield centre (§3c).
+	_breakthrough_banner = VBoxContainer.new()
+	_breakthrough_banner.name = "BreakthroughBanner"
+	_breakthrough_banner.alignment = BoxContainer.ALIGNMENT_END
+	_breakthrough_banner.add_theme_constant_override("separation", 0)
+	_breakthrough_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_breakthrough_banner.offset_top -= UIPalette.ANNOUNCE_BOTTOM_INSET
+	_breakthrough_banner.offset_bottom -= UIPalette.ANNOUNCE_BOTTOM_INSET
+	_breakthrough_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_breakthrough_banner.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_breakthrough_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_breakthrough_banner.visible = false
+	root.add_child(_breakthrough_banner)
+	_breakthrough_title = Label.new()
+	_breakthrough_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_breakthrough_title.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_breakthrough_title.add_theme_color_override("font_color", UIPalette.GOLD_PRIMARY)
+	_breakthrough_banner.add_child(_breakthrough_title)
+	_breakthrough_realm = Label.new()
+	_breakthrough_realm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_breakthrough_realm.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_BUTTON)
+	_breakthrough_realm.add_theme_color_override("font_color", UIPalette.CULTIVATION_METER_FILL)
+	_breakthrough_banner.add_child(_breakthrough_realm)
+	_breakthrough_timer = Timer.new()
+	_breakthrough_timer.name = "BreakthroughHold"
+	_breakthrough_timer.one_shot = true
+	_breakthrough_timer.timeout.connect(_on_breakthrough_timeout)
+	add_child(_breakthrough_timer)
+
+	# The NOTICE line: one transient sentence in the same band (knowledge learned, why the
+	# cultivate key did nothing). A key press that silently does nothing reads as a bug.
+	_notice_label = Label.new()
+	_notice_label.name = "HudNotice"
+	_notice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_notice_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_notice_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
+	_notice_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_notice_label.offset_top -= UIPalette.ANNOUNCE_BOTTOM_INSET
+	_notice_label.offset_bottom -= UIPalette.ANNOUNCE_BOTTOM_INSET
+	_notice_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_notice_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_notice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_notice_label.visible = false
+	root.add_child(_notice_label)
+	_notice_timer = Timer.new()
+	_notice_timer.name = "NoticeHold"
+	_notice_timer.one_shot = true
+	_notice_timer.timeout.connect(_on_notice_timeout)
+	add_child(_notice_timer)
 
 	# The engraved rule that separates the two identity tiers. Same art as the menu title and
 	# the sect panel header, so all three screens read as one design language (D-041).
@@ -529,6 +624,13 @@ func _build_ui() -> void:
 	_interact_row.name = "InteractPrompt"
 	prompt_box.add_child(_interact_row)
 
+	# CONTEXTUAL like interact (Phase 12): shown only where cultivating means something — at a
+	# vein, or while seated — and its verb says what the key will do NOW.
+	_cultivate_row = PromptRowScript.new() as UIPromptRow
+	_cultivate_row.name = "CultivatePrompt"
+	_cultivate_row.visible = false
+	prompt_box.add_child(_cultivate_row)
+
 	# All five rows are NAMED. Two were already, because a test looks them up; the other three
 	# were anonymous, so a failure in the strip could only report Godot's generated node name
 	# and could not say WHICH prompt was wrong (D-055 follow-up).
@@ -561,6 +663,14 @@ func _build_ui() -> void:
 	# not propagate to children, which is what pushed the Phase-06 sect panel off-screen
 	# (D-034). Both panels may be open at once by design — membership and politics are two
 	# halves of one question.
+	_inventory_panel = InventoryPanel.new()
+	_inventory_panel.name = "InventoryPanel"
+	_bound_side_panel(_inventory_panel, true)
+	_inventory_panel.visible = false
+	_inventory_panel.use_requested.connect(func(item_id: StringName) -> void:
+		inventory_use_requested.emit(item_id))
+	root.add_child(_inventory_panel)
+
 	_faction_panel = FactionPanelScript.new() as FactionPanel
 	_bound_side_panel(_faction_panel, true)
 	_faction_panel.visible = false
@@ -873,11 +983,135 @@ func set_map_name(name_key: StringName) -> void:
 
 
 ## Whether the player can currently interact with an exit (drives the interact prompt).
-func set_interact_available(available: bool) -> void:
-	if _interact_available == available:
+func set_interact_available(available: bool,
+		label_key: StringName = &"UI_HUD_INTERACT_ACTION") -> void:
+	if _interact_available == available and _interact_label_key == label_key:
 		return
 	_interact_available = available
+	_interact_label_key = label_key
 	_refresh()
+
+
+## Push the player's cảnh giới view (Phase 12). Event-driven: the cultivation runtime announces
+## a change and `WorldRuntime` rebuilds and pushes — the HUD never polls.
+func set_cultivation_view(view: CultivationView) -> void:
+	_cultivation_view = view
+	_refresh()
+
+
+func is_cultivation_visible() -> bool:
+	return _cultivation_meter != null and _cultivation_meter.visible
+
+
+## Show one transient sentence in the bottom band. Stored as a KEY + args, so a language change
+## re-renders it instead of leaving the old language on screen.
+func announce(text_key: StringName, args: Dictionary = {}) -> void:
+	if _notice_label == null:
+		return
+	if _notice_label.visible and not _notice_timer.is_stopped():
+		if _notice_queue.size() < NOTICE_QUEUE_MAX:
+			_notice_queue.append([text_key, args])
+		return
+	_show_notice(text_key, args)
+
+
+func _show_notice(text_key: StringName, args: Dictionary) -> void:
+	_notice_key = text_key
+	_notice_args = args
+	_refresh_notice()
+	if _breakthrough_banner == null or not _breakthrough_banner.visible:
+		_notice_label.visible = true
+	_notice_timer.start(UIPalette.HUD_NOTICE_SECONDS)
+
+
+func notice_text() -> String:
+	return _notice_label.text if _notice_label != null and _notice_label.visible else ""
+
+
+## The MACRO announcement of a breakthrough: the event, and the realm reached.
+func celebrate_breakthrough(realm_name_key: StringName, layer: int, changed_realm: bool) -> void:
+	if _breakthrough_banner == null:
+		return
+	_breakthrough_realm_key = realm_name_key
+	_breakthrough_layer = layer
+	_breakthrough_changed_realm = changed_realm
+	_refresh_breakthrough_text()
+	_notice_label.visible = false
+	_breakthrough_banner.visible = true
+	_breakthrough_timer.start(UIPalette.BREAKTHROUGH_BANNER_SECONDS)
+
+
+func is_breakthrough_banner_visible() -> bool:
+	return _breakthrough_banner != null and _breakthrough_banner.visible
+
+
+func _on_breakthrough_timeout() -> void:
+	if _breakthrough_banner != null:
+		_breakthrough_banner.visible = false
+
+
+func _on_notice_timeout() -> void:
+	if _notice_label == null:
+		return
+	_notice_label.visible = false
+	if not _notice_queue.is_empty():
+		var next: Array = _notice_queue.pop_front()
+		_show_notice(next[0], next[1])
+
+
+func _refresh_notice() -> void:
+	if _notice_label == null or _notice_key == &"":
+		return
+	var args := _notice_args.duplicate()
+	# The satchel key is named where items are gained, so the bag is discoverable without a
+	# seventh permanent prompt in the strip.
+	if not args.is_empty() and not args.has("key"):
+		args["key"] = _display_label(INVENTORY_ACTION)
+	# A knowledge or realm name arrives as a KEY; resolve it in the current language.
+	for k: Variant in args:
+		if typeof(args[k]) == TYPE_STRING_NAME:
+			args[k] = _resolve(args[k])
+	_notice_label.text = _text_args(String(_notice_key), args) if not args.is_empty() \
+		else _text(String(_notice_key))
+
+
+func _refresh_breakthrough_text() -> void:
+	if _breakthrough_title == null or _breakthrough_realm_key == &"":
+		return
+	_breakthrough_title.text = _text("UI_HUD_BREAKTHROUGH_REALM" if _breakthrough_changed_realm
+		else "UI_HUD_BREAKTHROUGH_LAYER")
+	_breakthrough_realm.text = _realm_text(_breakthrough_realm_key, _breakthrough_layer)
+
+
+## "Phàm Nhân", "Hậu Thiên tầng 3": a realm and, when it has layers, the layer.
+func _realm_text(realm_name_key: StringName, layer: int) -> String:
+	var realm := _resolve(realm_name_key)
+	if layer <= 0:
+		return realm
+	return _text_args("UI_HUD_REALM_LAYER", {"realm": realm, "layer": layer})
+
+
+func _refresh_cultivation() -> void:
+	if _cultivation_meter == null:
+		return
+	var view := _cultivation_view
+	if view == null or not view.available:
+		_cultivation_meter.visible = false
+		return
+	_cultivation_meter.visible = true
+	var realm := _realm_text(view.realm_name_key, view.layer)
+	var text := ""
+	if view.at_ceiling:
+		text = _text_args("UI_HUD_CULTIVATION_COMPLETE", {"realm": realm})
+	elif view.can_breakthrough:
+		text = _text_args("UI_HUD_CULTIVATION_READY", {"realm": realm})
+	elif view.blocked_by_knowledge:
+		text = _text_args("UI_HUD_CULTIVATION_BLOCKED", {"realm": realm})
+	else:
+		text = _text_args("UI_HUD_CULTIVATION_PROGRESS", {
+			"realm": realm, "into": view.progress, "cost": view.step_cost})
+	UITheme.set_cultivation_meter_value(_cultivation_meter, view.progress, view.step_cost,
+		view.can_breakthrough, text)
 
 
 ## Push the player's read-only sect membership view (Phase 06). The owner (MapBase, fed by
@@ -915,6 +1149,16 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _input == null:
 		return
 	var handled := false
+	# The bag toggles in BOTH contexts: opened from the world (gameplay), closed from itself
+	# (modal) — or with Esc, which must close the panel rather than leave the game.
+	if _inventory_modal and (_input.call("is_modal_action_just_pressed", INVENTORY_ACTION)
+			or _input.call("is_system_action_just_pressed", &"open_menu")):
+		close_inventory()
+		handled = true
+	elif _inventory_panel != null \
+			and _input.call("is_gameplay_action_just_pressed", INVENTORY_ACTION):
+		open_inventory()
+		handled = true
 	if _sect_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", SECT_PANEL_ACTION):
 		_sect_panel.visible = not _sect_panel.visible
@@ -935,6 +1179,47 @@ func _close_side_panels() -> void:
 		_sect_panel.visible = false
 	if _faction_panel != null:
 		_faction_panel.visible = false
+	close_inventory()
+
+
+## Open the bag: one reading surface at a time (the other side panels close), and the input
+## context becomes UI_MODAL so the move keys navigate rows instead of walking.
+func open_inventory() -> void:
+	if _inventory_panel == null or _inventory_panel.visible:
+		return
+	if _sect_panel != null:
+		_sect_panel.visible = false
+	if _faction_panel != null:
+		_faction_panel.visible = false
+	_inventory_panel.visible = true
+	_inventory_panel.set_process(true)
+	if _input != null and not _inventory_modal:
+		_input.call("push_modal_context")
+		_inventory_modal = true
+
+
+## Close the bag and give input back to the world. Safe when closed.
+func close_inventory() -> void:
+	if _inventory_panel != null:
+		_inventory_panel.visible = false
+		_inventory_panel.set_process(false)
+	if _input != null and _inventory_modal:
+		_input.call("pop_context")
+		_inventory_modal = false
+
+
+func is_inventory_open() -> bool:
+	return _inventory_panel != null and _inventory_panel.visible
+
+
+func inventory_panel() -> InventoryPanel:
+	return _inventory_panel
+
+
+## Push the bag's contents (Phase 13), event-driven from the inventory runtime.
+func set_inventory_view(view: InventoryView) -> void:
+	if _inventory_panel != null:
+		_inventory_panel.set_view(view)
 
 
 ## Is the Sect detail panel currently shown? (for tests)
@@ -953,14 +1238,21 @@ func _refresh() -> void:
 	if _name_label == null:
 		return  # not built yet
 	_name_label.text = _resolve(_name_key)
+	_refresh_cultivation()
 	_title_label.text = _resolve(_title_key)
-	_title_label.visible = _title_key != &""
+	# Once the realm is shown, the title row yields to it (Phase 12): the starting title
+	# ("Mortal Seeker") restates the realm the tu vi meter now NAMES, and the plaque must stay
+	# inside the permanent-HUD budget (§3c) — one row out, one row in.
+	_title_label.visible = _title_key != &"" and not is_cultivation_visible()
 	_map_label.text = _resolve(_map_name_key)
 	# Re-resolve the combat target too, so a language change relabels what the player is
 	# fighting without the combat session having to push the view again.
 	_refresh_target_text()
 	_refresh_sect_chip()
 	_refresh_progression()
+	_refresh_cultivation()
+	_refresh_notice()
+	_refresh_breakthrough_text()
 	_refresh_world_sim()
 	_refresh_prompts()
 
@@ -1050,7 +1342,8 @@ func _refresh_prompts() -> void:
 	_interact_row.visible = _interact_available
 	if _interact_available:
 		var interact_key := _display_label(INTERACT_ACTION)
-		_interact_row.set_prompt(interact_key, _text("UI_HUD_INTERACT_ACTION"))
+		_interact_row.set_prompt(interact_key, _text(String(_interact_label_key)))
+	_refresh_cultivate_prompt()
 	# Sect panel prompt: always available (the player can always inspect their sect, §19).
 	if _sect_row != null:
 		var sect_key := _display_label(SECT_PANEL_ACTION)
@@ -1060,6 +1353,33 @@ func _refresh_prompts() -> void:
 	if _faction_row != null:
 		var faction_key := _display_label(FACTION_PANEL_ACTION)
 		_faction_row.set_prompt(faction_key, _text("UI_FACTION_PANEL_TOGGLE"))
+
+
+## The cultivate prompt's verb is what the key will do NOW: sit down at a vein, break through on
+## a full step, otherwise rise. Hidden away from any vein and during a breakthrough (the press
+## is absorbed then, so advertising it would promise nothing).
+func _refresh_cultivate_prompt() -> void:
+	if _cultivate_row == null:
+		return
+	var view := _cultivation_view
+	var verb := ""
+	if view != null and view.available:
+		match view.activity:
+			CultivationView.Activity.IDLE:
+				if view.site_in_reach:
+					verb = "UI_HUD_CULTIVATE_ACTION"
+			CultivationView.Activity.MEDITATING:
+				verb = "UI_HUD_BREAKTHROUGH_ACTION" if view.can_breakthrough \
+					else "UI_HUD_CULTIVATE_STOP"
+	# ONE contextual verb at a time: where a key both reads a stele and cultivates, the strip
+	# would promise two things at once — and the vein and the stele are never placed together.
+	# While seated the cultivate verb wins (interact cannot be what the player is doing then).
+	if _interact_available and (view == null
+			or view.activity == CultivationView.Activity.IDLE):
+		verb = ""
+	_cultivate_row.visible = verb != ""
+	if verb != "":
+		_cultivate_row.set_prompt(_display_label(CULTIVATE_ACTION), _text(verb))
 
 
 func _display_label(action: StringName) -> String:

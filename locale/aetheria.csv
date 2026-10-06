@@ -10,8 +10,8 @@ UI_TEST_GREETING,Hello {name},Xin chào {name}
 UI_SANDBOX_HINT,Move with WASD. Attack to hit the dummy. Press [open_menu] to return.,Di chuyển bằng WASD. Tấn công để đánh mục tiêu. Nhấn [open_menu] để quay lại.
 UI_SANDBOX_PLAYER_HP,Player HP,Máu người chơi
 UI_SANDBOX_DUMMY_HP,Training Dummy HP,Máu mộc nhân
-UI_MAP_HUB_NAME,Village (hub),Thôn làng (trung tâm)
-UI_MAP_FIELD_NAME,Forest Field,Khu rừng
+UI_MAP_HUB_NAME,Lạc Hà Village,Thôn Lạc Hà
+UI_MAP_FIELD_NAME,Broken-Vein Woods,Rừng Vỡ Mạch
 UI_MAP_INTERACT_HINT,Press [interact] to use this exit.,Nhấn [interact] để dùng lối ra này.
 UI_MAP_RETURN_HINT,Move to an exit. Press [open_menu] to return to the menu.,Di chuyển tới lối ra. Nhấn [open_menu] để quay lại menu.
 CHARACTER_PLAYER_NAME,Wanderer,Lữ khách
@@ -64,11 +64,11 @@ UI_SETTINGS_LANGUAGE_ACTIVE,{language} — in use,{language} — đang dùng
 UI_LANGUAGE_VI,Tiếng Việt,Tiếng Việt
 UI_LANGUAGE_EN,English,English
 FACTION_AZURE_TERRACE_NAME,Cloud Terrace,Vân Đài
-FACTION_AZURE_TERRACE_DOCTRINE,"The ceiling is the price of not repeating the catastrophe. The allocation is not a cage; it is the reason there is still a sect to belong to.","Cái trần là giá phải trả để thảm họa không lặp lại. Định phần không phải lồng giam; nó là lý do tông môn này còn tồn tại để mà gia nhập."
+FACTION_AZURE_TERRACE_DOCTRINE,The ceiling is the price of not repeating the catastrophe. The allocation is not a cage; it is the reason there is still a sect to belong to.,Cái trần là giá phải trả để thảm họa không lặp lại. Định phần không phải lồng giam; nó là lý do tông môn này còn tồn tại để mà gia nhập.
 FACTION_AZURE_OPEN_ROAD_NAME,Open the Road,Khai Lộ
 FACTION_AZURE_OPEN_ROAD_DOCTRINE,"We have buried disciples who died of waiting, not of danger. Re-argue the allocation through petition and re-examination — the covenant is a floor, not a ceiling.","Chúng ta đã chôn những đệ tử chết vì chờ đợi, không phải vì hiểm nguy. Hãy tranh biện lại định phần bằng thỉnh nguyện và khảo hạch — khế ước là sàn, không phải trần."
 FACTION_AZURE_FRONTIER_NAME,Frontier Cloud,Biên Vân
-FACTION_AZURE_FRONTIER_DOCTRINE,"Argue about the allocated veins all you like. The Hoang Vực was never allocated. Seek what the covenant never counted.","Cứ tranh luận về những mạch linh đã được định phần. Hoang Vực chưa từng được định phần. Hãy tìm thứ mà khế ước chưa từng tính đến."
+FACTION_AZURE_FRONTIER_DOCTRINE,Argue about the allocated veins all you like. The Hoang Vực was never allocated. Seek what the covenant never counted.,Cứ tranh luận về những mạch linh đã được định phần. Hoang Vực chưa từng được định phần. Hãy tìm thứ mà khế ước chưa từng tính đến.
 FACTION_GOAL_KEEP_COVENANT,Keep the covenant reading,Giữ nguyên cách hiểu khế ước
 FACTION_GOAL_HOLD_EXAMINATION,Keep the examination with the elders,Giữ khảo hạch trong tay trưởng lão
 FACTION_GOAL_WIDEN_ALLOCATION,Widen the sect's allocation,Mở rộng định phần của tông môn
@@ -117,16 +117,87 @@ WORLDSIM_BAND_FAR,Far away,Ở xa
 WORLDSIM_EVENT_SECT_INFLUENCE,Sect standing,Thanh thế tông môn
 WORLDSIM_EVENT_FACTION_INFLUENCE,Faction sway,Thế lực phe phái
 WORLDSIM_EVENT_RELATIONSHIP_SHIFT,Ties between people,Quan hệ giữa người với người
-UI_HUD_WORLD_DATE,"Yr {year} · Season {season} · Day {day}","Năm {year} · Mùa {season} · Ngày {day}"
-UI_HUD_WORLD_EVENT_ROSE,"{subject} rose","{subject} tăng lên"
-UI_HUD_WORLD_EVENT_FELL,"{subject} fell","{subject} giảm xuống"
+UI_HUD_WORLD_DATE,Yr {year} · Season {season} · Day {day},Năm {year} · Mùa {season} · Ngày {day}
+UI_HUD_WORLD_EVENT_ROSE,{subject} rose,{subject} tăng lên
+UI_HUD_WORLD_EVENT_FELL,{subject} fell,{subject} giảm xuống
 UI_HUD_WORLD_QUIET,The world is quiet.,Thế gian đang yên ắng.
 ATTACK_PLAYER_BASIC_NAME,Palm Strike,Chưởng Pháp
 ENEMY_MIST_WOLF_NAME,Mist Wolf,Vụ Lang
 THREAT_FRONTIER_LOW,Frontier · Low,Biên thùy · Thấp
 UI_HUD_TARGET_DEFEATED,Defeated,Đã hạ gục
 ATTACK_MIST_WOLF_BITE_NAME,Fanged Lunge,Nhiếp Nha
-UI_HUD_LEVEL,"Lv {level}","Cấp {level}"
-UI_HUD_XP_PROGRESS,"XP {into} / {cost}","KN {into} / {cost}"
+UI_HUD_LEVEL,Lv {level},Cấp {level}
+UI_HUD_XP_PROGRESS,XP {into} / {cost},KN {into} / {cost}
 UI_HUD_XP_COMPLETE,XP max,KN tối đa
-UI_HUD_LEVEL_UP,"Level Up! Lv {level}","Thăng cấp! Cấp {level}"
+UI_HUD_LEVEL_UP,Level Up! Lv {level},Thăng cấp! Cấp {level}
+REALM_PHAM_NAME,Mortal,Phàm Nhân
+REALM_PHAM_DESC,No cultivation: the baseline the world is built for.,Chưa tu luyện: nền tảng mà thế gian được dựng nên cho.
+REALM_HAU_THIEN_NAME,Acquired Heaven,Hậu Thiên
+REALM_HAU_THIEN_DESC,The body opened and refined by effort.,Thân thể được khai mở và tôi luyện bằng nỗ lực.
+REALM_TIEN_THIEN_NAME,Innate Heaven,Tiên Thiên
+REALM_TIEN_THIEN_DESC,Qi sustains itself; a true cultivator.,Khí tự sinh tự dưỡng; một tu sĩ thực thụ.
+REALM_NGU_THIEN_NAME,Commanding Heaven,Ngự Thiên
+REALM_NGU_THIEN_DESC,Authority over an external domain.,Quyền năng trên một vùng bên ngoài thân.
+REALM_TRONG_THIEN_NAME,Layered Heaven,Trọng Thiên
+REALM_TRONG_THIEN_DESC,Interaction with world law itself.,Tác động đến chính luật của thế giới.
+REALM_THAI_THIEN_NAME,Ultimate Heaven,Thái Thiên
+REALM_THAI_THIEN_DESC,Where world-scale ceases to be the unit.,Nơi quy mô thế giới không còn là thước đo.
+REALM_VO_THIEN_NAME,Void Heaven,Vô Thiên
+REALM_VO_THIEN_DESC,The horizon. Unverified.,Chân trời. Chưa ai kiểm chứng.
+KNOW_DAN_KHI_QUYET_NAME,Qi-Guiding Breath,Dẫn Khí Quyết
+KNOW_DAN_KHI_QUYET_DESC,"A breathing method carved on the Lạc Hà stele: draw breath along the vein, hold it at the dantian.","Phép thở khắc trên bia Lạc Hà: hít theo mạch, giữ khí ở đan điền."
+KNOW_LAC_HA_STELE_RECORD_NAME,The Lạc Hà Stele Record,Bia ký Lạc Hà
+KNOW_LAC_HA_STELE_RECORD_DESC,"The vein under the village runs weak but even. The one under the eastern woods does not run quietly: until your body is opened, do not sit there.",Mạch dưới làng yếu mà đều. Mạch dưới rừng phía đông chảy không yên: thân chưa khai mở thì chớ ngồi đó.
+KNOW_BROKEN_VEIN_FLOW_NAME,The Broken Vein's Flow,Nhịp mạch vỡ
+KNOW_BROKEN_VEIN_FLOW_DESC,"Over the woods' vein the qi surges and falls away on an uneven beat, as if something draws it off.","Trên mạch rừng, khí dâng rồi hụt theo nhịp không đều, như có gì đó kéo nó đi."
+KNOW_TIEN_THIEN_THRESHOLD_NAME,The Innate Threshold,Ngưỡng Tiên Thiên
+KNOW_TIEN_THIEN_THRESHOLD_DESC,What must be understood before qi sustains itself. No one in Lạc Hà knows it.,Điều phải hiểu trước khi khí tự sinh. Ở Lạc Hà không ai biết.
+KNOW_NGU_THIEN_DOMAIN_NAME,The Commanding Principle,Lẽ Ngự Thiên
+KNOW_NGU_THIEN_DOMAIN_DESC,How a body comes to hold a place.,Cách một thân thể nắm giữ một vùng đất.
+KNOW_TRONG_THIEN_LAW_NAME,The Layered Law,Luật Trọng Thiên
+KNOW_TRONG_THIEN_LAW_DESC,How world law answers one who touches it.,Luật thế giới đáp lại kẻ chạm vào nó ra sao.
+SITE_LAC_HA_SPRING_NAME,Lạc Hà Spirit Spring,Linh tuyền Lạc Hà
+SITE_BROKEN_VEIN_NAME,The Vein Fissure,Vết nứt linh mạch
+UI_CULTIVATE_NO_SITE,No vein surfaces here to cultivate at.,Nơi này không có linh mạch để tọa thiền.
+UI_CULTIVATE_NO_METHOD,You do not know how to draw qi. The village stele records a method.,Ngươi chưa biết cách dẫn khí. Tấm bia giữa làng có ghi.
+UI_CULTIVATE_SITE_TOO_STRONG,The broken vein is too violent for an unopened body (Acquired Heaven).,"Mạch vỡ quá dữ, thân chưa khai mở không chịu nổi (cần Hậu Thiên)."
+UI_CULTIVATE_MISSING_KNOWLEDGE,"Your cultivation is full, but you do not understand the next step.","Tu vi đã đủ, nhưng chưa ngộ được bước tiếp theo."
+UI_CULTIVATE_CEILING,There is no further step to break through.,Không còn bước nào để đột phá.
+UI_KNOWLEDGE_NOTHING_NEW,The stele has nothing new to teach you.,Tấm bia không còn gì mới với ngươi.
+UI_HUD_READ_ACTION,Read,Đọc bia
+UI_HUD_CULTIVATE_ACTION,Cultivate,Tọa thiền
+UI_HUD_CULTIVATE_STOP,Rise,Thu công
+UI_HUD_BREAKTHROUGH_ACTION,Break through,Đột phá
+UI_HUD_REALM_LAYER,{realm} {layer},{realm} tầng {layer}
+UI_HUD_CULTIVATION_PROGRESS,{realm} · {into}/{cost},{realm} · {into}/{cost}
+UI_HUD_CULTIVATION_READY,{realm} · Ready,{realm} · Có thể đột phá
+UI_HUD_CULTIVATION_BLOCKED,{realm} · Needs insight,{realm} · Cần ngộ thêm
+UI_HUD_CULTIVATION_COMPLETE,{realm} · Complete,{realm} · Viên mãn
+UI_HUD_KNOWLEDGE_GAINED,Learned: {name},Tri thức mới: {name}
+UI_HUD_BREAKTHROUGH_REALM,Realm breakthrough,Đột phá cảnh giới
+UI_HUD_BREAKTHROUGH_LAYER,Breakthrough,Đột phá
+ITEM_BO_HUYET_DAN_NAME,Blood-Mending Pill,Bổ Huyết Đan
+ITEM_BO_HUYET_DAN_DESC,A village pill that knits torn flesh. Restores 35 health.,"Viên đan làng chế, nối lại thịt rách. Hồi 35 sinh lực."
+ITEM_LINH_THACH_NAME,Spirit Stone,Linh Thạch
+ITEM_LINH_THACH_DESC,Qi set into stone where a vein surfaced. A body that knows a method can absorb it as tu vi.,Khí đọng thành đá nơi mạch trồi lên. Thân biết pháp dẫn khí có thể hấp thụ thành tu vi.
+ITEM_MANUAL_PHONG_NAME,Clear-Wind Palm Manual,Bí kíp Thanh Phong Chưởng
+ITEM_MANUAL_PHONG_DESC,A Thanh Vân outer-disciple manual: a palm that drives wind ahead of it. Reading it teaches the method.,Bí kíp ngoại môn Thanh Vân: một chưởng đẩy gió đi trước. Đọc để lĩnh hội.
+ITEM_MANUAL_LOI_NAME,Thunder-Finger Manual,Bí kíp Lôi Chỉ
+ITEM_MANUAL_LOI_DESC,A scorched page found by the broken vein: qi gathered to one fingertip and loosed as lightning.,"Trang giấy cháy sém nhặt bên mạch vỡ: khí dồn về một đầu ngón tay, phóng ra thành sét."
+KNOW_THANH_PHONG_CHUONG_NAME,Clear-Wind Palm,Thanh Phong Chưởng
+KNOW_THANH_PHONG_CHUONG_DESC,How to drive qi out through the palm as a wind that shoves what it strikes.,Cách đẩy khí qua lòng bàn tay thành luồng gió hất văng thứ nó chạm.
+KNOW_LOI_CHI_NAME,Thunder Finger,Lôi Chỉ
+KNOW_LOI_CHI_DESC,How to gather qi to a fingertip and loose it as a bolt that numbs what it hits.,"Cách dồn khí về đầu ngón tay, phóng thành tia sét làm tê liệt thứ trúng phải."
+UI_INVENTORY_TITLE,Satchel,Túi đồ
+UI_INVENTORY_EMPTY,The satchel is empty.,Túi trống không.
+UI_INVENTORY_KEYS,{use} Use · {close} Close,{use} Dùng · {close} Đóng
+UI_HUD_INVENTORY_ACTION,Satchel,Túi đồ
+UI_ITEM_GAINED,Gained: {name} ×{count}  ({key} satchel),Nhận được: {name} ×{count}  ({key} túi đồ)
+UI_ITEM_USED,Used: {name},Đã dùng: {name}
+UI_ITEM_NOT_HELD,You are not carrying that.,Ngươi không mang thứ đó.
+UI_ITEM_NOT_USABLE,That cannot be used like this.,Thứ này không dùng như vậy được.
+UI_ITEM_FULL_HEALTH,You are unhurt; the pill would be wasted.,Ngươi không bị thương; dùng đan lúc này là phí.
+UI_ITEM_NO_METHOD,You do not know how to draw qi from a stone.,Ngươi chưa biết cách dẫn khí từ linh thạch.
+UI_ITEM_STEP_FULL,Your cultivation is full; break through first.,Tu vi đã đầy; hãy đột phá trước.
+UI_ITEM_ALREADY_KNOWN,You have nothing more to learn from it.,Ngươi đã lĩnh hội hết điều trong đó.
+UI_ITEM_BAG_FULL,The satchel is full.,Túi đã đầy.

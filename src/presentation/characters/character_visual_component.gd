@@ -63,6 +63,10 @@ const ACTION_NONE := &""
 ## implementation here, on purpose — a reserved name is a name, not a feature.
 const ACTION_ATTACK := &"attack"
 
+## Seated cultivation (Phase 12). Driven by the cultivation presentation, not clocked here: the
+## descent is the first column, the breath loop the rest (`CultivationFeedback`).
+const ACTION_MEDITATE := &"meditate"
+
 ## How long a 180° turn shows the intermediate facing. Three frames at 60fps: long enough to
 ## read as the body turning, short enough that the input still feels instant (M-4.4).
 const TURN_SECONDS := 0.05
@@ -315,13 +319,15 @@ func action_progress() -> float:
 
 ## The sheet an action name renders with, or null when this profile cannot play it.
 ##
-## One `match` with one arm today. It stays a match rather than becoming a dictionary lookup or
-## a registry because there is exactly one action; the day a second lands, THAT change adds the
-## arm, and the day a fifth lands is the day a table earns its keep.
+## A `match`, one arm per action (attack since D-056, meditate since Phase 12). It stays a match
+## rather than becoming a dictionary lookup or a registry while the actions are this few; the
+## day a fifth lands is the day a table earns its keep.
 func _sheet_for_action(action: StringName) -> Texture2D:
 	match action:
 		ACTION_ATTACK:
 			return _profile.attack_sheet
+		ACTION_MEDITATE:
+			return _profile.meditate_sheet
 		_:
 			return null
 

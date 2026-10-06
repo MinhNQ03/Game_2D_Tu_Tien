@@ -41,6 +41,15 @@ uniform float gust_speed = 70.0;
 uniform float gust_period = 900.0;
 uniform float gust_width = 140.0;
 uniform float lean_px = 0.0;
+// An IMPULSE: a single wave of force pushed out from `impulse_origin` (a breakthrough's release
+// today; a Phong technique in P15). It travels at `impulse_speed`, so near props answer first and
+// far ones later, and it pushes each prop AWAY from the origin. `impulse_age` is advanced by the
+// map's `WindField`, never by TIME, so the wave starts exactly when the event happens.
+uniform vec2 impulse_origin = vec2(0.0, 0.0);
+uniform float impulse_strength = 0.0;
+uniform float impulse_age = 0.0;
+uniform float impulse_speed = 180.0;
+uniform float impulse_radius = 220.0;
 
 varying vec2 world_pos;
 varying vec4 tint;
@@ -65,7 +74,18 @@ void fragment() {
 	float lane = mod(world_pos.x - TIME * gust_speed, gust_period);
 	float gust = gust_px * exp(-pow((lane - gust_period * 0.5) / max(gust_width, 1.0), 2.0) * 4.0);
 
-	float shift = floor((wind + gust + lean_px) * w + 0.5);
+	float push = 0.0;
+	if (impulse_strength > 0.0) {
+		vec2 away = world_pos - impulse_origin;
+		float dist = length(away);
+		float since = impulse_age - dist / impulse_speed;
+		if (since > 0.0 && dist < impulse_radius) {
+			float envelope = sin(min(since / 0.35, 1.0) * 1.5707963) * exp(-since * 2.6);
+			float falloff = 1.0 - dist / impulse_radius;
+			push = impulse_strength * envelope * falloff * (away.x >= 0.0 ? 1.0 : -1.0);
+		}
+	}
+	float shift = floor((wind + gust + lean_px + push) * w + 0.5);
 	vec2 uv = UV - vec2(shift * TEXTURE_PIXEL_SIZE.x, 0.0);
 	vec4 c = texture(TEXTURE, uv);
 	// Outside the texture is empty, never a clamped smear of the edge column.

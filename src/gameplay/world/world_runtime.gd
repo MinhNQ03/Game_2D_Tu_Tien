@@ -325,6 +325,12 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# polled.
 	_connect_progression_signals()
 	_push_progression_view_to_active_map()
+	# And the cảnh giới + the Knowledge Core (Phase 12) — the same forward-a-read-only-view
+	# contract, and the same re-subscription on every arrival.
+	_connect_cultivation_signals()
+	_push_cultivation_view_to_active_map()
+	_connect_inventory_signals()
+	_push_inventory_view_to_active_map()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -631,6 +637,153 @@ func _on_level_changed(_previous: int, current: int) -> void:
 	_push_progression_view_to_active_map()
 	if _active_map != null and _active_map.has_method("celebrate_level_up"):
 		_active_map.call("celebrate_level_up", current)
+	# The CHARACTER answers too (Phase 12 closes the D-057 §20 debt): a mid-scale response on
+	# the body, distinct from a breakthrough's macro one.
+	if _player == null or not is_instance_valid(_player):
+		return
+	var feedback: Node = _player.get_node_or_null("CultivationFeedback")
+	if feedback != null and feedback.has_method("celebrate_level_up"):
+		feedback.call("celebrate_level_up")
+
+
+# --- Cultivation + Knowledge (Phase 12) ---------------------------------------
+
+## Re-push the cảnh giới view to the active map (Main calls this after the cultivation session
+## starts, because the hub's HUD was built before it existed — as with progression).
+func refresh_active_map_cultivation_view() -> void:
+	_connect_cultivation_signals()
+	_push_cultivation_view_to_active_map()
+
+
+func _push_cultivation_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_cultivation_view"):
+		return
+	var cultivation := _find_sibling_of(CultivationRuntime) as CultivationRuntime
+	if cultivation == null or not cultivation.is_session_active():
+		return
+	_active_map.call("set_cultivation_view", cultivation.build_view())
+
+
+## Subscribe to the cultivation and knowledge sessions (idempotent). EVENT-DRIVEN: the HUD is
+## rebuilt when the runtime says its visible state changed, never polled.
+func _connect_cultivation_signals() -> void:
+	var cultivation := _find_sibling_of(CultivationRuntime) as CultivationRuntime
+	if cultivation != null:
+		if not cultivation.view_changed.is_connected(_push_cultivation_view_to_active_map):
+			cultivation.view_changed.connect(_push_cultivation_view_to_active_map)
+		if not cultivation.realm_advanced.is_connected(_on_realm_advanced):
+			cultivation.realm_advanced.connect(_on_realm_advanced)
+		if not cultivation.cultivation_refused.is_connected(_on_cultivation_refused):
+			cultivation.cultivation_refused.connect(_on_cultivation_refused)
+	var knowledge := _find_sibling_of(KnowledgeRuntime) as KnowledgeRuntime
+	if knowledge != null and not knowledge.knowledge_gained.is_connected(_on_knowledge_gained):
+		knowledge.knowledge_gained.connect(_on_knowledge_gained)
+
+
+func _on_realm_advanced(_realm_id: StringName, layer: int, changed_realm: bool) -> void:
+	_push_cultivation_view_to_active_map()
+	var cultivation := _find_sibling_of(CultivationRuntime) as CultivationRuntime
+	if cultivation == null or _active_map == null \
+			or not _active_map.has_method("celebrate_breakthrough"):
+		return
+	var realm := cultivation.get_service().realm_of(get_player_character())
+	if realm != null:
+		_active_map.call("celebrate_breakthrough", realm.name_key, layer, changed_realm)
+
+
+func _on_cultivation_refused(reason_key: StringName) -> void:
+	if _active_map != null and _active_map.has_method("announce"):
+		_active_map.call("announce", reason_key)
+
+
+## Something new was learned: say WHAT, by its name, in the bottom band.
+func _on_knowledge_gained(knowledge_id: StringName, _source_id: StringName) -> void:
+	var knowledge := _find_sibling_of(KnowledgeRuntime) as KnowledgeRuntime
+	if knowledge == null or _active_map == null or not _active_map.has_method("announce"):
+		return
+	var entry := knowledge.get_catalog().entry(knowledge_id)
+	if entry != null:
+		_active_map.call("announce", &"UI_HUD_KNOWLEDGE_GAINED", {"name": entry.name_key})
+
+
+## The player read a knowledge source in the active map: grant through the Knowledge Core. A
+## source with nothing new to teach SAYS so, rather than the key doing nothing.
+func _on_knowledge_source_read(source_id: StringName, grants: Array[StringName]) -> void:
+	var knowledge := _find_sibling_of(KnowledgeRuntime) as KnowledgeRuntime
+	if knowledge == null or not knowledge.is_session_active():
+		return
+	var learned := knowledge.read_source(source_id, grants)
+	if learned.is_empty() and _active_map != null and _active_map.has_method("announce"):
+		_active_map.call("announce", &"UI_KNOWLEDGE_NOTHING_NEW")
+
+
+# --- Inventory (Phase 13) -------------------------------------------------------
+
+func refresh_active_map_inventory_view() -> void:
+	_connect_inventory_signals()
+	_push_inventory_view_to_active_map()
+
+
+func _push_inventory_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_inventory_view"):
+		return
+	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
+	if inventory == null or not inventory.is_session_active():
+		return
+	_active_map.call("set_inventory_view", InventoryView.make(inventory))
+
+
+func _connect_inventory_signals() -> void:
+	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
+	if inventory == null:
+		return
+	if not inventory.inventory_changed.is_connected(_push_inventory_view_to_active_map):
+		inventory.inventory_changed.connect(_push_inventory_view_to_active_map)
+	if not inventory.item_gained.is_connected(_on_item_gained):
+		inventory.item_gained.connect(_on_item_gained)
+	if not inventory.use_refused.is_connected(_on_item_refused):
+		inventory.use_refused.connect(_on_item_refused)
+	if not inventory.item_used.is_connected(_on_item_used):
+		inventory.item_used.connect(_on_item_used)
+
+
+func _on_item_gained(item_id: StringName, count: int) -> void:
+	_announce_item(&"UI_ITEM_GAINED", item_id, count)
+
+
+func _on_item_used(item_id: StringName) -> void:
+	_announce_item(&"UI_ITEM_USED", item_id, 1)
+
+
+func _on_item_refused(_item_id: StringName, reason_key: StringName) -> void:
+	if _active_map != null and _active_map.has_method("announce"):
+		_active_map.call("announce", reason_key)
+
+
+func _announce_item(key: StringName, item_id: StringName, count: int) -> void:
+	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
+	if inventory == null or _active_map == null or not _active_map.has_method("announce"):
+		return
+	var item := inventory.get_catalog().entry(item_id)
+	if item != null:
+		_active_map.call("announce", key, {"name": item.name_key, "count": count})
+
+
+func _on_item_use_requested(item_id: StringName) -> void:
+	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
+	if inventory != null and inventory.is_session_active():
+		inventory.use(item_id)
+
+
+## The sibling under Main/Systems that is an instance of `type`, or null.
+func _find_sibling_of(type: Variant) -> Node:
+	var parent := get_parent()
+	if parent == null:
+		return null
+	for sibling in parent.get_children():
+		if is_instance_of(sibling, type):
+			return sibling
+	return null
 
 
 ## Locate the FactionRuntime among this node's siblings under Main/Systems (or null). Same
@@ -718,6 +871,12 @@ func _wire_active_map() -> void:
 	if _active_map.has_signal("return_to_menu_requested") \
 			and not _active_map.is_connected("return_to_menu_requested", _on_map_return_to_menu):
 		_active_map.connect("return_to_menu_requested", _on_map_return_to_menu)
+	if _active_map.has_signal("item_use_requested") \
+			and not _active_map.is_connected("item_use_requested", _on_item_use_requested):
+		_active_map.connect("item_use_requested", _on_item_use_requested)
+	if _active_map.has_signal("knowledge_source_read") \
+			and not _active_map.is_connected("knowledge_source_read", _on_knowledge_source_read):
+		_active_map.connect("knowledge_source_read", _on_knowledge_source_read)
 
 
 func _on_map_exit_requested(to_map_id: StringName, entry_point: StringName) -> void:

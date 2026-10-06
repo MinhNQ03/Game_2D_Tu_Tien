@@ -32,6 +32,7 @@ const MAIN_SOURCE_PATH := "res://src/bootstrap/main.gd"
 ## The frozen teardown order, written out as a literal rather than derived, so this file says
 ## what the contract IS instead of only saying "the reverse of whatever start happens to be".
 const EXPECTED_TEARDOWN := [
+	&"InventoryRuntime", &"CultivationRuntime", &"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
@@ -46,6 +47,9 @@ const SUBSYSTEM_SCRIPTS := {
 	"WorldSimulationRuntime": "res://src/gameplay/world/world_sim_runtime.gd",
 	"CombatRuntime": "res://src/gameplay/world/combat_runtime.gd",
 	"ProgressionRuntime": "res://src/gameplay/world/progression_runtime.gd",
+	"KnowledgeRuntime": "res://src/gameplay/world/knowledge_runtime.gd",
+	"CultivationRuntime": "res://src/gameplay/world/cultivation_runtime.gd",
+	"InventoryRuntime": "res://src/gameplay/world/inventory_runtime.gd",
 }
 
 ## How the bootstrap actually ends a session: the runtimes are duck-typed (`Node`-typed
@@ -59,7 +63,7 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 7, "seven per-session subsystems (got %s)" % str(order))
+	assert_eq(order.size(), 10, "ten per-session subsystems (got %s)" % str(order))
 	assert_eq(order[0], &"WorldRuntime",
 		"the world session is first: it owns the character registry everything else resolves "
 		+ "through, and the player's CharacterState")
@@ -75,8 +79,17 @@ func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	assert_eq(order[5], &"CombatRuntime",
 		"combat is sixth: it borrows the simulation's seeded RngService for the combat stream "
 		+ "and points at entities the world realized, so it must start after both (Phase 09)")
+	assert_eq(order[7], &"KnowledgeRuntime",
+		"the Knowledge Core follows progression: cultivation READS it (Phase 12, D-040)")
+	assert_eq(order[9], &"InventoryRuntime",
+		"the inventory is LAST: using an item acts THROUGH cultivation, knowledge and the "
+		+ "player's body, so it starts after them and ends first (Phase 13)")
+	assert_eq(order[8], &"CultivationRuntime",
+		"cultivation follows knowledge: it reads the player's CharacterState, the Knowledge "
+		+ "Core and the "
+		+ "world's active map, so it starts after all of them and ends FIRST (Phase 12)")
 	assert_eq(order[6], &"ProgressionRuntime",
-		"progression is LAST: it READS the player's CharacterState (the world session) and "
+		"progression follows combat: it READS the player's CharacterState (the world session) and "
 		+ "LISTENS to CombatRuntime.enemy_defeated, so it must start after both — and "
 		+ "therefore end FIRST, disconnecting before its emitter is torn down and before the "
 		+ "CharacterState it grants XP into is freed (Phase 11)")

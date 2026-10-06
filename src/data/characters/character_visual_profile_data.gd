@@ -35,6 +35,7 @@ const DIRECTION_COUNT := 4
 const ANIM_IDLE := &"idle"
 const ANIM_WALK := &"walk"
 const ANIM_ATTACK := &"attack"
+const ANIM_MEDITATE := &"meditate"
 
 ## The shared anchor vocabulary (`CharacterAnchorData`): the striking point and the core.
 const POINT_PALM := &"palm"
@@ -65,6 +66,12 @@ const POINT_CORE := &"core"
 ## is 8 and the mist wolf's is 6, derived from texture width like every other sheet, and the
 ## action layer maps gameplay progress across however many there are.
 @export var attack_sheet: Texture2D = null
+
+## The MEDITATION sheet (OPTIONAL, Phase 12): the seated cultivation pose — the descent into the
+## seat, then one slow breath. Played as an ACTION (it out-ranks locomotion) whose progress the
+## cultivation presentation drives: the first column is the descent, the rest the breath loop.
+## Authored by every cultivator archetype; a creature has none.
+@export var meditate_sheet: Texture2D = null
 
 ## The pixel size of ONE animation frame (the art baseline, 32x48 since D-046). Collision
 ## footprint is independent of this (anchored at the feet) — see `docs/CHARACTER_ART_BIBLE.md`.
@@ -130,6 +137,8 @@ func validation_errors() -> Array[String]:
 		errors.append_array(_sheet_errors("walk_sheet", walk_sheet))
 	if attack_sheet != null:
 		errors.append_array(_sheet_errors("attack_sheet", attack_sheet))
+	if meditate_sheet != null:
+		errors.append_array(_sheet_errors("meditate_sheet", meditate_sheet))
 	if stride_px < 0.0:
 		errors.append("stride_px must be >= 0 (got %f)" % stride_px)
 	var walk_frames := frame_count_of(walk_sheet)
@@ -176,6 +185,8 @@ func sheet_for_anim(anim: StringName) -> Texture2D:
 			return walk_sheet
 		ANIM_ATTACK:
 			return attack_sheet
+		ANIM_MEDITATE:
+			return meditate_sheet
 		_:
 			return null
 

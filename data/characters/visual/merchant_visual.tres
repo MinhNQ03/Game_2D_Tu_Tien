@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/data/characters/character_visual_profile_data.gd" id="1_vis"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_idle.png" id="2_idle"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_walk.png" id="3_walk"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_attack.png" id="4_attack"]
 [ext_resource type="Resource" path="res://data/characters/visual/anchors/cultivator_anchors.tres" id="5_anchors"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_meditate.png" id="6_meditate"]
 
 [resource]
 script = ExtResource("1_vis")
@@ -12,6 +13,7 @@ id = &"vis_merchant"
 idle_sheet = ExtResource("2_idle")
 walk_sheet = ExtResource("3_walk")
 attack_sheet = ExtResource("4_attack")
+meditate_sheet = ExtResource("6_meditate")
 frame_size = Vector2i(32, 48)
 frame_duration = 0.36
 anchor_offset = Vector2(0, 0)

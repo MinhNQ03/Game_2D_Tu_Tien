@@ -28,6 +28,7 @@ const INTERACT := &"interact"
 const OPEN_MENU := &"open_menu"
 const MOVE_RIGHT := &"move_right"
 const SECT_PANEL := &"sect_panel"
+const CULTIVATE := &"cultivate"
 const ROUND_TRIPS := 20
 
 ## Camera-follow probe geometry (D-036). The maps are 960x576 from (16,16), so the centre
@@ -46,6 +47,7 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
+	&"InventoryRuntime", &"CultivationRuntime", &"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
@@ -271,6 +273,12 @@ func test_real_world_map_flow() -> void:
 
 	# --- 4b. a REAL attack key DAMAGES a REAL target (Phase 09, D-007) -----------
 	await _prove_combat(main, player, hub_map)
+
+	# --- 4c. CULTIVATION + KNOWLEDGE through real keys (Phase 12) ----------------
+	await _prove_cultivation(main, player, hub_map)
+
+	# --- 4d. ITEMS: pick up, open the satchel, choose and use through real keys (P13) ---
+	await _prove_inventory(main, player, hub_map)
 
 	# --- 5. first transition hub → field via REAL interact input -----------------
 	await _interact_to_transition(player, "map_hub")
@@ -989,3 +997,152 @@ func _teardown(main: Node) -> void:
 	if main.get_parent() != null:
 		main.get_parent().remove_child(main)
 	main.queue_free()
+
+
+## Prove Phase 12 in the REAL app: the cultivate key refuses with a reason away from the
+## method, a REAL interact at the stele grants the method through the Knowledge Core, a REAL
+## cultivate key sits the player at the Lạc Hà spring and tu vi accumulates over real frames,
+## a full step breaks through into Hậu Thiên 1 (the HUD names it), and a REAL move key rises.
+## Placement is setup (as with exits); every ACTION is a key event.
+func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
+	var knowledge := main.get_node_or_null("Systems/KnowledgeRuntime") as KnowledgeRuntime
+	var cultivation := main.get_node_or_null("Systems/CultivationRuntime") as CultivationRuntime
+	assert_not_null(knowledge, "the KnowledgeRuntime subsystem exists")
+	assert_not_null(cultivation, "the CultivationRuntime subsystem exists")
+	if knowledge == null or cultivation == null:
+		return
+	assert_true(knowledge.is_session_active() and cultivation.is_session_active(),
+		"both Phase-12 sessions are live")
+	var hud := _find_hud(map)
+	var spring := map.get_node_or_null("CultivationSites/LacHaSpring") as Node2D
+	var stele := map.get_node_or_null("KnowledgeSources/LacHaStele") as Node2D
+	assert_not_null(spring, "the hub has the Lạc Hà spring")
+	assert_not_null(stele, "the hub has the Lạc Hà stele")
+	if spring == null or stele == null or hud == null:
+		return
+	var state: CharacterState = player.call("get_character_state")
+	assert_eq(state.realm_id, &"realm_pham", "a new run starts mortal")
+	assert_true(hud.is_cultivation_visible(), "the HUD shows the tu vi meter")
+
+	# 1. At the spring without the method: the key REFUSES, and says why.
+	player.global_position = spring.global_position + Vector2(0, 8)
+	for _i in 4:
+		await scene_tree.physics_frame
+	await _press_through_physics(CULTIVATE)
+	assert_eq(cultivation.phase(), CultivationRuntime.Phase.IDLE, "no method: nobody sits")
+	assert_true(hud.notice_text() != "", "and the HUD says why (got '%s')" % hud.notice_text())
+
+	# 2. Read the stele with a REAL interact key.
+	player.global_position = stele.global_position + Vector2(0, 12)
+	for _i in 6:
+		await scene_tree.physics_frame
+	assert_true(map.call("active_knowledge_source") != null, "the stele is in reach")
+	for _attempt in 6:
+		await _fire_action(INTERACT)
+		if knowledge.get_service().knows(&"know_dan_khi_quyet"):
+			break
+	assert_true(knowledge.get_service().knows(&"know_dan_khi_quyet"),
+		"a real interact at the stele granted the method through the Knowledge Core")
+	assert_true(knowledge.get_service().knows(&"know_lac_ha_stele_record"),
+		"and the record (a non-gating payoff)")
+
+	# 3. Sit at the spring with a REAL cultivate key; tu vi accumulates over real frames.
+	player.global_position = spring.global_position + Vector2(0, 8)
+	for _i in 4:
+		await scene_tree.physics_frame
+	for _attempt in 6:
+		await _press_through_physics(CULTIVATE)
+		if cultivation.phase() != CultivationRuntime.Phase.IDLE:
+			break
+	assert_ne(cultivation.phase(), CultivationRuntime.Phase.IDLE, "a real C key sat the player")
+	for _i in 180:
+		await scene_tree.physics_frame
+	assert_true(state.cultivation_progress > 0,
+		"tu vi accumulated over real frames (%d)" % state.cultivation_progress)
+
+	# 4. Fill the step THROUGH THE SERVICE (setup, not a write around the authority), then a
+	# REAL key breaks through.
+	cultivation.get_service().gather(state, 999)
+	for _attempt in 6:
+		await _press_through_physics(CULTIVATE)
+		if cultivation.phase() == CultivationRuntime.Phase.BREAKTHROUGH:
+			break
+	assert_eq(cultivation.phase(), CultivationRuntime.Phase.BREAKTHROUGH, "breaking through")
+	for _i in 140:
+		await scene_tree.physics_frame
+	assert_eq([state.realm_id, state.realm_layer], [&"realm_hau_thien", 1],
+		"the player is now Hậu Thiên 1")
+	assert_true(hud.is_breakthrough_banner_visible(), "the HUD announces the breakthrough")
+
+	# 5. A REAL move key rises from the seat.
+	Input.action_press(MOVE_RIGHT)
+	for _i in 4:
+		await scene_tree.physics_frame
+	Input.action_release(MOVE_RIGHT)
+	assert_eq(cultivation.phase(), CultivationRuntime.Phase.IDLE, "moving ended the sitting")
+
+
+## Hold `action` across PHYSICS frames, then release. The cultivation runtime reads its intent
+## in `_physics_process`; a press and release that both land between two physics ticks (which a
+## key event flushed on a process frame can do headless) is never seen there.
+func _press_through_physics(action: StringName) -> void:
+	Input.action_press(action)
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	Input.action_release(action)
+	await scene_tree.physics_frame
+
+
+## Prove Phase 13 in the REAL app: walking onto a pickup collects it once; a REAL `inventory` key
+## opens the satchel (and the world stops taking the move keys); REAL move keys choose a row; a
+## REAL interact uses it (the manual teaches through the Knowledge Core); the key closes it.
+func _prove_inventory(main: Node, player: Node2D, map: Node) -> void:
+	var inventory := main.get_node_or_null("Systems/InventoryRuntime") as InventoryRuntime
+	var knowledge := main.get_node_or_null("Systems/KnowledgeRuntime") as KnowledgeRuntime
+	assert_not_null(inventory, "the InventoryRuntime subsystem exists")
+	if inventory == null or knowledge == null:
+		return
+	var hud := _find_hud(map)
+	var pill := map.get_node_or_null("Pickups/HubPill1") as Node2D
+	var manual := map.get_node_or_null("Pickups/HubManualPhong") as Node2D
+	assert_true(pill != null and manual != null, "the hub has its pickups")
+	if pill == null or manual == null or hud == null:
+		return
+	for target in [pill, manual]:
+		player.global_position = (target as Node2D).global_position
+		for _i in 6:
+			await scene_tree.physics_frame
+	assert_eq(inventory.count_of(&"item_bo_huyet_dan"), 2, "walking onto the pills took both")
+	assert_eq(inventory.count_of(&"item_manual_phong"), 1, "and the manual")
+	assert_false(pill.visible, "a collected pickup leaves the world")
+
+	for _attempt in 6:
+		await _fire_action(&"inventory")
+		if hud.is_inventory_open():
+			break
+	assert_true(hud.is_inventory_open(), "a real I key opened the satchel")
+	var panel := hud.inventory_panel()
+	assert_eq(panel.row_count(), 2, "it lists the two kinds of item held")
+	var start := player.global_position
+	for _attempt in 6:
+		await _fire_action(&"move_down")
+		if panel.selected_item_id() == &"item_manual_phong":
+			break
+	assert_eq(panel.selected_item_id(), &"item_manual_phong", "a real move key chose the manual")
+	assert_true(player.global_position.distance_to(start) < 1.0,
+		"and the player did not walk while the satchel was open")
+	for _attempt in 6:
+		await _fire_action(INTERACT)
+		if knowledge.get_service().knows(&"know_thanh_phong_chuong"):
+			break
+	assert_true(knowledge.get_service().knows(&"know_thanh_phong_chuong"),
+		"a real E read the manual: the Clear-Wind Palm is known")
+	assert_eq(inventory.count_of(&"item_manual_phong"), 0, "and the manual was consumed")
+	for _attempt in 6:
+		await _fire_action(&"inventory")
+		if not hud.is_inventory_open():
+			break
+	assert_false(hud.is_inventory_open(), "the key closed it")
+	var input := scene_tree.root.get_node_or_null("InputService")
+	assert_true(bool(input.call("is_gameplay_active")), "and input is back with the world")
+

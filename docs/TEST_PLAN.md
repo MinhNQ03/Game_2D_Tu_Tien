@@ -928,3 +928,23 @@ killed, each by the test named for it (scratch subset runner, recorded in DECISI
   striking the wolf). The strips found the beard, the grave cross, the limp palm, the gliding hem,
   the strike passing over the wolf and the red-silhouetted post — none of which a test saw.
 
+**Phase 12 (D-058):** `tests/unit/knowledge/test_knowledge_core.gd` (catalog, deterministic and
+idempotent grants, unknown ids refused, query by kind, persistence round trip and corrupt-payload
+rejection, runtime announces once, STRUCTURAL: only the service records);
+`tests/unit/cultivation/test_cultivation_service.gd` (canon ladder, the non-damage-dimension rule,
+gathering caps and never banks, a breakthrough WITHHELD without knowledge and granted with it,
+layer steps, the Tiên Thiên gate, capability by realm, `meets`, type-checked serialization,
+STRUCTURAL: only the service decides a position); `tests/unit/cultivation/
+test_cultivation_runtime.gd` (each refusal names its reason, the broken vein's realm gate and
+observation knowledge, sit → settle → gather → full → break through AT the release → keep sitting,
+a blow interrupts and an unreleased breakthrough changes nothing, perception follows the realm);
+lifecycle tests updated to the 10-step order; HUD tests: four gauges, six prompts (the contextual
+cultivate row), notices queue. E2E (`world_flow_case._prove_cultivation`): real keys refuse,
+read the stele, sit, accumulate over real frames, break through into Hậu Thiên 1, rise.
+
+**Phase 13 (D-059):** `tests/unit/inventory/test_inventory.gd` (catalog, stack maximum and bag
+capacity, round trip and corrupt saves, a pickup collected once and remembered, every use through
+its owner and a wasted use burning nothing); HUD: the satchel takes and returns input. E2E
+(`_prove_inventory`): walk onto pickups, a real I opens the satchel, real move keys choose the
+manual without walking, a real E reads it (Knowledge Core), I closes and input returns.
+

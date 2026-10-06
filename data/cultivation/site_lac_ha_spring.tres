@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CultivationSiteData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/cultivation/cultivation_site_data.gd" id="1_site"]
+
+[resource]
+script = ExtResource("1_site")
+id = &"site_lac_ha_spring"
+name_key = &"SITE_LAC_HA_SPRING_NAME"
+qi_per_second = 2
+stability = 0
+radius_px = 44
+required_realm = &""
+required_layer = 0
+required_knowledge = Array[StringName]([&"know_dan_khi_quyet"])

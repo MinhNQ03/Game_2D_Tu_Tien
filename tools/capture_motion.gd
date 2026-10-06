@@ -31,6 +31,8 @@ const CELL_PX := 160
 const MAGNIFY := 2
 
 var _out_dir := "user://motion_captures"
+## Optional: run only the scenario with this name (second user argument).
+var _only := ""
 var _written: Array[String] = []
 var _failed := false
 var _main: Node = null
@@ -40,6 +42,8 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() >= 1:
 		_out_dir = String(args[0])
+	if args.size() >= 2:
+		_only = String(args[1])
 	_run.call_deferred()
 
 
@@ -57,10 +61,21 @@ func _run() -> void:
 	await _settle()
 	await _settle()
 
-	await _scenario_walk_stop_turn()
-	await _scenario_strike_the_post()
-	await _scenario_ambient()
-	await _scenario_field_fight()
+	if _only == "" or _only == "walk_stop_turn":
+		print("[capture_motion] scenario walk_stop_turn")
+		await _scenario_walk_stop_turn()
+	if _only == "" or _only == "strike_the_post":
+		print("[capture_motion] scenario strike_the_post")
+		await _scenario_strike_the_post()
+	if _only == "" or _only == "ambient":
+		print("[capture_motion] scenario ambient")
+		await _scenario_ambient()
+	if _only == "" or _only == "cultivation":
+		print("[capture_motion] scenario cultivation")
+		await _scenario_cultivation()
+	if _only == "" or _only == "field_fight":
+		print("[capture_motion] scenario field_fight")
+		await _scenario_field_fight()
 	_finish()
 
 
@@ -140,6 +155,49 @@ func _scenario_ambient() -> void:
 		for _f in 20:
 			await process_frame
 	_save_strip("motion_tree_wind", frames)
+
+
+## Read the stele, sit at the spring, break through: the seated pose, the qi a mortal barely
+## senses, the macro release and the wind it pushes into the grass.
+func _scenario_cultivation() -> void:
+	var player := _player()
+	var stele := _map_node("KnowledgeSources/LacHaStele") as Node2D
+	var spring := _map_node("CultivationSites/LacHaSpring") as Node2D
+	var cultivation := _main.get_node_or_null("Systems/CultivationRuntime") as CultivationRuntime
+	if player == null or stele == null or spring == null or cultivation == null:
+		_fail("cultivation: hub pieces missing")
+		return
+	player.global_position = stele.global_position + Vector2(0, 12)
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_stele_read")
+	player.global_position = spring.global_position + Vector2(0, 8)
+	await _settle()
+	await _hold(&"cultivate")
+	var focus := func() -> Vector2: return spring.global_position + Vector2(0, -10)
+	var sit := await _strip(focus, 16, 3)
+	_save_strip("motion_meditate_mortal", sit)
+	cultivation.get_service().gather(player.call("get_character_state"), 999)
+	await _hold(&"cultivate")
+	var burst := await _strip(focus, 32, 4)
+	_save_strip("motion_breakthrough", burst)
+	await _shot("scene_after_breakthrough")
+	var seated := await _strip(focus, 8, 6)
+	_save_strip("motion_meditate_hau_thien", seated)
+	Input.action_press(&"move_up")
+	await _settle()
+	Input.action_release(&"move_up")
+	await _settle()
+
+
+## Hold an action across a few frames (the way a hand presses a key), then release.
+func _hold(action: StringName) -> void:
+	Input.action_press(action)
+	for _i in 4:
+		await physics_frame
+	Input.action_release(action)
+	await process_frame
 
 
 ## Into the field through the real exit, then a mist wolf: its telegraphed bite on the player,

@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/entities/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://src/gameplay/components/stats_component.gd" id="2_stats"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://src/presentation/combat/attack_feedback.gd" id="90_feedback"]
 [ext_resource type="Script" path="res://src/presentation/combat/damage_feedback.gd" id="91_dmgfeedback"]
 [ext_resource type="Script" path="res://src/presentation/combat/hit_reaction.gd" id="92_hitreaction"]
+[ext_resource type="Script" path="res://src/presentation/cultivation/cultivation_feedback.gd" id="93_cultfeedback"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_player"]
 size = Vector2(18, 12)
@@ -56,3 +57,6 @@ script = ExtResource("91_dmgfeedback")
 script = ExtResource("92_hitreaction")
 recoil_px = 2.0
 impact_height = 22.0
+
+[node name="CultivationFeedback" type="Node2D" parent="."]
+script = ExtResource("93_cultfeedback")

@@ -198,6 +198,26 @@ static func xp_meter() -> ProgressBar:
 	return _meter("XpMeter", UIPalette.XP_METER_HEIGHT, UIPalette.XP_METER_FILL)
 
 
+## The tu vi meter (Phase 12): the same construction as the XP meter, its own hue.
+static func cultivation_meter() -> ProgressBar:
+	return _meter("CultivationMeter", UIPalette.XP_METER_HEIGHT, UIPalette.CULTIVATION_METER_FILL)
+
+
+## Push a value into a meter built by `cultivation_meter()`: the bar, its text and its fill (gold
+## when a breakthrough is ready), in ONE call so they cannot disagree.
+static func set_cultivation_meter_value(
+		bar: ProgressBar, into: int, cost: int, ready: bool, text: String) -> void:
+	if bar == null or not is_instance_valid(bar):
+		return
+	var label := bar.get_node_or_null("Value") as Label
+	if label != null:
+		label.text = text
+	bar.max_value = float(maxi(1, cost))
+	bar.value = float(clampi(into, 0, maxi(1, cost))) if cost > 0 else 1.0
+	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(
+		UIPalette.CULTIVATION_METER_FILL_READY if ready else UIPalette.CULTIVATION_METER_FILL))
+
+
 ## Shared meter construction: a styled `ProgressBar` with a centred value Label inside it.
 static func _meter(meter_name: String, height: int, fill: Color) -> ProgressBar:
 	var bar := ProgressBar.new()

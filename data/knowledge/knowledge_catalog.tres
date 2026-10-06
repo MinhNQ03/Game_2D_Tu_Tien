@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="KnowledgeCatalogData" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://src/data/knowledge/knowledge_catalog_data.gd" id="1_catalog"]
+[ext_resource type="Script" path="res://src/data/knowledge/knowledge_data.gd" id="2_know"]
+
+[sub_resource type="Resource" id="K_know_dan_khi_quyet"]
+script = ExtResource("2_know")
+id = &"know_dan_khi_quyet"
+name_key = &"KNOW_DAN_KHI_QUYET_NAME"
+desc_key = &"KNOW_DAN_KHI_QUYET_DESC"
+kind = 0
+
+[sub_resource type="Resource" id="K_know_lac_ha_stele_record"]
+script = ExtResource("2_know")
+id = &"know_lac_ha_stele_record"
+name_key = &"KNOW_LAC_HA_STELE_RECORD_NAME"
+desc_key = &"KNOW_LAC_HA_STELE_RECORD_DESC"
+kind = 1
+
+[sub_resource type="Resource" id="K_know_broken_vein_flow"]
+script = ExtResource("2_know")
+id = &"know_broken_vein_flow"
+name_key = &"KNOW_BROKEN_VEIN_FLOW_NAME"
+desc_key = &"KNOW_BROKEN_VEIN_FLOW_DESC"
+kind = 2
+
+[sub_resource type="Resource" id="K_know_tien_thien_threshold"]
+script = ExtResource("2_know")
+id = &"know_tien_thien_threshold"
+name_key = &"KNOW_TIEN_THIEN_THRESHOLD_NAME"
+desc_key = &"KNOW_TIEN_THIEN_THRESHOLD_DESC"
+kind = 0
+
+[sub_resource type="Resource" id="K_know_ngu_thien_domain"]
+script = ExtResource("2_know")
+id = &"know_ngu_thien_domain"
+name_key = &"KNOW_NGU_THIEN_DOMAIN_NAME"
+desc_key = &"KNOW_NGU_THIEN_DOMAIN_DESC"
+kind = 0
+
+[sub_resource type="Resource" id="K_know_trong_thien_law"]
+script = ExtResource("2_know")
+id = &"know_trong_thien_law"
+name_key = &"KNOW_TRONG_THIEN_LAW_NAME"
+desc_key = &"KNOW_TRONG_THIEN_LAW_DESC"
+kind = 0
+
+[sub_resource type="Resource" id="K_know_thanh_phong_chuong"]
+script = ExtResource("2_know")
+id = &"know_thanh_phong_chuong"
+name_key = &"KNOW_THANH_PHONG_CHUONG_NAME"
+desc_key = &"KNOW_THANH_PHONG_CHUONG_DESC"
+kind = 0
+
+[sub_resource type="Resource" id="K_know_loi_chi"]
+script = ExtResource("2_know")
+id = &"know_loi_chi"
+name_key = &"KNOW_LOI_CHI_NAME"
+desc_key = &"KNOW_LOI_CHI_DESC"
+kind = 0
+
+[resource]
+script = ExtResource("1_catalog")
+id = &"knowledge_catalog"
+entries = Array[ExtResource("2_know")]([SubResource("K_know_dan_khi_quyet"), SubResource("K_know_lac_ha_stele_record"), SubResource("K_know_broken_vein_flow"), SubResource("K_know_tien_thien_threshold"), SubResource("K_know_ngu_thien_domain"), SubResource("K_know_trong_thien_law"), SubResource("K_know_thanh_phong_chuong"), SubResource("K_know_loi_chi")])

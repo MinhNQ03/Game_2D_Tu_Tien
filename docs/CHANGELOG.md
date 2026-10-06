@@ -8,6 +8,21 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-06 — Cultivation, knowledge, and a satchel (Phase 12 + Phase 13, D-058 / D-059)
+
+- **Cultivate (C) at a vein.** Read the stele in Thôn Lạc Hà (E) to learn Dẫn Khí Quyết, sit at
+  the spirit spring, watch tu vi fill, and break through into **Hậu Thiên**: the seat, the qi
+  drawn from the vein into the dantian, a release that throws a ring of light and a wave of wind
+  through the grass, and a banner naming what you became. As Hậu Thiên you SEE qi rising from
+  veins nearby, and the broken vein in Rừng Vỡ Mạch — too violent for a mortal — becomes a place
+  you can sit (with wolves about). Moving, swinging or being struck ends a sitting; nothing is
+  lost to an interruption.
+- **Knowledge is progression**: named things you learned (a method, a record, an observation),
+  each announced, none ever a score.
+- **The satchel (I)**: pills that heal, spirit stones you absorb as tu vi, manuals that teach.
+  A use that would do nothing is refused and the item kept. Things on the ground glint and bob.
+- The HUD's tu vi meter names your realm; the maps now carry their canon names.
+
 ### 2026-10-06 — Characters that walk, strikes that land, a world that breathes (D-057B)
 
 **What the player sees.**
