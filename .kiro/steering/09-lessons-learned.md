@@ -1056,3 +1056,65 @@
   `test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for` measures the populated strip
   on both axes; and the playtest gained a **Mode B** encounter that closes the distance with real
   movement keys and swings with the key the HUD is showing.
+
+## L-038 — A guard can protect the SPELLING instead of the thing, and a whole-screen search cannot say which widget it read
+- **Symptom (Phase 11 final hardening, D-055 follow-up):** the previous pass had added
+  structural guards, proven them non-vacuous with fixtures, and documented them — and all three
+  were bypassable, each in a different way.
+  1. The allow-lists were **basenames**. `"progression_service.gd"` exempts a file by NAME
+     anywhere under `src`, so a future `src/gameplay/progression/progression_service.gd` would
+     have inherited the exemption without anyone editing the guard.
+  2. The XP matcher knew `xp = …` and `set_total_xp(`. `xp` is an ordinary property on an
+     `Object`, so `call("set_total_xp", …)`, `set("xp", v)`, `set_indexed`, `set_deferred` and
+     `obj["xp"] = v` all mutate it and contain **neither** spelling.
+  3. The `grant_xp` matcher required the literal `grant_xp(` — so **every dynamic invocation
+     passed**, because `call("grant_xp", …)` contains `grant_xp"`, not `grant_xp(`. Planting
+     both bypasses in real production files, the old guard reported `678 passed, 0 failed`.
+  Separately, three HUD tests asserted the attack prompt by searching `_all_label_text(hud)`.
+  The HUD renders FIVE badge+word rows, so the search is ambiguous by construction: SWAPPING
+  the attack and menu words left all three tests green, and they would also stay green with the
+  attack row's own badge blank.
+- **Rule (a guard must name the THING, not a way of writing it):** before trusting a source
+  matcher, enumerate every form the language actually offers for the operation you are
+  forbidding — in GDScript that means the dynamic routes (`call` / `callv` / `call_deferred` /
+  `Callable`, `set` / `set_indexed` / `set_deferred`, and indexed property assignment), because
+  a property name typed as a STRING defeats any matcher that only knows the static syntax. Then
+  restrict the string patterns to a **method-name position**, so a diagnostic that merely
+  mentions the function is not read as a call to it (without that, the authority gets reported
+  as its own caller). And prove it by **planting the prohibited form in a real file and running
+  the OLD guard** — fixtures prove a matcher, a plant proves the guard; the two are not the same
+  claim, and only the plant tells you whether the hole was reachable.
+- **Rule (an allow-list is keyed on a PATH):** a basename allow-list is an allow-list for a
+  name. Use repository-relative paths, compare the full path, REPORT the full path in the failure
+  (`"progression_service.gd"` does not say which one), and assert the membership predicate
+  directly — a same-named file in another directory must be shown to be non-exempt, which is
+  cheaper and cleaner than planting a decoy file in the source tree.
+- **Rule (a whole-screen text search cannot identify a widget):** when a screen renders N
+  widgets of the same KIND, "the expected string is somewhere on screen" is satisfiable by any
+  of them, so it is not a test of the one you named. Read the SUBTREE of the node under test
+  (located by walking, not by child index, so a layout reorder cannot silently redirect it), and
+  add the complementary assertion from the other side: **exactly one** of the N carries the
+  value, and it is the right one. Keep the whole-screen scan only for claims that are genuinely
+  about the whole screen (here: no raw action name and no raw keycode anywhere). Corollary:
+  **name every node a test may need to identify** — three of the five prompt rows were anonymous,
+  so a failure could only quote Godot's generated name.
+- **Also (a report must not name a derived hybrid after its setup):** the playtest's
+  `placed_once_at` was computed AFTER the encounter as "distance from the frozen placement point
+  to where the creature now is" — neither the initial gap nor the final one, under a name
+  claiming it was the placement. Group evidence by WHAT PRODUCED IT
+  (`setup{…} movement{…} attack{…}`), measure a setup value at the moment it is still a fact,
+  and make the structural claim an assertion rather than prose: `placements == 1` belongs in the
+  PASS condition, not in a comment saying "placed once".
+- **Also (fix the stale half, do not overcorrect):** `GAME_FLOW.md`'s global status block had
+  been restructured precisely to stop "combat exists only in the sandbox" claims, and the stale
+  sentence survived in a per-system CONTRACT that the restructure never touched. When you fix a
+  current-state statement, scan the per-system sections too — and resist promoting the genuinely
+  unimplemented neighbours (story, NPCs, quests) while you are in there.
+- **Fixed:** D-055 follow-up. Path-keyed allow-lists + `XP_WRITE_PATTERNS` /
+  `GRANT_DYNAMIC_PATTERNS` + the path-vs-basename regression in
+  `tests/unit/progression/test_progression_authority.gd`; row-specific assertions and
+  `test_only_the_attack_row_carries_the_attack_prompt` in
+  `tests/unit/presentation/test_gameplay_hud.gd`; five named prompt rows and a corrected
+  docstring in `gameplay_hud.gd`; `setup/movement/attack` evidence grouping in
+  `tools/playtest_flow.gd`; `GAME_FLOW.md` §3.3. Every new guard verified to fail against the
+  prohibited pattern, two of them by planting it in a real production file.

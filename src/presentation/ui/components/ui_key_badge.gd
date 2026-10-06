@@ -10,8 +10,10 @@ class_name UIKeyBadge
 ## key→label mapping stays `InputService` (L-003) and badges show real glyphs, never raw
 ## action names or "Press E" text.
 ##
-## Used in ≥2 places (interact + menu prompts, and any future prompt), which is why it is a
-## shared component rather than inline markup (`08-ai-review-protocol.md` no-duplication).
+## Used by every row in the HUD's control strip — attack, interact, sect, politics, menu — which
+## is why it is a shared component rather than inline markup (`08-ai-review-protocol.md`
+## no-duplication). It is reached through `UIPromptRow`; nothing should instantiate a badge
+## beside a hand-rolled label.
 
 var _label: Label
 

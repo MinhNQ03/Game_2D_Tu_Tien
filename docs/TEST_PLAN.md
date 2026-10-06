@@ -28,7 +28,7 @@
 >
 > The in-runner suite tally is printed by the runner itself, never hand-counted, and is
 > reported in the `DECISIONS.md` entry for the change that moved it. At the D-055 close-out the
-> runner reports **`ran 678 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> runner reports **`ran 680 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
 > ObjectDB / resources at exit**. Locally that reads `676 passed, 2 failed`: the two failures
 > are the wall-clock performance budgets (`test_ai_budget`, `test_combat_budget`), which fail on
 > some development machines and pass on the CI runner — known environmental debt recorded in
@@ -396,6 +396,22 @@ against an unmodified baseline run.
   `xp_into_level`, a comparison, a local). The call matcher's own first run FAILED on the
   service — it was matching the `func grant_xp(...)` DECLARATION — and that false positive is
   pinned as a test case rather than papered over by widening the allow-list.
+- **Strengthened in the D-055 follow-up**, because the first version guarded the spelling a
+  reviewer would think of rather than the property. Three changes, each with its own
+  regression: the allow-lists are now **exact repository-relative paths** (a basename list
+  exempts a file by NAME, so a future `src/gameplay/progression/progression_service.gd` would
+  have inherited the exemption — `test_the_allow_list_is_keyed_on_the_path_not_the_filename`
+  asserts the membership predicate directly); the XP matcher covers every form that actually
+  mutates the property, not just `xp = …` (`call("set_total_xp", …)`, `set("xp", v)`,
+  `set_indexed`, `set_deferred`, `obj["xp"] = v`, and the compound operators); and the
+  `grant_xp` matcher covers **dynamic invocation** (`call` / `callv` / `call_deferred` /
+  `Callable`), which the previous version missed entirely because it required the literal
+  `grant_xp(` and `call("grant_xp", …)` does not contain it. The dynamic patterns match only a
+  method-name POSITION, so the service's own `push_error("… grant_xp …")` is not read as a
+  call. Proven against the real tree: planting `state.set("xp", 999)` in
+  `progression_runtime.gd` and `svc.call("grant_xp", …)` in `combat_runtime.gd` passes the
+  pre-follow-up guard (`678 passed, 0 failed`) and is caught by this one, reported by full
+  path.
 - `tests/unit/progression/test_progression_runtime.gd` (extended) — the reward-id IDENTITY
   matrix. The ledger is keyed by `String(reward_id)`, so an EMPTY id is not a cosmetic problem:
   it is a key every malformed defeat would share, and the first would be paid and then occupy
@@ -417,6 +433,20 @@ against an unmodified baseline run.
   raw action name and raw keycode never reach the screen, and the action word resolves in both
   vi and en. A **structural walk of `src/presentation`** rejects `set_prompt("<literal>"`, which
   pins the seam direction `semantic action → InputService → HUD`.
+- **Made ROW-SPECIFIC in the D-055 follow-up.** The positive assertions searched
+  `_all_label_text(hud)`, which is a weaker claim than it reads as: the HUD renders FIVE
+  badge+word rows, so "the attack glyph is somewhere on screen" can be satisfied by a
+  neighbouring row and stays green with the attack row's own badge blank. They now read the
+  `AttackPrompt` subtree itself — the Label owned by its `UIKeyBadge` for the glyph, the row's
+  own direct Label for the word — and a new `test_only_the_attack_row_carries_the_attack_prompt`
+  asserts that exactly ONE of the five rows carries the attack word, that it is the row named
+  `AttackPrompt`, and that all five action words are distinct so none can stand in for another.
+  Proven non-vacuous by SWAPPING the attack and menu words in the HUD: the pre-follow-up attack
+  tests all passed (only an unrelated menu assertion noticed), while these report
+  `expected AttackPrompt but got MenuPrompt`. All five rows are now named for that reason — three
+  were anonymous, so a strip failure could only quote Godot's generated node name.
+  The key-badge count assertion moved from `>= 2 (interact + menu)`, written when the strip had
+  two rows, to an exact FIVE.
 - `tests/unit/presentation/test_gameplay_hud.gd` (extended) — **the bottom reserve is measured
   at last.** `TOP_PLAQUE_RESERVE` had a measuring test since D-050; `PROMPT_STRIP_RESERVE` never
   did, which is L-034's "a named reserve nobody measured" still live at the other end of the
@@ -439,6 +469,16 @@ against an unmodified baseline run.
   `celebration_state_active_at_capture=…` and `hit_flash_state_active_at_capture=…`, both
   marked `[STATE EVIDENCE]`. The old phrasing ("caught in shot") claimed PIXEL evidence from a
   STATE observation — nothing in the tool inspects an image, and a human still has to open it.
+- **Evidence naming corrected in the D-055 follow-up.** Mode B reported one number called
+  `placed_once_at`, computed as `approach_from.distance_to(living.global_position)` AFTER the
+  fight — the distance from the frozen placement POINT to wherever the creature had since walked
+  to. That is neither the initial gap nor the final one, and naming it after the placement made a
+  derived hybrid look like setup evidence. The step now groups its evidence by what produced it:
+  `setup{placements=1 initial_gap_px=96} movement{final_gap_px=18} attack{hp 34 → 0 landed=true
+  killed=true}`, with `initial_gap_px` measured immediately after the single permitted placement
+  and `final_gap_px` at capture. `placements` is a real count of the harness's own writes and is
+  part of the PASS condition, so "placed once" is asserted rather than asserted-in-prose. The
+  two gap values differing is itself the evidence that neither side was teleported.
 
 **Phase 05 added Relationship + character-visual tests (high-risk: relationship state / save seam):**
 - `tests/unit/relationship/test_relationship_config.gd` — `RelationshipConfigData` validity

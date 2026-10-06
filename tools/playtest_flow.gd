@@ -540,9 +540,16 @@ func _step_natural_encounter(main: Node) -> void:
 		return
 
 	# --- place ONCE, then never touch the position again ---
+	#
+	# This is the ONLY write to `player.global_position` in this step, and the single write is
+	# the claim the step makes. `initial_gap_px` is measured HERE, after the placement has
+	# settled, because that is the only moment at which "the gap the player started from" is a
+	# fact — the creature hunts, so any later distance is a different quantity.
 	var approach_from := living.global_position + Vector2(96, 0)
 	player.global_position = approach_from
+	var placements := 1
 	await _settle()
+	var initial_gap := player.global_position.distance_to(living.global_position)
 	var xp_before := _progression_xp()
 	var level_before := _progression_level()
 	var start_hp := int(living.call("get_current_health"))
@@ -579,13 +586,28 @@ func _step_natural_encounter(main: Node) -> void:
 			if bool(living.call("is_dead")):
 				break
 	var killed := bool(living.call("is_dead"))
+	var final_gap := player.global_position.distance_to(living.global_position)
 	var shot := await _shot("19_natural_encounter")
+	# EVIDENCE, separated by what produced it. The previous version reported one number called
+	# `placed_once_at`, computed as `approach_from.distance_to(living.global_position)` AFTER
+	# the fight — the distance from the frozen placement POINT to where the creature had since
+	# walked to. That is neither the initial gap nor the final one, and naming it after the
+	# placement made a derived hybrid look like setup evidence (L-034: a report that quietly
+	# mislabels its own measurement is worse than one that omits it).
+	#
+	#   setup     — placements: how many times the harness wrote a position (must be 1)
+	#               initial_gap_px: the gap right after that single placement
+	#   movement  — final_gap_px: the gap at capture, closed by REAL move_* keys and by the
+	#               creature's own hunting; it differs from the initial gap precisely because
+	#               neither side was teleported
+	#   attack    — landed / killed, from REAL attack keys
 	_record("19_natural_encounter",
 		"[MODE B] the player closes the distance and kills with NO repositioning by code",
-		"placed_once_at=%.0fpx hp %d -> %d landed=%s killed=%s" % [
-			approach_from.distance_to(living.global_position), start_hp,
+		("setup{placements=%d initial_gap_px=%.0f} movement{final_gap_px=%.0f} "
+			+ "attack{hp %d -> %d landed=%s killed=%s}") % [
+			placements, initial_gap, final_gap, start_hp,
 			int(living.call("get_current_health")), landed, killed],
-		landed, started, shot)
+		landed and placements == 1, started, shot)
 
 	# The reward must move again — a second payment, proving the ledger pays per SPAWN rather
 	# than once per session.

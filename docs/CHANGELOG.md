@@ -8,6 +8,43 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-06 — Phase-11 final hardening: guarding the property, not its spelling (D-055 follow-up)
+
+Five findings on `ddf2276`, which was green on all ten gates and on CI. No gameplay rule
+changed, no new system, no change to the XP/Level model or the D-054 budgets.
+
+- **The XP authority guard was bypassable three ways.** Its allow-lists were BASENAMES, so a
+  file named `progression_service.gd` anywhere under `src` inherited the exemption; its XP
+  matcher knew `xp = …` and `set_total_xp(` but none of the dynamic routes that also work
+  (`call("set_total_xp", …)`, `set("xp", v)`, `set_indexed`, `set_deferred`, `obj["xp"] = v`);
+  and its `grant_xp` matcher required the literal `grant_xp(`, so **every dynamic invocation
+  passed** — `call("grant_xp", …)` does not contain `grant_xp(`. Now exact repository-relative
+  paths and both matchers covering the forms that actually mutate the property, with the dynamic
+  patterns restricted to a method-name position so the service's own `push_error` text is not
+  read as a call. Planting the two bypasses in real files: the old guard reported
+  `678 passed, 0 failed`; the new one catches both and names the full path.
+- **The attack-prompt tests could be satisfied by a different row.** They searched the whole
+  HUD's label text, and the HUD has five badge+word rows — so a neighbour could satisfy them and
+  they stayed green with the attack row's own badge blank. They now read the `AttackPrompt`
+  subtree, and a new test asserts exactly one row carries the attack word and it is that row.
+  Swapping the attack and menu words leaves the old tests green and makes the new ones say
+  `expected AttackPrompt but got MenuPrompt`. All five rows are named now; the badge count moved
+  from `>= 2 (interact + menu)` to an exact five.
+- **`GAME_FLOW.md` §3.3 still called today's world "traversal only — no story, NPCs, or combat
+  yet"** — three phases after combat went live. Rewritten to list what runs and to keep saying
+  what does not; story, NPCs, quests and the prologue were NOT promoted to implemented.
+- **The HUD docstring still advertised a two-row prompt strip** (`[E] Interact / [Esc] Menu`) and
+  claimed no HP bar was shown. Now the real five rows (Attack · Interact · Sect · Politics ·
+  Menu) and the real gauges, naming semantic actions rather than physical keys.
+- **The playtest reported a hybrid number as setup evidence.** `placed_once_at` was measured
+  after the fight, from the frozen placement point to wherever the creature had walked to —
+  neither gap, under a name that claimed it was the placement. Now
+  `setup{placements=1 initial_gap_px=96} movement{final_gap_px=18} attack{…}`, with `placements`
+  part of the pass condition.
+
+680 tests, 0 leaks, four screenshot combinations (vi/en × 1280×720/1280×800) opened and
+inspected. Every new guard was proven to fail against the prohibited pattern.
+
 ### 2026-10-05 — Phase-11 close-out hardening: the guards, and the key nobody could find (D-055)
 
 No new gameplay. A close-out pass over Phase 11 that turned three documented claims into

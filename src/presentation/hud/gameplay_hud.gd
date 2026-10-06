@@ -4,10 +4,21 @@ class_name GameplayHUD
 ##
 ## A screen-space (`CanvasLayer`) overlay that RENDERS a view of the running session inside
 ## framed pixel-art panels (shared `UITheme`/`UIPalette` 9-slice assets):
-##   - top-left   : the IDENTITY PLAQUE — portrait slot + name/title + sect chip, read as ONE
-##                  unit under an ornamental divider (D-041),
-##   - top-right  : the map-name plaque (a localized place name under the same divider),
-##   - bottom-left: a control-prompt panel with graphic key badges ([E] Interact / [Esc] Menu).
+##   - top-left   : the IDENTITY PLAQUE — portrait slot + name/title + level badge + health
+##                  gauge + XP meter + sect chip, read as ONE unit under an ornamental
+##                  divider (D-041; level/XP added in Phase 11),
+##   - top-centre : the COMBAT TARGET plaque — what the player is fighting (Phase 10),
+##   - top-right  : the map-name plaque (a localized place name under the same divider) plus
+##                  the world date and the last world event (Phase 08),
+##   - bottom-left: the CONTROL-PROMPT STRIP — five graphic key badges, left to right:
+##                  **Attack · Interact · Sect · Politics · Menu**. Attack leads because it is
+##                  the only verb there that changes the world rather than opening a panel
+##                  (D-055-G); Interact is the one CONTEXTUAL row (it names a target, so off an
+##                  exit it has no referent). Each row is a shared `UIPromptRow`, and each key
+##                  glyph is resolved from its SEMANTIC action through
+##                  `InputService.get_action_display_label` — this file names actions
+##                  (`attack`, `interact`, …), never physical keys, so a rebind moves the
+##                  prompts with it (L-003).
 ##
 ## D-041 changed the COMPOSITION only, never the data: the identity block used to be a flat
 ## stack where the sect chip was indistinguishable from the character's title (two muted hint
@@ -16,12 +27,19 @@ class_name GameplayHUD
 ## `UIPalette.HUD_MARGIN` rather than the generic `SPACE_MD`, so HUD framing can be retuned
 ## in one place without touching inner padding.
 ##
-## It OWNS no truth. The owner (MapBase) pushes data in via `set_character()`, `set_map_name()`
-## and `set_interact_available()`; the HUD only formats + displays. Key glyphs come from
-## `InputService.get_action_display_label` (never raw keycodes, L-003). It refreshes on demand
-## (owner call) and on language change — never per frame (`05-performance-testing.md`). This is
-## the FOUNDATION HUD (identity/map/prompts); HP/mana/cultivation bars are intentionally NOT
-## shown (no gameplay semantics yet) — a later phase adds them to the reserved panels.
+## It OWNS no truth. The owner pushes data in via `set_character()`, `set_map_name()`,
+## `set_interact_available()`, `set_health()`, `set_progression_view()`, `set_target_view()`,
+## `set_sect_view()`, `set_politics_view()` and `set_world_sim_view()`; the HUD only formats +
+## displays. Key glyphs come from `InputService.get_action_display_label` (never raw keycodes,
+## L-003). It refreshes on demand (owner call) and on language change — never per frame
+## (`05-performance-testing.md`).
+##
+## WHICH GAUGES EXIST, AND WHY ONLY THOSE: health (Phase 09) and the XP meter + level badge
+## (Phase 11) are shown because combat and progression now OWN those numbers. Mana and
+## cultivation are still absent on purpose — `docs/UI_UX_BIBLE.md` forbids rendering a gauge
+## for state no system owns, because a bar that looks right in a mock and shows nothing real in
+## a build is worse than an absent one. Every gauge here hides until a value is pushed, so a
+## HUD built outside a session shows no bar rather than a full one.
 
 const PromptRowScript := preload("res://src/presentation/ui/components/ui_prompt_row.gd")
 const SectPanelScript := preload("res://src/presentation/sect/sect_panel.gd")
@@ -503,13 +521,19 @@ func _build_ui() -> void:
 	_interact_row.name = "InteractPrompt"
 	prompt_box.add_child(_interact_row)
 
+	# All five rows are NAMED. Two were already, because a test looks them up; the other three
+	# were anonymous, so a failure in the strip could only report Godot's generated node name
+	# and could not say WHICH prompt was wrong (D-055 follow-up).
 	_sect_row = PromptRowScript.new() as UIPromptRow
+	_sect_row.name = "SectPrompt"
 	prompt_box.add_child(_sect_row)
 
 	_faction_row = PromptRowScript.new() as UIPromptRow
+	_faction_row.name = "PoliticsPrompt"
 	prompt_box.add_child(_faction_row)
 
 	_menu_row = PromptRowScript.new() as UIPromptRow
+	_menu_row.name = "MenuPrompt"
 	prompt_box.add_child(_menu_row)
 
 	# --- Sect detail panel (Phase 06): hidden until the player presses `sect_panel` ----

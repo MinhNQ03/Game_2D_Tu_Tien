@@ -3410,3 +3410,124 @@ ladder whose size IS the ceiling (level 21 at 34,545 XP). `EnemyData.xp_reward` 
 `UIPalette`: `XP_METER_HEIGHT` 8, `LEVEL_BADGE_MIN_WIDTH` 52, `LEVEL_UP_SECONDS` 1.5,
 `LEVEL_UP_FLASH_GAIN` 2.0, `LEVEL_UP_BANNER_BOTTOM_INSET`, `PROMPT_STRIP_RESERVE` 78,
 `TOP_PLAQUE_RESERVE` 224. All are data or named tokens; none is a magic number at a call site.
+
+---
+
+## D-055 FOLLOW-UP — Phase-11 final hardening: a guard that guards the property, not its spelling
+
+**Status:** Accepted · **Phase:** 11 (final hardening) · **Scope:** two test files + one HUD
+docstring + three node names + one doc paragraph + the playtest report format. **No gameplay
+rule changed, no new system, no new autoload, no change to the XP/Level model, no change to the
+D-054 performance budgets.** Phase 12 remains NOT STARTED.
+
+Reviewed at `ddf2276`. Five findings; all five fixed.
+
+### A — `GAME_FLOW.md` §3.3 still said the live world had no combat
+
+The global status block (①/②/③) was already correct and thorough. The PROLOGUE contract's own
+"Implementation status" paragraph was not: it described today's world as
+*"traversal only — no story, NPCs, or combat yet"*, three phases after combat went live, two
+after enemy AI and one after progression. This is the same defect the status block was
+restructured to prevent, surviving in a per-system contract because the restructure only
+touched the header.
+
+Rewritten to say what runs (hub↔field traversal, a real `CharacterState`, combat, enemy AI,
+level/XP) and to keep saying what does not (the prologue beats, story flags, dialogue, NPCs,
+quests — nothing in the running game produces or consumes any of them). The Phase-02 sandbox
+reference is kept but explicitly marked historical. **Story/NPC/quest/prologue were NOT
+promoted to implemented** — the lesson is to fix the stale half, not to overcorrect.
+
+### B — the XP authority guard protected a SPELLING, not a property
+
+D-055 added two structural walks and proved them non-vacuous, and they were still bypassable
+three ways:
+
+1. **The allow-lists were basenames.** `"progression_service.gd"` exempts a file by NAME
+   anywhere under `src`, so a future `src/gameplay/progression/progression_service.gd` — a
+   plausible thing for Phase 12 to add while reaching for a familiar name — would have
+   inherited the exemption. Now exact repository-relative paths, compared against the full
+   path, with offenders REPORTED by path (`"progression_service.gd"` does not say which one).
+2. **The XP matcher knew `xp = …` and `set_total_xp(`** and nothing else. `xp` is an ordinary
+   property on an `Object`, so Godot offers several routes that work and do not contain either
+   spelling: `call("set_total_xp", …)`, `set("xp", v)`, `set_indexed`, `set_deferred`,
+   `obj["xp"] = v`. All are matched now, plus the compound operators. Deliberately NOT matched:
+   `rpc` forms (no networking exists in Stage 1) and `from_dict` (that IS the storage boundary,
+   in an allowed file).
+3. **The `grant_xp` matcher required the literal `grant_xp(`**, so every dynamic invocation
+   passed — `call("grant_xp", …)` contains `grant_xp"`, not `grant_xp(`. `call` / `callv` /
+   `call_deferred` / `Callable` are matched now, and only in a method-name POSITION, so the
+   service's own `push_error("[progression] grant_xp with a null CharacterState")` is not read
+   as a call. (Without that precision the authority would be reported as its own caller — the
+   same false positive D-055 already fixed once, in a new disguise.)
+
+**Proven against the real tree, not only with fixtures.** Planting `state.set("xp", 999)` in
+`progression_runtime.gd` and `svc.call("grant_xp", state, 25)` in `combat_runtime.gd`:
+`ddf2276`'s guard reported **`678 passed, 0 failed`**; this one fails both, naming
+`["src/gameplay/world/progression_runtime.gd"]` and `["src/gameplay/world/combat_runtime.gd"]`.
+The hole was reachable, not hypothetical.
+
+### C — the attack-prompt tests could be satisfied by a different row
+
+The three D-055-G tests made their positive assertions against `_all_label_text(hud)`. The HUD
+renders FIVE badge+word rows, so "the attack glyph is somewhere on screen" is ambiguous by
+construction: a neighbouring row can satisfy it, and it stays green with the attack row's own
+badge blank.
+
+They now read the `AttackPrompt` subtree — the Label owned by its `UIKeyBadge` for the glyph,
+the row's own direct Label for the word, both located by walking rather than by index. A new
+`test_only_the_attack_row_carries_the_attack_prompt` closes the ambiguity from the other side:
+exactly ONE row carries the attack word, it is the row named `AttackPrompt`, and all five action
+words are distinct so none can stand in for another. The whole-HUD scan is KEPT for the claim
+that is genuinely about the whole HUD (no raw action name, no raw keycode anywhere).
+
+**Proof:** swapping the attack and menu words in the HUD leaves all three pre-follow-up attack
+tests GREEN (only an unrelated menu assertion notices) and makes these report
+`expected AttackPrompt but got MenuPrompt`.
+
+Two small consequences: all five rows are now NAMED (three were anonymous, so a strip failure
+could only quote Godot's generated node name), and the badge-count assertion moved from
+`>= 2 "interact + menu"` — written when the strip had two rows — to an exact five.
+
+### D — the playtest reported a hybrid number as setup evidence
+
+Mode B's evidence field `placed_once_at` was computed as
+`approach_from.distance_to(living.global_position)` AFTER the fight: the distance from the
+frozen placement POINT to wherever the creature had since walked to. Neither the initial gap nor
+the final one, and its NAME claimed it was the placement.
+
+The step now groups evidence by what produced it —
+`setup{placements=1 initial_gap_px=96} movement{final_gap_px=18} attack{hp 34 → 0 landed=true
+killed=true}` — with `initial_gap_px` measured immediately after the single permitted placement
+and `final_gap_px` at capture. `placements` is a real count of the harness's own writes and is
+part of the PASS condition, so "placed once" is asserted rather than claimed in prose. **Mode B
+itself is unchanged**: one placement, real `move_*` keys, real `attack` key, the second authored
+creature, reward measured after the real kill. The two gap values differing (96 → 18) is itself
+the evidence that neither side was teleported.
+
+### E — the HUD docstring still described a two-row prompt strip
+
+`GameplayHUD`'s file comment advertised `[E] Interact / [Esc] Menu` and stated that
+"HP/mana/cultivation bars are intentionally NOT shown". Both were true before Phase 09. Now
+documented as the real five-row strip (**Attack · Interact · Sect · Politics · Menu**, attack
+leading, interact contextual) and the real gauge set (health and XP are shown because combat and
+progression OWN those numbers; mana and cultivation stay absent because nothing owns them —
+which is the rule, not an omission). The prose names SEMANTIC actions, not physical keys.
+`UIKeyBadge`'s "used in ≥2 places (interact + menu)" was stale the same way and now describes
+the strip. The historical `[E] Interact` lines in `CHANGELOG.md` and D-024 were LEFT ALONE: they
+record what shipped then, which is what a changelog is for.
+
+### Left untouched, deliberately
+
+* **`set_total_xp` keeps its name.** The prompt's own instruction, and the right call: the guard
+  matters, not the spelling (D-055 supplement C).
+* **`PROMPT_STRIP_RESERVE` stays 78.** The measuring test passes against the populated
+  five-prompt strip; raising a reserve that is not short would be the exact anti-pattern L-034
+  forbids.
+* **`docs/ARCHITECTURE.md` and `docs/DEBUGGING.md`** were scanned for stale HUD/combat
+  statements and have none. Not edited.
+* **`docs/PERFORMANCE.md`** was reviewed, not changed. This pass made no optimization, and
+  recording one would be a false claim; `ProgressionRuntime` still has no `_process` at all and
+  `LevelUpFeedback` still switches its own off when idle.
+* **The D-054 budgets** are byte-identical (`git diff tests/performance/ docs/PERFORMANCE.md`
+  is empty). The prompt anticipated two known wall-clock failures; locally there were none —
+  `680 passed, 0 failed` — so there is nothing to record as environment-specific.

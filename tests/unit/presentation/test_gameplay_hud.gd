@@ -36,10 +36,13 @@ func _player_state() -> RefCounted:
 
 func test_hud_builds_labels() -> void:
 	var hud := _hud()
-	# Four labels: name, title, map, hint. Find them by walking the single Control root.
+	# A FLOOR, not a count: name, title, map, plus the five prompt rows' badge+word pairs.
+	# Deliberately left as ">= 4" rather than retuned every phase — the specific rows are
+	# asserted by the tests that own them, and a brittle total here would only ever record
+	# whatever the HUD happened to contain on the day it was edited.
 	var labels: Array[Label] = []
 	_collect_labels(hud, labels)
-	assert_true(labels.size() >= 4, "HUD builds at least name/title/map/hint labels")
+	assert_true(labels.size() >= 4, "HUD builds at least name/title/map/prompt labels")
 	free_node(hud)
 
 
@@ -81,8 +84,13 @@ func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 		assert_false(t.contains("open_menu"), "no raw action name in a prompt (%s)" % t)
 
 	# The key glyphs sit inside graphic badge panels (PanelContainer holding a single Label),
-	# proving a graphic treatment, not floating text. Interact + menu => at least 2.
-	assert_true(_key_badge_count(hud) >= 2, "interact + menu each have a graphic key badge")
+	# proving a graphic treatment, not floating text. FIVE prompts are built (attack, interact,
+	# sect, politics, menu) and interact is visible here, so all five carry a badge — the old
+	# ">= 2 (interact + menu)" was written when the strip had two rows and had stopped
+	# describing the HUD three prompts ago.
+	assert_eq(_key_badge_count(hud), 5,
+		("each of the five prompts (attack, interact, sect, politics, menu) has a graphic "
+			+ "key badge, got %d") % _key_badge_count(hud))
 	free_node(hud)
 
 
@@ -890,21 +898,31 @@ func test_the_hud_advertises_the_basic_attack_through_the_shared_prompt_row() ->
 ## letter "J": the point of the seam is that a rebind moves the prompt with it, and a test that
 ## hard-coded the current key would have to be edited by the same rebind — which is how a
 ## binding and its documentation drift apart (L-014).
+##
+## READ FROM INSIDE THE `AttackPrompt` SUBTREE. The first version asked whether the expected
+## glyph appeared anywhere in `_all_label_text(hud)`, which is a weaker claim than it looks: the
+## HUD renders five badges, so "the glyph is somewhere on screen" is satisfied by the MENU
+## badge if the two actions ever share a letter, and it would stay green with the attack row's
+## own badge blank. The row's own badge is the thing being claimed.
 func test_the_attack_prompt_key_is_resolved_from_the_input_service() -> void:
 	var hud := _hud()
 	_use_language("en")
 	var input: Node = scene_tree.root.get_node_or_null("InputService")
 	assert_not_null(input, "the InputService autoload is live in the runner")
-	if input == null:
+	var row := hud.find_child("AttackPrompt", true, false) as UIPromptRow
+	assert_not_null(row, "the attack prompt row is found by name")
+	if input == null or row == null:
 		free_node(hud)
 		return
 	var expected := String(input.call("get_action_display_label", &"attack"))
 	assert_ne(expected, "", "the service resolves a display label for `attack`")
-	var all_text := _all_label_text(hud)
-	assert_true(expected in all_text,
-		("the attack prompt shows the glyph the InputService resolves for the `attack` "
-			+ "action (expected '%s'), got %s") % [expected, str(all_text)])
-	for t in all_text:
+	assert_eq(_row_key_text(row), expected,
+		("the badge INSIDE AttackPrompt carries the glyph InputService resolves for the "
+			+ "`attack` action (expected '%s', row shows '%s')")
+			% [expected, _row_key_text(row)])
+
+	# Whole-HUD claim, which is genuinely about the whole HUD: no raw vocabulary anywhere.
+	for t in _all_label_text(hud):
 		assert_false(String(t).contains("attack"),
 			"the raw semantic action name never reaches the screen (%s)" % t)
 		assert_false(String(t).contains("74"),
@@ -912,21 +930,94 @@ func test_the_attack_prompt_key_is_resolved_from_the_input_service() -> void:
 	free_node(hud)
 
 
-## The action word is localized in BOTH languages and resolves to real text.
+## The action word is localized in BOTH languages, read from the attack row itself.
 func test_the_attack_prompt_action_word_is_localized() -> void:
 	var hud := _hud()
+	var row := hud.find_child("AttackPrompt", true, false) as UIPromptRow
+	assert_not_null(row, "the attack prompt row is found by name")
+	if row == null:
+		free_node(hud)
+		return
 	for language in ["vi", "en"]:
 		_use_language(language)
 		var expected := _localized("UI_HUD_ATTACK_ACTION")
 		assert_ne(expected, "UI_HUD_ATTACK_ACTION",
 			"the %s value is authored, not a fallback to the key" % language)
 		assert_ne(expected, "", "and it is not empty in %s" % language)
-		var all_text := _all_label_text(hud)
-		assert_true(expected in all_text,
-			("the attack prompt renders the localized word in %s (expected '%s'), got %s")
-				% [language, expected, str(all_text)])
+		assert_eq(_row_action_text(row), expected,
+			("the label INSIDE AttackPrompt is the localized attack word in %s (expected "
+				+ "'%s', row shows '%s')") % [language, expected, _row_action_text(row)])
 	_use_language("en")
 	free_node(hud)
+
+
+## NO OTHER ROW can satisfy the attack assertions.
+##
+## The reason the two tests above were weak is that four sibling rows render the same KIND of
+## content, so any whole-HUD text search is ambiguous by construction. This pins the ambiguity
+## shut from the other side: exactly ONE of the five rows carries the attack word, it is the one
+## named `AttackPrompt`, and its badge is not simply whatever the neighbouring row shows.
+func test_only_the_attack_row_carries_the_attack_prompt() -> void:
+	var hud := _hud()
+	_use_language("en")
+	hud.call("set_interact_available", true)
+	var strip := hud.find_child("PromptStrip", true, false) as Control
+	assert_not_null(strip, "the prompt strip is found")
+	if strip == null:
+		free_node(hud)
+		return
+	var rows := _prompt_rows(strip)
+	assert_eq(rows.size(), 5, "all five prompts are present")
+
+	var attack_word := _localized("UI_HUD_ATTACK_ACTION")
+	var carriers: Array[String] = []
+	for row in rows:
+		if _row_action_text(row) == attack_word:
+			carriers.append(row.name)
+	assert_eq(carriers.size(), 1,
+		("exactly one row advertises the attack (found %s) — otherwise a whole-HUD text "
+			+ "search cannot tell which row it read") % str(carriers))
+	if carriers.size() == 1:
+		assert_eq(carriers[0], "AttackPrompt",
+			"and it is the row named AttackPrompt, not a neighbour that happens to match")
+
+	# Each row's action word is distinct, so none of the five can stand in for another. (The
+	# BADGES are not required to differ — two actions could legitimately share a glyph — which
+	# is exactly why the action word is the discriminator here.)
+	var words := {}
+	for row in rows:
+		var word := _row_action_text(row)
+		assert_ne(word, "", "row '%s' renders an action word" % row.name)
+		assert_false(words.has(word),
+			"row '%s' duplicates the action word '%s'" % [row.name, word])
+		words[word] = true
+	free_node(hud)
+
+
+## The key glyph rendered INSIDE a prompt row: the Label owned by the row's `UIKeyBadge`.
+##
+## Walks the row rather than indexing its children, so a layout tweak that reorders badge and
+## label does not quietly make this read the wrong one.
+func _row_key_text(row: Control) -> String:
+	for child in row.get_children():
+		var badge := child as UIKeyBadge
+		if badge == null:
+			continue
+		for inner in badge.get_children():
+			var label := inner as Label
+			if label != null:
+				return label.text
+	return ""
+
+
+## The action word rendered inside a prompt row: the row's OWN direct Label (the badge's label
+## is nested one level deeper, so these two helpers cannot return the same node).
+func _row_action_text(row: Control) -> String:
+	for child in row.get_children():
+		var label := child as Label
+		if label != null:
+			return label.text
+	return ""
 
 
 ## STRUCTURAL: no presentation file may author a physical key for a prompt.

@@ -212,14 +212,20 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   Origins and the five things the player must leave holding are specified in
   `docs/NARRATIVE_MASTER_PLAN.md` §4–§6. New Game also selects an `origin_id` (run-scoped data,
   not a character subclass).
-- **Implementation status:** this box is the *design* target. Today New
-  Game enters the **World/Map**: `WorldRuntime` (a node under `Main/Systems`) spawns one
-  persistent Player and loads the **hub map** as the first scene; the player walks to a
-  `MapExitZone` and presses the semantic `interact` action to move between the hub and a
-  field map (traversal only — no story, NPCs, or combat yet). Phase 04+ (Character /
-  Dialogue / Story) fill in this Prologue box; the Phase-02 Player Sandbox is retained for
-  combat validation but is no longer the first scene. Maps are data-driven (`MapData` +
-  content scene registered by `scene_key`), so adding a map is data + content, not a core
+- **Implementation status:** the PROLOGUE STORY above is the *design* target; the WORLD it
+  would open into is live. Today New Game enters the **World/Map**: `WorldRuntime` (a node
+  under `Main/Systems`) spawns one persistent Player — a real **Character** with an
+  authoritative `CharacterState` (Phase 04) — and loads the **hub map** as the first scene; the
+  player walks to a `MapExitZone` and presses the semantic `interact` action to move between
+  the hub and a field map. What is live in that world: **combat** in the real application
+  (Phase 09, D-007), **enemy AI** in the field (Phase 10 — two authored Vụ Lang that hunt, hit
+  back and die), and **level/XP progression** off those kills (Phase 11, §3.8).
+  **Still future, and genuinely not implemented:** the prologue beats themselves, story flags,
+  dialogue, NPCs and quests — nothing in the running game produces or consumes any of them, so
+  this box stays a design box until the phases that own them land.
+  *(Historical: the Phase-02 Player Sandbox is retained as an isolated combat harness; it is
+  neither the first scene nor how combat reaches the player.)* Maps are data-driven (`MapData`
+  + content scene registered by `scene_key`), so adding a map is data + content, not a core
   edit (D-003 resolved / D-021).
 
 ### 3.4 VILLAGE (hub map)
