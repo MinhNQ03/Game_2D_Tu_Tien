@@ -288,10 +288,18 @@ with three untinted buttons — not a decision, just construction nobody copied.
   sits directly under the health gauge — the hardest place to tell two bars apart — so it is
   separated on three INDEPENDENT channels: **hue** (gold for progression, jade for vitals, using
   the palette's existing vocabulary where gold already means structure and attainment),
-  **weight** (`XP_METER_HEIGHT` 8 vs `GAUGE_HEIGHT` 14, so XP reads as subordinate), and
-  **written text** (each writes its own numbers behind a localized caption). Colour alone would
-  fail the §4 rule and fail a colour-blind player outright; the thickness and the caption are
-  what make the distinction survive without it.
+  and **written text** (each writes its own numbers behind a localized caption). Colour alone
+  would fail the §4 rule and fail a colour-blind player outright; the caption is what makes the
+  distinction survive without it.
+  **WEIGHT was a third channel and is RETIRED (D-056).** The meter was 8px against the gauge's
+  14px so XP read as subordinate — and a meter writes its value INSIDE itself, where a
+  `FONT_SIZE_HINT` label measures **20px**, so "XP 0 / 20" drew its descenders across the rail's
+  own bottom border. Both meters now stand at the label's measured height. **A third carrier
+  that makes the content illegible is worse than two that do not** — and a reserve/size that
+  nobody measured against the thing it holds is the L-034 defect at a smaller scale. The general
+  rule now: **a readout must be able to contain what it prints**, re-measured by
+  `test_every_meter_is_tall_enough_for_the_value_it_writes_inside_itself` for every meter in the
+  HUD.
 - **A gauge at a terminal state must not render as its raw numbers.** At the top of the
   authored XP curve both numerator and denominator are 0, and `0 / 0` on a character who has
   earned everything is a lie — so the meter shows COMPLETE, in its own fill colour, with

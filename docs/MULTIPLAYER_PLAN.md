@@ -118,10 +118,21 @@ movable later.
 
 ## 6. What Phase 32 (Multiplayer readiness audit) will actually do
 
+> **The MODEL is no longer undecided.** D-056 froze the TARGET as an **authoritative dedicated
+> server**, and the full contract — authority direction, the five version domains, the twelve
+> boundaries, identity/session/reconnect, the client/server responsibility matrix, the
+> vendor-neutral adapter slots and the deployment topology — lives in
+> **`docs/PRODUCTION_ARCHITECTURE_CONTRACT.md`**. This section previously said the model "is
+> undecided and will be a `DECISIONS.md` entry"; that entry is D-056.
+>
+> What is frozen is the TARGET. **Nothing is implemented**, and the Stage-1 non-work list in §5
+> below is unchanged and still binding.
+
 Research + readiness only (`docs/ROADMAP.md` Phase 32):
 - Validate each seam above is clean (serializable, presentation-free, domain-authored).
-- Choose a model to investigate (likely server-authoritative for a co-op/PvE fantasy
-  world; the exact model is undecided and will be a `DECISIONS.md` entry).
+- **Investigate implementations OF the decided model** (Godot high-level multiplayer and its
+  dedicated-server export, Steam networking + Game Servers, or custom UDP) behind the adapter
+  slots the contract names — not re-open which model.
 - Produce a gap analysis: for each seam, what's needed to add authority/replication.
 - Give a go/no-go recommendation. Ship nothing networked into the offline game.
 

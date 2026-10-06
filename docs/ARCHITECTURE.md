@@ -287,8 +287,24 @@ D-003) — the router abstraction lets us change that later without touching cal
 Kept serializable and presentation-free so authority/replication can be layered on:
 player state, **combat command (intent)**, world state, inventory, progression,
 authoritative state, persistence. The EventBus + command-intent + seeded-RNG design is
-chosen partly because it is also what a future authoritative server needs. Full plan:
+chosen partly because it is also what a future authoritative server needs. Per-seam readiness:
 `docs/MULTIPLAYER_PLAN.md`. No networking dependency enters Stage 1.
+
+**The TARGET is now frozen (D-056): an authoritative DEDICATED SERVER.**
+`docs/PRODUCTION_ARCHITECTURE_CONTRACT.md` owns it — build topology, the five independent
+version domains, the twelve boundaries with their ownership answers, the command/intent shape,
+the identity/session/reconnect split, the client/server responsibility matrix, the
+vendor-neutral adapter slots and the deployment topology. **Target, not implementation:** no
+transport, RPC, lobby, matchmaking or backend code exists or may be added before a multiplayer
+phase. The invariant that matters for this document is that **offline and online run the same
+domain rules and differ only in authority and transport** — so the layer direction below is
+what makes the boundary movable, and presentation is the one boundary a server owns nothing of.
+
+Presentation's own contract is `docs/PRESENTATION_ARCHITECTURE_CONTRACT.md`: gameplay decides
+WHAT happened, presentation decides HOW it is perceived, and **gameplay timing is authoritative
+while presentation timing follows**. Two of the three upward references in the tree are
+documented there and in the production contract (`Player`/`Enemy` preloading a visual
+component); no gameplay or domain file may join them.
 
 ## 11. What this architecture explicitly avoids
 

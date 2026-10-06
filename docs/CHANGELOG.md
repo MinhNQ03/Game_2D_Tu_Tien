@@ -8,6 +8,64 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-06 — Production/multiplayer contract, and characters that actually move (D-056)
+
+A foundation hardening milestone **before** Phase 12. No networking, no new gameplay system, no
+domain rule changed, and **Phase 12 remains NOT STARTED**.
+
+**Two contracts frozen.**
+
+- `docs/PRODUCTION_ARCHITECTURE_CONTRACT.md` — build topology (client / dedicated server /
+  tools), **five independent version domains** instead of one number, the **authoritative
+  dedicated-server** target (which resolves the "model undecided" note that had been sitting in
+  `MULTIPLAYER_PLAN.md` §6), twelve boundaries each answering the seven ownership questions, the
+  command/intent shape, six distinct identities so a reconnect is expressible, the client/server
+  responsibility matrix, five vendor-neutral adapter slots, and the deployment topology. Every
+  section separates **TARGET** from **CURRENT**, because almost none of it is implemented and
+  that is correct.
+- `docs/PRESENTATION_ARCHITECTURE_CONTRACT.md` — gameplay decides WHAT, presentation decides
+  HOW; three layers (locomotion / action / transient feedback) with action out-ranking
+  locomotion; **gameplay timing owns the truth**; reusable semantic actions instead of
+  per-character bespoke logic; the cue vocabulary; the art quality bar; and the performance and
+  determinism rules.
+
+**A real seam, not a document.** `CharacterVisualComponent` gained a semantic **ACTION layer**
+(five methods, one optional `@export` on the visual profile). The trigger seam already existed
+— `AttackComponent` has emitted `attack_started`/`attack_finished` and exposed `state()` /
+`time_remaining()` / `attack_data()` since Phase 09 — so **no gameplay API was added and no
+animation manager was created**. `drive_action(progress)` takes the progress from the lifecycle
+that owns it, so the animation cannot run at a different rate from the mechanic it depicts.
+**Proven on two actors:** the player (32×48, 6 frames) and the mist wolf (32×32, 4 frames),
+same path, no actor branch, with a structural test asserting only one file declares the API.
+
+**The player now visibly strikes.** A palm-thrust action sheet for all four archetypes and a
+lunge for the wolf: anticipation → contact → recovery, with the qi orb travelling with the palm
+and flaring at full extension. Two art passes were wrong and the second one mattered — at peak
+reach the forearm teleported and left a gap to the shoulder, which at 1× read as **a floating
+blue blob beside a motionless figure**, exactly the failure the contract exists to prevent.
+Fixed by drawing the upper arm.
+
+**Two defects the brief did not name.** `AttackComponent.cancel()` emits nothing and
+`Enemy._on_health_died()` calls it, so an action layer waiting on `attack_finished` would
+freeze a corpse mid-thrust — the action now ends on the lifecycle's *state*. And the asset
+generator's degenerate-art check compares frames *wrapping round*, which would reject a
+one-shot sheet that correctly returns to neutral; it gained a non-looping mode.
+
+**Tidier HUD, measured.** `KN 0 / 20` was drawing its descenders across its own rail: a meter
+prints its value inside itself, and a `FONT_SIZE_HINT` label **measures 20px** while the XP
+meter was 8px and the health gauge 14px. Both meters now stand at the measured height, weight
+is retired as a carrier (hue + written value remain), `TOP_PLAQUE_RESERVE` moved 224 → 242, and
+a new guard re-measures every meter against the text it holds.
+
+**`docs/design_refs/` classified, not swept:** both packs read as CC0 with licence files
+present, one is the upstream source of the already-promoted Kenney ornaments, nothing in the
+project references the directory — so the source packs stay local and gitignored and the
+promoted subset stays tracked.
+
+697 tests (up from 680), 0 leaks, four capture combinations opened. Continuous Visual
+Integration is now a **gate** (`PHASE_EXECUTION_PROTOCOL.md` §7b) with per-phase presentation
+seeds in the roadmap and the rule **foundation first, content second**.
+
 ### 2026-10-06 — Phase-11 final hardening: guarding the property, not its spelling (D-055 follow-up)
 
 Five findings on `ddf2276`, which was green on all ten gates and on CI. No gameplay rule

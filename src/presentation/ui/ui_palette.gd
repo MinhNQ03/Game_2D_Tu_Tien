@@ -307,7 +307,14 @@ const DISABLED := COLOR_SURFACE_DISABLED
 ## EVERY plaque through the HUD's public setters — including a health value, and the LONGEST
 ## localized world-event string derived from the authored set — before measuring. Adding a
 ## tier to a plaque now fails there instead of quietly reintroducing the overlap.
-const TOP_PLAQUE_RESERVE := 224
+##
+## **224 -> 242 (D-056).** The sixth move, and the sixth time the cause was content growing
+## inside a plaque: both meters went to the measured height of the label they print inside
+## themselves (`GAUGE_HEIGHT` 14 -> 20, `XP_METER_HEIGHT` 8 -> 20), so the identity plaque grew
+## 18px. Measured at the new value: identity plaque **224**, map plaque 177, plus one
+## `HUD_MARGIN` of breathing room for the frame's corner ornaments (drawn OUTSIDE the control's
+## rect) = **242**. That the number moved itself is the workflow working, not a failure.
+const TOP_PLAQUE_RESERVE := 242
 
 
 ## Lines the HUD's world-event hint may wrap to before it trims. The cap is what makes the
@@ -364,9 +371,17 @@ const TEX_BUTTON_PAINTED_ALT := PAINTED_UI_DIR + "/buttons/button_violet.png"
 # it shows. `docs/UI_UX_BIBLE.md` forbids rendering a gauge for state no system owns: a bar
 # that looks right in a mock and shows nothing real in a build is worse than an absent one.
 
-## Height of a vitals gauge. Thin enough to read as a readout rather than as a panel, and an
-## even number so the 9-slice well's border bands stay symmetrical.
-const GAUGE_HEIGHT := 14
+## Height of a meter that writes its value inside itself. Thin enough to read as a readout
+## rather than as a panel, and an even number so the 9-slice well's border bands stay
+## symmetrical.
+##
+## **MEASURED, not chosen (D-056).** It was 14, and a `FONT_SIZE_HINT` value label measures
+## **20px** of combined minimum height — so both meters were drawing their own numbers across
+## their own frames, the health gauge by 6px and the XP meter by 12px. The floor is now the
+## label's real requirement, re-measured for every meter in the HUD by
+## `test_every_meter_is_tall_enough_for_the_value_it_writes_inside_itself`, so a font-size
+## change fails loudly instead of quietly clipping a number again.
+const GAUGE_HEIGHT := 20
 
 ## Fill colour for a healthy gauge. An ALIAS of the jade accent, not a new colour value —
 ## one more colour token would be a second source of truth for the same decision (D-050 B6).
@@ -434,9 +449,24 @@ const HIT_FLASH_SECONDS_CRITICAL := 0.28
 #     colour-blind player must still be able to tell these two apart — the thickness and the
 #     adjacent level badge do that.
 
-## Height of the XP meter. Deliberately BELOW `GAUGE_HEIGHT` (14) — see above. Even, so the
-## 9-slice well's border bands stay symmetrical, like the vitals gauge.
-const XP_METER_HEIGHT := 8
+## Height of the XP meter. **The same as `GAUGE_HEIGHT` since D-056, and that is the fix.**
+##
+## It was 8 — deliberately below the vitals gauge so XP read as subordinate — and it could not
+## contain its own number. A meter writes its value INSIDE itself, the label is
+## `FONT_SIZE_HINT`, and a 14px label MEASURES 20px of combined minimum height: "KN 0 / 20"
+## rendered with its descenders across the rail's bottom border. Found by opening a capture at
+## 4x; invisible at 1x and invisible to every assertion, because the number was still *there*.
+##
+## So WEIGHT is retired as a carrier and the distinction rests on the two that survive
+## measurement: **hue** (gold vs jade) and **text** ("KN 0 / 20" against a level badge vs
+## "100 / 100"). `docs/UI_UX_BIBLE.md` §4 still holds — colour is not the only carrier, because
+## the written value and the adjacent level badge carry it too. A third carrier that makes the
+## number illegible is worse than two that do not.
+##
+## It stays a NAMED constant rather than becoming `GAUGE_HEIGHT` at the call site: the XP
+## meter's height is its own decision that currently agrees, and collapsing them would hide
+## the day they diverge again (for a good reason, with the label measured first).
+const XP_METER_HEIGHT := GAUGE_HEIGHT
 
 ## Fill for the XP meter. An ALIAS of the gold token, not a new colour value: a second gold
 ## would be a second source of truth for one decision (the D-050 B6 rule).

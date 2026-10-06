@@ -58,7 +58,8 @@ defects above were hiding.
 
 ```
 PRE-FLIGHT → DEPENDENCY → AUTHORITY → EXTENSIBILITY → GAMEPLAY → NARRATIVE
-    → UI → REAL PLAYTEST → VISUAL QA → PERFORMANCE → CLEANUP → DOCS → FINAL REVIEW
+    → UI → PRESENTATION → REAL PLAYTEST → VISUAL QA → PERFORMANCE → CLEANUP → DOCS
+    → FINAL REVIEW
 ```
 
 Run them in order. Each gate below states **what it asks** and **what evidence closes it** —
@@ -109,6 +110,33 @@ Anything the player must know has to be on screen, using the D-050 shared seams
 a gauge for a value no system owns** (§4): a bar that shows nothing real is worse than an
 absent one.
 **Evidence:** the seam used, and a capture showing it.
+
+### 7b. PRESENTATION — what reusable capability does the phase leave behind? (D-056)
+
+> **Every gameplay phase must leave behind at least one REUSABLE player-facing presentation
+> capability when its feature has a visible gameplay consequence.**
+
+Not a bespoke effect for one feature — a **seam the next feature reuses**. This gate exists
+because a phase can pass every other gate while the result is stiff: correct damage with no
+swing, a skill that is a ball appearing beside a motionless figure, a level-up that is a
+different integer. `docs/PRESENTATION_ARCHITECTURE_CONTRACT.md` owns the rules; the per-phase
+seeds are in `docs/ROADMAP.md`.
+
+Three rules bind every phase from P12 on:
+
+* **FOUNDATION FIRST, CONTENT SECOND.** The phase that introduces a *category* builds the
+  reusable seam before the content explosion. First skill → skill presentation seam → second
+  skill reuses it. Never: boss A bespoke, boss B bespoke, boss C copies B.
+* **GAMEPLAY TIMING OWNS THE TRUTH.** An animation follows a lifecycle; it never decides
+  damage, a hit, a death, XP or a cooldown. "Animation reached frame 7, therefore deal damage"
+  is forbidden without an explicit, data-authored gameplay-marker contract.
+* **PROVE REUSE WITH A SECOND ACTOR.** A new presentation seam is accepted when a concrete
+  second consumer exercises it — different assets, different frame counts, same contract. One
+  actor is a feature; two is a seam.
+
+**Evidence:** the capability named, the second consumer named, and a capture showing the
+anticipation → action → recovery (or the equivalent beats) actually on screen. A state
+variable reading `true` is not evidence that anything was drawn.
 
 ### 8. REAL PLAYTEST — drive the real app through the real input pipeline
 `tools/playtest_flow.gd` boots the real game in a real window and plays it with real semantic

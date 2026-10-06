@@ -28,7 +28,7 @@
 >
 > The in-runner suite tally is printed by the runner itself, never hand-counted, and is
 > reported in the `DECISIONS.md` entry for the change that moved it. At the D-055 close-out the
-> runner reports **`ran 680 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
+> runner reports **`ran 697 test(s)`** with zero `SCRIPT ERROR:` lines and **zero leaked
 > ObjectDB / resources at exit**. Locally that reads `676 passed, 2 failed`: the two failures
 > are the wall-clock performance budgets (`test_ai_budget`, `test_combat_budget`), which fail on
 > some development machines and pass on the CI runner — known environmental debt recorded in
@@ -791,3 +791,50 @@ unrecorded here:
   on the REAL `enemy.tscn` spawned from the REAL table, driven through the REAL
   `HurtboxComponent.apply_hit()`. A unit test against a hand-built stub would pass with the
   node missing from the shipped scene entirely, which is the gap L-029 is about.
+
+**D-056 — the presentation ACTION layer (foundation hardening before Phase 12):**
+- `tests/unit/presentation/test_character_action_layer.gd` — **NEW.** The second semantic layer
+  on `CharacterVisualComponent`. Driven through the PUBLIC API only (`play_action` /
+  `drive_action` / `end_action` / `is_action_playing`), so the tests describe the contract
+  rather than the cursor. Asserted: every shipped profile AUTHORS the action sheet (an optional
+  field nothing authors is a no-op with documentation — L-029, and `walk_sheet` already shipped
+  null in four profiles for a whole phase); a ragged action sheet is refused with the field
+  NAMED; **ACTION out-ranks LOCOMOTION** (the action sheet shows while the character is still
+  walking, and locomotion resumes exactly where it was); turning mid-action neither restarts nor
+  cancels it, but does move the direction row; an action the profile cannot play is REFUSED and
+  locomotion continues (presentation degrades, gameplay does not); the reserved-but-unimplemented
+  vocabulary (`cast`/`hit`/`stun`/`death`/`emote`) is refused rather than silently rendering
+  something else; the frame is a **pure function of driven progress, CLAMPED not wrapped**, so
+  over- and under-driving stay on the end frames and revisiting a progress value returns the same
+  frame; driving 0 → 1 **visits every frame** for BOTH actors (a one-shot that renders frame 0
+  forever passes any single-sample check); `advance()` moves a driven action by **nothing**, 30
+  ticks included, because gameplay timing owns it; a full action cycle leaves the character's
+  authoritative `CharacterState` **byte-identical**; 25 action cycles create **zero** extra
+  nodes; and a static character pays no `_process` unless an action is running, which must keep
+  it alive or the action could never end.
+- **The §31 reuse proof, as a test rather than a claim:** the player (32×48 frames, 6-column
+  action sheet) and the mist wolf (32×32 frames, 4-column sheet) run the same contract through
+  the same methods, and the test asserts the two actors genuinely differ in frame SIZE and frame
+  COUNT — otherwise it would be proving one case twice. A **structural walk of `src`** asserts
+  exactly ONE file declares the action API, which is what forbids `player_cast.gd` /
+  `enemy_cast.gd` / `boss_cast.gd`.
+- `tests/integration/test_enemy_encounter.gd` (extended) — **the real-path proof.** A real swing,
+  requested by the real brain through the real `AttackComponent`, puts the creature's own sprite
+  into its action layer and traverses its frames — with only the GAMEPLAY clocks advanced. This
+  is the test a component fixture cannot replace: `CharacterVisualComponent` is built at runtime
+  by `Enemy._apply_visual()` and has to find its sibling itself, so a unit test passes with that
+  wiring entirely absent (L-029). Verified by unbinding the source: the integration test fails
+  and every unit test still passes. Plus: **a swing CANCELLED by death releases the pose**, which
+  pins the reason the layer ends on the lifecycle's STATE —
+  `AttackComponent.cancel()` emits no `attack_finished` and `Enemy._on_health_died()` calls it,
+  so a signal-only layer would freeze a corpse mid-thrust.
+- `tests/unit/presentation/test_gameplay_hud.gd` (extended) — **a meter must be tall enough for
+  the value it writes inside itself**, re-measured from the real label for EVERY meter in the
+  HUD. Found by opening a capture at 4×: the XP meter was 8px and its `FONT_SIZE_HINT` label
+  measures **20px**, so the number drew across the rail's own border — and the health gauge was
+  6px short too, unnoticed for two phases. The guard reports the deficit in pixels and names the
+  meter, so the next one (mana, cultivation, a boss bar) cannot repeat it.
+- `tests/unit/presentation/test_progression_hud.gd` (updated) — the XP/HP distinguishability test
+  now asserts the two carriers that survive measurement (**hue** and **written text**) and that
+  each meter CONTAINS its own label, instead of asserting the thinness that was the carrier
+  unable to hold its own text.

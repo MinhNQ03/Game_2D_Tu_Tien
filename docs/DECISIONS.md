@@ -3565,3 +3565,187 @@ A third suspicion did not survive checking: a grep for `_collect_filenames` retu
 which looked like dead code left behind by the allow-list rewrite. It was simply already gone —
 the rewrite had replaced it. Worth noting only because "grep found nothing" reads the same for
 "dead" and "absent", and the two call for opposite actions.
+
+---
+
+## D-056 — Production + multiplayer architecture contract, and the continuous presentation spine
+
+**Status:** Accepted · **Phase:** foundation hardening **before** Phase 12 · **Scope:** two new
+contract documents + a semantic ACTION layer on an existing presentation component + action art
+for five profiles + a measured HUD layout correction + doc synchronisation. **No networking, no
+transport, no new autoload, no new gameplay system, no domain rule changed. Phase 12 remains
+NOT STARTED.**
+
+Reviewed at `1f12ec4`.
+
+### Why now rather than later
+
+Aetheria has to travel `offline playable foundation → content-heavy offline game → production
+release → authoritative multiplayer` without rewriting the domain, the gameplay layer or the
+presentation pipeline. Every phase after this one **adds consumers** of those boundaries, so
+the cheapest moment to decide who owns what is before the content explosion — and the cheapest
+moment to build a reusable action-presentation seam is before there are twenty skills to
+retrofit.
+
+### FROZEN NOW
+
+**Production / multiplayer** (`docs/PRODUCTION_ARCHITECTURE_CONTRACT.md`):
+
+* **Offline stays the source of truth.** Offline and online run the SAME domain rules; they
+  differ in **authority and transport**, never in game rule. There is no "multiplayer damage
+  formula".
+* **The target online model is an authoritative DEDICATED SERVER.** A client sends intents
+  only; the server validates, resolves with the same domain rules, mutates authoritative state
+  and emits authoritative events. This **resolves** the open question in
+  `MULTIPLAYER_PLAN.md` §6, which said the model "is undecided and will be a `DECISIONS.md`
+  entry" — that entry is this one.
+* **Five independent version domains**, not one number: `game_version`, `content_version`,
+  `save_version`, `network_protocol_version`, `server_build_id` — with a stated compatibility
+  predicate (protocol **and** content must match; `game_version` deliberately does not gate it)
+  and a clean, domain-naming refusal on mismatch.
+* **Twelve boundaries, each answering the seven ownership questions**, with a client/server
+  responsibility matrix. The row that matters most: **presentation is the one boundary a server
+  owns nothing of**, and presentation state must never become replicated gameplay state.
+* **Command/intent shape is conceptual** (`command_id`, `actor_id`, `command_type`, `payload`,
+  later ticks) with three negatives frozen: a command is not a result, not authoritative state,
+  not a cue. An `AttackIntent` may never carry `damage = 999`.
+* **Six distinct identities** (`account` / `player` / `character` / `session` / `connection` /
+  `server_instance`). `connection_id != session_id` is what makes a reconnect expressible at
+  all.
+* **The client is untrusted**, and **no future API may be shaped client-authoritatively** —
+  that shape is what makes validation impossible later.
+* **Five vendor-neutral adapter SLOTS** (transport, auth, matchmaking, server allocation,
+  persistent backend). `domain` never imports them, and **an adapter is written when its first
+  real consumer exists** — these are slots in a document, not files.
+
+**Presentation** (`docs/PRESENTATION_ARCHITECTURE_CONTRACT.md`):
+
+* **Gameplay decides WHAT happened; presentation decides HOW it is perceived.** Deleting every
+  presentation node must change no outcome.
+* **Three layers:** LOCOMOTION (looping) · ACTION (bounded, one-shot) · TRANSIENT FEEDBACK
+  (overlaid, never replaces a pose). **ACTION out-ranks LOCOMOTION.** Facing is shared.
+* **GAMEPLAY TIMING OWNS THE TRUTH.** "Animation reached frame 7, therefore deal damage" is
+  forbidden absent an explicit, data-authored marker contract. This is a multiplayer
+  requirement as much as a tidiness one: a remote client's frame rate must not change an
+  outcome.
+* **Reusable semantic actions over per-character bespoke logic.** `player_cast.gd` /
+  `enemy_cast.gd` / `boss_cast.gd` is the forbidden shape; logic shared, data differs.
+* **Continuous Visual Integration is now a GATE**, not only a policy
+  (`PHASE_EXECUTION_PROTOCOL.md` §7b), with per-phase seeds in `ROADMAP.md` and the rule
+  **foundation first, content second**.
+
+### DELIBERATELY DEFERRED
+
+transport · RPC · lobby · matchmaking · authentication implementation · server deployment ·
+cloud backend · prediction · reconciliation · rollback · lag compensation · load balancing ·
+live telemetry implementation · the full release pipeline · every reserved action name
+(`CAST`, `HIT`, `STUN`, `DEATH`, `EMOTE`, `INTERACT`, `LEVEL_UP`, `BREAKTHROUGH`).
+
+### THE MINIMAL IMPLEMENTATION PROOF (§30/§31)
+
+The audit's first conclusion was that **the trigger seam already existed and needed nothing**:
+`AttackComponent` emits `attack_started`/`attack_finished` and exposes `state()`, `facing()`,
+`time_remaining()` and `attack_data()`, with docstrings already naming presentation as the
+consumer. So no gameplay API was added, and no `AnimationManager` was created.
+
+What was genuinely missing was a **second layer on the component that already owned the
+sprite**. `CharacterVisualComponent` gained five methods — `play_action` / `drive_action` /
+`end_action` / `is_action_playing` / `current_action` — plus one optional `@export`
+(`attack_sheet`) and one validation line on `CharacterVisualProfileData`, whose `_sheet_errors`
+and `frame_count_of` were already sheet-agnostic and changed not at all.
+
+**`drive_action(progress)` is the shape that makes the timing rule structural.** The frame is
+`clamp(int(progress × frame_count), 0, frame_count − 1)` — a pure function of a progress value
+pushed in by the authority that owns the lifecycle. The component keeps no clock an action
+could drift against, and a long authored wind-up spends more frames there automatically, with
+no per-phase frame budget to maintain.
+
+**Wiring is concrete and single, on purpose.** The component duck-type-resolves an optional
+sibling attack lifecycle (the pattern `AttackFeedback`/`DamageFeedback` already use; absence is
+legal and silent). There is **no "action source interface"**, because a second action *source*
+does not exist — per the anti-over-engineering rule the abstraction arrives with its second
+consumer. When `CAST` lands it calls the same three methods and the layer does not change.
+
+**Proven on two actors (§31):** the player (32×48 frames, 6-column attack sheet) and the Vụ
+Lang mist wolf (32×32 frames, 4-column attack sheet) run the same path with no actor-specific
+branch, and a structural test walks `src` to assert exactly **one** file declares the action API.
+
+### Two defects the audit found that the brief did not name
+
+1. **`AttackComponent.cancel()` emits nothing, and `Enemy._on_health_died()` calls it.** A
+   layer waiting on `attack_finished` would freeze a corpse mid-thrust. The action therefore
+   ends on the lifecycle's **state**, which makes cancel, death and session teardown all end it
+   by one path. Pinned by `test_a_swing_cancelled_by_death_releases_the_action_pose`, which was
+   verified to fail against a version that only listened for the signal.
+2. **`_verify_sheet_animates()` compares adjacent frames *wrapping round*.** Correct for a
+   loop; it would reject a one-shot sheet that legitimately returns to its neutral pose on the
+   last frame. The generator gained a `loops=False` mode that drops **only** the wrap
+   comparison, so a frozen step mid-action is still caught.
+
+### Art: three passes, and the one that mattered was found at 10×
+
+The cultivator's palm thrust (`*_proto_attack.png`, 6 columns) and the wolf's lunge
+(`mist_wolf_attack.png`, 4 columns) are `anticipation → action → recovery` as pixel deltas in
+the existing generator — one new branch in `_anim_deltas`, a `reach` value, and a thrust vector
+resolved per facing.
+
+* **Pass 1 was wrong:** `lead` (which arm acts) was derived from the SIGN of the thrust, and the
+  anticipation frames have a negative reach — so the RIGHT arm coiled and the LEFT arm struck.
+  One arm must do the whole gesture or there is no gesture. `lead` is now passed in explicitly.
+* **Pass 2 was wrong, and this is the one worth remembering:** at peak extension the forearm
+  block simply TELEPORTED by `reach`, leaving a gap between the shoulder and the hand. At 10×
+  it was an arm detached from its body; at 1× it read as **a floating blue blob beside a
+  motionless figure** — precisely the "stand still and spawn a ball" failure the whole
+  presentation contract exists to prevent. Fixed by drawing the **upper arm** as a band
+  bridging shoulder to cuff at every reach.
+* The qi orb travels with the palm and its halo **flares with the reach**, so the strike's peak
+  is the brightest frame. A constant-size orb that merely moved read as the character carrying
+  a lamp.
+
+### The HUD layout correction (the user's "tidier UI" ask), measured
+
+Opening the identity plaque at 4× showed `KN 0 / 20` drawn with its descenders **across its own
+rail's bottom border**. Cause: a meter writes its value INSIDE itself, the label is
+`FONT_SIZE_HINT`, and a 14px label **measures 20px** of combined minimum height — while
+`XP_METER_HEIGHT` was 8 and `GAUGE_HEIGHT` was 14. **Both** meters were clipping their own
+numbers; the health gauge was 6px short and nobody had noticed.
+
+* `GAUGE_HEIGHT` 14 → **20**, derived from the measurement, and `XP_METER_HEIGHT` is now the
+  same value.
+* **WEIGHT is retired as a carrier.** XP was meant to read as subordinate by being thinner, and
+  thinness was the carrier that could not contain its own text. The distinction rests on the
+  two that survive measurement: **hue** (gold vs jade) and **text** (`XP 0 / 20` against a
+  level badge vs `100 / 100`). `UI_UX_BIBLE.md` §4 still holds — colour is not the only carrier.
+  A third carrier that makes the number illegible is worse than two that do not.
+* `TOP_PLAQUE_RESERVE` 224 → **242**, its sixth move and the sixth time the cause was content
+  growing inside a plaque. The measuring test produced the number; that it moved itself is the
+  workflow working.
+* A new guard re-measures **every** meter in the HUD against the label it prints, so the next
+  one (mana, cultivation, a boss bar) cannot repeat it.
+
+**Left alone:** the ornament divider's doubled rails. It reads oddly at 4×, but it is D-050's
+single shared `UITheme.ornament_divider()` seam with its own tests, the two bands are the
+source mask's own design, and changing it is a separate decision with its own measurement.
+
+### `docs/design_refs/` — classified, not swept
+
+34MB / 708 files of untracked upstream material. Classified by **reading the licence file in
+each pack**: Foozle "Lucifer RPG UI" (CC0 1.0, already "reference only" per D-028/D-050) and
+Kenney "Fantasy UI Borders" (CC0 1.0 — the **upstream source** of the 3 files D-050 promoted to
+`assets/ui/kenney_borders/`). Neither is the unknown-licence case, and `grep` finds **no**
+`res://` reference to the directory. Decision: **keep the source packs local and gitignored,
+keep the promoted subset tracked**, with the reasoning inline in `.gitignore` and the full
+classification table in `docs/ASSET_LICENSES.md`.
+
+### Verification
+
+697 tests (up from 680), 0 failures, 0 `SCRIPT ERROR:`, 0 leaked ObjectDB, 0 resources in use,
+all ten gates green locally. Every new guard verified to fail against the prohibited behaviour:
+unbinding the attack source, inverting the layer precedence, and ignoring the cancel path each
+produce a failure that names the defect. Captures taken at vi/en × 1280×720 / 1280×800 and
+**opened**; the action art inspected at 6× and 10×, which is where pass 2's detached arm was
+caught.
+
+**No performance entry.** This pass added no per-frame cost — `_process` stays off unless
+something is animating, and an action needs it only while it runs — so `docs/PERFORMANCE.md`
+is unchanged. Recording a non-existent optimization there would be a false claim.

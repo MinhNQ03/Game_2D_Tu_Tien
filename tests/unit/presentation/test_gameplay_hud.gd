@@ -737,6 +737,45 @@ func test_the_target_plaque_retires_after_a_kill_instead_of_advertising_a_corpse
 	free_node(hud)
 
 
+## A meter that writes its value INSIDE itself must be tall enough to CONTAIN the glyphs.
+##
+## Found by opening a capture at 4x: the XP meter is `XP_METER_HEIGHT` (8px) tall and carries a
+## `FONT_SIZE_HINT` (14px) label, so "KN 0 / 20" rendered with its descenders across the rail's
+## bottom border — the number and the frame drawn on top of each other. The height was chosen
+## to make the meter visibly subordinate to the health gauge, which is right, but nobody
+## checked it against the label it has to hold (L-034: a named size nobody measured).
+##
+## Asserted for EVERY meter in the HUD, re-measured from the real label, so the next meter
+## (mana, cultivation, a boss bar) cannot repeat it.
+func test_every_meter_is_tall_enough_for_the_value_it_writes_inside_itself() -> void:
+	var hud := _hud()
+	hud.call("set_health", 100, 100)
+	_populate_plaques(hud)
+	_use_language("vi")
+	await scene_tree.process_frame
+
+	var meters: Array[ProgressBar] = []
+	_collect_class(hud, "ProgressBar", meters)
+	assert_true(meters.size() >= 2, "the HUD has meters to check (got %d)" % meters.size())
+	for meter in meters:
+		var value := meter.get_node_or_null("Value") as Label
+		if value == null:
+			continue
+		var needed := value.get_combined_minimum_size().y
+		assert_true(meter.custom_minimum_size.y >= needed,
+			("meter '%s' is %dpx tall but the value it prints inside itself needs %dpx — the "
+				+ "glyphs draw across its own frame") % [
+					meter.name, int(meter.custom_minimum_size.y), int(needed)])
+	free_node(hud)
+
+
+func _collect_class(node: Node, class_label: String, out: Array[ProgressBar]) -> void:
+	for child in node.get_children():
+		if child.get_class() == class_label:
+			out.append(child as ProgressBar)
+		_collect_class(child, class_label, out)
+
+
 ## The visual pass must not have cost any behaviour: the character name, the map name, the
 ## prompts and the closed-by-default sect panel all still work (a pure presentation change).
 func test_hud_behaviour_survived_the_visual_pass() -> void:

@@ -363,6 +363,111 @@ func test_a_damaged_enemy_flashes_and_a_dead_one_wears_the_corpse_look() -> void
 	free_node(runtime)
 
 
+## THE D-056 ACTION-LAYER PROOF on the REAL path: a real swing, requested by the real brain
+## through the real `AttackComponent`, makes the creature's own sprite play its action sheet —
+## and hands back to locomotion when the swing ends.
+##
+## This is the test a hand-built component fixture cannot replace. It proves the SCENE wiring:
+## `CharacterVisualComponent` is built at runtime by `Enemy._apply_visual()` and has to find the
+## sibling `AttackComponent` by itself. A unit test that calls `play_action()` directly passes
+## with that wiring entirely absent, which is the gap L-029 is about.
+##
+## It also proves gameplay timing owns the animation: nothing here drives the visual: the only
+## clock advanced is the attack lifecycle's.
+func test_a_real_swing_plays_the_creatures_action_animation() -> void:
+	var runtime := _runtime()
+	var player := _player(Vector2(400, 300))
+	runtime.register_target(player)
+	runtime.set_hunt_target(player)
+	runtime.spawn_from_table(_table(Vector2(418, 300)), runtime)
+	var enemy := runtime.enemies()[0]
+	var visual := enemy.get_node_or_null("CharacterVisualComponent") as CharacterVisualComponent
+	assert_not_null(visual, "the spawned creature built its visual component")
+	var components := _attack_components(enemy)
+	assert_false(components.is_empty(), "and it has an attack component to be driven by")
+	if visual == null or components.is_empty():
+		free_node(runtime)
+		free_node(player)
+		return
+	var profile := _enemy_data().visual_profile
+	assert_not_null(profile.attack_sheet, "the shipped creature authors an action sheet")
+	assert_false(visual.is_action_playing(), "it starts in locomotion, not mid-swing")
+
+	# Drive ONLY the gameplay clocks. The animation is a follower.
+	var played := false
+	var progress_seen := {}
+	var columns_seen := {}
+	for _i in 60:
+		runtime.tick_enemies(STEP)
+		for component in components:
+			component.advance(STEP)
+		# Sample the presentation AFTER the lifecycle moved, which is the order the game runs.
+		for component in components:
+			visual.advance(STEP)
+		if visual.is_action_playing():
+			played = true
+			progress_seen[snappedf(visual.action_progress(), 0.1)] = true
+			columns_seen[visual.get_column()] = true
+		if enemy.is_dead():
+			break
+
+	assert_true(played,
+		("a real swing put the creature's visual into its ACTION layer — if this fails the "
+			+ "component never found its sibling AttackComponent, and every unit test would "
+			+ "still pass"))
+	assert_eq(visual.current_action() if visual.is_action_playing() else &"attack", &"attack",
+		"and the action it played is the basic attack")
+	assert_true(progress_seen.size() >= 2,
+		("the action was DRIVEN across its range by the lifecycle rather than snapped to one "
+			+ "frame (saw %d distinct progress buckets)") % progress_seen.size())
+	assert_true(columns_seen.size() >= 2,
+		"so more than one animation frame was actually rendered (saw %s)"
+			% str(columns_seen.keys()))
+	free_node(runtime)
+	free_node(player)
+
+
+## A swing CANCELLED by death must not leave the corpse frozen mid-thrust.
+##
+## `AttackComponent.cancel()` emits no `attack_finished`, and `Enemy._on_health_died()` calls
+## it — so an action layer that waited for that signal would hold the pose forever. The layer
+## ends on the lifecycle's STATE instead, and this is the test that pins it.
+func test_a_swing_cancelled_by_death_releases_the_action_pose() -> void:
+	var runtime := _runtime()
+	var player := _player(Vector2(400, 300))
+	runtime.register_target(player)
+	runtime.set_hunt_target(player)
+	runtime.spawn_from_table(_table(Vector2(418, 300)), runtime)
+	var enemy := runtime.enemies()[0]
+	var visual := enemy.get_node_or_null("CharacterVisualComponent") as CharacterVisualComponent
+	var components := _attack_components(enemy)
+	if visual == null or components.is_empty():
+		free_node(runtime)
+		free_node(player)
+		return
+
+	# Get it mid-swing.
+	for _i in 60:
+		runtime.tick_enemies(STEP)
+		for component in components:
+			component.advance(STEP)
+		visual.advance(STEP)
+		if visual.is_action_playing():
+			break
+	assert_true(visual.is_action_playing(), "the creature is mid-action")
+
+	# Kill it. `Enemy._on_health_died` cancels the swing, which emits nothing.
+	var hurtbox := enemy.get_node("HurtboxComponent") as HurtboxComponent
+	while not enemy.is_dead():
+		hurtbox.apply_hit(10, false)
+	visual.advance(STEP)
+	assert_false(visual.is_action_playing(),
+		("the action was released when the swing was cancelled — a layer that only listened "
+			+ "for `attack_finished` would freeze the corpse in its thrust pose"))
+	free_node(runtime)
+	free_node(player)
+
+
 ## Ending the session must stop every creature BEFORE the world it reasons about disappears.
 func test_ending_the_session_stops_and_clears_enemies() -> void:
 	var runtime := _runtime()

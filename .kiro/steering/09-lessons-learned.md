@@ -1137,3 +1137,67 @@
   docstring in `gameplay_hud.gd`; `setup/movement/attack` evidence grouping in
   `tools/playtest_flow.gd`; `GAME_FLOW.md` §3.3. Every new guard verified to fail against the
   prohibited pattern, two of them by planting it in a real production file.
+
+## L-039 — Technically correct can still fail the product, and a limb that teleports is not a limb
+- **Symptom (D-056):** the brief asked for a production/multiplayer contract and a presentation
+  spine. The audit's first finding was that **the seam already existed**: `AttackComponent` had
+  emitted `attack_started`/`attack_finished` and exposed `state()` / `time_remaining()` /
+  `attack_data()` since Phase 09, with docstrings naming presentation as the consumer — and
+  nothing had ever consumed them. The game had a correct four-state attack lifecycle and a
+  character that stood perfectly still through it. Every gate was green. **Green CI is not
+  production architecture, and correct gameplay is not a compelling player experience.**
+- **Rule (the product one):** a system that is technically correct but visually stiff can still
+  fail the product goal, and no assertion in the repository can see it. "The sprite changed
+  frame" is not a pass; the bar is **anticipation → action → contact → recovery**. Judge a
+  visual feature on silhouette, timing, anticipation, follow-through, readability, contrast,
+  layering, motion, impact, consistency and reuse — then LOOK at it magnified, because that is
+  where the defects are. For anything time-varying, assert the output **differs between two
+  moments** and that a cycle **returns to its start**: a pipeline rendering frame 0 forever
+  passes every single-sample assertion.
+- **Rule (animation is a follower, never an authority):** "animation reached frame 7, therefore
+  deal damage" is forbidden. The way to make that structural rather than a comment is to give
+  the presentation layer **no clock of its own**: `drive_action(progress)` takes the elapsed
+  fraction from the lifecycle that owns it, so the animation cannot drift from the mechanic and
+  a long authored wind-up spends more frames there automatically — with no per-phase frame
+  budget to keep in sync. This is also a multiplayer requirement: a remote client's frame rate,
+  asset set and animation length must not be able to change an outcome.
+- **Rule (a one-shot layer must end on STATE, not only on a signal):**
+  `AttackComponent.cancel()` emits nothing and `Enemy._on_health_died()` calls it, so a layer
+  waiting for `attack_finished` would freeze a corpse mid-thrust. **When you subscribe to a
+  lifecycle, enumerate every way it can STOP** — finish, cancel, death, teardown — and drive off
+  the state if any of them is silent. The same audit question applies to any future subscriber.
+- **Also (a displaced limb needs the limb in between):** the first working version of the palm
+  thrust moved the forearm/cuff block by `reach` pixels and left a GAP between the shoulder and
+  the hand. At 10× it was an arm detached from its body; at 1× it read as **a floating blue blob
+  beside a motionless figure** — the exact "stand still and spawn a ball" failure the whole
+  effort existed to avoid. A pose is a CHAIN: if you move an extremity, draw what connects it.
+  And an earlier pass derived WHICH arm acts from the sign of the thrust, so the anticipation
+  frames (negative reach) coiled one arm while the action frames struck with the other. One arm
+  must do the whole gesture or there is no gesture.
+- **Also (a verifier tuned for a loop rejects a one-shot):** the generator's degenerate-art
+  check compares adjacent frames **wrapping round**, which is right for a cycle and wrong for an
+  action sheet that correctly returns to neutral on its last frame. Give such a check an
+  explicit non-looping mode that drops **only** the wrap comparison, so a frozen step
+  mid-action is still caught.
+- **Also (a readout must be able to contain what it prints):** the XP meter was 8px tall and
+  printed a `FONT_SIZE_HINT` label inside itself; a 14px label **measures 20px**, so the number
+  drew its descenders across the rail's own border — and the health gauge was 6px short too,
+  unnoticed for two phases. Measure the label, not the look. And when a "third carrier" of
+  meaning (here: thinness, so XP would read as subordinate to HP) is what makes the content
+  illegible, **retire the carrier**: two carriers that work beat three where one destroys the
+  reading.
+- **Also (anti-over-engineering, stated as a test):** the action layer is five methods on the
+  component that already owned the sprite — not an `AnimationManager`. The abstraction that was
+  NOT built is the "action source interface", because a second action *source* does not exist
+  yet; the layer is generic, its wiring is concrete and single, and that asymmetry is recorded
+  where someone would otherwise "tidy" it. **A new abstraction needs a real current use case AND
+  a concrete second one** — here the second actor (the mist wolf: different frame size, different
+  frame count, same contract) is what makes it a seam rather than a player feature, and a
+  structural walk asserts exactly one file declares the API.
+- **Fixed:** D-056. `docs/PRODUCTION_ARCHITECTURE_CONTRACT.md`,
+  `docs/PRESENTATION_ARCHITECTURE_CONTRACT.md`, the ACTION layer in
+  `character_visual_component.gd`, `attack_sheet` on `character_visual_profile_data.gd` authored
+  in all five profiles, action sheets in `gen_prototype_assets.py` (`loops=False` + the upper-arm
+  bridge + the explicit lead arm), `GAUGE_HEIGHT`/`XP_METER_HEIGHT`/`TOP_PLAQUE_RESERVE`
+  re-measured, `tests/unit/presentation/test_character_action_layer.gd`, two integration proofs
+  in `test_enemy_encounter.gd`, and the PRESENTATION gate in `PHASE_EXECUTION_PROTOCOL.md` §7b.

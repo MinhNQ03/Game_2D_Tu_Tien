@@ -88,5 +88,10 @@ add authority/replication with minimal changes to core code: player state, comba
 commands, world state, inventory, progression, authoritative state, persistence,
 **character state,
 relationship state, sect state, faction state, world-event/sim state** (in
-persistent/runtime/presentation tiers). See `docs/MULTIPLAYER_PLAN.md`. **No networking
+persistent/runtime/presentation tiers). The TARGET model is frozen by D-056 as an
+**authoritative dedicated server**, contracted in `docs/PRODUCTION_ARCHITECTURE_CONTRACT.md`
+(five version domains, twelve boundaries, command/intent shape, identity split, vendor-neutral
+adapter slots) — **target, not implementation**. Offline and online run the SAME domain rules
+and differ only in authority and transport. Per-seam readiness: `docs/MULTIPLAYER_PLAN.md`.
+**No networking
 code or dependency in Stage 1.**

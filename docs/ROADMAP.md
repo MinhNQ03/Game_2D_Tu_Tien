@@ -563,6 +563,53 @@ Per-phase examples (illustrative — never force a phase to build presentation i
 - **Phase 09 (Combat):** combat HUD / hit feedback / VFX if combat exposes presentation.
 - **Phase 13 (Item):** inventory UI. **Phase 14 (Equipment):** equipment UI.
 - **Phase 15 (Skill):** skill UI. **Phase 17 (NPC):** NPC/shop UI.
+
+### Strengthened by D-056 — the PRESENTATION gate and the per-phase seeds
+
+Continuous Visual Integration now has a **gate** (`docs/PHASE_EXECUTION_PROTOCOL.md` §7b) and
+a **contract** (`docs/PRESENTATION_ARCHITECTURE_CONTRACT.md`). Three rules bind every phase
+from P12 on:
+
+* **Every gameplay phase leaves behind at least one REUSABLE player-facing presentation
+  capability** when its feature has a visible gameplay consequence — a seam the next feature
+  reuses, not a bespoke effect.
+* **FOUNDATION FIRST, CONTENT SECOND.** The phase that introduces a *category* builds the seam
+  before the content explosion. First skill → skill presentation seam → second skill reuses it.
+  First NPC → locomotion/reaction seam. First boss → phase/telegraph seam. **Never** boss A
+  bespoke, boss B bespoke, boss C copies B.
+* **Prove reuse with a concrete SECOND consumer** — different assets, different frame counts,
+  the same contract. One actor is a feature; two is a seam.
+
+The seam D-056 itself shipped: a **semantic ACTION layer** on `CharacterVisualComponent`
+(locomotion and action as two layers, action out-ranking locomotion, driven by the gameplay
+lifecycle rather than a clock of its own), proven on the player AND the mist wolf.
+
+**Presentation SEEDS per phase.** These are the capabilities each phase is expected to leave
+behind — vocabulary and intent, not a commitment to implement every item:
+
+| Phase | Seeds |
+|---|---|
+| **P12 Cultivation** | meditation state · subtle breathing idle variation · qi accumulation visual · cultivation feedback · a **breakthrough presentation seam** (reusing the action vocabulary at a larger scale, not a second one) |
+| **P13 Item** | pickup feedback · use-item feedback · acquisition animation · small item VFX |
+| **P14 Equipment** | equip / unequip feedback · an equipment visual-state seam |
+| **P15 Skill / Technique** | **the phase that must prove this hardest:** `CAST` — anticipation → hand/body action → release → projectile/VFX → impact → recovery. This is where "tay co ra → duỗi tay → chưởng" becomes a reusable production foundation rather than one skill's effect |
+| **P16 Pet** | summon · spawn · follow · idle · attack · dismiss |
+| **P17 NPC** | idle variation · walk · turn/facing · talk gesture · reaction |
+| **P18 Dialogue** | portrait reaction · emotion · gesture · dialogue focus · transition |
+| **P19 Quest** | accept · progress · complete · reward · objective feedback |
+| **P20 Story** | scene transition · dramatic beat · camera framing · character emphasis · environmental event |
+| **P21 Dungeon** | entry · telegraph · encounter transition · environmental reaction |
+| **P22 Boss** | phase transition · telegraph · signature attack · arena reaction · death sequence |
+| **P23 Save/Load** | save feedback · load transition · failure/recovery UX |
+| **P25+** | **consolidate — do not invent a second visual architecture** |
+
+**Anti-dead-game scope.** Presentation is not only character animation. The architecture must
+avoid closing the door on: NPC movement · idle variation · turning · combat motion · skill
+casting · projectiles · hit reactions · death · level-up · cultivation · breakthrough · weather
+· environmental and world-simulation events · interactive props · particles · 2D lighting-like
+effects · camera motion · screen shake · impact · telegraphing · audio feedback · ambient
+motion · UI transitions · dialogue reactions · boss phases · dungeon events · story moments.
+Not all of it must be built soon; none of it may be structurally blocked.
 - **Phase 18 (Dialogue):** dialogue UI. **Phase 19 (Quest):** quest UI.
 - **Phase 20 (Story):** story UI.
 

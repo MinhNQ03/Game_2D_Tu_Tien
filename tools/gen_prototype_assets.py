@@ -192,6 +192,7 @@ CHAR_CX = CHAR_W // 2
 DIRECTION_COUNT = 4
 IDLE_FRAMES = 4
 WALK_FRAMES = 6
+ATTACK_FRAMES = 6
 OUTLINE = (18, 18, 26, 255)
 
 
@@ -231,6 +232,20 @@ def _robe_half(y):
 _IDLE_BOB = (0, 0, 1, 0)
 _IDLE_SWAY = (0, 1, 0, -1)
 _IDLE_ORB = (0, -1, -1, 0)
+# ATTACK (D-056): a palm thrust — "tay co ra rồi duỗi tay chưởng". It is a ONE-SHOT action
+# sheet, not a loop, and the whole point is that the three beats are distinguishable:
+#
+#   frames 0-1  ANTICIPATION  the arm draws BACK (negative reach) and the body coils
+#   frames 2-3  ACTION        the palm drives OUT past neutral, body rises into the strike
+#   frames 4-5  RECOVERY      the arm settles back toward neutral
+#
+# `reach` is a PIXEL EXTENSION applied to the lead sleeve, the hand and the qi orb along the
+# facing direction. The orb follows the palm because that is what makes the gesture read as a
+# cultivator's strike rather than an arm waving: the saturated element travels with the hand.
+_ATTACK_BOB = (0, 1, -1, -1, 0, 0)
+_ATTACK_SWAY = (-1, -2, 1, 2, 1, 0)
+_ATTACK_ORB = (0, 1, -1, -2, -1, 0)
+_ATTACK_REACH = (-2, -4, 4, 7, 3, 0)
 # The walk deltas are deliberately BIG. A first pass used +/-1px and was indistinguishable
 # from idle at 1x on screen, which defeats the whole point of adding a walk sheet.
 _WALK_BOB = (0, -1, -1, 0, -1, -1)
@@ -240,12 +255,19 @@ _WALK_FOOT = (-3, -1, 2, 3, 1, -2)
 
 
 def _anim_deltas(anim, frame):
-    """(body bob, hem/sleeve sway, orb bob, forward-foot offset) for this animation frame."""
+    """(body bob, hem/sleeve sway, orb bob, forward-foot offset, palm reach) per frame.
+
+    One switch for every animation the cultivator has. `reach` is 0 for the locomotion
+    animations, so adding the action sheet did not change what idle and walk render.
+    """
     if anim == "walk":
         i = frame % WALK_FRAMES
-        return _WALK_BOB[i], _WALK_SWAY[i], _WALK_ORB[i], _WALK_FOOT[i]
+        return _WALK_BOB[i], _WALK_SWAY[i], _WALK_ORB[i], _WALK_FOOT[i], 0
+    if anim == "attack":
+        i = frame % ATTACK_FRAMES
+        return _ATTACK_BOB[i], _ATTACK_SWAY[i], _ATTACK_ORB[i], 0, _ATTACK_REACH[i]
     i = frame % IDLE_FRAMES
-    return _IDLE_BOB[i], _IDLE_SWAY[i], _IDLE_ORB[i], 0
+    return _IDLE_BOB[i], _IDLE_SWAY[i], _IDLE_ORB[i], 0, 0
 
 
 def _glow(px, cx, cy, radius, color, peak=255):
@@ -334,22 +356,56 @@ def _draw_robe(px, pal, bob, sway):
     _rect(px, cx - 1, 16 + bob, cx + 1, 27 + bob, pal["trim"])
 
 
-def _draw_sleeves(px, pal, bob, sway, swap):
-    """Wide flowing sleeves. `swap` swings them in opposite phase for the walk stride."""
+def _draw_sleeves(px, pal, bob, sway, swap, thrust=(0, 0), lead=0):
+    """Wide flowing sleeves. `swap` swings them in opposite phase for the walk stride.
+
+    `thrust` is the LEAD sleeve's extension along the facing direction (action sheets only),
+    and `lead` names WHICH sleeve (-1 left, +1 right, 0 none). Only ONE sleeve moves: a
+    two-armed push reads as a shrug, while one arm extending past the silhouette reads as a
+    strike. The trailing sleeve stays on its locomotion offset so the body still has two arms.
+
+    `lead` is passed in rather than DERIVED FROM THE SIGN OF `thrust`, which is how the first
+    version worked and was wrong: the anticipation frames have a negative reach, so the sign
+    flipped and the RIGHT arm coiled while the LEFT arm struck. One arm must do the whole
+    gesture or there is no gesture.
+    """
     cx = CHAR_CX
+    tx, ty = thrust
     for (side, phase) in ((-1, 1), (1, -1)):
         drift = (sway * phase) if swap else 0
         x0 = (cx - 9) if side < 0 else (cx + 6)
         x0 += drift
-        _rect(px, x0, 18 + bob, x0 + 3, 30 + bob, pal["robe"])
-        _rect(px, x0, 18 + bob, x0 + 3, 21 + bob, pal["robe_hi"])
-        _rect(px, x0, 27 + bob, x0 + 3, 30 + bob, pal["robe_dk"])
+        dy = 0
+        if side == lead:
+            x0 += tx
+            dy = ty
+            # THE UPPER ARM. Without it the forearm/cuff block simply TELEPORTS by `tx`/`ty`
+            # and leaves a gap between the shoulder and the hand: at 10x that is an arm
+            # detached from its body, and at 1x it reads as a floating blue blob beside a
+            # motionless figure — exactly the "stand still and spawn a ball" failure an action
+            # animation exists to avoid. This band bridges shoulder to cuff so the limb stays
+            # one limb at every reach.
+            sh_x = (cx - 9) if side < 0 else (cx + 6)
+            sh_x += drift
+            ax0 = min(sh_x, x0) + 1
+            ax1 = max(sh_x, x0) + 3
+            ay0 = 20 + bob + min(0, dy)
+            ay1 = 26 + bob + max(0, dy)
+            _rect(px, ax0, ay0, ax1, ay1, pal["robe"])
+            _rect(px, ax0, ay0, ax1, ay0 + 2, pal["robe_hi"])
+        _rect(px, x0, 18 + bob + dy, x0 + 3, 30 + bob + dy, pal["robe"])
+        _rect(px, x0, 18 + bob + dy, x0 + 3, 21 + bob + dy, pal["robe_hi"])
+        _rect(px, x0, 27 + bob + dy, x0 + 3, 30 + bob + dy, pal["robe_dk"])
         # A seam against the torso, or the sleeve dissolves into the robe and the figure
         # loses its arms entirely.
         seam_x = (x0 + 3) if side < 0 else (x0 - 1)
-        _rect(px, seam_x, 18 + bob, seam_x + 1, 30 + bob, pal["robe_deep"])
-        # The hand at the cuff.
-        _rect(px, x0 + 1, 30 + bob, x0 + 3, 32 + bob, pal["skin"])
+        _rect(px, seam_x, 18 + bob + dy, seam_x + 1, 30 + bob + dy, pal["robe_deep"])
+        # The hand at the cuff. On the lead arm during a thrust it is drawn a pixel wider, so
+        # the open palm reads at 32px instead of looking like a stick.
+        if side == lead and (tx or ty):
+            _rect(px, x0, 30 + bob + dy, x0 + 4, 33 + bob + dy, pal["skin"])
+        else:
+            _rect(px, x0 + 1, 30 + bob + dy, x0 + 3, 32 + bob + dy, pal["skin"])
 
 
 def _draw_head(px, pal, bob):
@@ -426,7 +482,7 @@ def _draw_face(px, pal, direction, bob):
         px[y][cx - 5] = _shade(pal["skin"], 0.7)   # nose/brow edge in profile
 
 
-def _draw_orb(px, pal, direction, orb_bob, sway):
+def _draw_orb(px, pal, direction, orb_bob, sway, thrust=(0, 0)):
     """The qi orb — the single saturated element on a pale figure, and the whole reason the
     character reads as a cultivator rather than a villager in a dress."""
     cx = CHAR_CX
@@ -438,8 +494,15 @@ def _draw_orb(px, pal, direction, orb_bob, sway):
         ox, oy = cx - 11, 24
     oy += orb_bob
     ox += sway
-    _glow(px, ox, oy, 5, pal["orb"], 120)
-    _glow(px, ox, oy, 3, pal["orb"], 225)
+    # Travel with the palm, and FLARE at full extension: the halo grows with the reach so the
+    # strike's peak is the brightest frame in the sheet. A constant-size orb that merely moved
+    # read as the character carrying a lamp around.
+    tx, ty = thrust
+    ox += tx
+    oy += ty
+    flare = max(0, tx if tx > 0 else -tx, ty if ty > 0 else -ty)
+    _glow(px, ox, oy, 5 + flare // 2, pal["orb"], 120)
+    _glow(px, ox, oy, 3 + flare // 3, pal["orb"], 225)
     _rect(px, ox, oy, ox + 1, oy + 1, pal["orb_core"])
 
 
@@ -451,14 +514,32 @@ def _render_cultivator(direction, pal, anim, frame):
         return [list(reversed(row)) for row in src]
 
     px = _blank(CHAR_W, CHAR_H)
-    bob, sway, orb_bob, foot = _anim_deltas(anim, frame)
+    bob, sway, orb_bob, foot, reach = _anim_deltas(anim, frame)
+
+    # The thrust vector for an action frame, resolved from the FACING. RIGHT is handled by the
+    # mirror above, so this only needs DOWN/UP/LEFT: a leftward push mirrors into a rightward
+    # one for free, which is the same reason the whole figure is drawn once.
+    #
+    # The LEAD arm is always the left one (the orb-bearing side), fixed for the whole
+    # animation. A negative reach therefore pulls that same arm back instead of handing the
+    # anticipation to the other arm.
+    thrust = (0, 0)
+    lead = 0
+    if reach:
+        lead = -1
+        if direction == Dir.DOWN:
+            thrust = (0, reach)                 # straight toward the camera
+        elif direction == Dir.UP:
+            thrust = (0, -reach)                # straight away from the camera
+        else:
+            thrust = (-reach, 0)                # LEFT: straight out to the side
 
     # A hint of the forward foot under the hem sells the stride (walk only).
     if anim == "walk" and foot != 0:
         _rect(px, CHAR_CX + foot - 2, 45, CHAR_CX + foot + 2, 47, pal["robe_hi"])
 
     _draw_robe(px, pal, bob, sway)
-    _draw_sleeves(px, pal, bob, sway, anim == "walk")
+    _draw_sleeves(px, pal, bob, sway, anim == "walk", thrust, lead)
     _draw_head(px, pal, bob)
 
     # Hair goes on LAST, over the head, for every facing. For UP that is what makes the back
@@ -472,7 +553,9 @@ def _render_cultivator(direction, pal, anim, frame):
 
     _draw_face(px, pal, direction, bob)
     _outline_pass(px)
-    _draw_orb(px, pal, direction, orb_bob, sway)   # after the outline: a halo is not a body
+    # The orb travels WITH the palm on an action frame. That is what turns "an arm moved" into
+    # "a cultivator struck": the one saturated element on the figure follows the gesture.
+    _draw_orb(px, pal, direction, orb_bob, sway, thrust)   # after the outline: a halo is not a body
     return px
 
 
@@ -565,7 +648,7 @@ def _cell(px, col, row, cell_w=None, cell_h=None):
     return out
 
 
-def _verify_sheet_animates(label, px, frames, cell_w=None, cell_h=None):
+def _verify_sheet_animates(label, px, frames, cell_w=None, cell_h=None, loops=True):
     """Fail LOUD if the sheet has no visible motion, or if two facings are identical.
 
     This guards the exact defect D-046 existed to fix (L-029): an animation INDEX that
@@ -577,8 +660,15 @@ def _verify_sheet_animates(label, px, frames, cell_w=None, cell_h=None):
     if frames > 1:
         # Every ADJACENT pair must differ, wrapping round. "At least one frame differs" would
         # pass a cycle with a frozen step in it, which reads as a stutter on screen.
+        #
+        # `loops=False` drops ONLY the wrap comparison (last frame vs first), because a
+        # ONE-SHOT action sheet legitimately ends where it began — an attack that returns to
+        # the neutral pose on its final frame is correct, and the wrap check would call that
+        # degenerate. Every interior pair is still required to differ, so the check still
+        # catches a frozen step mid-action.
+        last = frames if loops else frames - 1
         for direction in range(DIRECTION_COUNT):
-            for frame in range(frames):
+            for frame in range(last):
                 nxt = (frame + 1) % frames
                 if _cell(px, frame, direction, cell_w, cell_h) \
                         == _cell(px, nxt, direction, cell_w, cell_h):
@@ -595,7 +685,7 @@ def _verify_sheet_animates(label, px, frames, cell_w=None, cell_h=None):
                     "character would not visibly turn" % (label, a, b))
 
 
-def _gen_cultivator_sheet(name, pal, anim, frames):
+def _gen_cultivator_sheet(name, pal, anim, frames, loops=True):
     """One sheet: `frames` columns (animation) x 4 rows (DOWN, UP, LEFT, RIGHT)."""
     w = CHAR_W * frames
     h = CHAR_H * DIRECTION_COUNT
@@ -604,7 +694,7 @@ def _gen_cultivator_sheet(name, pal, anim, frames):
         for frame in range(frames):
             _draw_cultivator(px, frame * CHAR_W, direction * CHAR_H,
                              direction, pal, anim, frame)
-    _verify_sheet_animates("%s_%s" % (name, anim), px, frames)
+    _verify_sheet_animates("%s_%s" % (name, anim), px, frames, loops=loops)
     _png(os.path.join(ROOT, "assets/sprites/characters/%s_%s.png" % (name, anim)), w, h, px)
 
 
@@ -613,6 +703,10 @@ def gen_character_sheets():
         pal = CULTIVATORS[name]
         _gen_cultivator_sheet(name, pal, "idle", IDLE_FRAMES)
         _gen_cultivator_sheet(name, pal, "walk", WALK_FRAMES)
+        # The ACTION sheet (D-056). Authored for every archetype, not only the player: a
+        # profile that can attack must author the sheet, and leaving three of four null is how
+        # an optional field becomes a documented no-op (L-029).
+        _gen_cultivator_sheet(name, pal, "attack", ATTACK_FRAMES, loops=False)
 
 
 def gen_player():
@@ -936,13 +1030,20 @@ def _gen_beast_sheet(name, pal, frames, anim):
             if anim == "idle":
                 bob = 0 if col % 2 == 0 else -1
                 stride = 0
+            elif anim == "attack":
+                # A LUNGE, the beast's equivalent of the cultivator's palm thrust, and the
+                # same three beats: crouch (gather), spring, snap, settle. The body drops
+                # before it drives, because a lunge with no crouch reads as a glide.
+                bob = [2, -2, -3, 0][col % 4]
+                stride = [-3, 4, 6, 1][col % 4]
             else:
                 # A full stride cycle: legs swing out, through, out the other way, through.
                 bob = -1 if col in (1, 3) else 0
                 stride = [2, 0, -2, 0][col % 4]
             _draw_mist_wolf(px, col * BEAST_W, row * BEAST_H, direction, pal, bob, stride)
     _outline_pass(px)
-    _verify_sheet_animates("%s/%s" % (name, anim), px, frames, BEAST_W, BEAST_H)
+    _verify_sheet_animates("%s/%s" % (name, anim), px, frames, BEAST_W, BEAST_H,
+                           loops=(anim != "attack"))
     _png(os.path.join(ROOT, "assets/sprites/enemies/%s_%s.png" % (name, anim)), w, h, px)
 
 
@@ -951,6 +1052,10 @@ def gen_enemies():
     pal = _mist_wolf_palette()
     _gen_beast_sheet("mist_wolf", pal, 2, "idle")
     _gen_beast_sheet("mist_wolf", pal, 4, "walk")
+    # The SECOND actor's action sheet (D-056 §31). Four columns against the player's six, and
+    # 32x32 frames against the player's 32x48 — the same action layer drives both, which is
+    # the concrete second use case that makes the seam a seam rather than a player feature.
+    _gen_beast_sheet("mist_wolf", pal, 4, "attack")
 
 
 def gen_props():

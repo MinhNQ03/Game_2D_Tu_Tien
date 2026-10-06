@@ -40,6 +40,22 @@ const DIRECTION_COUNT := 4
 ## shows the idle frame while moving (documented fallback — no fake animation).
 @export var walk_sheet: Texture2D = null
 
+## The basic-attack sprite sheet (OPTIONAL, D-056): same GRID layout as the others — one row
+## per direction, N animation columns — but played as a ONE-SHOT, non-looping ACTION rather
+## than a locomotion loop (`docs/PRESENTATION_ARCHITECTURE_CONTRACT.md` §2/§4).
+##
+## Optional because an entity that cannot attack has no use for one (a prop, a preview
+## archetype), and because the component must degrade to locomotion rather than fail. But
+## OPTIONAL IS NOT A LICENCE TO LEAVE IT NULL EVERYWHERE: `walk_sheet` shipped null in all four
+## profiles for a whole phase, which made the documented idle fallback the only path that ever
+## ran — an optional field no shipped data authors is a no-op with documentation (L-029). Every
+## profile belonging to an entity that attacks authors this sheet.
+##
+## Its frames read as anticipation → contact → recovery. The COLUMN COUNT IS FREE: the player's
+## is 6 and the mist wolf's is 4, derived from texture width like every other sheet, and the
+## action layer maps gameplay progress across however many there are.
+@export var attack_sheet: Texture2D = null
+
 ## The pixel size of ONE animation frame (the art baseline, 32x48 since D-046). Collision
 ## footprint is independent of this (anchored at the feet) — see `docs/CHARACTER_ART_BIBLE.md`.
 @export var frame_size: Vector2i = Vector2i(32, 48)
@@ -78,6 +94,8 @@ func validation_errors() -> Array[String]:
 		errors.append_array(_sheet_errors("idle_sheet", idle_sheet))
 	if walk_sheet != null:
 		errors.append_array(_sheet_errors("walk_sheet", walk_sheet))
+	if attack_sheet != null:
+		errors.append_array(_sheet_errors("attack_sheet", attack_sheet))
 	return errors
 
 

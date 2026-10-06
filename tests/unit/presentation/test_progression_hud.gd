@@ -109,10 +109,29 @@ func test_the_xp_meter_is_distinguishable_from_the_health_gauge() -> void:
 		free_node(hud)
 		return
 
-	# 1. WEIGHT — the meter is thinner, so it reads as subordinate information.
-	assert_true(xp.custom_minimum_size.y < health.custom_minimum_size.y,
-		("the XP meter (%d px) is thinner than the vitals gauge (%d px)")
+	# 1. WEIGHT is RETIRED as a carrier (D-056), and this is the assertion that records why.
+	#
+	# The meter used to be 8px against the gauge's 14px so XP read as subordinate. But a meter
+	# writes its value INSIDE itself and the label is `FONT_SIZE_HINT`, which measures 20px —
+	# so "KN 0 / 20" drew its descenders across the rail's own bottom border. Found by opening
+	# a capture at 4x; invisible at 1x and invisible to every assertion, because the number was
+	# still there. Both meters are now the label's measured height.
+	#
+	# A third carrier that makes the number ILLEGIBLE is worse than two that do not, so what
+	# is asserted here is that the surviving two are real: a meter must be able to contain what
+	# it prints, which is checked for every meter by
+	# `test_every_meter_is_tall_enough_for_the_value_it_writes_inside_itself`.
+	assert_eq(xp.custom_minimum_size.y, health.custom_minimum_size.y,
+		("both meters stand at the measured label height (%d vs %d) — thinness was the "
+			+ "carrier that could not contain its own text")
 			% [int(xp.custom_minimum_size.y), int(health.custom_minimum_size.y)])
+	var xp_value := xp.get_node_or_null("Value") as Label
+	assert_not_null(xp_value, "the XP meter prints its value inside itself")
+	if xp_value != null:
+		assert_true(xp.custom_minimum_size.y >= xp_value.get_combined_minimum_size().y,
+			("and is tall enough to contain it (%dpx >= %dpx)") % [
+				int(xp.custom_minimum_size.y),
+				int(xp_value.get_combined_minimum_size().y)])
 
 	# 2. HUE — gold for progression, jade for vitals. Read off the actual styleboxes, not off
 	#    the palette, so pointing the meter at the wrong token fails here.

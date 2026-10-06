@@ -378,3 +378,31 @@ of its pixels and completely misleading about its use.
 12-check selftest covering the framed/hollow/mask/light-plate cases, because an asset-measuring
 tool that has silently stopped measuring correctly is worse than no tool — it would launder a
 bad assumption as a measurement.
+
+---
+
+## Local design-reference source packs (D-056 §40) — classified, kept out of git and out of `res://`
+
+`docs/design_refs/` appeared as 34MB of untracked upstream material (708 files). §40 forbids
+committing, deleting or promoting it blindly, so it was classified by **reading the licence
+file in each pack** and by checking whether anything in the project references it.
+
+| Pack | Licence, as stated in the pack | Classification | Promoted into `res://`? |
+|---|---|---|---|
+| `ui/source_packs/foozle_lucifer` — Foozle "Lucifer RPG UI" 1.0 (commissioned from Baldur) | `Readme.txt`: **CC0 1.0**, free for commercial use, attribution not required | **REFERENCE ONLY.** Already classified "B — supporting only" (D-028) and "REFERENCE ONLY, not promoted" (D-050): its icon density is 16×16 and its language is western fantasy. | No |
+| `ui/source_packs/second_pack` — Kenney "Fantasy UI Borders" 1.0 | `License.txt`: **CC0 1.0**, personal/educational/commercial, credit appreciated not required | **UPSTREAM SOURCE of a live asset set.** This is the pack D-050 promoted 3 files from; they are tracked at `assets/ui/kenney_borders/` and are what `UITheme.ornament_divider()` / `ornament_frame()` load. | Yes — **3 files**, already recorded above |
+
+**Decision: keep the source packs LOCAL (gitignored), keep the promoted subset tracked.**
+
+* Both licences are **clear** (CC0 1.0 with the licence text present in the pack). Neither is
+  the unknown-licence case, which may never enter `res://` under any circumstances.
+* `grep` for `design_refs` across every `.gd` / `.tscn` / `.tres` / `.import` returns
+  **nothing** — the directory is not a runtime dependency and removing it breaks no load.
+* Committing 34MB of upstream packs would bloat the repository to carry material from which
+  three files were ever used, and those three are already tracked with provenance.
+* The `.gitignore` entry carries this reasoning inline, so the next person sees *why* it is
+  ignored rather than assuming it was swept under the rug.
+
+**If a future phase promotes a fourth file** from either pack: copy it into `assets/`, add a
+row to the table above with its measured size/alpha/brightness, and wire it through
+`UIPalette`. The source pack stays out of git either way.

@@ -17,3 +17,15 @@ alive_probe.txt
 commit_result.txt
 push_result.txt
 gitlog_tmp.txt
+
+# Upstream asset SOURCE PACKS kept locally as design reference (D-056 §40).
+#
+# Classified, not ignored blindly: both packs carry an explicit CC0 1.0 licence file, and
+# `docs/ASSET_LICENSES.md` records the classification and where the promoted subset lives.
+# They stay OUT of git and OUT of `res://` because they are 34MB of upstream material from
+# which exactly three files were ever promoted — those three are tracked under
+# `assets/ui/kenney_borders/`. Nothing in the project references this directory.
+#
+# An asset whose licence is UNCLEAR must never enter `res://` at all; that rule is unchanged
+# and these two are not that case.
+docs/design_refs/
