@@ -8,7 +8,9 @@
 #
 # Coordinates are WORLD pixels (1 art px = 1 world px). The map's gameplay anchors are fixed by
 # the scene and its tests and the layout is drawn AROUND them: spawn (496,304), the field exit
-# (944,304), Lạc Hà spring (408,336), the stele (576,296), the training post (680,408).
+# (944,304), Lạc Hà spring (408,336), the stele (576,336), the training post (680,408). The
+# stele stood at (576,296) until it got its plinth's body (D-063 A2): there, the plinth sat on
+# the spawn -> east-exit road and stopped a player walking straight to the woods.
 #
 # The ground painter (`world/ground.py`) turns this into the floor texture and the layout data
 # the game reads (flooded cells, water blockers). Shapes are painted in list order; later wins.

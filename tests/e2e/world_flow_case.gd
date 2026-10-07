@@ -27,6 +27,8 @@ const MAIN_SCENE_PATH := "res://main.tscn"
 const INTERACT := &"interact"
 const OPEN_MENU := &"open_menu"
 const MOVE_RIGHT := &"move_right"
+const MOVE_UP := &"move_up"
+const MOVE_DOWN := &"move_down"
 const SECT_PANEL := &"sect_panel"
 const CULTIVATE := &"cultivate"
 const ROUND_TRIPS := 20
@@ -1045,7 +1047,7 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 	player.global_position = pill.global_position  # setup: walk onto the pickup
 	for _i in 6:
 		await scene_tree.physics_frame
-	player.global_position = spring.global_position + Vector2(0, 8)
+	player.global_position = spring.global_position + Vector2(0, 26)
 	for _i in 4:
 		await scene_tree.physics_frame
 	# Earlier proofs walked over other pickups, so their notices may still be up or waiting: the
@@ -1085,12 +1087,23 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 			player.global_position = pickup.global_position  # setup: walk onto it
 			for _i in 6:
 				await scene_tree.physics_frame
-	player.global_position = stele.global_position + Vector2(0, 12)
-	for _i in 6:
+	# The stele is SOLID (D-063 A2): approach it ON FOOT with a REAL held key from the south. The
+	# walk must STOP at the plinth — outside it — and the stele must be readable from there.
+	player.global_position = stele.global_position + Vector2(0, 44)  # setup: south of the stele
+	for _i in 4:
 		await scene_tree.physics_frame
-	assert_true(map.call("active_knowledge_source") != null, "the stele is in reach")
-	assert_eq(hud.notice_kind(), GameplayHUD.NOTICE_ANSWER, "the refusal is still up")
+	assert_true(await _walk_until_blocked(player, MOVE_UP, 180),
+		"walking north into the stele stops against it")
+	assert_true(player.global_position.y >= stele.global_position.y + 11.5,
+		"the walk stopped OUTSIDE the plinth (feet at %.1f, the plinth's front edge at %.1f)"
+			% [player.global_position.y, stele.global_position.y])
+	assert_true(map.call("active_knowledge_source") != null,
+		"and the stele is readable from where the body stopped")
+	# Whatever is on screen before the press (the refusal, or a pickup notice it gave way to)
+	# is accounted for: a passive notice goes back to its lane first, a refusal is superseded.
 	var waiting_before_e: Array[StringName] = [&"UI_HUD_KNOWLEDGE_GAINED"]
+	if hud.notice_kind() == GameplayHUD.NOTICE_PASSIVE:
+		waiting_before_e.append(&"UI_ITEM_GAINED")
 	waiting_before_e.append_array(hud.pending_notice_keys())
 	var lesson := {}
 	var on_learned := func(knowledge_id: StringName, _source: StringName) -> void:
@@ -1119,9 +1132,18 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 	assert_true(waiting_before_e.count(&"UI_ITEM_GAINED") >= 3,
 		"including the three pickups walked over for this proof")
 	assert_false(hud.notice_backlog_overflowed(), "a normal backlog")
+	# Push on: the plinth still holds. Then leave: the body never traps the player.
+	var pinned := player.global_position
+	await _hold_move(MOVE_UP, 20)
+	assert_true(player.global_position.y >= pinned.y - 0.5,
+		"pushing on does not pass through the stele (%.1f -> %.1f)"
+			% [pinned.y, player.global_position.y])
+	await _hold_move(MOVE_DOWN, 30)
+	assert_true(player.global_position.y > pinned.y + 8.0,
+		"and the player walks away freely (%.1f -> %.1f)" % [pinned.y, player.global_position.y])
 
 	# 3. Sit at the spring with a REAL cultivate key; tu vi accumulates over real frames.
-	player.global_position = spring.global_position + Vector2(0, 8)
+	player.global_position = spring.global_position + Vector2(0, 26)
 	for _i in 4:
 		await scene_tree.physics_frame
 	for _attempt in 6:
@@ -1159,6 +1181,33 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 		await scene_tree.physics_frame
 	Input.action_release(MOVE_RIGHT)
 	assert_eq(cultivation.phase(), CultivationRuntime.Phase.IDLE, "moving ended the sitting")
+
+
+## Hold a REAL move key until the body stops moving (it walked into something) or `frames`
+## run out. True when it was stopped — against a solid thing, not by the key being released.
+func _walk_until_blocked(player: Node2D, action: StringName, frames: int) -> bool:
+	Input.action_press(action)
+	var last := player.global_position
+	var still := 0
+	var blocked := false
+	for _i in frames:
+		await scene_tree.physics_frame
+		still = still + 1 if player.global_position.distance_to(last) < 0.05 else 0
+		last = player.global_position
+		if still >= 6:
+			blocked = true
+			break
+	Input.action_release(action)
+	await scene_tree.physics_frame
+	return blocked
+
+
+func _hold_move(action: StringName, frames: int) -> void:
+	Input.action_press(action)
+	for _i in frames:
+		await scene_tree.physics_frame
+	Input.action_release(action)
+	await scene_tree.physics_frame
 
 
 ## Hold `action` across PHYSICS frames, then release. The cultivation runtime reads its intent

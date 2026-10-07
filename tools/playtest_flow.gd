@@ -84,6 +84,7 @@ func _run() -> void:
 	var map := await _step_world_ready()
 	await _step_hud_present(map)
 	await _step_feedback(map)
+	await _step_physical_truth(map)
 	await _step_move(map)
 	await _step_toggle_panel(map)
 	await _step_attack(map)
@@ -195,7 +196,7 @@ func _step_feedback(map: Node) -> void:
 	started = Time.get_ticks_msec()
 	await _walk_onto(map, player, "Pickups/HubPill1")  # SETUP
 	var before := "kind=%s '%s'" % [hud.notice_kind(), hud.notice_text()]
-	player.global_position = spring.global_position + Vector2(0, 8)  # SETUP
+	player.global_position = spring.global_position + Vector2(0, 26)  # SETUP
 	for _i in 4:
 		await physics_frame
 	var refusal := String(loc.call("t", "UI_CULTIVATE_NO_METHOD"))
@@ -214,7 +215,7 @@ func _step_feedback(map: Node) -> void:
 	started = Time.get_ticks_msec()
 	await _walk_onto(map, player, "Pickups/HubManualPhong")  # SETUP
 	await _walk_onto(map, player, "Pickups/HubRobe")  # SETUP
-	player.global_position = stele.global_position + Vector2(0, 12)  # SETUP
+	player.global_position = stele.global_position + Vector2(0, 14)  # SETUP
 	for _i in 4:
 		await physics_frame
 	var waiting := hud.pending_notice_keys()
@@ -252,6 +253,106 @@ func _step_feedback(map: Node) -> void:
 		"lesson 1, lesson 2, then all %d waiting pickup notices in order; no overflow"
 			% waiting.size(),
 		" | ".join(sequence), ok, started, await _shot("05d_band_drained"))
+
+
+## D-063 A2: what is drawn with mass stops a walk. REAL held move keys walk the player into the
+## Lạc Hà stele and spring from two sides each; the walk must stop OUTSIDE the body, the stop must
+## still be inside the owner's reach (read / sit), pushing on must hold, walking away must be
+## free. Placement at the start of each walk is SETUP.
+func _step_physical_truth(map: Node) -> void:
+	var player := _player_of(map)
+	var stele := map.get_node_or_null("KnowledgeSources/LacHaStele") as KnowledgeSource
+	var spring := map.get_node_or_null("CultivationSites/LacHaSpring") as CultivationSite
+	if player == null or stele == null or spring == null:
+		_record("05e_stele_solid", "player, stele and spring in the hub", "missing", false,
+			Time.get_ticks_msec())
+		return
+	var hud := map.get_node_or_null("GameplayHUD") as GameplayHUD
+	# The stele: from the south (its face) and from the east.
+	var started := Time.get_ticks_msec()
+	var south := await _walk_into(player, stele.global_position + Vector2(0, 48), &"move_up",
+		&"move_down", "05e_stele_contact")
+	var front_ok: bool = south["stopped"] and float(south["feet"].y) >= stele.global_position.y \
+		+ 11.0 and stele.reaches(south["feet"])
+	var nothing_new := String(root.get_node("Localization").call("t", "UI_KNOWLEDGE_NOTHING_NEW"))
+	player.global_position = south["feet"]  # SETUP: back at the contact point to read
+	await physics_frame
+	var read := await _time_feedback(&"interact", func() -> bool:
+		return hud != null and hud.notice_text() == nothing_new)
+	var east := await _walk_into(player, stele.global_position + Vector2(56, -2), &"move_left",
+		&"move_right")
+	var side_ok: bool = east["stopped"] and float(east["feet"].x) >= stele.global_position.x \
+		+ 23.0 and stele.reaches(east["feet"])
+	_record("05e_stele_solid",
+		"walks stop OUTSIDE the plinth (S, E), inside its reach; push holds; leaving is free; "
+			+ "E answers <= %d frames" % FEEDBACK_MAX_FRAMES,
+		"S: %s | E: %s | read: frames=%d ms=%.1f" % [_walk_note(south, stele.global_position),
+			_walk_note(east, stele.global_position), read["frames"], read["ms"]],
+		front_ok and side_ok and _held_and_free(south) and _held_and_free(east)
+			and _within(read), started, south["shot"])
+	# The spring: from the south (the bank the player sits on) and from the north.
+	started = Time.get_ticks_msec()
+	var bank := await _walk_into(player, spring.global_position + Vector2(0, 56), &"move_up",
+		&"move_down", "05f_spring_contact")
+	var far_bank := await _walk_into(player, spring.global_position + Vector2(0, -48),
+		&"move_down", &"move_up", "05f_spring_far_bank")
+	var bank_ok: bool = bank["stopped"] and float(bank["feet"].y) >= spring.global_position.y \
+		+ 23.0 and spring.reaches(bank["feet"])
+	var far_ok: bool = far_bank["stopped"] and float(far_bank["feet"].y) \
+		<= spring.global_position.y - 11.0 and spring.reaches(far_bank["feet"])
+	_record("05f_spring_solid",
+		"walks stop OUTSIDE the ring of stones (S, N), inside the sitting radius; push holds; "
+			+ "leaving is free",
+		"S: %s | N: %s" % [_walk_note(bank, spring.global_position),
+			_walk_note(far_bank, spring.global_position)],
+		bank_ok and far_ok and _held_and_free(bank) and _held_and_free(far_bank), started,
+		bank["shot"])
+
+
+## SETUP the start, then a REAL held key until the body stops (6 still physics frames); then
+## push on for 20 frames and walk back for 30. Returns where it stopped and what each phase did.
+func _walk_into(player: Node2D, start: Vector2, toward: StringName, back: StringName,
+		shot_name: String = "") -> Dictionary:
+	player.global_position = start
+	for _i in 4:
+		await physics_frame
+	await RenderingServer.frame_post_draw
+	_send_key(toward, true)
+	var last := player.global_position
+	var still := 0
+	var stopped := false
+	for _i in POLL_FRAMES:
+		await physics_frame
+		still = still + 1 if player.global_position.distance_to(last) < 0.05 else 0
+		last = player.global_position
+		if still >= 6:
+			stopped = true
+			break
+	var feet := player.global_position
+	# The CONTACT frame, taken while the key is still held against the body.
+	var shot := await _shot(shot_name) if shot_name != "" else ""
+	for _i in 20:
+		await physics_frame
+	var pushed := player.global_position.distance_to(feet)
+	_send_key(toward, false)
+	await RenderingServer.frame_post_draw
+	_send_key(back, true)
+	for _i in 30:
+		await physics_frame
+	_send_key(back, false)
+	await physics_frame
+	return {"stopped": stopped, "feet": feet, "pushed": pushed,
+		"left": player.global_position.distance_to(feet), "shot": shot}
+
+
+func _held_and_free(walk: Dictionary) -> bool:
+	return float(walk["pushed"]) < 0.5 and float(walk["left"]) > 8.0
+
+
+func _walk_note(walk: Dictionary, origin: Vector2) -> String:
+	var rel: Vector2 = walk["feet"] - origin
+	return "stopped=%s feet=(%+.1f,%+.1f) dist=%.1f pushed=%.2f left=%.1f" % [walk["stopped"],
+		rel.x, rel.y, rel.length(), walk["pushed"], walk["left"]]
 
 
 ## Frame pacing of the real window, so a timing PASS can only come from a valid environment.

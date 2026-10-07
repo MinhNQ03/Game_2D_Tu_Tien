@@ -981,3 +981,10 @@ text, kind, and the whole waiting backlog kept in order. Real app (`tools/playte
 05a environment validity (an invalid pacing FAILS, never passes), 05b/05c rendered frames and ms
 from the key to the visible line (threshold 2 frames / 100 ms), 05d the real-time order of
 everything that waited. Suite: 815 tests.
+
+**D-063 A2a (physical truth — the stele and the spring):** `tests/gameplay/test_prop_bodies.gd`
+(4: the bodies exist from the pipeline's PropData; a walk with the player's own collision shape
+meets each from 4 sides and 4 corners — stopped outside, inside the reach, held when pushed, free
+to leave; no invisible wall, no ghost mass). `test_solid_props_never_block_the_play` also walks
+`PropBody`. E2E `_prove_cultivation` walks INTO the stele with a real held key. Playtest 05e/05f.
+

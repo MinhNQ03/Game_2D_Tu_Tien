@@ -39,14 +39,9 @@ func build() -> void:
 	if prop.sways:
 		_sprite.material = sway_material(prop)
 	add_child(_sprite)
-	if prop.footprint.size.x > 0.0 and prop.footprint.size.y > 0.0:
-		var shape := RectangleShape2D.new()
-		shape.size = prop.footprint.size
-		var body := CollisionShape2D.new()
-		body.name = "Footprint"
-		body.shape = shape
-		body.position = prop.footprint.position + prop.footprint.size * 0.5
-		add_child(body)
+	var footprint := PropBody.make_footprint(prop)
+	if footprint != null:
+		add_child(footprint)
 
 
 func sprite() -> Sprite2D:

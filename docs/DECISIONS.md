@@ -4323,3 +4323,52 @@ arrives at a frame boundary; the playtest now presses there (L-016).
 (the HUD is per map; carrying a backlog across maps is a cross-owner change, outside A1). The
 notice line has no backing surface: legible over grass and canopy in every measured frame, its
 contrast over light paving not yet verified.
+
+### A2 — Physical truth (defect D3)
+
+**Bug.** Real app: walking north from (576,340) the player reached y = 248 — straight through the
+Lạc Hà stele's base at y = 296 — and E still read it. The spring was the same: placements and
+captures stood the player inside its pool.
+
+**Root cause — two layers.** (1) Data: the pipeline wrote the stele's and the spring's
+`PropData.footprint` as zero, with the comment "placed by their own scenes, which own their
+collision" — false: no scene did. (2) Scene: `LacHaStele` was a `KnowledgeSource` (a distance
+test) over a bare `Sprite2D`; `LacHaSpring` the same over its landmark. Reach worked, so nothing
+looked wrong to any test that never walked into them.
+
+**Why the tests missed it.** `test_solid_props_never_block_the_play` walked only `WorldProp` nodes;
+the E2E TELEPORTED next to the stele (`stele + (0, 12)`) and into the spring (`spring + (0, 8)`);
+no test walked into anything.
+
+**Decision.**
+- A BODY is not a REACH. `PropBody` (a `StaticBody2D`, `CollisionLayers.WORLD`) is the solid base
+  of a sprite a scene places itself — the collision of its `PropData.footprint`, nothing else.
+  `WorldProp` builds its footprint with the same `PropBody.make_footprint`, so a footprint is
+  one rule. Reading and sitting stay the owners' distance tests (`reach_px`, `radius_px`).
+- The pipeline measures both bases from the model: the stele's plinth (32 × 12 units → 29.5 ×
+  5.5 px from its front edge) and the spring's ring of fieldstones (±28 × ±25 units about its
+  centre). The ring is ROUND: `PropData.footprint_round` builds the inscribed ellipse (16-point
+  convex shape) — a rectangle would stop a walk ~6 px short of the stones at the diagonals.
+- Sized so that standing against a body on ANY side is still inside its owner's reach: measured
+  in the real app, the stele from the south 12.0 px / from the east 23.9 px (reach 30), the
+  spring from the south 23.5 px / from the north 11.5 px (radius 44). No interaction changed.
+- **Layout change:** the stele moved from (576,296) to **(576,336)**. With a body, its plinth sat
+  on the spawn → east-exit road (the player's box spans 12 px above the feet, so walking east
+  along y = 304 met the plinth's west face head-on and `move_and_slide` cannot slide off a face
+  square to the motion). The extended route test caught it; 40 px south it stands by the road
+  mouth on the paved square, across the square from the spring.
+
+**Tests.** `tests/gameplay/test_prop_bodies.gd`: the bodies exist from the pipeline's own data;
+a walk with the PLAYER'S OWN collision shape (read from `player.tscn`) meets the stele and the
+spring from all four sides and four corners — stops OUTSIDE the body, inside the reach, holds
+when pushed, is free to leave; every body edge lies on drawn mass (no invisible wall) and the
+middle of each drawn base lies inside the body (no ghost mass; baked shadows, alpha < 200, are
+not mass). `test_solid_props_never_block_the_play` now sees `PropBody` too. E2E: a REAL held
+move key walks into the stele, stops at the plinth, reads it there, holds when pushed, walks
+away. Playtest 05e/05f: the same walks in the real app, from two sides each. Test-the-test:
+against the bodiless data and scene all four new tests fail ("the walk is stopped").
+
+**Found, not fixed (outside A2).** The prop pixelizer is not deterministic: `despeckle` breaks a
+tie with `max(set(keys))` over material NAMES, and Python randomizes string hashing per process —
+`PYTHONHASHSEED=2` reproduces the committed art, seeds 1 and 3 change one or two pixels of
+`spirit_spring.png`. A2 regenerated only the two `.tres` files and kept every PNG at HEAD.

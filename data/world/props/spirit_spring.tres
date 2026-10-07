@@ -8,5 +8,6 @@ script = ExtResource("1_prop")
 id = &"spirit_spring"
 texture = ExtResource("2_tex")
 origin = Vector2(26, 17)
-footprint = Rect2(0, 0, 0, 0)
+footprint = Rect2(-25.8462, -11.5385, 51.6923, 23.0769)
+footprint_round = true
 sways = false

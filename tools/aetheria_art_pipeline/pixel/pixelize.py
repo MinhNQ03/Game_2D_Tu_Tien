@@ -502,11 +502,19 @@ def build_props(prop_spec, frames_dir, root):
                 'texture = ExtResource("2_tex")\n'
                 "origin = Vector2(%d, %d)\n"
                 "footprint = Rect2(%g, %g, %g, %g)\n"
+                "%s"
                 "sways = %s\n" % (tex_rel, prop_id, round(ox), round(oy), foot[0], foot[1],
-                                   foot[2], foot[3], "true" if spec["kind"] in (
+                                   foot[2], foot[3],
+                                   "footprint_round = true\n"
+                                   if spec["kind"] in ROUND_FOOTPRINTS else "",
+                                   "true" if spec["kind"] in (
                                        "broadleaf_tree", "pine") else "false"))
         written += [tex_rel, tres_rel]
     return written
+
+
+# Props whose solid base is the ellipse inscribed in their footprint (PropData.footprint_round).
+ROUND_FOOTPRINTS = ("spirit_spring",)
 
 
 def _footprint(spec, meta):
@@ -520,8 +528,16 @@ def _footprint(spec, meta):
         w, d = p.get("w", 150.0) + 8, p.get("d", 96.0) + 8
     elif kind == "outpost_hall":
         w, d = p.get("w", 200.0) + 28, p.get("d", 120.0) + 34
-    elif kind in ("stele", "spirit_spring", "training_post"):
-        return (0, 0, 0, 0)      # placed by their own scenes, which own their collision
+    elif kind == "stele":
+        w, d = 32.0, 12.0        # the plinth (model/props3d.py stele): the tablet stands on it
+    elif kind == "spirit_spring":
+        # Round, about its CENTRE (the site): the outer edge of the ring of fieldstones — ring
+        # radius 22 plus a stone's radius along x, 0.95 x 22 plus a stone's depth along y.
+        # Written with ROUND_FOOTPRINTS, so the body is that ellipse, not its rectangle.
+        a, b = 28.0, 25.0
+        return (-a * ppu, -b * ppu * squash, 2 * a * ppu, 2 * b * ppu * squash)
+    elif kind == "training_post":
+        return (0, 0, 0, 0)      # training_dummy.tscn IS the body (a StaticBody2D combat target)
     elif kind == "boulder":
         sc = p.get("scale", 1.0)
         w, d = 50.0 * sc, 34.0 * sc

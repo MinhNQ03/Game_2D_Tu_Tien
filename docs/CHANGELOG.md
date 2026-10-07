@@ -8,6 +8,13 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-08 — The stele and the spring are solid (D-063 A2)
+
+- **You can no longer walk through the Lạc Hà stele or into the spring.** Walk up to the stele
+  and you stop at its plinth — and can read it from there, from any side; the spring's ring of
+  stones is round, and you sit on its bank, not in the water. The stele now stands by the mouth
+  of the east road, so the way to the woods is clear.
+
 ### 2026-10-08 — Immediate feedback (D-063 A1)
 
 - **A key press is answered at once.** Pressing C where you cannot cultivate, or E at the stele,

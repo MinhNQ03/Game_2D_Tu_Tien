@@ -666,11 +666,20 @@ func test_solid_props_never_block_the_play() -> void:
 	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
 		var map: Node2D = (entry[0] as PackedScene).instantiate()  # NOT in the tree (L-010)
 		var label := String(entry[1])
-		var props: Array[WorldProp] = []
+		# EVERY body a prop stands on: the pipeline's WorldProps AND the PropBody under a sprite a
+		# scene places itself (D-063: the stele and the spring were bodiless, and this test only
+		# looked at WorldProps, so nothing noticed).
+		var props: Array[Dictionary] = []
 		for child in map.get_node("Visual/Decor").get_children():
 			if child is WorldProp:
-				props.append(child as WorldProp)
-		var anchors: Array[Vector2] = []
+				props.append({"node": child, "data": (child as WorldProp).prop,
+					"at": (child as Node2D).position, "own": null})
+		for found in map.find_children("*", "StaticBody2D", true, false):
+			if found is PropBody:
+				var body := found as PropBody
+				props.append({"node": body, "data": body.prop, "at": _map_position(body, map),
+					"own": body.get_parent()})
+		var anchors: Array[Dictionary] = []
 		for path in ["Spawns", "Exits", "CultivationSites", "KnowledgeSources", "Pickups",
 				"CombatTargets"]:
 			var holder := map.get_node_or_null(path)
@@ -678,20 +687,25 @@ func test_solid_props_never_block_the_play() -> void:
 				continue
 			for child in holder.get_children():
 				if child is Node2D:
-					anchors.append((child as Node2D).position)
+					anchors.append({"node": child, "at": (child as Node2D).position})
 		var ground := map.get_node("Visual/Ground")
 		var spawn := map.get_node_or_null("Spawns/spawn_default") as Node2D
-		for prop in props:
-			if prop.prop == null:
+		for entry_prop in props:
+			var data := entry_prop["data"] as PropData
+			if data == null:
 				continue
-			var foot := prop.prop.footprint
+			var foot := data.footprint
 			if foot.size.x <= 0.0:
 				continue
-			var rect := Rect2(prop.position + foot.position, foot.size).grow(8.0)
+			var prop_node := entry_prop["node"] as Node
+			var at: Vector2 = entry_prop["at"]
+			var rect := Rect2(at + foot.position, foot.size).grow(8.0)
 			for anchor in anchors:
-				assert_false(rect.has_point(anchor),
+				if anchor["node"] == entry_prop["own"]:
+					continue  # a stele's own plinth is not in the way of reading the stele
+				assert_false(rect.has_point(anchor["at"]),
 					"%s '%s' footprint %s keeps clear of the anchor at %s" % [
-						label, prop.name, str(rect), str(anchor)])
+						label, prop_node.name, str(rect), str(anchor["at"])])
 			if spawn != null:
 				for exit_zone in map.get_node("Exits").get_children():
 					var a := spawn.position
@@ -699,11 +713,22 @@ func test_solid_props_never_block_the_play() -> void:
 					var closest := Geometry2D.get_closest_point_to_segment(rect.get_center(),
 						a, b)
 					assert_false(rect.grow(MIN_PATH_CLEARANCE_PX * 0.5).has_point(closest),
-						"%s '%s' stays off the spawn -> exit line" % [label, prop.name])
-			var cell := Vector2i(floori(prop.position.x / 16.0), floori(prop.position.y / 16.0))
+						"%s '%s' stays off the spawn -> exit line" % [label, prop_node.name])
+			var cell := Vector2i(floori(at.x / 16.0), floori(at.y / 16.0))
 			assert_false(bool(ground.call("is_flooded_cell", cell)),
-				"%s '%s' stands on dry ground" % [label, prop.name])
+				"%s '%s' stands on dry ground" % [label, prop_node.name])
 		map.free()
+
+
+## A node's position in its map's space, read off-tree (a global transform needs the tree).
+func _map_position(node: Node, map: Node) -> Vector2:
+	var at := Vector2.ZERO
+	var current := node
+	while current != null and current != map:
+		if current is Node2D:
+			at += (current as Node2D).position
+		current = current.get_parent()
+	return at
 
 
 ## A pipeline sprite placed directly in a scene (the training post, the Lạc Hà stele and spring)

@@ -11,5 +11,8 @@ class_name PropData
 @export var origin: Vector2 = Vector2.ZERO
 ## The solid base, relative to the origin. Zero size = walk-through (grass, a hanging thing).
 @export var footprint: Rect2 = Rect2()
+## The base is the ELLIPSE inscribed in `footprint` (a pool in a ring of stones): its rectangle
+## would stop a body at the diagonals well before it touched anything drawn (D-063).
+@export var footprint_round: bool = false
 ## Moves in the wind (wears the shared sway material).
 @export var sways: bool = false

@@ -8,5 +8,5 @@ script = ExtResource("1_prop")
 id = &"stele"
 texture = ExtResource("2_tex")
 origin = Vector2(17, 50)
-footprint = Rect2(0, 0, 0, 0)
+footprint = Rect2(-14.7692, -5.53846, 29.5385, 5.53846)
 sways = false

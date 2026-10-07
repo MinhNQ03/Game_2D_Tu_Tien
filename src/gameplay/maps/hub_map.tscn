@@ -1,4 +1,4 @@
-[gd_scene load_steps=44 format=3]
+[gd_scene load_steps=47 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -44,6 +44,9 @@
 [ext_resource type="Resource" path="res://data/world/props/tree_small.tres" id="p_tree_small"]
 [ext_resource type="Resource" path="res://data/world/props/weapon_rack.tres" id="p_weapon_rack"]
 [ext_resource type="Resource" path="res://data/world/props/well.tres" id="p_well"]
+[ext_resource type="Script" path="res://src/gameplay/world/props/prop_body.gd" id="pb_script"]
+[ext_resource type="Resource" path="res://data/world/props/spirit_spring.tres" id="pb_spring"]
+[ext_resource type="Resource" path="res://data/world/props/stele.tres" id="pb_stele"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
 shader_parameter/pivot_row = 11.0
@@ -569,6 +572,10 @@ texture = ExtResource("44_spring")
 centered = false
 offset = Vector2(-26, -17)
 
+[node name="Body" type="StaticBody2D" parent="CultivationSites/LacHaSpring"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_spring")
+
 [node name="QiWell" type="Node2D" parent="CultivationSites/LacHaSpring"]
 script = ExtResource("42_qiwell")
 
@@ -576,7 +583,7 @@ script = ExtResource("42_qiwell")
 y_sort_enabled = true
 
 [node name="LacHaStele" type="Node2D" parent="KnowledgeSources"]
-position = Vector2(576, 296)
+position = Vector2(576, 336)
 script = ExtResource("45_source")
 source_id = &"source_lac_ha_stele"
 grants = Array[StringName]([&"know_dan_khi_quyet", &"know_lac_ha_stele_record"])
@@ -587,6 +594,10 @@ texture_filter = 1
 texture = ExtResource("46_stele")
 centered = false
 offset = Vector2(-17, -50)
+
+[node name="Body" type="StaticBody2D" parent="KnowledgeSources/LacHaStele"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_stele")
 
 [node name="Pickups" type="Node2D" parent="."]
 y_sort_enabled = true

@@ -177,12 +177,12 @@ func _scenario_cultivation() -> void:
 	if player == null or stele == null or spring == null or cultivation == null:
 		_fail("cultivation: hub pieces missing")
 		return
-	player.global_position = stele.global_position + Vector2(0, 12)
+	player.global_position = stele.global_position + Vector2(0, 14)
 	await _settle()
 	await _press(&"interact")
 	await _settle()
 	await _shot("scene_stele_read")
-	player.global_position = spring.global_position + Vector2(0, 8)
+	player.global_position = spring.global_position + Vector2(0, 26)
 	await _settle()
 	await _hold(&"cultivate")
 	var focus := func() -> Vector2: return spring.global_position + Vector2(0, -10)
