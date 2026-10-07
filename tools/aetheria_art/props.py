@@ -96,40 +96,6 @@ def gen_banner(root):
     _save(root, "assets/sprites/props/prop_banner_cloth.png", cloth)
 
 
-def gen_tree(root):
-    """A broadleaf tree: a lobed canopy over a trunk with a root flare. 40x44, 3px of air at
-    each side and the top for the canopy's sway; the trunk barely moves (heavy, rooted)."""
-    w, h = 40, 44
-    px = raster.blank(w, h)
-    trunk = (92, 66, 44, 255)
-    trunk_dk = raster.shade(trunk, 0.7)
-    leaf = (46, 104, 56, 255)
-    leaf_hi = (76, 142, 78, 255)
-    leaf_tip = (104, 168, 90, 255)
-    leaf_dk = (32, 76, 44, 255)
-    raster.polygon(px, [(17, 30), (23, 30), (24, 42), (27, 43), (13, 43), (16, 42)], trunk)
-    raster.polygon(px, [(20, 30), (23, 30), (24, 42), (27, 43), (20, 43)], trunk_dk)
-    raster.oval(px, 20, 42.5, 9, 1.6, (12, 16, 22, 90))                    # contact shadow
-    # Canopy: lobes, dark ones first so the lit ones overlap them (top-left light).
-    for (cx, cy, rx, ry, col) in ((12, 22, 8, 7, leaf_dk), (28, 22, 8, 7, leaf_dk),
-                                  (20, 25, 10, 6, leaf_dk), (14, 15, 8, 7, leaf),
-                                  (26, 15, 8, 7, leaf), (20, 10, 9, 7, leaf),
-                                  (20, 19, 10, 7, leaf)):
-        raster.oval(px, cx, cy, rx, ry, col)
-    for (cx, cy, rx, ry) in ((16, 9, 5, 3), (11, 14, 3, 3), (22, 6, 3, 2)):
-        raster.oval(px, cx, cy, rx, ry, leaf_hi)
-    # Leaf clusters: a lit crescent on top of each lobe and a dark notch under it, placed by
-    # hand. An ordered dither over the whole canopy read as a polka-dot grid, not foliage.
-    for (cx, cy) in ((12, 18), (27, 18), (20, 21), (26, 11), (14, 11), (20, 15), (31, 15)):
-        raster.rect(px, cx - 1, cy - 1, cx + 2, cy, leaf_hi)
-        raster.put(px, cx, cy - 2, leaf_tip)
-        raster.rect(px, cx - 1, cy + 1, cx + 1, cy + 2, leaf_dk)
-    for (x, y) in ((15, 7), (19, 5), (10, 13), (24, 9), (13, 17)):
-        raster.put(px, x, y, leaf_tip)
-    raster.outline(px, INK)
-    _save(root, "assets/sprites/props/prop_tree_broadleaf.png", px)
-
-
 def gen_lantern_post(root):
     """A wooden lantern post with an arm, and the paper lantern that hangs from it (separate,
     so the lantern can swing about its cord while the post stays put)."""

@@ -37,7 +37,6 @@ props:
   tree_broadleaf: {kind: broadleaf_tree, params: {seed: 3, scale: 1.0}}
   tree_small:     {kind: broadleaf_tree, params: {seed: 9, scale: 0.72}}
   fence_long:     {kind: fence, params: {length: 150}}
-  fence_short:    {kind: fence, params: {length: 90}}
   well:           {kind: well}
   weapon_rack:    {kind: weapon_rack}
   pine:           {kind: pine, params: {seed: 5, scale: 1.0}}

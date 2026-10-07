@@ -24,10 +24,12 @@
 > World → Relationship → Sect → Faction → WorldSimulation → Combat → Progression → Knowledge →
 > Cultivation → Inventory → Equipment → Skill (`main.gd` `SESSION_START_ORDER`). Still five
 > autoloads; no manager.
-> The live UI is the CC0 Xianxia Pixel Pack set (D-028) and the visible world/character art is
-> at the **production-foundation** tier (D-029) — both presentation-only, no gameplay/domain
-> change. The repo boots to a playable world/map slice where the player is a real Character,
-> with a UI foundation:
+> D-062 locked the visual identity: the live UI is the ORIGINAL ink-lacquer kit, and every
+> humanoid sheet, portrait, icon, world prop and map floor comes from ONE art pipeline
+> (`tools/aetheria_art_pipeline/`, Blender as a BUILD tool — `docs/AETHERIA_ART_PIPELINE.md`).
+> Runtime additions are data + presentation seams only (see the D-062 section below); no
+> gameplay/domain rule changed and still five autoloads. The repo boots to a playable world/map
+> slice where the player is a real Character, with a UI foundation:
 > - Bootstrap scene `main.tscn` (root `Main`, script `src/bootstrap/main.gd`, children
 >   `Systems`/`World`/`UI`); `Main` only coordinates boot and wiring.
 > - 5 infrastructure autoloads (D-017): `EventBus`, `GameState` (lifecycle + session +
@@ -345,3 +347,23 @@ writes the simulation clock, so hit-stop holds an image, not `Engine.time_scale`
 - **Character visual = presentation only.** `src/presentation/characters/` renders a
   `CharacterVisualProfileData` and reads movement facing; it never owns movement or mutates
   domain state. The dependency direction holds: presentation → gameplay/domain, never upward.
+
+
+## The art pipeline seams (D-062)
+
+Blender never runs with the game. The pipeline writes PNGs and `.tres`; the game reads them
+through these seams, each one data-driven and each with a contract test:
+
+| Seam | Layer | What it carries | Pinned by |
+|---|---|---|---|
+| `CharacterVisualProfileData` + per-actor `CharacterAnchorData` | data → presentation | sheets, feet row (`anchor_offset (0, 5)`), bone-projected anchors | `test_character_visual`, `test_character_locomotion`, the pipeline's own profile check |
+| `GroundLayoutData` → `PaintedGround` (`Visual/Ground`) | data → gameplay (visual) | the painted floor, `fill_rect`, paddy/water cells, materials | `test_map_scenes` (bounds, dry walkway, not one material, props on dry ground) |
+| `GroundLayoutData.blockers` → `WaterBlockers` (`Collision/Water`) | data → gameplay | water collision from the SAME data the water was painted from | `test_painted_water_is_the_water_that_blocks` |
+| `PropData` → `WorldProp` (`Visual/Decor`, y-sorted) | data → gameplay | sprite + origin (front base = the depth-sort line) + solid footprint; shared sway material | `test_solid_props_never_block_the_play`, `test_pipeline_sprites_stand_on_their_measured_origin` |
+| `ItemData.world_icon` → `PickupFeedback` | data → presentation | the 16px item lying in the world | — (fallback to `icon`) |
+| `UIPalette` → `UITheme` (`icon_slot`, `fill_color`, five button plates, keycap, band, medallion) | presentation | the ink-lacquer kit | `test_ui_theme` (measured surfaces), `test_gameplay_hud` |
+
+The layout of a map (where houses, trees, roads and water are) is authored in
+`tools/aetheria_art_pipeline/designs/maps/<map>.yaml` and written into the scene by
+`world/sync_scene.py` (idempotent) — the YAML is the source of truth for placement, the scene
+holds the nodes so the editor and the tests see them.

@@ -226,20 +226,35 @@ def mirror(px):
 
 
 def write_png(path, px):
-    """Write an RGBA8 PNG with only zlib + struct (no third-party imaging library)."""
+    """Write a PNG with only zlib + struct (no third-party imaging library).
+
+    Lossless and small: an image of <=256 distinct RGBA values (every sprite here) is written
+    as 8-bit palette + per-entry alpha (tRNS), anything else as RGBA8."""
     w, h = size(px)
+    pixels = [(0, 0, 0, 0) if c[3] == 0 else tuple(c) for row in px for c in row]
+    palette = sorted(set(pixels), key=lambda c: (c[3] != 0, c))
+    indexed = len(palette) <= 256
     raw = bytearray()
-    for row in px:
-        raw.append(0)
-        for (r, g, b, a) in row:
-            raw += bytes((r, g, b, a))
+    if indexed:
+        index = {c: i for i, c in enumerate(palette)}
+        for y in range(h):
+            raw.append(0)
+            raw += bytes(index[c] for c in pixels[y * w:(y + 1) * w])
+    else:
+        for y in range(h):
+            raw.append(0)
+            for c in pixels[y * w:(y + 1) * w]:
+                raw += bytes(c)
 
     def chunk(tag, data):
         return (struct.pack(">I", len(data)) + tag + data
                 + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF))
 
+    head = chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 3 if indexed else 6, 0, 0, 0))
+    if indexed:
+        head += (chunk(b"PLTE", bytes(v for c in palette for v in c[:3]))
+                 + chunk(b"tRNS", bytes(c[3] for c in palette)))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
-        f.write(b"\x89PNG\r\n\x1a\n"
-                + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+        f.write(b"\x89PNG\r\n\x1a\n" + head
                 + chunk(b"IDAT", zlib.compress(bytes(raw), 9)) + chunk(b"IEND", b""))

@@ -84,16 +84,25 @@ from a reference, a moodboard or a third-party pack. Regenerate, never hand-edit
 | K2 | `assets/ui/aetheria_ink/button_{normal,hover,focus,pressed,disabled}.png` | five designed button states | self-made — `ui_kit.py` | project-owned | every button (`UITheme.button_stylebox`) | No |
 | K3 | `assets/ui/aetheria_ink/{keycap,gauge_well,gauge_fill,slot,slot_phong,slot_loi,slot_hoa,slot_thuy}.png` | keycap, meter material, icon slots | self-made — `ui_kit.py` | project-owned | prompts, every meter, satchel + technique dock | No |
 | K4 | `assets/ui/aetheria_ink/{divider,frame_mask,corner_fret}.png` | white ornament masks (tinted) | self-made — `ui_kit.py` | project-owned | dividers, frames, full-screen corners | No |
-| K5 | `assets/ui/aetheria_ink/medallion_*.png` (96×96) | identity medallions | self-made — `ui_kit.py` framing the pipeline's 80px portraits (P62c) | project-owned | HUD identity plaque (`UITheme.portrait_texture`) | No |
+| K5 | `assets/ui/aetheria_ink/medallion_{player_proto,cultivator_f_proto}.png` (96×96) | identity medallions | self-made — `ui_kit.py` framing the pipeline's 80px portraits (P62c) | project-owned | HUD identity plaque (`UITheme.portrait_texture`); only the medallions a screen loads ship | No |
+| K7 | `assets/maps/{lac_ha,vo_mach}_ground.png` (960×576) + `data/maps/ground/*_ground.tres` | painted map floors + their layout data | self-made — `world/ground.py` from `designs/maps/*.yaml` (deterministic) | project-owned | `PaintedGround`, `WaterBlockers` (hub, field) | No |
+| K8 | `assets/sprites/props/world/*.png` + `data/world/props/*.tres` (dwellings, outpost hall, well, rack, fences, broadleaf trees, pines, boulders, stele, spirit spring, training post) | world props with cast shadows + origin/footprint data | self-made — modelled in **Blender 5.2** (`model/props3d.py`, `blender/build_props.py`), `build.py props` | project-owned | `WorldProp` in both maps; the stele/spring sprites; `training_dummy.tscn` | No |
 | K6 | `assets/sprites/items/{item_*,skill_*}.png` (32×32) and `assets/sprites/items/world/item_*.png` (16×16) | item / equipment / technique icons, world pickups | self-made — modelled in **Blender 5.2** (`model/icons.py`, `blender/build_icons.py`), adapted by `pixel/pixelize.py` (`build.py icons`) — the same passes, light and ink as the characters | project-owned | `ItemData.icon` / `world_icon`, `SkillData.icon` | No |
 
 **RETIRED (D-062) and removed from the repository** — the rows in the sections below are kept as
 history only: the CC0 Xianxia Pixel Pack UI (`assets/ui/xianxia/`, U-rows), the three Kenney
 ornament masks (`assets/ui/kenney_borders/`), the painted button plates and icons
 (`assets/ui/aetheria/buttons/`, `assets/ui/aetheria/icons/`) with `tools/repair_button_plate.py`,
-the painted HUD portraits (`cultivator_male.png`, `cultivator_female.png`), and the stdlib 16px item
-and skill icons. The painted menu backdrop (`assets/ui/aetheria/backdrop/cloud_peaks.png`, A4) is
+the painted HUD portraits (`cultivator_male.png`, `cultivator_female.png`), the stdlib 16px item
+and skill icons, and the stdlib training post, stele, spirit spring and vein fissure. The Verdant
+tile sheet (V-rows) is no longer under any shipped map (both floors are painted); it stays for
+`PrototypeGround`, the fallback floor of a map without a layout. The painted menu backdrop (`assets/ui/aetheria/backdrop/cloud_peaks.png`, A4) is
 the one painted asset still live — behind the menu only.
+
+**Footprint rule (D-062).** Every pipeline PNG is written by `pixel/pngout.py`: an 8-bit palette
+with per-entry alpha when the image has ≤256 colours (all of them do), RGBA otherwise — lossless,
+verified pixel-identical, about half the bytes. Build intermediates (portraits, passes, beauty
+renders, review boards) stay in the gitignored `work/`; only what a scene or resource loads ships.
 
 ## Production UI art — Xianxia Pixel Pack (CC0, D-028) — RETIRED D-062
 
@@ -217,7 +226,7 @@ silently produce a motionless "animation". Project-owned, no external license. C
 > |---|------|------|-----------------|---------|---------|--------|
 > | P62a | `tools/aetheria_art_pipeline/blender/aetheria_cultivator.blend` | Blender master (model, rig, 10 Actions, cameras, lights, materials) | self-made — `blender/build_actor.py` via blender-pro MCP | project-owned | build-time only, never loaded by the game | No |
 > | P62b | `data/characters/visual/anchors/{player_proto,player_daobao,lin_yue,elder,merchant}_anchors.tres` (replace `cultivator_anchors.tres`) | DATA (per-frame palm / rear palm / core, projected from the rig's bones) | self-made — `pixel/pixelize.py` | project-owned | each actor's `CharacterVisualProfileData.anchors` | No |
-> | P62c | `assets/sprites/characters/portraits/{player_proto,player_daobao,cultivator_f_proto,elder_proto,merchant_proto}.png` (56×56) | HUD portraits (pixel art) from the SAME model, portrait LOD (brows, almond eyes, nose, mouth, ears) | self-made — `pixel/pixelize.py portrait` | project-owned | HUD identity plaque (D-062 CP2) | No |
+> | P62c | ~~`assets/sprites/characters/portraits/*.png`~~ → `tools/aetheria_art_pipeline/work/<actor>/portrait.png` (80×80, gitignored) | portraits (pixel art) from the SAME model, portrait LOD (brows, almond eyes, nose, mouth, ears) | self-made — `pixel/pixelize.py portrait` | project-owned | a BUILD product: framed into the K5 medallions; no longer shipped on its own | No |
 
 > **D-057B redraw (same files, NEW dimensions).** The generator became the `tools/aetheria_art/`
 > package (still stdlib-only): a POSE-driven 32×48 humanoid (6-beat breath, 8-frame two-step

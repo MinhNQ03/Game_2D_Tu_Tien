@@ -230,6 +230,12 @@ any asset.
 - Textures: character sheets 4.0 MB VRAM total (27 sheets, RGBA8); the active map's floor 2.1 MB
   (960×576); world props 0.6 MB; UI kit 0.4 MB; icons < 0.1 MB. All lossless, no mipmaps (pixel
   art), nearest-filtered. Only the active map's floor is resident.
+- Disk / repository: every shipped PNG is written by `pixel/pngout.py` (and the stdlib
+  `raster.write_png`) as 8-bit palette + alpha — lossless, verified pixel-identical. The 93
+  generated PNGs went 613 KB → 315 KB (a floor 165 KB → 84 KB, a sheet ~11.5 KB → ~5.3 KB).
+  Build intermediates (portraits, passes, renders, boards) stay in the gitignored `work/`; the
+  medallions, sprites and props that no scene loads (3 NPC medallions, the ring, 5 standalone
+  portraits, the short fence, the stdlib broadleaf) were removed. All of `assets/` is ~0.6 MB (apparent size, `.import` files included).
 - Draw: the floor is one sprite; props are one sprite + one static collider each (14 in Thôn Lạc
   Hà, 22 in Rừng Vỡ Mạch), y-sorted; tree sway is one shared shader material per texture.
 - No per-frame UI rebuild: the HUD refreshes on pushes and language changes (pinned by

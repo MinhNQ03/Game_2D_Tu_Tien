@@ -161,7 +161,6 @@ func test_field_map_structure() -> void:
 # cloth waves, grass tufts), and retired the 2x-scaled emblem that stood in for a banner — a
 # 16px emblem at scale 2 showed pixels twice the size of every pixel around it.
 const EXPECTED_PROP_SIZES := {
-	"res://assets/sprites/props/prop_tree_broadleaf.png": Vector2i(40, 44),
 	"res://assets/sprites/props/prop_lantern_post.png": Vector2i(20, 48),
 	"res://assets/sprites/props/prop_banner_pole.png": Vector2i(16, 48),
 	"res://assets/sprites/props/prop_grass_1.png": Vector2i(16, 12),
@@ -516,7 +515,6 @@ const MIST_SHADER := "res://src/presentation/ambient/mist_drift.gdshader"
 
 ## Textures that MOVE in the wind, and so must wear the sway material.
 const SWAYING_TEXTURES := [
-	"res://assets/sprites/props/prop_tree_broadleaf.png",
 	"res://assets/sprites/props/prop_grass_1.png",
 	"res://assets/sprites/props/prop_grass_2.png",
 	"res://assets/sprites/props/prop_grass_3.png",

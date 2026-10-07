@@ -18,9 +18,11 @@ from PIL import Image
 
 PIPE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(PIPE, "style"))
+sys.path.insert(0, os.path.join(PIPE, "pixel"))
 sys.path.insert(0, os.path.join(os.path.dirname(PIPE), ""))
 
 import style  # noqa: E402
+import pngout  # noqa: E402
 
 DIRECTIONS = ("down", "up", "left", "right")
 LINING = {"robe": "robe_inner"}          # a back-face of the outer robe shows its lining
@@ -316,21 +318,21 @@ def build_actor(spec, work_dir, root):
                                      loops=info.get("loops", True))
         sheet_img = _assemble(cells)
         rel = "assets/sprites/characters/%s_%s.png" % (out["sheet_prefix"], anim)
-        sheet_img.save(os.path.join(root, rel))
+        pngout.save(sheet_img, os.path.join(root, rel))
         written.append(rel)
         anchors[anim] = {}
         for point, per_dir in projected[anim].items():
             anchors[anim][point] = [[(int(math.floor(x)), int(math.floor(y))) for x, y in frames]
                                     for frames in per_dir]
     if out.get("portrait"):
-        rel = "assets/sprites/characters/portraits/%s.png" % out["portrait"]
-        portrait(spec, frames_dir).save(os.path.join(root, rel))
-        written.append(rel)
+        # a build product, not a shipped asset: the UI kit frames it into the medallion the
+        # HUD loads (ui/ui_kit.py MEDALLIONS); the review board shows it
+        portrait(spec, frames_dir).save(os.path.join(work_dir, "portrait.png"))
     if out.get("fallback"):
         # The static frame a scene shows before its profile binds: the idle sheet's first DOWN
         # frame, the same pixels, so the two can never disagree.
         rel = "assets/sprites/characters/%s.png" % out["fallback"]
-        cell(spec, frames_dir, "idle_down_0").save(os.path.join(root, rel))
+        pngout.save(cell(spec, frames_dir, "idle_down_0"), os.path.join(root, rel))
         written.append(rel)
     path = os.path.join(root, "data/characters/visual/anchors/%s.tres" % out["anchors"])
     legacy_sheet.write_anchor_resource(path, "anchors_" + spec["id"], (cw, ch), anchors,
@@ -381,14 +383,14 @@ def build_icons(icon_spec, frames_dir, root):
     for icon_id, spec in icon_spec["icons"].items():
         img = icon(spec, frames_dir, icon_id, k, cell)
         rel = "assets/sprites/items/%s.png" % icon_id
-        img.save(os.path.join(root, rel))
+        pngout.save(img, os.path.join(root, rel))
         written.append(rel)
         world = icon_spec.get("world_cell")
         if world and os.path.exists(os.path.join(frames_dir, icon_id + "_w_id.png")):
             os.makedirs(os.path.join(root, "assets/sprites/items/world"), exist_ok=True)
             rel = "assets/sprites/items/world/%s.png" % icon_id
-            icon(spec, frames_dir, icon_id + "_w", k, world, shadow=False).save(
-                os.path.join(root, rel))
+            pngout.save(icon(spec, frames_dir, icon_id + "_w", k, world, shadow=False),
+                        os.path.join(root, rel))
             written.append(rel)
     return written
 
@@ -456,7 +458,7 @@ def build_props(prop_spec, frames_dir, root):
         img = img.crop(bbox)
         ox, oy = meta["origin"][0] - bbox[0], meta["origin"][1] - bbox[1]
         tex_rel = "assets/sprites/props/world/%s.png" % prop_id
-        img.save(os.path.join(root, tex_rel))
+        pngout.save(img, os.path.join(root, tex_rel))
         foot = _footprint(spec, meta)
         tres_rel = "data/world/props/%s.tres" % prop_id
         with open(os.path.join(root, tres_rel), "w", encoding="utf-8") as f:

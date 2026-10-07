@@ -4,7 +4,7 @@ One image a reviewer reads top to bottom:
   1. the presentation turnaround (Blender beauty render, ink hull on) — the 3D master;
   2. the face close-up from the front view and the hand close-ups (strike, rest, seal) — the
      face and hands at a size they can be judged;
-  3. the 56px HUD portrait at 1x and 4x;
+  3. the 80px portrait (framed into the HUD medallion) at 1x and 4x;
   4. every animation's frames, all four facings, at 1x and magnified — the gameplay sprite.
 
 It reads only files the pipeline wrote (work/<actor>/ and the committed sheets), so it never
@@ -40,9 +40,7 @@ def _turnaround(work):
 def build(spec, root, work, scale=4):
     prefix = spec["outputs"]["sheet_prefix"]
     strip, face = _turnaround(work)
-    portrait_path = os.path.join(root, "assets/sprites/characters/portraits/%s.png"
-                                 % spec["outputs"]["portrait"])
-    portrait = Image.open(portrait_path).convert("RGBA")
+    portrait = Image.open(os.path.join(work, "portrait.png")).convert("RGBA")
     sheets = []
     for anim in ANIMS:
         sheet = Image.open(os.path.join(root, "assets/sprites/characters/%s_%s.png"

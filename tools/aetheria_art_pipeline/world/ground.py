@@ -26,7 +26,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PIPE = os.path.dirname(HERE)
 ROOT = os.path.dirname(os.path.dirname(PIPE))
 sys.path.insert(0, os.path.join(PIPE, "style"))
+sys.path.insert(0, os.path.join(PIPE, "pixel"))
 
+import pngout  # noqa: E402
 import style  # noqa: E402
 
 ST = style.load()
@@ -355,7 +357,7 @@ def write(layout_id):
     L, img, mat, (ox, oy, w, h) = paint(layout_path)
     tex_rel = "assets/maps/%s_ground.png" % layout_id
     os.makedirs(os.path.join(ROOT, "assets", "maps"), exist_ok=True)
-    img.save(os.path.join(ROOT, tex_rel))
+    pngout.save(img, os.path.join(ROOT, tex_rel))
     tile = L["tile"]
     fx, fy, fw, fh = L["fill_rect"]
     paddy, water = [], []

@@ -24,7 +24,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PIPE = os.path.dirname(HERE)
 ROOT = os.path.dirname(os.path.dirname(PIPE))
 sys.path.insert(0, os.path.join(PIPE, "style"))
+sys.path.insert(0, os.path.join(PIPE, "pixel"))
 
+import pngout  # noqa: E402
 import style  # noqa: E402
 
 OUT_DIR = os.path.join(ROOT, "assets", "ui", "aetheria_ink")
@@ -139,9 +141,7 @@ def hairline(img, inset, colour, light=None, dark=None, notch=2, knots=False):
 
 def save(img, name):
     os.makedirs(OUT_DIR, exist_ok=True)
-    path = os.path.join(OUT_DIR, name)
-    img.save(path)
-    return path
+    return pngout.save(img, os.path.join(OUT_DIR, name))
 
 
 # --- pieces --------------------------------------------------------------------------------------
@@ -440,7 +440,6 @@ KIT = {
     "keycap.png": keycap,
     "gauge_well.png": gauge_well,
     "gauge_fill.png": gauge_fill,
-    "medallion_ring.png": medallion_ring,
     "slot.png": lambda: slot("none"),
     "slot_phong.png": lambda: slot("phong"),
     "slot_loi.png": lambda: slot("loi"),
@@ -451,18 +450,21 @@ KIT = {
     "corner_fret.png": corner_fret,
 }
 
-# Portraits get a medallion each: the pipeline's portraits, framed by the kit.
-MEDALLIONS = ("player_proto", "player_daobao", "cultivator_f_proto", "elder_proto",
-              "merchant_proto")
+# The medallions the game LOADS (UIPalette.TEX_MEDALLION_*), keyed by output name -> the actor
+# whose built portrait (work/<actor>/portrait.png, from `build.py pixel`) it frames. Only what
+# the HUD references ships; another actor gets a medallion when a screen shows it.
+MEDALLIONS = {"player_proto": "player_proto", "cultivator_f_proto": "lin_yue"}
 
 
 def build():
     written = [save(fn(), name) for name, fn in KIT.items()]
-    pdir = os.path.join(ROOT, "assets", "sprites", "characters", "portraits")
-    for actor in MEDALLIONS:
-        src = os.path.join(pdir, actor + ".png")
+    for name, actor in MEDALLIONS.items():
+        src = os.path.join(PIPE, "work", actor, "portrait.png")
         if os.path.exists(src):
-            written.append(save(medallion(src), "medallion_%s.png" % actor))
+            written.append(save(medallion(src), "medallion_%s.png" % name))
+        else:
+            print("skip medallion_%s: build the portrait first (build.py pixel %s)"
+                  % (name, actor))
     return written
 
 
