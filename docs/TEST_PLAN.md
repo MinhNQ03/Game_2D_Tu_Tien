@@ -967,3 +967,17 @@ gauges, the dock counted in the area budget. E2E (`_prove_technique_phong`,
 `_prove_technique_loi`): a real 1 key casts at the training post (rooted, struck, cooldown); the
 woods' manual teaches Lôi and a real 2 key bolts and stuns a living wolf.
 
+**D-063 A1 (immediate player feedback):** `tests/unit/presentation/test_hud_notice_band.gd` (13:
+an answer and a result are on screen right after the call with a passive notice up, vi and en;
+ten passive notices all shown in order — the old queue showed five; the backlog guard reports a
+runaway producer and drops nothing; the results of one action keep their order; a repeated answer
+refreshes and is never duplicated; a newer answer supersedes a stale one; an interrupted result
+resumes for what it had left, never under the readable minimum; the breakthrough banner yields to
+an answer paused and resumes, waits for an answer on screen, outranks and preserves passive
+notices, and survives a run of answers; a language change re-renders the shown and the waiting).
+E2E `_prove_cultivation`: after REAL pickups, a REAL C at the spring and a REAL E at the stele,
+the HUD is read from inside the semantic event (`cultivation_refused`, `knowledge_gained`) — exact
+text, kind, and the whole waiting backlog kept in order. Real app (`tools/playtest_flow.gd`):
+05a environment validity (an invalid pacing FAILS, never passes), 05b/05c rendered frames and ms
+from the key to the visible line (threshold 2 frames / 100 ms), 05d the real-time order of
+everything that waited. Suite: 815 tests.

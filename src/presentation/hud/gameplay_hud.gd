@@ -123,16 +123,35 @@ var _cultivation_view: CultivationView = null
 var _cultivate_row: UIPromptRow
 ## The verb the interact prompt shows: "Interact" at an exit, "Read" at a stele (Phase 12).
 var _interact_label_key: StringName = &"UI_HUD_INTERACT_ACTION"
-## A transient line in the bottom band (knowledge learned, a refused cultivate), and the MACRO
-## breakthrough announcement, which holds the same band. Both re-render on a language change.
+## THE BOTTOM BAND (D-063): one slot for a transient line and the MACRO breakthrough banner.
+## Every notice has a KIND, chosen by whoever knows its cause (`WorldRuntime`):
+##   PASSIVE — what happened around the player (an item picked up on the way). Waits its turn,
+##             in arrival order; never jumps an answer; never dropped.
+##   RESULT  — what the player's own action achieved (learned, used). Shown on the frame it
+##             happens; results of ONE action keep their order; never dropped.
+##   ANSWER  — why the player's action did not happen (a refusal, "nothing new"). Shown on the
+##             frame it happens; the same answer again refreshes it; a newer answer or result
+##             supersedes it — a stale refusal is never shown again (preemptible by design).
+## Presentation priority in the slot: RESULT/ANSWER > breakthrough banner > PASSIVE. Whatever
+## gives way is PRESERVED: an interrupted notice resumes for the time it had left, a paused
+## banner resumes after the answers. Before D-063 one FIFO line held every notice for 3s, so a
+## refusal waited behind pickups for 2.6-5.8s, and a full queue of 4 dropped the fifth.
+const NOTICE_PASSIVE := &"passive"
+const NOTICE_RESULT := &"result"
+const NOTICE_ANSWER := &"answer"
 var _notice_label: Label
 var _notice_timer: Timer
-var _notice_key: StringName = &""
-var _notice_args: Dictionary = {}
-## Notices waiting their turn: two things learned in one reading must BOTH be read — the second
-## replacing the first erased the breathing method, the one line that mattered (capture-found).
-var _notice_queue: Array = []
-const NOTICE_QUEUE_MAX := 4
+## The notice in the slot now — {seq, kind, key, args, hold, frame} — or empty. `frame` is the
+## process frame it was ANNOUNCED on: results announced on one frame are one action's results.
+var _shown: Dictionary = {}
+## Waiting notices, each lane in arrival (`seq`) order. Nothing in a lane is ever dropped.
+var _immediate_lane: Array[Dictionary] = []
+var _passive_lane: Array[Dictionary] = []
+var _notice_seq: int = 0
+var _backlog_overflowed: bool = false
+## The banner gave way to an answer and resumes, for `_banner_hold` seconds, when the band frees.
+var _banner_pending: bool = false
+var _banner_hold: float = 0.0
 var _breakthrough_banner: VBoxContainer
 var _breakthrough_title: Label
 var _breakthrough_realm: Label
@@ -998,32 +1017,90 @@ func is_cultivation_visible() -> bool:
 	return _cultivation_meter != null and _cultivation_meter.visible
 
 
-## Show one transient sentence in the bottom band. Stored as a KEY + args, so a language change
-## re-renders it instead of leaving the old language on screen.
+## PASSIVE: what happened around the player. Waits its turn behind whatever holds the band, in
+## arrival order, and is never dropped. Stored as a KEY + args, so a language change re-renders
+## it instead of leaving the old language on screen.
 func announce(text_key: StringName, args: Dictionary = {}) -> void:
-	if _notice_label == null:
-		return
-	if _notice_label.visible and not _notice_timer.is_stopped():
-		if _notice_queue.size() < NOTICE_QUEUE_MAX:
-			_notice_queue.append([text_key, args])
-		return
-	_show_notice(text_key, args)
+	_enqueue_notice(NOTICE_PASSIVE, text_key, args)
 
 
-func _show_notice(text_key: StringName, args: Dictionary) -> void:
-	_notice_key = text_key
-	_notice_args = args
-	_refresh_notice()
-	if _breakthrough_banner == null or not _breakthrough_banner.visible:
-		_notice_label.visible = true
-	_notice_timer.start(UIPalette.HUD_NOTICE_SECONDS)
+## RESULT: what the player's own action achieved. Visible on the frame it is announced.
+func announce_result(text_key: StringName, args: Dictionary = {}) -> void:
+	_enqueue_notice(NOTICE_RESULT, text_key, args)
+
+
+## ANSWER: why the player's action did not happen. Visible on the frame it is announced.
+func announce_answer(text_key: StringName, args: Dictionary = {}) -> void:
+	_enqueue_notice(NOTICE_ANSWER, text_key, args)
 
 
 func notice_text() -> String:
 	return _notice_label.text if _notice_label != null and _notice_label.visible else ""
 
 
-## The MACRO announcement of a breakthrough: the event, and the realm reached.
+## The kind of the notice on screen (`NOTICE_*`), or &"" when the slot shows none.
+func notice_kind() -> StringName:
+	return StringName(_shown.get("kind", &""))
+
+
+## What waits for the slot, in the order it will be shown: the immediate lane, the paused
+## breakthrough banner (`&"<breakthrough>"`), then the passive lane. For tests and the playtest.
+func pending_notice_keys() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for entry in _immediate_lane:
+		out.append(StringName(entry["key"]))
+	if _banner_pending:
+		out.append(&"<breakthrough>")
+	for entry in _passive_lane:
+		out.append(StringName(entry["key"]))
+	return out
+
+
+## True once the backlog passed `UIPalette.HUD_NOTICE_BACKLOG_GUARD` (a producer bug, reported).
+func notice_backlog_overflowed() -> bool:
+	return _backlog_overflowed
+
+
+func _enqueue_notice(kind: StringName, text_key: StringName, args: Dictionary) -> void:
+	if _notice_label == null:
+		return
+	_notice_seq += 1
+	var entry := {"seq": _notice_seq, "kind": kind, "key": text_key, "args": args,
+		"hold": UIPalette.HUD_NOTICE_SECONDS, "frame": Engine.get_process_frames()}
+	if kind == NOTICE_PASSIVE:
+		if _band_is_free():
+			_present_notice(entry)
+		else:
+			_insert_in_order(_passive_lane, entry)
+			_check_backlog()
+		return
+	if _is_immediate(_shown) and _same_notice(_shown, entry):
+		# The same answer to the same press again: refresh it, never print it twice.
+		_shown["hold"] = UIPalette.HUD_NOTICE_SECONDS
+		_notice_timer.start(UIPalette.HUD_NOTICE_SECONDS)
+		return
+	for waiting in _immediate_lane:
+		if _same_notice(waiting, entry):
+			return  # already waiting its turn
+	if _is_immediate(_shown) and int(_shown["frame"]) == int(entry["frame"]):
+		# Another result of the SAME action (a stele that teaches two things): in order, after it.
+		_insert_in_order(_immediate_lane, entry)
+		_check_backlog()
+		return
+	# A new action's answer takes the slot NOW. An answer still waiting from an older action is
+	# stale (the player has acted since); everything else that gives way is kept.
+	var kept: Array[Dictionary] = []
+	for waiting in _immediate_lane:
+		if waiting["kind"] != NOTICE_ANSWER:
+			kept.append(waiting)
+	_immediate_lane = kept
+	_pause_banner()
+	_interrupt_shown()
+	_present_notice(entry)
+
+
+## The MACRO announcement of a breakthrough: the event, and the realm reached. It outranks a
+## passive notice (which steps aside and resumes) and waits for an answer already on screen.
 func celebrate_breakthrough(realm_name_key: StringName, layer: int, changed_realm: bool) -> void:
 	if _breakthrough_banner == null:
 		return
@@ -1031,33 +1108,128 @@ func celebrate_breakthrough(realm_name_key: StringName, layer: int, changed_real
 	_breakthrough_layer = layer
 	_breakthrough_changed_realm = changed_realm
 	_refresh_breakthrough_text()
-	_notice_label.visible = false
-	_breakthrough_banner.visible = true
-	_breakthrough_timer.start(UIPalette.BREAKTHROUGH_BANNER_SECONDS)
+	if _is_immediate(_shown):
+		_banner_pending = true
+		_banner_hold = UIPalette.BREAKTHROUGH_BANNER_SECONDS
+		return
+	_interrupt_shown()
+	_show_banner(UIPalette.BREAKTHROUGH_BANNER_SECONDS)
 
 
 func is_breakthrough_banner_visible() -> bool:
 	return _breakthrough_banner != null and _breakthrough_banner.visible
 
 
+## The banner gave way to an answer and will resume (for tests and the playtest).
+func is_breakthrough_pending() -> bool:
+	return _banner_pending
+
+
 func _on_breakthrough_timeout() -> void:
-	if _breakthrough_banner != null:
-		_breakthrough_banner.visible = false
+	if _breakthrough_banner == null:
+		return
+	_breakthrough_banner.visible = false
+	_advance_band()
 
 
 func _on_notice_timeout() -> void:
 	if _notice_label == null:
 		return
+	_shown = {}
 	_notice_label.visible = false
-	if not _notice_queue.is_empty():
-		var next: Array = _notice_queue.pop_front()
-		_show_notice(next[0], next[1])
+	_advance_band()
+
+
+## The slot is free: the next thing in priority order takes it.
+func _advance_band() -> void:
+	if not _shown.is_empty() or _breakthrough_banner.visible:
+		return
+	if not _immediate_lane.is_empty():
+		_present_notice(_immediate_lane.pop_front())
+	elif _banner_pending:
+		_show_banner(_banner_hold)
+	elif not _passive_lane.is_empty():
+		_present_notice(_passive_lane.pop_front())
+
+
+func _band_is_free() -> bool:
+	return _shown.is_empty() and not _breakthrough_banner.visible and not _banner_pending \
+		and _immediate_lane.is_empty() and _passive_lane.is_empty()
+
+
+func _present_notice(entry: Dictionary) -> void:
+	_shown = entry
+	_refresh_notice()
+	_notice_label.visible = true
+	_notice_timer.start(float(entry["hold"]))
+
+
+func _show_banner(hold: float) -> void:
+	_banner_pending = false
+	_breakthrough_banner.visible = true
+	_breakthrough_timer.start(hold)
+
+
+## The banner steps aside for an answer: PAUSED with the time it had left, never dropped.
+func _pause_banner() -> void:
+	if not _breakthrough_banner.visible:
+		return
+	_banner_hold = maxf(_breakthrough_timer.time_left, UIPalette.HUD_NOTICE_RESUME_MIN_SECONDS)
+	_breakthrough_timer.stop()
+	_breakthrough_banner.visible = false
+	_banner_pending = true
+
+
+## The notice on screen steps aside. A RESULT or PASSIVE goes back to its lane, in its original
+## order, for the time it had left; an ANSWER is superseded (the player has acted again).
+func _interrupt_shown() -> void:
+	if _shown.is_empty():
+		return
+	var interrupted := _shown
+	_shown = {}
+	var left := _notice_timer.time_left
+	_notice_timer.stop()
+	_notice_label.visible = false
+	if interrupted["kind"] == NOTICE_ANSWER:
+		return
+	interrupted["hold"] = maxf(left, UIPalette.HUD_NOTICE_RESUME_MIN_SECONDS)
+	_insert_in_order(_immediate_lane if interrupted["kind"] == NOTICE_RESULT else _passive_lane,
+		interrupted)
+
+
+static func _insert_in_order(lane: Array[Dictionary], entry: Dictionary) -> void:
+	var at := lane.size()
+	while at > 0 and int(lane[at - 1]["seq"]) > int(entry["seq"]):
+		at -= 1
+	lane.insert(at, entry)
+
+
+static func _is_immediate(entry: Dictionary) -> bool:
+	var kind: StringName = entry.get("kind", &"")
+	return kind == NOTICE_RESULT or kind == NOTICE_ANSWER
+
+
+static func _same_notice(a: Dictionary, b: Dictionary) -> bool:
+	return a["kind"] == b["kind"] and a["key"] == b["key"] and a["args"] == b["args"]
+
+
+## Fail LOUDLY, drop nothing: a backlog past the guard is a producer announcing in a loop.
+func _check_backlog() -> void:
+	var waiting := _immediate_lane.size() + _passive_lane.size()
+	if waiting <= UIPalette.HUD_NOTICE_BACKLOG_GUARD:
+		return
+	if not _backlog_overflowed:
+		push_error(("[hud] %d notices wait for the bottom band, past the guard of %d: a "
+			+ "producer is announcing in a loop. Nothing was dropped; find the producer.")
+			% [waiting, UIPalette.HUD_NOTICE_BACKLOG_GUARD])
+	_backlog_overflowed = true
 
 
 func _refresh_notice() -> void:
-	if _notice_label == null or _notice_key == &"":
+	if _notice_label == null or _shown.is_empty():
 		return
-	var args := _notice_args.duplicate()
+	var notice_key := StringName(_shown["key"])
+	var args := (_shown["args"] as Dictionary).duplicate()
 	# The satchel key is named where items are gained, so the bag is discoverable without a
 	# seventh permanent prompt in the strip.
 	if not args.is_empty() and not args.has("key"):
@@ -1068,8 +1240,8 @@ func _refresh_notice() -> void:
 	for k: Variant in args:
 		if typeof(args[k]) == TYPE_STRING_NAME:
 			args[k] = _resolve(args[k])
-	_notice_label.text = _text_args(String(_notice_key), args) if not args.is_empty() \
-		else _text(String(_notice_key))
+	_notice_label.text = _text_args(String(notice_key), args) if not args.is_empty() \
+		else _text(String(notice_key))
 
 
 func _refresh_breakthrough_text() -> void:

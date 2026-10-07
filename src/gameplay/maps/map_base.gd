@@ -286,10 +286,23 @@ func set_inventory_view(view: InventoryView) -> void:
 		_hud.set_inventory_view(view)
 
 
-## One transient HUD sentence (a refused cultivate, knowledge learned).
+## One transient HUD sentence, by KIND (D-063 — `GameplayHUD`'s bottom band): `announce` for
+## what happened around the player (an item picked up on the way), `announce_result` for what
+## the player's own action achieved, `announce_answer` for why it did not happen. The caller
+## knows the cause, so the caller chooses; the HUD shows a result or an answer at once.
 func announce(text_key: StringName, args: Dictionary = {}) -> void:
 	if _hud != null:
 		_hud.announce(text_key, args)
+
+
+func announce_result(text_key: StringName, args: Dictionary = {}) -> void:
+	if _hud != null:
+		_hud.announce_result(text_key, args)
+
+
+func announce_answer(text_key: StringName, args: Dictionary = {}) -> void:
+	if _hud != null:
+		_hud.announce_answer(text_key, args)
 
 
 ## The MACRO breakthrough announcement.

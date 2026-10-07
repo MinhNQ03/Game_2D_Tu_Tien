@@ -1034,27 +1034,91 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 	assert_eq(state.realm_id, &"realm_pham", "a new run starts mortal")
 	assert_true(hud.is_cultivation_visible(), "the HUD shows the tu vi meter")
 
-	# 1. At the spring without the method: the key REFUSES, and says why.
+	var loc := scene_tree.root.get_node("Localization")
+
+	# 1. At the spring without the method: the key REFUSES, and says why — on the frame it is
+	# refused, even with a pickup notice on screen (D-063 D1: it used to wait 2.6s behind it).
+	var pill := map.get_node_or_null("Pickups/HubPill1") as Node2D
+	assert_not_null(pill, "a pickup lies on the way to the spring")
+	if pill == null:
+		return
+	player.global_position = pill.global_position  # setup: walk onto the pickup
+	for _i in 6:
+		await scene_tree.physics_frame
 	player.global_position = spring.global_position + Vector2(0, 8)
 	for _i in 4:
 		await scene_tree.physics_frame
+	# Earlier proofs walked over other pickups, so their notices may still be up or waiting: the
+	# claim is RELATIVE — whatever was on screen or waiting before the press is kept after it.
+	assert_eq(hud.notice_kind(), GameplayHUD.NOTICE_PASSIVE, "a pickup notice is on screen")
+	var waiting_before_c: Array[StringName] = [&"UI_ITEM_GAINED"]
+	waiting_before_c.append_array(hud.pending_notice_keys())
+	# Read the HUD from INSIDE the semantic event: connected after `WorldRuntime`, this runs
+	# once the refusal has been routed, in the same call stack — no frame can pass in between.
+	var refused := {}
+	var on_refused := func(reason: StringName) -> void:
+		refused["reason"] = reason
+		refused["text"] = hud.notice_text()
+		refused["kind"] = hud.notice_kind()
+		refused["tick"] = Engine.get_physics_frames()
+	cultivation.cultivation_refused.connect(on_refused)
+	var pressed_tick := Engine.get_physics_frames()
 	await _press_through_physics(CULTIVATE)
+	cultivation.cultivation_refused.disconnect(on_refused)
 	assert_eq(cultivation.phase(), CultivationRuntime.Phase.IDLE, "no method: nobody sits")
-	assert_true(hud.notice_text() != "", "and the HUD says why (got '%s')" % hud.notice_text())
+	assert_eq(refused.get("reason"), CultivationRuntime.REFUSE_NO_METHOD, "refused for the method")
+	assert_eq(refused.get("text"), String(loc.call("t", "UI_CULTIVATE_NO_METHOD")),
+		"the HUD says why on the frame the refusal is decided, ahead of the pickup notice")
+	assert_eq(refused.get("kind"), GameplayHUD.NOTICE_ANSWER, "as an ANSWER")
+	assert_true(int(refused.get("tick", 1 << 30)) - pressed_tick <= 2,
+		"decided within two physics ticks of the press")
+	assert_eq(hud.pending_notice_keys(), waiting_before_c,
+		"every pickup notice is kept: the interrupted one first, then the ones that waited")
 
-	# 2. Read the stele with a REAL interact key.
+	# 2. Two more pickups beside the stele, then a REAL interact: the first lesson is on screen
+	# on the frame it is learned, ahead of the pickups (D-063 D2: it used to wait 5.8s); the
+	# second lesson next; every pickup notice kept, in the order it happened.
+	for path in ["Pickups/HubManualPhong", "Pickups/HubRobe"]:
+		var pickup := map.get_node_or_null(path) as Node2D
+		assert_not_null(pickup, "%s lies beside the stele" % path)
+		if pickup != null:
+			player.global_position = pickup.global_position  # setup: walk onto it
+			for _i in 6:
+				await scene_tree.physics_frame
 	player.global_position = stele.global_position + Vector2(0, 12)
 	for _i in 6:
 		await scene_tree.physics_frame
 	assert_true(map.call("active_knowledge_source") != null, "the stele is in reach")
+	assert_eq(hud.notice_kind(), GameplayHUD.NOTICE_ANSWER, "the refusal is still up")
+	var waiting_before_e: Array[StringName] = [&"UI_HUD_KNOWLEDGE_GAINED"]
+	waiting_before_e.append_array(hud.pending_notice_keys())
+	var lesson := {}
+	var on_learned := func(knowledge_id: StringName, _source: StringName) -> void:
+		if not lesson.has("id"):
+			lesson["id"] = knowledge_id
+			lesson["text"] = hud.notice_text()
+			lesson["kind"] = hud.notice_kind()
+	knowledge.knowledge_gained.connect(on_learned)
 	for _attempt in 6:
 		await _fire_action(INTERACT)
 		if knowledge.get_service().knows(&"know_dan_khi_quyet"):
 			break
+	knowledge.knowledge_gained.disconnect(on_learned)
 	assert_true(knowledge.get_service().knows(&"know_dan_khi_quyet"),
 		"a real interact at the stele granted the method through the Knowledge Core")
 	assert_true(knowledge.get_service().knows(&"know_lac_ha_stele_record"),
 		"and the record (a non-gating payoff)")
+	assert_eq(lesson.get("id"), &"know_dan_khi_quyet", "the method is learned first")
+	assert_true(String(lesson.get("text", "")).contains(
+		String(loc.call("t", "KNOW_DAN_KHI_QUYET_NAME"))),
+		"and is on screen on the frame it is learned (got '%s')" % lesson.get("text", ""))
+	assert_eq(lesson.get("kind"), GameplayHUD.NOTICE_RESULT, "as a RESULT")
+	assert_eq(hud.pending_notice_keys(), waiting_before_e,
+		"the second lesson waits next, then every pickup notice in the order it happened (the "
+			+ "superseded refusal is not re-shown)")
+	assert_true(waiting_before_e.count(&"UI_ITEM_GAINED") >= 3,
+		"including the three pickups walked over for this proof")
+	assert_false(hud.notice_backlog_overflowed(), "a normal backlog")
 
 	# 3. Sit at the spring with a REAL cultivate key; tu vi accumulates over real frames.
 	player.global_position = spring.global_position + Vector2(0, 8)
@@ -1082,6 +1146,11 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 		await scene_tree.physics_frame
 	assert_eq([state.realm_id, state.realm_layer], [&"realm_hau_thien", 1],
 		"the player is now Hậu Thiên 1")
+	# The banner is never lost (D-063): on screen, or waiting only behind an answer to the
+	# player's own action (the stele's second lesson may still be up) — then shown.
+	assert_true(hud.is_breakthrough_banner_visible() or hud.is_breakthrough_pending(),
+		"the HUD holds the breakthrough announcement")
+	await _wait_until(func() -> bool: return hud.is_breakthrough_banner_visible(), 300)
 	assert_true(hud.is_breakthrough_banner_visible(), "the HUD announces the breakthrough")
 
 	# 5. A REAL move key rises from the seat.

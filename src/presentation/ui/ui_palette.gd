@@ -552,6 +552,13 @@ const CULTIVATION_METER_FILL_READY := GOLD_PRIMARY
 ## over the playfield centre (`UI_UX_BIBLE.md` §3c).
 const HUD_NOTICE_SECONDS := 3.0
 const BREAKTHROUGH_BANNER_SECONDS := 3.2
+## The band is ONE slot (D-063): an interrupted notice, or the banner paused for an answer,
+## comes back for what it had left — never less than this, so a resumed line can still be read.
+const HUD_NOTICE_RESUME_MIN_SECONDS := 1.0
+## A SAFETY GUARD, not a capacity: notices are never dropped. Real play queues a handful (two
+## pickups and a stele's two lessons); a backlog past this means a producer is announcing in a
+## loop, and the HUD reports it with `push_error` — loudly — while still keeping every notice.
+const HUD_NOTICE_BACKLOG_GUARD := 32
 ## The breakthrough banner and the notice line sit one banner-row ABOVE the level-up banner, so
 ## a level-up landing during a breakthrough announcement can never print over it.
 const ANNOUNCE_BOTTOM_INSET := LEVEL_UP_BANNER_BOTTOM_INSET + 34

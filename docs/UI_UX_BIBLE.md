@@ -195,6 +195,17 @@ measurements.
   update — any open side panel closes; a panel the player re-opens mid-fight stays open (a choice
   the HUD does not fight). Tested by
   `test_engaging_a_live_target_closes_the_side_panels_once`.
+- **The answer to a key press is never kept waiting (D-063).** The bottom band is ONE slot shared
+  by three kinds of notice and the breakthrough banner, and the caller that knows the CAUSE picks
+  the kind: **ANSWER** (why the action did not happen) and **RESULT** (what it achieved) are on
+  screen on the frame they are announced — ≤ 2 rendered frames and ≤ 100 ms, measured in the real
+  app; **PASSIVE** (what happened around the player) waits in arrival order. Priority in the slot:
+  answers/results > the breakthrough banner > passive. Whatever gives way is KEPT — an interrupted
+  notice resumes, the banner pauses and resumes — except an ANSWER superseded by a newer one: a
+  stale refusal is never shown again. No notice is ever dropped; a backlog past
+  `HUD_NOTICE_BACKLOG_GUARD` is reported as a producer bug. A new notice must declare its kind
+  (`announce` / `announce_result` / `announce_answer`); a new band element must keep the stack
+  out of `PLAYFIELD_CLEAR_ZONE` (the banner and the notice cannot stack at 1280×720: 6 px over).
 - **Reference boards are filtered, not adopted.** The Aetheria `09_ui_composition` board shows
   mobile-MMORPG conventions — an MP bar, a skill-icon ring, a minimap, XP toasts — that this
   bible forbids (`XIANXIA_IDENTITY_CONTRACT.md` §2.3, R-7).

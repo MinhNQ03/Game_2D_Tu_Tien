@@ -4250,3 +4250,76 @@ stdlib banners and lantern posts stay until their Blender pass (the post, stele 
 rebuilt; the vein is painted). The corpse-contrast test now measures the PAINTED floors a body can
 lie on (it measured the retired tile sheet), and caught two real cases — dark bridge planks and
 a dark training post — fixed in the art.
+
+## D-063 — Phase A: core gameplay quality closure
+
+**Status:** A1 implemented on branch `d063/phase-a` (awaiting checkpoint review); A2 (physical
+truth), A3 (sword presentation) and A4 (codified gates) follow, one checkpoint each.
+
+### A1 — Immediate player feedback (defects D1, D2)
+
+**Bug.** Measured in the real app (1280×720, `gl_compatibility`, Intel UHD 730, 60 fps): C at the
+Lạc Hà spring with a pickup notice up showed the refusal after **158 rendered frames / 2633 ms**;
+E at the stele after two pickups showed the lesson after **347 frames / 5783 ms**; a burst of six
+notices never showed the sixth.
+
+**Root cause.** Not the domain: every link from the key to `GameplayHUD.announce` is synchronous —
+the refusal and the grants are emitted on the press frame. The HUD's bottom band was ONE FIFO line
+that held every notice for `HUD_NOTICE_SECONDS` (3 s). An answer to the player's key waited behind
+passive pickup notices for exactly their remaining holds (157 frames predicted → 158 measured;
+164 + 180 → 347), the queue dropped anything past four without a word, and a notice announced
+during the breakthrough banner was hidden while its hold ran out.
+
+**Why the tests missed it.** `test_notices_queue_instead_of_overwriting` pinned the wait as the
+desired behaviour for EVERY notice; the E2E asserted `notice_text() != ""` on an empty band (any
+notice, even a stale one, passed); nothing measured the time from a key to the visible answer.
+
+**Decision — every notice has a KIND, chosen by whoever knows its cause (`WorldRuntime._notify`):**
+- **PASSIVE** (an item gained on the way, a reward): waits its turn in arrival order, never jumps
+  an answer, is never dropped.
+- **RESULT** (knowledge learned, an item used, a technique learned): visible on the frame it is
+  announced; results of ONE action (announced on one frame — a stele's two lessons) keep their
+  order; an interrupted result resumes for the time it had left
+  (≥ `HUD_NOTICE_RESUME_MIN_SECONDS`); never dropped.
+- **ANSWER** (a refusal, "nothing new"): visible on the frame it is announced; the same answer
+  again refreshes it (spam prints one line); a newer answer or result supersedes it — ANSWER is
+  **preemptible by design**: a stale refusal is never shown again.
+
+Slot priority: **RESULT/ANSWER > breakthrough banner > PASSIVE.** The banner yields to an answer
+PAUSED and resumes after it (the event is never dropped); it waits for an answer already on screen;
+it interrupts a passive notice, which resumes after it. Stacking the banner and the notice was
+measured and rejected: 51 + 23 px above `ANNOUNCE_BOTTOM_INSET` reaches y = 534 at 1280×720,
+6 px inside `PLAYFIELD_CLEAR_ZONE`. `HUD_NOTICE_BACKLOG_GUARD` (32) is a guard, not a capacity:
+past it the HUD `push_error`s and sets `notice_backlog_overflowed()` — loudly — and keeps every
+notice. The queue stays owned by `GameplayHUD`; no new node, manager or autoload.
+
+**Threshold (D-063 §5).** First visible ≤ 2 rendered frames AND ≤ 100 ms. **Measured after:**
+vi — answer 1 frame / 22.7 ms, result 1 frame / 19.6 ms; en — 1 / 20.1 ms, 1 / 18.3 ms; then, in
+real time, lesson 1 → lesson 2 → the three pickups, in order (`tools/playtest_flow.gd` 05a–05d).
+**Environment:** Intel UHD 730, Mesa 25.2.8, Godot 4.7.2 `gl_compatibility`, X11 1280×720 window,
+60 Hz display, physics 60 tps, frame pacing mean 16.40 ms / p95 16.8 ms. The X session was
+LOCKED, where a vsynced window is presented at ~1 Hz (931 ms/frame measured): runs use
+`--disable-vsync --max-fps 60`, and the playtest FAILS a run whose pacing is invalid instead of
+reporting a timing PASS from it.
+
+**Tests.** `tests/unit/presentation/test_hud_notice_band.gd` (13 — every failure mode above, vi
+and en); E2E `_prove_cultivation` reads the HUD from INSIDE the semantic event (text, kind,
+the kept backlog) after real pickups and real C / E keys; playtest steps 05a–05d. Test-the-test:
+against the old HUD the drop reproduction showed 5 of 10 pickups and the refusal reproduction
+read "Nhận được: …" — both fail.
+
+**Plan deviation, recorded.** A0 proposed a `KnowledgeRuntime.source_read` signal as the
+STONE_STELE_INTERACTION_COMPLETED cue. Reading the code: `read_source` is shared with satchel
+manuals, and `MapBase.knowledge_source_read` already is the stele-interaction event (the read
+completes synchronously inside it). A second event would duplicate it, so none was added; the cue
+maps to the existing signal (A4 records the cue table).
+
+**Harness finding.** A synthetic key parsed from INSIDE a physics step is dispatched a frame later
+with a stale "just pressed" stamp, so `_unhandled_input` never sees it (controlled experiment:
+after `frame_post_draw` ✓, after `process_frame` ✓, inside the physics step ✗). A real OS key
+arrives at a frame boundary; the playtest now presses there (L-016).
+
+**Known limitations.** Notices still waiting when the map changes are freed with that map's HUD
+(the HUD is per map; carrying a backlog across maps is a cross-owner change, outside A1). The
+notice line has no backing surface: legible over grass and canopy in every measured frame, its
+contrast over light paving not yet verified.

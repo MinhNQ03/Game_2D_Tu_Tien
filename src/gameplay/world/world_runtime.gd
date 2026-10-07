@@ -693,19 +693,20 @@ func _on_realm_advanced(_realm_id: StringName, layer: int, changed_realm: bool) 
 		_active_map.call("celebrate_breakthrough", realm.name_key, layer, changed_realm)
 
 
+## Why the cultivate key did nothing — the ANSWER to that press, shown on the frame it happens.
 func _on_cultivation_refused(reason_key: StringName) -> void:
-	if _active_map != null and _active_map.has_method("announce"):
-		_active_map.call("announce", reason_key)
+	_notify(&"announce_answer", reason_key)
 
 
-## Something new was learned: say WHAT, by its name, in the bottom band.
+## Something new was learned: say WHAT, by its name. Learning is the RESULT of the player's own
+## act (reading a stele or a manual, sitting at a vein that teaches), so it is shown at once.
 func _on_knowledge_gained(knowledge_id: StringName, _source_id: StringName) -> void:
 	var knowledge := _find_sibling_of(KnowledgeRuntime) as KnowledgeRuntime
-	if knowledge == null or _active_map == null or not _active_map.has_method("announce"):
+	if knowledge == null:
 		return
 	var entry := knowledge.get_catalog().entry(knowledge_id)
 	if entry != null:
-		_active_map.call("announce", &"UI_HUD_KNOWLEDGE_GAINED", {"name": entry.name_key})
+		_notify(&"announce_result", &"UI_HUD_KNOWLEDGE_GAINED", {"name": entry.name_key})
 
 
 ## The player read a knowledge source in the active map: grant through the Knowledge Core. A
@@ -715,8 +716,8 @@ func _on_knowledge_source_read(source_id: StringName, grants: Array[StringName])
 	if knowledge == null or not knowledge.is_session_active():
 		return
 	var learned := knowledge.read_source(source_id, grants)
-	if learned.is_empty() and _active_map != null and _active_map.has_method("announce"):
-		_active_map.call("announce", &"UI_KNOWLEDGE_NOTHING_NEW")
+	if learned.is_empty():
+		_notify(&"announce_answer", &"UI_KNOWLEDGE_NOTHING_NEW")
 
 
 # --- Inventory (Phase 13) -------------------------------------------------------
@@ -756,26 +757,27 @@ func _connect_inventory_signals() -> void:
 			equipment.equip_refused.connect(_on_item_refused)
 
 
+## An item came into the bag on the player's way (a pickup, a reward): PASSIVE — it waits its
+## turn behind the answers to what the player is doing, and is never dropped.
 func _on_item_gained(item_id: StringName, count: int) -> void:
-	_announce_item(&"UI_ITEM_GAINED", item_id, count)
+	_announce_item(&"announce", &"UI_ITEM_GAINED", item_id, count)
 
 
 func _on_item_used(item_id: StringName) -> void:
-	_announce_item(&"UI_ITEM_USED", item_id, 1)
+	_announce_item(&"announce_result", &"UI_ITEM_USED", item_id, 1)
 
 
 func _on_item_refused(_item_id: StringName, reason_key: StringName) -> void:
-	if _active_map != null and _active_map.has_method("announce"):
-		_active_map.call("announce", reason_key)
+	_notify(&"announce_answer", reason_key)
 
 
-func _announce_item(key: StringName, item_id: StringName, count: int) -> void:
+func _announce_item(method: StringName, key: StringName, item_id: StringName, count: int) -> void:
 	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
-	if inventory == null or _active_map == null or not _active_map.has_method("announce"):
+	if inventory == null:
 		return
 	var item := inventory.get_catalog().entry(item_id)
 	if item != null:
-		_active_map.call("announce", key, {"name": item.name_key, "count": count})
+		_notify(method, key, {"name": item.name_key, "count": count})
 
 
 ## Route a satchel request to its owner (Phase 13/14): something worn is taken off, equipment is
@@ -825,18 +827,26 @@ func _connect_skill_signals() -> void:
 
 
 func _on_cast_refused(_technique_id: StringName, reason_key: StringName) -> void:
-	if _active_map != null and _active_map.has_method("announce"):
-		_active_map.call("announce", reason_key)
+	_notify(&"announce_answer", reason_key)
 
 
 func _on_technique_learned(technique_id: StringName) -> void:
 	var skills := _find_sibling_of(SkillRuntime) as SkillRuntime
-	if skills == null or _active_map == null or not _active_map.has_method("announce"):
+	if skills == null:
 		return
 	var technique := skills.catalog().entry(technique_id)
 	if technique != null:
-		_active_map.call("announce", &"UI_SKILL_LEARNED", {"name": technique.name_key,
+		_notify(&"announce_result", &"UI_SKILL_LEARNED", {"name": technique.name_key,
 			"key": StringName("skill_%d" % technique.slot)})
+
+
+## Hand one notice to the active map's HUD, by KIND (D-063): `announce` (PASSIVE — what happened
+## around the player), `announce_result` (what the player's action achieved) or `announce_answer`
+## (why it did not happen). This runtime knows the CAUSE of every signal it routes, so it is the
+## one place the kind is chosen; the HUD decides only how the kinds share the bottom band.
+func _notify(method: StringName, key: StringName, args: Dictionary = {}) -> void:
+	if _active_map != null and _active_map.has_method(method):
+		_active_map.call(method, key, args)
 
 
 ## The sibling under Main/Systems that is an instance of `type`, or null.

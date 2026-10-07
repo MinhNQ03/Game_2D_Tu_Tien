@@ -8,6 +8,14 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-08 — Immediate feedback (D-063 A1)
+
+- **A key press is answered at once.** Pressing C where you cannot cultivate, or E at the stele,
+  now shows its answer on the very next frame even while "Gained: …" notices are on screen (it
+  used to wait 2.6–5.8 s behind them). Pickup notices wait their turn and are never lost — the
+  old queue silently dropped everything past four — and the breakthrough banner steps aside for
+  an answer and comes back.
+
 ### 2026-10-06 — Techniques (Phase 15, D-061)
 
 - **Two công pháp, learned from manuals once your body has opened (Hậu Thiên):**

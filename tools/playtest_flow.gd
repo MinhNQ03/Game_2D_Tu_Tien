@@ -41,6 +41,15 @@ const SETTLE_FRAMES := 12
 ## `just_pressed` timing is fragile in a scripted run (L-016).
 const POLL_FRAMES := 240
 
+## D-063 §5: the answer to a key press is visible within 2 RENDERED frames and 100 ms.
+const FEEDBACK_MAX_FRAMES := 2
+const FEEDBACK_MAX_MSEC := 100.0
+## A timing claim is only meaningful near 60 fps. A vsynced window in a LOCKED X session is
+## presented at ~1 Hz (measured 931 ms/frame, D-063 A0): such a run is an INVALID environment
+## and fails as one — it never produces a timing PASS. Run with `--disable-vsync --max-fps 60`
+## when the session is locked.
+const PACING_MAX_MEAN_MSEC := 20.0
+
 var _out_dir := "user://playtest"
 var _language := "vi"
 ## One entry per step: name, expected, observed, ok, msec, shot, map, ui.
@@ -74,6 +83,7 @@ func _run() -> void:
 	await _step_new_game(main)
 	var map := await _step_world_ready()
 	await _step_hud_present(map)
+	await _step_feedback(map)
 	await _step_move(map)
 	await _step_toggle_panel(map)
 	await _step_attack(map)
@@ -157,6 +167,162 @@ func _step_hud_present(map: Node) -> void:
 	var hud := map.get_node_or_null("GameplayHUD") if map != null else null
 	_record("05_hud", "GameplayHUD exists in the active map",
 		"hud=%s" % (hud != null), hud != null, started, await _shot("05_hud"))
+
+
+## D-063 A1: the answer to the player's own key press is on screen within the threshold even
+## with a PASSIVE notice up, and nothing that gives way is lost. Measured on RENDERED frames
+## (`frame_post_draw`) in the real window. Placement onto pickups / beside the spring and the
+## stele is deterministic SETUP; C and E are real keys.
+func _step_feedback(map: Node) -> void:
+	var started := Time.get_ticks_msec()
+	var hud := map.get_node_or_null("GameplayHUD") as GameplayHUD if map != null else null
+	var player := _player_of(map)
+	var spring := map.get_node_or_null("CultivationSites/LacHaSpring") as Node2D
+	var stele := map.get_node_or_null("KnowledgeSources/LacHaStele") as Node2D
+	if hud == null or player == null or spring == null or stele == null:
+		_record("05b_answer_timing", "HUD, player, spring and stele in the hub",
+			"hud=%s player=%s spring=%s stele=%s" % [hud != null, player != null,
+				spring != null, stele != null], false, started)
+		return
+	if not await _step_environment():
+		for step in ["05b_answer_timing", "05c_result_timing", "05d_notices_kept"]:
+			_record(step, "a valid timing environment", "ENVIRONMENT INVALID — not measured",
+				false, Time.get_ticks_msec())
+		return
+	var loc := root.get_node("Localization")
+
+	# 05b — C at the spring, no method yet, with a pickup notice on screen.
+	started = Time.get_ticks_msec()
+	await _walk_onto(map, player, "Pickups/HubPill1")  # SETUP
+	var before := "kind=%s '%s'" % [hud.notice_kind(), hud.notice_text()]
+	player.global_position = spring.global_position + Vector2(0, 8)  # SETUP
+	for _i in 4:
+		await physics_frame
+	var refusal := String(loc.call("t", "UI_CULTIVATE_NO_METHOD"))
+	var answer := await _time_feedback(&"cultivate", func() -> bool:
+		return hud.notice_text() == refusal)
+	var kept := hud.pending_notice_keys().has(&"UI_ITEM_GAINED")
+	_record("05b_answer_timing",
+		"refusal visible <= %d rendered frames and <= %.0f ms; the pickup notice kept"
+			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC],
+		"frames=%d ms=%.1f kind=%s kept=%s (band before: %s)" % [answer["frames"],
+			answer["ms"], hud.notice_kind(), kept, before],
+		_within(answer) and hud.notice_kind() == GameplayHUD.NOTICE_ANSWER and kept, started,
+		answer["shot"])
+
+	# 05c — two pickups beside the stele, then E on the stele.
+	started = Time.get_ticks_msec()
+	await _walk_onto(map, player, "Pickups/HubManualPhong")  # SETUP
+	await _walk_onto(map, player, "Pickups/HubRobe")  # SETUP
+	player.global_position = stele.global_position + Vector2(0, 12)  # SETUP
+	for _i in 4:
+		await physics_frame
+	var waiting := hud.pending_notice_keys()
+	var lesson := String(loc.call("t", "KNOW_DAN_KHI_QUYET_NAME"))
+	var result := await _time_feedback(&"interact", func() -> bool:
+		return hud.notice_text().contains(lesson))
+	_record("05c_result_timing",
+		"lesson visible <= %d rendered frames and <= %.0f ms, ahead of %d waiting notices"
+			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC, waiting.size()],
+		"frames=%d ms=%.1f kind=%s waiting=%s" % [result["frames"], result["ms"],
+			hud.notice_kind(), str(hud.pending_notice_keys())],
+		_within(result) and hud.notice_kind() == GameplayHUD.NOTICE_RESULT, started,
+		result["shot"])
+
+	# 05d — in real time: the second lesson, then every pickup notice, in order, none lost.
+	started = Time.get_ticks_msec()
+	var sequence: Array[String] = []
+	var last := ""
+	var budget := int((waiting.size() + 3) * UIPalette.HUD_NOTICE_SECONDS * 75.0)
+	for _i in budget:
+		await process_frame
+		var text := hud.notice_text()
+		if text != "" and text != last:
+			sequence.append("%s:%s" % [hud.notice_kind(), text])
+		last = text
+		if text == "" and hud.pending_notice_keys().is_empty():
+			break
+	var passives := sequence.filter(func(e: String) -> bool:
+		return e.begins_with(String(GameplayHUD.NOTICE_PASSIVE)))
+	var second := String(loc.call("t", "KNOW_LAC_HA_STELE_RECORD_NAME"))
+	var ok := sequence.size() >= 2 and sequence[0].contains(lesson) \
+		and sequence[1].contains(second) and passives.size() == waiting.size() \
+		and not hud.notice_backlog_overflowed()
+	_record("05d_notices_kept",
+		"lesson 1, lesson 2, then all %d waiting pickup notices in order; no overflow"
+			% waiting.size(),
+		" | ".join(sequence), ok, started, await _shot("05d_band_drained"))
+
+
+## Frame pacing of the real window, so a timing PASS can only come from a valid environment.
+func _step_environment() -> bool:
+	var started := Time.get_ticks_msec()
+	var deltas: Array[float] = []
+	var t := Time.get_ticks_usec()
+	for _i in 120:
+		await process_frame
+		var now := Time.get_ticks_usec()
+		deltas.append((now - t) / 1000.0)
+		t = now
+	deltas.sort()
+	var mean := 0.0
+	for d in deltas:
+		mean += d
+	mean /= deltas.size()
+	var ok := mean <= PACING_MAX_MEAN_MSEC
+	_record("05a_environment", "rendered frames near 60 fps (mean <= %.0f ms)"
+			% PACING_MAX_MEAN_MSEC,
+		"%s on %s, %s, vsync=%d max_fps=%d: mean=%.2f p95=%.2f max=%.2f ms%s" % [
+			RenderingServer.get_current_rendering_method(),
+			RenderingServer.get_video_adapter_name(), str(root.get_visible_rect().size),
+			DisplayServer.window_get_vsync_mode(), Engine.max_fps, mean,
+			deltas[int(deltas.size() * 0.95)], deltas[-1],
+			"" if ok else " — ENVIRONMENT INVALID (locked session? use --disable-vsync "
+				+ "--max-fps 60)"],
+		ok, started)
+	return ok
+
+
+## From a REAL key press to the first RENDERED frame on which `is_visible` holds: the frame
+## count (`Engine.get_frames_drawn`), the wall-clock ms, and that frame as a screenshot.
+func _time_feedback(action: StringName, is_visible: Callable) -> Dictionary:
+	# Press at a FRAME BOUNDARY, where the OS delivers a real key (the start of a frame's input
+	# phase). A synthetic key parsed from INSIDE a physics step is dispatched a frame later with
+	# a stale "just pressed" stamp, and `_unhandled_input` never sees it — measured in D-063 A1:
+	# the stele was never read. That is a harness artifact a real key cannot produce (L-016).
+	await RenderingServer.frame_post_draw
+	var drawn := Engine.get_frames_drawn()
+	var t0 := Time.get_ticks_usec()
+	_send_key(action, true)
+	var frames := -1
+	var ms := -1.0
+	for _i in POLL_FRAMES:
+		await RenderingServer.frame_post_draw
+		if bool(is_visible.call()):
+			frames = Engine.get_frames_drawn() - drawn
+			ms = (Time.get_ticks_usec() - t0) / 1000.0
+			break
+	var shot := _shot_now("05_%s_visible" % action)
+	_send_key(action, false)
+	await process_frame
+	return {"frames": frames, "ms": ms, "shot": shot}
+
+
+func _within(timing: Dictionary) -> bool:
+	return int(timing["frames"]) >= 0 and int(timing["frames"]) <= FEEDBACK_MAX_FRAMES \
+		and float(timing["ms"]) <= FEEDBACK_MAX_MSEC
+
+
+## SETUP: stand on a pickup until it is collected (its notice is then in the band).
+func _walk_onto(map: Node, player: Node2D, path: String) -> void:
+	var pickup := map.get_node_or_null(path) as Node2D
+	if pickup == null:
+		return
+	player.global_position = pickup.global_position
+	for _i in 30:
+		await physics_frame
+		if not pickup.visible:
+			break
 
 
 ## A REAL movement step: a held direction key, and the player's position must change.
@@ -784,6 +950,24 @@ func _ui_state() -> String:
 func _settle() -> void:
 	for _i in SETTLE_FRAMES:
 		await process_frame
+
+
+## The frame JUST drawn (call right after `frame_post_draw`), so the shot is the very frame the
+## timing step measured — not one later.
+func _shot_now(shot_name: String) -> String:
+	var image := root.get_texture().get_image()
+	if image == null:
+		_errors += 1
+		push_error("[playtest] viewport produced no image for '%s'" % shot_name)
+		return ""
+	var size := root.get_visible_rect().size
+	var file := "%s_%dx%d_%s.png" % [_language, int(size.x), int(size.y), shot_name]
+	if image.save_png("%s/%s" % [_out_dir, file]) != OK:
+		_errors += 1
+		push_error("[playtest] could not write %s" % file)
+		return ""
+	_shots.append(file)
+	return file
 
 
 ## Write the current viewport and return the filename (empty on failure, which also counts as
