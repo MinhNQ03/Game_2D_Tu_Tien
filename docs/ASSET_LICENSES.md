@@ -176,6 +176,26 @@ silently produce a motionless "animation". Project-owned, no external license. C
 | P31 | `assets/sprites/enemies/mist_wolf_attack.png` (192×128 = 6 frames × 4 directions; D-056, redrawn D-057B) | enemy sheet | self-made | project-owned | Vụ Lang `attack_sheet` (crouch → lunge → recover) | No |
 | P32 | `data/characters/visual/anchors/cultivator_anchors.tres`, `mist_wolf_anchors.tres` | DATA generated with the art (per-frame body points) | self-made — written by the same generator run as the sheets | project-owned | `CharacterVisualProfileData.anchors` | No |
 
+> **D-062 Blender re-author (same files, same dimensions; ONE source).** Every humanoid sheet
+> above — and `player_daobao_*`, `*_meditate`, `*_cast`, the fallback `player_proto.png` — is
+> now produced by the D-062 art pipeline (`tools/aetheria_art_pipeline/`): ONE canonical
+> cultivator model and rig built in **Blender 5.2** from design data
+> (`designs/cultivator.yaml` + `designs/actors/<actor>.yaml`), animated as real Blender Actions,
+> rendered as exact ID / light / depth passes and adapted to 32×48 by `pixel/pixelize.py`
+> (material vote → the actor's authored 4-tone ramps → cluster cleanup → inner contours →
+> despeckle → ink outline). The stdlib humanoid generator (`tools/aetheria_art/cultivator.py`)
+> was RETIRED with it, so no two tools write the same sheet. Style version 1.0
+> (`style/aetheria_style.yaml`); every sheet is verified to animate and to pass
+> `validate/style_check.py sheet` before it ships. The moodboards informed principles only
+> (oval V-jaw face, parted framing locks, long fine hands, layered robe, a stole on the female
+> silhouette) — nothing was copied, traced, cropped or recoloured from any reference.
+>
+> | # | Name | Type | Source / Author | License | Used in | Attr.? |
+> |---|------|------|-----------------|---------|---------|--------|
+> | P62a | `tools/aetheria_art_pipeline/blender/aetheria_cultivator.blend` | Blender master (model, rig, 10 Actions, cameras, lights, materials) | self-made — `blender/build_actor.py` via blender-pro MCP | project-owned | build-time only, never loaded by the game | No |
+> | P62b | `data/characters/visual/anchors/{player_proto,player_daobao,lin_yue,elder,merchant}_anchors.tres` (replace `cultivator_anchors.tres`) | DATA (per-frame palm / rear palm / core, projected from the rig's bones) | self-made — `pixel/pixelize.py` | project-owned | each actor's `CharacterVisualProfileData.anchors` | No |
+> | P62c | `assets/sprites/characters/portraits/{player_proto,player_daobao,cultivator_f_proto,elder_proto,merchant_proto}.png` (56×56) | HUD portraits (pixel art) from the SAME model, portrait LOD (brows, almond eyes, nose, mouth, ears) | self-made — `pixel/pixelize.py portrait` | project-owned | HUD identity plaque (D-062 CP2) | No |
+
 > **D-057B redraw (same files, NEW dimensions).** The generator became the `tools/aetheria_art/`
 > package (still stdlib-only): a POSE-driven 32×48 humanoid (6-beat breath, 8-frame two-step
 > stride whose hem the legs drive, 8-frame palm strike with an upright palm) and a pose-driven

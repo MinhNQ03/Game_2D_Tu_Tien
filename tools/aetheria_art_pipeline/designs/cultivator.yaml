@@ -1,0 +1,97 @@
+# THE CANONICAL AETHERIA CULTIVATOR — one body, one rig, one garment cut (D-062 CP3).
+#
+# Every humanoid in Aetheria (player, NPC, elder, merchant, enemy cultivator, boss) is THIS
+# design plus an actor file in designs/actors/ that overrides palette, pieces and a few
+# proportions. Nothing here is a hex colour: colours belong to the actor, rules to the style.
+#
+# UNITS. 1 unit = 1 gameplay pixel BEFORE the camera's foreshortening. The gameplay camera
+# looks down at `camera.gameplay.elevation_deg`, so a 50-unit figure projects to ~44 px of the
+# 48 px cell (character.height_px in the style). The character faces -Y at rest (toward the
+# camera = the DOWN facing); its LEFT side is +X.
+#
+# PROPORTION INTENT (top-down adaptation): head ≈ 1/3.6 of standing height in 3D so that, seen
+# from above, head + hair top read as ≈ 1/3 of the sprite (character.head_px). Shoulders wider
+# than the head; a long robe that widens to the hem; waist-length hair as a second mass.
+
+id: cultivator
+body:
+  sole: 0.0
+  ankle: 2.4
+  knee: 11.8
+  hip: 20.8
+  hip_x: 2.3
+  waist: 25.2
+  chest: 29.8
+  shoulder: 33.6
+  shoulder_x: 5.9
+  neck_base: 34.4
+  neck_top: 36.8
+  head_centre: [0.0, -0.3, 42.4]
+  head_radii: [5.0, 4.8, 5.5]       # x (width), y (depth), z (height)
+  upper_arm: 8.6
+  forearm: 7.6
+  hand: 4.4                         # wrist to fingertip, ~0.6 of the forearm (a real hand is
+                                    # ~0.75; 2.9 left it buried inside the sleeve on every frame)
+  arm_rest_spread_deg: 6            # how far the hanging arm angles out from the body
+  leg_radius: [1.9, 1.5]            # thigh, shin
+  foot: {length: 5.2, width: 2.3, height: 1.8}
+  neck_radius: 1.7
+
+garment:
+  bodice:                           # the outer robe above the sash: [z, rx, ry]
+    - [25.0, 4.6, 3.3]
+    - [29.0, 5.3, 3.7]
+    - [32.2, 6.0, 3.8]
+    - [33.9, 5.0, 3.3]
+    - [34.8, 2.5, 2.3]
+  skirt:                            # outer robe below the sash: [z, rx, ry]
+    - [25.4, 4.8, 3.5]
+    - [19.0, 5.6, 4.2]
+    - [10.0, 6.5, 4.9]
+    - [3.0, 7.2, 5.4]
+    - [1.1, 7.4, 5.6]
+  hem_front_lift: 2.6               # the front hem rides up so the shoes show (side view)
+  collar: {width: 0.9, inner_width: 0.7, depth: 0.25, cross_z: 26.0, cross_x: -1.0}
+  sleeve:                           # a wide hanfu sleeve: radius along the arm 0..1 + droop
+    profile: [[0.0, 2.1], [0.35, 2.3], [0.62, 2.7], [0.85, 3.1], [1.0, 3.3]]
+    droop: 3.2                      # how far the sleeve bag hangs below the wrist line
+    cuff_width: 0.8
+  sash: {z: [23.8, 26.6], out: 0.4, knot: [-2.0, -3.75, 25.0], tail_length: 7.5}
+  trousers: true
+
+hair:
+  back: {top_z: 46.4, bottom_z: 23.0, width: [7.8, 6.6, 1.6], thickness: 2.2, flare: 0.8}
+  locks: {from: [4.4, 0.7, 41.6], to_z: 34.6, width: 1.1}
+  fringe: {cut_z: 43.0, scale: 1.07}
+  # curtain bangs from a centre part: [spread, width, drop below the eye line, lift off skin]
+  bangs: {locks: [[0.15, 0.8, 1.9, 0.18], [0.5, 0.45, 3.2, 0.12]]}
+  bun: {centre: [0.0, 1.4, 48.6], radius: 1.9}
+  pin: {length: 7.0, radius: 0.45}
+
+face:
+  eyes: {z: 41.7, x: 1.9, size: [0.5, 0.4, 0.8]}
+
+anchors:                            # exported per frame (CHARACTER_ART_BIBLE §6c)
+  palm: hand.R                      # the striking hand
+  rear_palm: hand.L
+  core: core                        # the dantian, a point bone in front of the sash
+
+camera:
+  # feet_row: the ground line, 5 px ABOVE the cell bottom. Seen from 30° up, anything IN FRONT
+  # of the body projects below its own origin: a striding foot (2-3 px) and, the deepest, the
+  # near knee of the lotus seat seen from the side (4-5 px). At 47 the toes fell out of the
+  # cell and no step ever showed; at 45 the seated knee was still cut off. ortho_units: world
+  # units the cell height spans (> 48 shrinks the figure so the crown clears the top row).
+  # The runtime profile carries anchor_offset (0, 48 - feet_row) — checked by pixelize.
+  gameplay: {elevation_deg: 30.0, cell: [32, 48], render_scale: 4, feet_row: 43.0,
+             ortho_units: 52.0}
+  presentation: {elevation_deg: 12.0, focal_mm: 85, size: [768, 1024], distance: 150}
+  # head and shoulders: the frame spans z 30.5..50.5 (collar to crown) at 56 px
+  portrait: {elevation_deg: 8.0, size: [56, 56], render_scale: 4, frame: [30.5, 50.5]}
+
+animations:                         # frame counts are the runtime contract (CharacterVisualProfileData)
+  idle: {frames: 6, loops: true}
+  walk: {frames: 8, loops: true}
+  attack: {frames: 8, loops: false}
+  meditate: {frames: 4, loops: false}
+  cast: {frames: 8, loops: false}

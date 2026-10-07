@@ -1,0 +1,59 @@
+# Lâm Nguyệt (Lin Yue) — Nội môn đệ tử of Thanh Vân Tông. THE SECOND GOLDEN ACTOR (D-062 CP12):
+# the same body, rig, motion and renderer as the protagonist; only this design data differs.
+#
+# Identity (CHARACTER_ART_BIBLE §5 "rose female cultivator"):
+#   - silhouette: narrower shoulders, a robe that flares wider at the hem, close sleeves, and
+#     the 披帛 silk stole falling OUTSIDE the arms — two accent ribbons no other actor has;
+#   - value: BLACK hair over a pale rose robe (the protagonist is white hair over grey-blue), so
+#     the two read apart at 32x48 by value before hue;
+#   - accent: the rose stole is her one saturated note; the sash steps back to plum.
+id: lin_yue
+extends: cultivator
+role: "inner disciple, Thanh Vân Tông"
+pieces: [pibo]
+
+body:
+  scale: 0.94
+  shoulder_x: 5.2
+  hip_x: 2.1
+garment:
+  bodice:
+    - [25.0, 4.1, 3.1]
+    - [29.0, 4.8, 3.5]
+    - [32.2, 5.3, 3.6]
+    - [33.9, 4.5, 3.1]
+    - [34.8, 2.4, 2.2]
+  skirt:
+    - [25.4, 4.3, 3.3]
+    - [19.0, 5.4, 4.1]
+    - [10.0, 6.9, 5.1]
+    - [3.0, 8.0, 5.9]
+    - [1.1, 8.3, 6.1]
+  sleeve:
+    profile: [[0.0, 1.9], [0.35, 2.0], [0.62, 2.2], [0.85, 2.5], [1.0, 2.6]]
+    droop: 2.2
+hair:
+  back: {top_z: 46.4, bottom_z: 24.5, width: [7.6, 6.4, 1.8], thickness: 2.0, flare: 0.6}
+  locks: {from: [4.2, 0.8, 41.6], to_z: 33.5, width: 1.0}
+  bun: {centre: [0.0, 2.6, 47.6], radius: 2.2}
+  pin: {length: 6.0, radius: 0.4}
+pibo: {width: 1.0, gap: 0.9, end_z: 12.0}
+
+materials:
+  skin:       {ramp: ["#a8705f", "#d4a088", "#f0cdb6", "#fbe6d6"], min_tone: 2}
+  hair:       {ramp: ["#0f0f16", "#1b1b26", "#2b2b3b", "#4a4a63"], highlight: true}
+  robe:       {ramp: ["#6b4a5c", "#a07a8c", "#d4b4c0", "#efdde3"], highlight: true}
+  robe_inner: {ramp: ["#9a9298", "#cfc8cc", "#f0ecee", "#ffffff"]}
+  trim:       {ramp: ["#3a2433", "#4f3045", "#6a4059", "#845572"], priority: 1.6, flat: true}
+  sash:       {ramp: ["#3d1f35", "#552a49", "#70385f", "#8d4b78"], priority: 1.3, flat: true}
+  accent:     {ramp: ["#7a2c45", "#a83f60", "#cf5f80", "#e88aa4"], priority: 1.5, flat: true}
+  trousers:   {ramp: ["#2a2230", "#382d40", "#493a52", "#5b4a66"]}
+  shoe:       {ramp: ["#17131b", "#221c28", "#2f2737", "#3f3549"]}
+  eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
+  pin:        {ramp: ["#1d5847", "#2a7660", "#5cc79e", "#a3e6c8"], priority: 2.0, flat: true}
+
+outputs:
+  sheet_prefix: cultivator_f_proto
+  anchors: lin_yue_anchors
+  profile: cultivator_f_visual                 # data/characters/visual/<profile>.tres (checked: anchor_offset)
+  portrait: cultivator_f_proto

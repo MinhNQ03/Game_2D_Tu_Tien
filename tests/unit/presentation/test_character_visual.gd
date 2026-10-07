@@ -92,8 +92,15 @@ func test_component_builds_sprite_with_contract() -> void:
 	assert_eq(sprite.hframes, profile.frame_count_of(profile.idle_sheet),
 		"columns == the idle sheet's frame count")
 	assert_false(sprite.centered, "sprite is top-left anchored for feet-on-origin math")
-	# Anchor: a 48px-tall frame lifts the sprite -48 on Y so its bottom sits on the origin.
-	assert_eq(sprite.position.y, -float(profile.frame_size.y), "sprite lifted a full frame height")
+	# Anchor: the sheet's GROUND LINE sits on the origin. A 48px frame is lifted -48 on Y, then
+	# lowered by anchor_offset.y — the rows the sheet keeps below its feet (D-062: a forward
+	# foot seen from 30° projects below the origin, so the pipeline stands feet on row 43).
+	assert_eq(sprite.position.y, -float(profile.frame_size.y) + profile.anchor_offset.y,
+		"sprite lifted a frame height less the rows below the feet")
+	assert_true(profile.anchor_offset.y >= 0.0
+			and profile.anchor_offset.y <= profile.frame_size.y / 8.0,
+		"the feet stand at most an eighth of the frame above its bottom (%s)"
+			% str(profile.anchor_offset))
 	free_node(visual)
 
 

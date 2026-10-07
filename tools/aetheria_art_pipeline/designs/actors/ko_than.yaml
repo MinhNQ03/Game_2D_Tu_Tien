@@ -1,0 +1,56 @@
+# Kha Thản (Ko Than) — Trinh sát biên thùy, hired out of Hoang Vực. The working man of the cast.
+#
+# Identity (CHARACTER_ART_BIBLE §5 "earthy"): a knee-length travelling coat over trousers and
+# boots (the only humanoid whose legs show — the silhouette says "walks for a living"), a cloth
+# head-wrap over cropped dark hair, close practical sleeves, ochre-brown cloth, a faded
+# rust sash. Slightly shorter and broader than the cultivators.
+id: ko_than
+extends: cultivator
+role: "frontier scout"
+pieces: [cap]
+
+body:
+  scale: 0.96
+  shoulder_x: 6.2
+  hip_x: 2.5
+garment:
+  bodice:
+    - [25.0, 4.9, 3.5]
+    - [29.0, 5.6, 3.9]
+    - [32.2, 6.3, 4.0]
+    - [33.9, 5.3, 3.5]
+    - [34.8, 2.6, 2.4]
+  skirt:
+    - [25.4, 5.1, 3.7]
+    - [19.0, 5.7, 4.2]
+    - [12.5, 6.2, 4.6]
+    - [10.4, 6.3, 4.7]
+  hem_front_lift: 0.4
+  sleeve:
+    profile: [[0.0, 1.9], [0.35, 1.9], [0.62, 1.9], [0.85, 1.8], [1.0, 1.7]]
+    droop: 0.6
+hair:
+  back: {top_z: 46.0, bottom_z: 36.5, width: [7.2, 6.4, 5.0], thickness: 1.6, flare: 0.2}
+  locks: null
+  fringe: {cut_z: 43.4, scale: 1.05}
+  bangs: null                     # cropped under the head-wrap
+  bun: null
+  pin: null
+
+materials:
+  skin:       {ramp: ["#8a5a45", "#b4806a", "#d8a88c", "#ecc6ab"], min_tone: 2}
+  hair:       {ramp: ["#140f0c", "#241b16", "#382a21", "#4d3a2d"]}
+  robe:       {ramp: ["#4a3826", "#6e5639", "#94774f", "#b39669"], highlight: true}
+  robe_inner: {ramp: ["#7d7464", "#a89e8a", "#cbc2ae", "#e4dccb"]}
+  trim:       {ramp: ["#2b2118", "#3a2d21", "#4c3b2b", "#604b37"], priority: 1.6, flat: true}
+  sash:       {ramp: ["#4f2219", "#6b2f22", "#8a3f2d", "#a8553e"], priority: 1.3, flat: true}
+  accent:     {ramp: ["#4b4a42", "#6a685c", "#8b8877", "#aaa794"], priority: 1.4}
+  trousers:   {ramp: ["#22231f", "#30312b", "#41423a", "#53554b"]}
+  shoe:       {ramp: ["#17120e", "#221a14", "#30251c", "#403226"]}
+  eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
+
+outputs:
+  sheet_prefix: merchant_proto
+  anchors: merchant_anchors
+  profile: merchant_visual                 # data/characters/visual/<profile>.tres (checked: anchor_offset)
+  portrait: merchant_proto

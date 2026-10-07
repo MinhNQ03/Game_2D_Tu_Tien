@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_idle.png" id="2_idle"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_walk.png" id="3_walk"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_attack.png" id="4_attack"]
-[ext_resource type="Resource" path="res://data/characters/visual/anchors/cultivator_anchors.tres" id="5_anchors"]
+[ext_resource type="Resource" path="res://data/characters/visual/anchors/merchant_anchors.tres" id="5_anchors"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_meditate.png" id="6_meditate"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/merchant_proto_cast.png" id="7_cast"]
 
@@ -18,7 +18,7 @@ meditate_sheet = ExtResource("6_meditate")
 cast_sheet = ExtResource("7_cast")
 frame_size = Vector2i(32, 48)
 frame_duration = 0.36
-anchor_offset = Vector2(0, 0)
+anchor_offset = Vector2(0, 5)
 stride_px = 116
 walk_rest_columns = PackedInt32Array(1, 2, 3, 5, 6, 7)
 anchors = ExtResource("5_anchors")

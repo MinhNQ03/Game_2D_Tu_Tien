@@ -56,7 +56,7 @@ def _diff(a, b):
     return n
 
 
-def write_anchor_resource(path, resource_id, cell_size, anchors):
+def write_anchor_resource(path, resource_id, cell_size, anchors, feet_row=None):
     """Write a `CharacterAnchorData` .tres.
 
     `anchors[anim][point]` is a list over DIRECTIONS of per-frame (x, y) CELL-pixel positions.
@@ -68,6 +68,10 @@ def write_anchor_resource(path, resource_id, cell_size, anchors):
     (direction * frames + frame), which the runtime indexes without any per-frame allocation.
     """
     cw, ch = cell_size
+    # The ground line inside the cell: the bottom edge unless the sheet stands its feet higher
+    # (the Blender pipeline does, so a forward foot stays inside the cell; its profile then
+    # carries anchor_offset.y = ch - feet_row and both agree on where the feet are).
+    origin = ch if feet_row is None else feet_row
     lines = []
     for anim in sorted(anchors):
         for point in sorted(anchors[anim]):
@@ -75,7 +79,7 @@ def write_anchor_resource(path, resource_id, cell_size, anchors):
             coords = []
             for frames in per_dir:
                 for (x, y) in frames:
-                    coords.append("%g, %g" % (x + 0.5 - cw / 2.0, y + 0.5 - ch))
+                    coords.append("%g, %g" % (x + 0.5 - cw / 2.0, y + 0.5 - origin))
             lines.append('"%s/%s": PackedVector2Array(%s)' % (anim, point, ", ".join(coords)))
     body = (
         '[gd_resource type="Resource" script_class="CharacterAnchorData" load_steps=2 format=3]\n\n'
