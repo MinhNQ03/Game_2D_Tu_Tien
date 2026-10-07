@@ -5,8 +5,9 @@ HUMANOIDS AND ICONS ARE NOT HERE. Since D-062 every humanoid sheet (player, Than
 Thẩm Bất Kỳ, Kha Thản) comes from ONE source: the Blender pipeline in
 `tools/aetheria_art_pipeline/` (one rig, one renderer, design data per actor). The stdlib
 pose-drawn humanoid that lived here was retired with it, and so were the 16px item and skill
-icons (now rendered from Blender by the same pipeline, `build.py icons`), so no two tools can
-write the same file.
+icons (now rendered from Blender by the same pipeline, `build.py icons`), and so were the
+training post, the Lạc Hà spring and stele (Blender props) and the vein fissure (now painted
+into the forest floor) — so no two tools can write the same file.
 
 A BUILD-TIME TOOL. The game never imports it; it exists so every committed texture is
 reproducible and provably self-made (`.kiro/steering/06-art-assets.md`). Standard library only
@@ -74,8 +75,6 @@ def gen_props():
     props.gen_tree(ROOT)
     props.gen_lantern_post(ROOT)
     props.gen_mist(ROOT)
-    props.gen_cultivation_landmarks(ROOT)
-    props.gen_training_post(ROOT)
     props.gen_rock(ROOT)
     props.gen_planter(ROOT)
     props.gen_emblems(ROOT)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3]
+[gd_scene load_steps=34 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -17,7 +17,6 @@
 [ext_resource type="Script" path="res://src/gameplay/cultivation/cultivation_site.gd" id="41_site"]
 [ext_resource type="Script" path="res://src/presentation/cultivation/qi_well_feedback.gd" id="42_qiwell"]
 [ext_resource type="Resource" path="res://data/cultivation/site_broken_vein.tres" id="43_sitedata"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_vein_fissure.png" id="44_fissure"]
 
 [ext_resource type="Script" path="res://src/gameplay/items/world_item.gd" id="50_witem"]
 [ext_resource type="Resource" path="res://data/items/item_bo_huyet_dan.tres" id="51_0"]
@@ -532,10 +531,6 @@ script = ExtResource("40_wind")
 position = Vector2(616, 472)
 script = ExtResource("41_site")
 site = ExtResource("43_sitedata")
-
-[node name="Landmark" type="Sprite2D" parent="CultivationSites/BrokenVein"]
-texture_filter = 1
-texture = ExtResource("44_fissure")
 
 [node name="QiWell" type="Node2D" parent="CultivationSites/BrokenVein"]
 script = ExtResource("42_qiwell")

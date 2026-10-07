@@ -5,7 +5,7 @@
 [ext_resource type="Script" path="res://src/gameplay/components/health_component.gd" id="3_health"]
 [ext_resource type="Resource" path="res://data/stats/training_dummy_stats.tres" id="4_statblock"]
 [ext_resource type="Script" path="res://src/gameplay/components/hurtbox_component.gd" id="5_hurtbox"]
-[ext_resource type="Texture2D" path="res://assets/sprites/characters/training_dummy.png" id="6_sprite"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/world/training_post.png" id="6_sprite"]
 [ext_resource type="Script" path="res://src/presentation/combat/damage_feedback.gd" id="91_dmgfeedback"]
 [ext_resource type="Script" path="res://src/presentation/combat/hit_reaction.gd" id="92_hitreaction"]
 [ext_resource type="Shader" path="res://src/presentation/ambient/pixel_sway.gdshader" id="93_sway"]
@@ -30,7 +30,7 @@ shape = SubResource("RectangleShape2D_dummy")
 texture_filter = 1
 material = SubResource("ShaderMaterial_post")
 centered = false
-offset = Vector2(-16, -40)
+offset = Vector2(-15, -41)
 texture = ExtResource("6_sprite")
 
 [node name="StatsComponent" type="Node" parent="."]

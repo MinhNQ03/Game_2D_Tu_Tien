@@ -276,7 +276,63 @@ def boulder(d):
     return [_part("rock", "stone", m), _part("moss", "moss", moss, smooth=True)]
 
 
+def stele(d):
+    """The Lạc Hà stele (a knowledge source): a weathered tablet on a plinth, its face carved in
+    columns of text under a worn gilt heading, moss creeping up the base."""
+    parts = [_part("plinth", "stone", box(-16, 0, 0, 16, 12, 8)),
+             _part("tablet", "stone_light", box(-11, 3, 8, 11, 8, 52)),
+             _part("cap", "stone", sphere((0, 5.5, 52), (12.5, 3.6, 5.5), 12, 6))]
+    for i, (x, top) in enumerate(((-6.5, 44), (-3.2, 40), (0.0, 44), (3.2, 36), (6.5, 42))):
+        parts.append(_part("text%d" % i, "carve", box(x - 0.9, 2.4, 14, x + 0.9, 3.2, top)))
+    parts.append(_part("heading", "gilt", box(-6, 2.2, 46, 6, 3.2, 50)))
+    parts.append(_part("moss", "moss", sphere((-9, 1, 6), (9, 3, 3), 10, 6), smooth=True))
+    return parts
+
+
+def spirit_spring(d):
+    """Lạc Hà spring (a cultivation site): a still pool welling with qi inside a ring of
+    fieldstones. The ORIGIN is the pool's centre — the site itself, not a front edge."""
+    parts = [_part("pool", "spring", cylinder(0, 0, 0, 1.4, 19, 24)),
+             _part("bed", "stone", cylinder(0, 0, -1.5, 0.2, 21, 24))]
+    for i in range(11):
+        a = math.tau * i / 11 + 0.2
+        r = 22.0 + (_h(i, 3, 17) - 0.5) * 3
+        m = sphere((r * math.cos(a), r * math.sin(a) * 0.95, 2.5),
+                   (5.2 + _h(i, 1, 17) * 2, 4.2, 3.6 + _h(i, 2, 17) * 2), 8, 6)
+        m.verts = [(x, y, max(0.0, z)) for x, y, z in m.verts]
+        parts.append(_part("stone%d" % i, "stone" if i % 3 else "stone_light", m))
+    parts.append(_part("well_light", "qi", sphere((0, 2, 1.6), (6, 4, 0.4), 12, 6), smooth=True))
+    return parts
+
+
+def training_post(d):
+    """The mộc nhân: a pale pine training figure (light wood reads against the yard's earth, and
+    its broken state reads against its whole one) — crossed feet, a post, a head, two arms and a
+    third striking arm, a cinnabar target ring on its chest."""
+    parts = [_part("foot_a", "timber_light", box(-14, -3, 0, 14, 3, 5)),
+             _part("foot_b", "timber_light", box(-3, -10, 0, 3, 16, 5)),
+             _part("post", "wood_pale", cylinder(0, 3, 0, 52, 4.2, 12)),
+             _part("head", "wood_pale", sphere((0, 3, 57), (6, 5.5, 6.5), 12, 8), smooth=True)]
+    for i, (path, r) in enumerate(((((-3, 3, 40), (-14, 2, 43), (-19, 0, 41)), 1.8),
+                                   (((3, 3, 40), (14, 2, 43), (19, 0, 41)), 1.8),
+                                   (((0, 0, 28), (0, -10, 27), (0, -14, 24)), 1.6))):
+        parts.append(_part("arm%d" % i, "wood_pale", tube(list(path), [r, r * 0.9, r * 0.8], 8,
+                                                        up=(0, 0, 1)), smooth=True))
+    ring = tube([(0, -1.4, 36), (0, -2.0, 36)], [6.2, 6.2], 16, up=(0, 0, 1))
+    parts.append(_part("target", "lacquer_red", ring))
+    parts.append(_part("target_core", "paper", tube([(0, -2.0, 36), (0, -2.4, 36)], [3.2, 3.2],
+                                                     12, up=(0, 0, 1))))
+    # a mộc nhân stands about a person's height, never taller than the one striking it
+    k = d.get("scale", 0.75)
+    for p in parts:
+        p["verts"] = [(x * k, y * k, z * k) for x, y, z in p["verts"]]
+    return parts
+
+
 BUILDERS = {
+    "stele": stele,
+    "spirit_spring": spirit_spring,
+    "training_post": training_post,
     "pine": pine,
     "boulder": boulder,
     "dwelling": dwelling,

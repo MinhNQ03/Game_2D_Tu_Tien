@@ -184,59 +184,6 @@ def gen_mist(root):
     _save(root, "assets/sprites/props/prop_mist.png", px)
 
 
-def gen_training_post(root):
-    """The training post (mộc nhân), drawn as something a cultivator TRAINS on: a straw-bound
-    head on a wooden post, two short wooden arms jutting from the shoulders of a straw bale, a
-    painted mark at the heart, standing in a packed-earth footing.
-
-    The first D-057B pass put a crossbar ABOVE the bale; at 1x it read as a grave cross, which a
-    xianxia courtyard must not show. The arms now sit at the bale's shoulders, below a head, so
-    the silhouette reads as a figure — what a training dummy is for.
-
-    Its pivot is the footing (bottom centre): a hit makes it WOBBLE about its base — a rigid
-    object's response — where a creature recoils."""
-    w, h = 32, 48
-    px = raster.blank(w, h)
-    wood = (104, 76, 48, 255)
-    wood_hi = raster.shade(wood, 1.25)
-    wood_dk = raster.shade(wood, 0.68)
-    straw = (198, 168, 98, 255)
-    straw_hi = raster.shade(straw, 1.18)
-    straw_dk = raster.shade(straw, 0.74)
-    rope = (150, 112, 62, 255)
-    mark = (176, 56, 52, 255)
-    raster.oval(px, 16, 46, 8, 1.6, (12, 16, 22, 96))                      # contact shadow
-    raster.oval(px, 16, 44.5, 6, 2, (110, 92, 70, 255))                     # earth footing
-    raster.rect(px, 14, 10, 19, 45, wood)                                   # the post
-    raster.rect(px, 17, 10, 19, 45, wood_dk)
-    # The arms: short pegs jutting from the bale's shoulders, tips dropping a pixel, lit on top.
-    for (x0, x1, tip) in ((4, 11, 4), (21, 28, 27)):
-        raster.rect(px, x0, 19, x1, 21, wood)
-        raster.rect(px, x0, 19, x1, 20, wood_hi)
-        raster.rect(px, tip, 21, tip + 1, 22, wood_dk)
-    # The head: a straw knot bound to the top of the post.
-    raster.oval(px, 16, 7, 3.6, 3.6, straw)
-    raster.oval(px, 15, 6, 1.6, 1.6, straw_hi)
-    raster.rect(px, 13, 9, 20, 10, rope)
-    # The body: a tall bale with vertical strands, lit upper-left, shaded lower-right.
-    raster.oval(px, 16, 26, 8, 10, straw)
-    raster.oval(px, 13, 22, 4, 5, straw_hi)
-    raster.oval(px, 19, 30, 4, 5, straw_dk)
-    for x in range(10, 23, 3):
-        raster.line(px, x, 18, x + 1, 34, straw_dk)
-    raster.dither_where(px, straw, straw_hi, 3)
-    raster.rect(px, 8, 18, 25, 19, rope)
-    raster.rect(px, 8, 31, 25, 32, rope)
-    # A painted target RING with a centre dot (a filled mark of this size read as a red cross).
-    raster.oval(px, 16, 25, 3.6, 3.6, mark)
-    raster.oval(px, 16, 25, 2.2, 2.2, straw)
-    raster.put(px, 16, 25, mark)
-    raster.outline(px, INK)
-    _save(root, "assets/sprites/characters/training_dummy.png", px)
-
-
-# --- static props and emblems (ported unchanged from the D-029/Phase-06 generator) ----------
-
 def gen_rock(root):
     w, h = 16, 16
     px = raster.blank(w, h)
@@ -333,48 +280,3 @@ def gen_prototype_tileset(root):
         px[y][ox + TILE - 1] = (52, 60, 74, 255)
     raster.rect(px, ox, TILE - 1, ox + TILE, TILE, (52, 60, 74, 255))
     _save(root, "assets/tiles/prototype/prototype_tileset.png", px)
-
-def gen_cultivation_landmarks(root):
-    """The PHYSICAL marks of a vein (Phase 12) — what a mortal sees where qi surfaces. The qi
-    itself is a runtime effect gated by perception; these are stone, water and torn earth."""
-    stone = (118, 120, 126, 255)
-    stone_hi = raster.shade(stone, 1.25)
-    stone_dk = raster.shade(stone, 0.7)
-    # Lạc Hà spring: a ring of stones around a small clear pool.
-    px = raster.blank(32, 20)
-    raster.oval(px, 16, 11, 14, 7, stone_dk)
-    raster.oval(px, 16, 10, 13, 6, stone)
-    raster.oval(px, 16, 11, 10, 4.2, (40, 92, 120, 255))
-    raster.oval(px, 14, 10, 6, 2, (70, 140, 168, 255))
-    raster.put(px, 12, 9, (200, 236, 240, 255))
-    for (x, y) in ((4, 9), (9, 5), (16, 4), (23, 5), (28, 9), (25, 15), (8, 15), (16, 17)):
-        raster.oval(px, x, y, 2, 1.6, stone_hi)
-    raster.outline(px, INK)
-    _save(root, "assets/sprites/props/prop_spirit_spring.png", px)
-    # The vein fissure: torn earth with jade-green crystal glints in the crack.
-    px = raster.blank(48, 20)
-    earth = (86, 70, 54, 255)
-    raster.oval(px, 24, 11, 22, 7, earth)
-    raster.oval(px, 24, 10, 20, 5, raster.shade(earth, 1.15))
-    crack = [(4, 12), (11, 9), (17, 12), (24, 8), (31, 12), (38, 9), (44, 11)]
-    for a, b in zip(crack, crack[1:]):
-        raster.line(px, a[0], a[1], b[0], b[1], (24, 20, 18, 255))
-        raster.line(px, a[0], a[1] + 1, b[0], b[1] + 1, (36, 30, 26, 255))
-    for (x, y) in ((11, 8), (24, 7), (38, 8), (30, 11)):
-        raster.put(px, x, y, (110, 210, 170, 255))
-        raster.put(px, x, y - 1, (180, 250, 220, 255))
-    raster.outline(px, INK)
-    _save(root, "assets/sprites/props/prop_vein_fissure.png", px)
-    # The Lạc Hà stele: an upright carved stone on a low plinth.
-    px = raster.blank(20, 36)
-    raster.oval(px, 10, 34, 8, 1.6, (12, 16, 22, 96))
-    raster.rect(px, 3, 29, 17, 34, stone_dk)
-    raster.rect(px, 3, 29, 17, 30, stone)
-    raster.rect(px, 5, 4, 15, 30, stone)
-    raster.rect(px, 5, 4, 7, 30, stone_hi)
-    raster.oval(px, 10, 5, 5, 3, stone)
-    for y in range(9, 27, 3):
-        raster.rect(px, 9, y, 13, y + 1, stone_dk)       # carved lines of text
-    raster.rect(px, 8, 6, 14, 7, (150, 128, 80, 255))   # a weathered gilt heading
-    raster.outline(px, INK)
-    _save(root, "assets/sprites/props/prop_stele.png", px)

@@ -489,6 +489,8 @@ def _footprint(spec, meta):
         w, d = p.get("w", 150.0) + 8, p.get("d", 96.0) + 8
     elif kind == "outpost_hall":
         w, d = p.get("w", 200.0) + 28, p.get("d", 120.0) + 34
+    elif kind in ("stele", "spirit_spring", "training_post"):
+        return (0, 0, 0, 0)      # placed by their own scenes, which own their collision
     elif kind == "boulder":
         sc = p.get("scale", 1.0)
         w, d = 50.0 * sc, 34.0 * sc

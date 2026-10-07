@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://qtsvwrsp5oig"
-path="res://.godot/imported/prop_spirit_spring.png-780b1edf31c73b2050ca526d482fda0e.ctex"
+uid="uid://bgcdk1msfroes"
+path="res://.godot/imported/spirit_spring.png-e7254abc9ff193fa83c05b729569eaf3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/props/prop_spirit_spring.png"
-dest_files=["res://.godot/imported/prop_spirit_spring.png-780b1edf31c73b2050ca526d482fda0e.ctex"]
+source_file="res://assets/sprites/props/world/spirit_spring.png"
+dest_files=["res://.godot/imported/spirit_spring.png-e7254abc9ff193fa83c05b729569eaf3.ctex"]
 
 [params]
 

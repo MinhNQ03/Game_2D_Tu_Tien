@@ -21,11 +21,16 @@ const HurtboxScript := preload("res://src/gameplay/components/hurtbox_component.
 ## The map floor a corpse lies on, and every sprite that can wear the corpse look. Listed
 ## because each is a DIFFERENT brightness — the wolf and the post sit near 0.49 and the player
 ## near 0.60, so a tint that works for one can erase another.
-const FLOOR_TEXTURE := "res://assets/tiles/verdant/v16_ground.png"
+## The floors a body can actually fall on (D-062): every shipped map's PAINTED floor, measured
+## per 16px cell — the old tile sheet is no longer under anyone's feet.
+const FLOOR_LAYOUTS := [
+	"res://data/maps/ground/lac_ha_ground.tres",
+	"res://data/maps/ground/vo_mach_ground.tres",
+]
 const FLOOR_TILE_SIZE := 16
 const CORPSE_WEARER_TEXTURES := [
 	"res://assets/sprites/enemies/mist_wolf_idle.png",
-	"res://assets/sprites/characters/training_dummy.png",
+	"res://assets/sprites/props/world/training_post.png",
 	"res://assets/sprites/characters/player_proto.png",
 ]
 
@@ -268,13 +273,12 @@ func test_only_a_revival_clears_the_corpse_look() -> void:
 ## comment, for each of the three entities that can die. A brighter floor or a darker creature
 ## then fails loudly instead of quietly erasing the body (L-034).
 func test_the_corpse_look_clears_both_the_floor_and_the_living_sprite() -> void:
-	# PER FILL TILE, not the texture's mean. The ground sheet holds two families — 4 moss and
-	# 4 flooded paddy — and their luminances span 0.305 to 0.367, so the mean (0.346) sits
-	# comfortably clear of a corpse that is only just clear of the DIMMEST fill. Averaging the
-	# floor is averaging away the worst case, and a corpse lands on one tile, not on the mean.
+	# PER CELL, not the floor's mean: a corpse lands on one place, and averaging the floor is
+	# averaging away the worst case. Every walkable cell of every painted floor is measured
+	# (open water is excluded: nothing can lie there), deduplicated to distinct cell colours.
 	var floor_tiles := _floor_fill_tiles()
-	assert_eq(floor_tiles.size(), 8,
-		"the ground sheet's 8 fill tiles were measured (got %d)" % floor_tiles.size())
+	assert_true(floor_tiles.size() >= 20,
+		"the painted floors' cells were measured (got %d distinct)" % floor_tiles.size())
 	for path in CORPSE_WEARER_TEXTURES:
 		var live := _mean_opaque_rgb(path)
 		var live_lum := _luminance(live)
@@ -302,31 +306,41 @@ func test_the_corpse_look_clears_both_the_floor_and_the_living_sprite() -> void:
 	assert_true(tint.a < 1.0, "and slightly translucent, which reads as drained")
 
 
-## Mean colour of each 16px FILL TILE in the ground sheet, left to right.
-##
-## The tile width comes from the project's base tile size (`06-art-assets.md`), so adding a
-## ninth fill is covered automatically rather than needing this test edited.
+## The distinct mean colours of every walkable 16px cell of every painted floor (quantised to
+## 1/64 so near-identical cells collapse), skipping open water.
 func _floor_fill_tiles() -> Array[Color]:
 	var out: Array[Color] = []
-	var texture := load(FLOOR_TEXTURE) as Texture2D
-	if texture == null:
-		return out
-	var image := texture.get_image()
-	if image == null:
-		return out
-	var tile := FLOOR_TILE_SIZE
-	for index in int(image.get_width() / tile):
-		var total := Vector3.ZERO
-		var count := 0
-		for y in image.get_height():
-			for x in range(index * tile, (index + 1) * tile):
-				var pixel := image.get_pixel(x, y)
-				if pixel.a < 0.5:
+	var seen := {}
+	for layout_path in FLOOR_LAYOUTS:
+		var layout := load(layout_path) as GroundLayoutData
+		if layout == null or layout.texture == null:
+			continue
+		var image := layout.texture.get_image()
+		if image.is_compressed():
+			image.decompress()
+		var tile := FLOOR_TILE_SIZE
+		for cy in layout.fill_rect.size.y:
+			for cx in layout.fill_rect.size.x:
+				# water and its bank: any cell a water BLOCKER touches is ground nothing can lie on
+				var cell := layout.fill_rect.position + Vector2i(cx, cy)
+				var wet := layout.is_water_cell(cell)
+				for corner in [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)]:
+					var at: Vector2 = (Vector2(cell) + corner) * float(tile)
+					for poly in layout.blockers:
+						wet = wet or Geometry2D.is_point_in_polygon(at, poly)
+				if wet:
 					continue
-				total += Vector3(pixel.r, pixel.g, pixel.b)
-				count += 1
-		if count > 0:
-			out.append(Color(total.x / count, total.y / count, total.z / count))
+				var total := Vector3.ZERO
+				for y in range(cy * tile, (cy + 1) * tile, 2):
+					for x in range(cx * tile, (cx + 1) * tile, 2):
+						var pixel := image.get_pixel(x, y)
+						total += Vector3(pixel.r, pixel.g, pixel.b)
+				total /= float(tile * tile / 4)
+				var key := Vector3i(int(total.x * 64.0), int(total.y * 64.0), int(total.z * 64.0))
+				if seen.has(key):
+					continue
+				seen[key] = true
+				out.append(Color(total.x, total.y, total.z))
 	return out
 
 

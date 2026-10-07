@@ -20,9 +20,9 @@
 [ext_resource type="Script" path="res://src/gameplay/cultivation/cultivation_site.gd" id="41_site"]
 [ext_resource type="Script" path="res://src/presentation/cultivation/qi_well_feedback.gd" id="42_qiwell"]
 [ext_resource type="Resource" path="res://data/cultivation/site_lac_ha_spring.tres" id="43_sitedata"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_spirit_spring.png" id="44_spring"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/world/spirit_spring.png" id="44_spring"]
 [ext_resource type="Script" path="res://src/gameplay/knowledge/knowledge_source.gd" id="45_source"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_stele.png" id="46_stele"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/world/stele.png" id="46_stele"]
 
 [ext_resource type="Script" path="res://src/gameplay/items/world_item.gd" id="50_witem"]
 [ext_resource type="Resource" path="res://data/items/item_bo_huyet_dan.tres" id="51_0"]
@@ -566,6 +566,8 @@ site = ExtResource("43_sitedata")
 [node name="Landmark" type="Sprite2D" parent="CultivationSites/LacHaSpring"]
 texture_filter = 1
 texture = ExtResource("44_spring")
+centered = false
+offset = Vector2(-26, -17)
 
 [node name="QiWell" type="Node2D" parent="CultivationSites/LacHaSpring"]
 script = ExtResource("42_qiwell")
@@ -584,7 +586,7 @@ reach_px = 30.0
 texture_filter = 1
 texture = ExtResource("46_stele")
 centered = false
-offset = Vector2(-10, -34)
+offset = Vector2(-17, -50)
 
 [node name="Pickups" type="Node2D" parent="."]
 y_sort_enabled = true

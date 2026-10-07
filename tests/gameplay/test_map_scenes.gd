@@ -706,3 +706,43 @@ func test_solid_props_never_block_the_play() -> void:
 			assert_false(bool(ground.call("is_flooded_cell", cell)),
 				"%s '%s' stands on dry ground" % [label, prop.name])
 		map.free()
+
+
+## A pipeline sprite placed directly in a scene (the training post, the Lạc Hà stele and spring)
+## stands on the ORIGIN the pipeline measured (D-062): its offset is exactly -PropData.origin.
+## If a re-render moves the origin and the scene is not updated, the prop floats or sinks — this
+## fails instead.
+func test_pipeline_sprites_stand_on_their_measured_origin() -> void:
+	var by_texture := {}
+	var dir := DirAccess.open("res://data/world/props")
+	assert_not_null(dir, "the prop data folder exists")
+	if dir == null:
+		return
+	for file in dir.get_files():
+		if file.ends_with(".tres"):
+			var data := load("res://data/world/props/" + file) as PropData
+			if data != null and data.texture != null:
+				by_texture[data.texture.resource_path] = data
+	var checked := 0
+	for scene_path in ["res://src/gameplay/maps/hub_map.tscn",
+			"res://src/gameplay/maps/field_map.tscn",
+			"res://src/gameplay/entities/training_dummy.tscn"]:
+		var root: Node = (load(scene_path) as PackedScene).instantiate()
+		var stack: Array[Node] = [root]
+		while not stack.is_empty():
+			var node: Node = stack.pop_back()
+			for child in node.get_children():
+				stack.append(child)
+			var sprite := node as Sprite2D
+			if sprite == null or sprite.texture == null:
+				continue
+			var data: PropData = by_texture.get(sprite.texture.resource_path)
+			if data == null:
+				continue
+			checked += 1
+			assert_false(sprite.centered, "%s '%s' is drawn from its origin" % [
+				scene_path.get_file(), sprite.name])
+			assert_eq(sprite.offset, -data.origin, "%s '%s' stands on the measured origin" % [
+				scene_path.get_file(), sprite.name])
+		root.free()
+	assert_true(checked >= 3, "the post, the stele and the spring were checked (%d)" % checked)

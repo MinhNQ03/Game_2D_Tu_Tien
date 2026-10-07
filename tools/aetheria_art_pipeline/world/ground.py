@@ -50,10 +50,11 @@ RAMPS = {
     STONE_DARK: [(72, 74, 82), (88, 90, 99), (104, 107, 116), (122, 125, 133), (140, 143, 150)],
     WATER: [(19, 50, 76), (25, 64, 94), (31, 86, 128), (47, 112, 150), (110, 168, 196)],
     PADDY: [(36, 70, 66), (44, 86, 78), (54, 100, 88), (92, 140, 122)],
-    "WOOD": [(52, 36, 26), (72, 50, 34), (92, 62, 42), (116, 82, 56)],
+    # weathered planks: sun and rain grey the timber (a dark plank hid a fallen body)
+    "WOOD": [(92, 76, 60), (118, 98, 76), (142, 120, 92), (166, 144, 112)],
 }
 # The forest floor: the meadow's family in canopy shade — darker, cooler.
-RAMPS[FOREST] = [(40, 64, 44), (50, 78, 52), (62, 94, 60), (76, 110, 68), (92, 126, 78)]
+RAMPS[FOREST] = [(48, 74, 50), (58, 88, 58), (70, 104, 66), (84, 120, 74), (100, 136, 84)]
 RAMPS[LITTER] = [(70, 62, 48), (90, 80, 60), (110, 98, 72), (132, 118, 86)]
 LEAF_FLECKS = [(150, 104, 52), (128, 86, 44), (110, 120, 60)]
 # The broken vein: fractured stone with qi seeping along its cracks (aetheria_style §5 "spirit":

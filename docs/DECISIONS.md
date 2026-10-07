@@ -4241,9 +4241,12 @@ record: `docs/AETHERIA_ART_PIPELINE.md`.
   forked bolt that leaves an afterimage of its path.
 - **The benchmark is structural** (`validate/visual_benchmark.py`): composition, palette,
   environment, silhouette, combat, UI, VFX, pixel — explainable per measure, DNA rules as
-  compliance. Golden frame (`capture_motion golden`): **80.4 / 100 PASS**. The quality reference
+  compliance. Golden frame (`capture_motion golden`): **79.4 / 100 PASS**. The quality reference
   stays gitignored, REFERENCE ONLY; its canon conflicts are R-12..R-16.
 
 **Not done, on purpose.** P16–P20 systems (Lâm Nguyệt stands in the golden frame as a placed
 figure, not an NPC system); a quadruped rig for the wolf (the next pipeline extension); the older
-stdlib props (spring, stele, post, banners, lanterns) stay until their Blender pass.
+stdlib banners and lantern posts stay until their Blender pass (the post, stele and spring are
+rebuilt; the vein is painted). The corpse-contrast test now measures the PAINTED floors a body can
+lie on (it measured the retired tile sheet), and caught two real cases — dark bridge planks and
+a dark training post — fixed in the art.

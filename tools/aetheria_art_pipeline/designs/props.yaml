@@ -13,6 +13,7 @@ common:
   roof_dark:    {ramp: ["#191d26", "#232934", "#2f3644", "#3f4757"], flat: true, priority: 1.4}
   timber:       {ramp: ["#2b1d14", "#3d291c", "#523726", "#6a4a33"], priority: 1.3}
   timber_light: {ramp: ["#4a3322", "#664730", "#83603f", "#a07a52"]}
+  wood_pale:    {ramp: ["#7a5a3c", "#a07c56", "#c4a074", "#dcc098"], highlight: true}
   plaster:      {ramp: ["#8c8473", "#b4ab97", "#d6ccb6", "#ebe3d0"], highlight: true}
   stone:        {ramp: ["#4c4e56", "#62656e", "#7a7d86", "#9598a0"]}
   stone_light:  {ramp: ["#62656e", "#7a7d86", "#9598a0", "#b1b3b9"]}
@@ -25,6 +26,9 @@ common:
   water:        {ramp: ["#163a52", "#1f5680", "#2f6f8f", "#5f97b5"], flat: true}
   needles:      {ramp: ["#162c26", "#1f3b30", "#2b4d3a", "#3f6448"], highlight: true}
   moss:         {ramp: ["#2c4a2c", "#3b5e36", "#4f7642", "#688f52"], flat: true}
+  carve:        {ramp: ["#2e3038", "#3a3c45", "#474a54", "#555864"], flat: true, priority: 1.6}
+  spring:       {ramp: ["#1f5a6e", "#2f7d8f", "#5aa9c0", "#a6dcec"], highlight: true}
+  qi:           {ramp: ["#5aa9c0", "#85ccea", "#bfe8f6", "#eaf8fd"], flat: true, priority: 1.8}
 
 props:
   dwelling_a:     {kind: dwelling, params: {w: 150, d: 96, h: 64}}
@@ -39,3 +43,6 @@ props:
   pine:           {kind: pine, params: {seed: 5, scale: 1.0}}
   pine_small:     {kind: pine, params: {seed: 11, scale: 0.75}}
   boulder:        {kind: boulder, params: {seed: 7, scale: 1.0}}
+  stele:          {kind: stele}
+  spirit_spring:  {kind: spirit_spring}
+  training_post:  {kind: training_post}

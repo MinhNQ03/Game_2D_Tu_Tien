@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://df27toua4fc4u"
-path="res://.godot/imported/training_dummy.png-aec81190c27755a0b4b013c29859a8d7.ctex"
+uid="uid://b1tblicmcnuon"
+path="res://.godot/imported/training_post.png-4c64ef2a3d0c218f3b3952835ed9250a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/characters/training_dummy.png"
-dest_files=["res://.godot/imported/training_dummy.png-aec81190c27755a0b4b013c29859a8d7.ctex"]
+source_file="res://assets/sprites/props/world/training_post.png"
+dest_files=["res://.godot/imported/training_post.png-4c64ef2a3d0c218f3b3952835ed9250a.ctex"]
 
 [params]
 

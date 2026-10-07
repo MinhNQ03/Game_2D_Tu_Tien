@@ -4,11 +4,11 @@
    "label": "Composition",
    "weight": 20,
    "essential": true,
-   "score": 96.4,
+   "score": 96.1,
    "measures": [
     {
      "measure": "hud_occupancy",
-     "capture": 0.131,
+     "capture": 0.123,
      "reference": "0.237 (band 0.08-0.15)",
      "score": 100.0,
      "why": "share of the frame the HUD takes, against the DNA's compact band (the reference's own share includes forbidden features and is shown, not chased)"
@@ -30,7 +30,7 @@
       0.51,
       0.48
      ],
-     "score": 86.2,
+     "score": 86.0,
      "why": "where the eye lands (saliency centroid) relative to the reference's"
     },
     {
@@ -50,7 +50,7 @@
      "measure": "left_right_balance",
      "capture": 0.47,
      "reference": 0.48,
-     "score": 97.2,
+     "score": 96.2,
      "why": "visual weight split between the halves"
     }
    ]
@@ -59,7 +59,7 @@
    "label": "Palette / lighting",
    "weight": 15,
    "essential": true,
-   "score": 59.8,
+   "score": 59.6,
    "measures": [
     {
      "measure": "warm_share",
@@ -84,21 +84,21 @@
       0.23,
       0.01
      ],
-     "score": 53.1,
+     "score": 52.8,
      "why": "the 5-band luminance distribution (shadows -> highlights) vs the reference"
     },
     {
      "measure": "contrast",
-     "capture": 0.105,
+     "capture": 0.104,
      "reference": 0.181,
-     "score": 36.7,
+     "score": 36.2,
      "why": "RMS luminance contrast of the playfield"
     },
     {
      "measure": "saturation",
      "capture": 0.343,
      "reference": 0.255,
-     "score": 64.7,
+     "score": 64.8,
      "why": "mean saturation of the playfield"
     }
    ]
@@ -107,27 +107,27 @@
    "label": "Environment",
    "weight": 15,
    "essential": true,
-   "score": 96.0,
+   "score": 94.6,
    "measures": [
     {
      "measure": "edge_density",
-     "capture": 0.326,
+     "capture": 0.325,
      "reference": 0.351,
-     "score": 92.8,
+     "score": 92.4,
      "why": "share of strong edges in the world: richness of built and grown detail"
     },
     {
      "measure": "colour_richness",
-     "capture": 60,
+     "capture": 61,
      "reference": 32,
      "score": 100.0,
      "why": "distinct colours each covering >= 0.3% of the playfield: at least the reference's material variety; past twice it is counted as noise"
     },
     {
      "measure": "detail_rhythm",
-     "capture": 0.081,
+     "capture": 0.083,
      "reference": 0.077,
-     "score": 95.2,
+     "score": 91.3,
      "why": "how unevenly detail is spread: quiet ground beside busy architecture"
     }
    ]
@@ -172,7 +172,7 @@
    "label": "Motion / combat",
    "weight": 10,
    "essential": false,
-   "score": 45.3,
+   "score": 40.9,
    "measures": [
     {
      "measure": "combat_focus",
@@ -190,9 +190,9 @@
     },
     {
      "measure": "technique_at_the_fight",
-     "capture": 0.694,
+     "capture": 0.561,
      "reference": 1.0,
-     "score": 69.4,
+     "score": 56.1,
      "why": "technique light that lands between the combatants, not elsewhere"
     }
    ]
@@ -201,13 +201,13 @@
    "label": "UI hierarchy / material",
    "weight": 10,
    "essential": true,
-   "score": 78.4,
+   "score": 79.9,
    "measures": [
     {
      "measure": "surface_darkness",
-     "capture": 0.223,
+     "capture": 0.228,
      "reference": 0.242,
-     "score": 92.6,
+     "score": 94.5,
      "why": "HUD surfaces are dark lacquer that light text sits on, like the reference's"
     },
     {
@@ -219,9 +219,9 @@
     },
     {
      "measure": "legibility_spread",
-     "capture": 0.42,
+     "capture": 0.444,
      "reference": 0.592,
-     "score": 71.0,
+     "score": 75.1,
      "why": "luminance range inside the HUD (text against its surface)"
     },
     {
@@ -237,27 +237,27 @@
    "label": "VFX / spiritual language",
    "weight": 10,
    "essential": false,
-   "score": 61.7,
+   "score": 58.1,
    "measures": [
     {
      "measure": "vfx_presence",
-     "capture": 0.002,
+     "capture": 0.0023,
      "reference": 0.0505,
-     "score": 11.1,
+     "score": 12.8,
      "why": "technique light on screen at the peak; a third of the reference's spectacle is the DNA's restrained target (glow is never the design)"
     },
     {
      "measure": "vfx_restraint",
-     "capture": 0.002,
+     "capture": 0.0023,
      "reference": 0.12,
      "score": 100.0,
      "why": "the DNA cap: a technique covers <= 12% of the frame"
     },
     {
      "measure": "element_unity",
-     "capture": 0.592,
+     "capture": 0.491,
      "reference": 0.8,
-     "score": 74.0,
+     "score": 61.4,
      "why": "one element, one hue family (the DNA: never a second element's hue)"
     }
    ]
@@ -278,7 +278,7 @@
    ]
   }
  },
- "total": 80.4,
+ "total": 79.4,
  "pass": true,
  "failures": [],
  "capture": "golden_combat.png"

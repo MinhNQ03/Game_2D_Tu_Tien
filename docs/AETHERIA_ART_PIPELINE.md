@@ -210,7 +210,7 @@ Each measure scores 0–100 (similarity with a stated tolerance, or DNA complian
 means; total = Σ weight·score/100. **PASS ≥ 60 with every essential category ≥ 50.** Output:
 `scorecard.json` + `scorecard.md` with both values and the reason for each measure.
 
-**Current (golden frame, Lôi Chỉ at range in Thôn Lạc Hà): 80.4 / 100 PASS** — composition 96.4,
+**Current (golden frame, Lôi Chỉ at range in Thôn Lạc Hà): 79.4 / 100 PASS** — composition 96.1,
 palette 59.8, environment 96.0, character 94.7, combat 45.3, UI 78.4, VFX 61.7, pixel 100
 (`docs/visual_benchmarks/scorecard.md`). The loop that got there: the first golden frame scored
 62.3 and FAILED palette at 37 (a one-band, low-contrast world) and combat at 8.6 (a melee clinch
@@ -239,9 +239,11 @@ any asset.
 
 ## 13. Limitations (honest)
 
-- The mist wolf, the training post, the spirit spring, the stele, banners and lantern posts are
-  still drawn by the stdlib generator (`tools/aetheria_art/`) — consistent ink and density, but not
-  yet Blender-built. A quadruped rig is the next pipeline extension.
+- The mist wolf, the banners and the lantern posts are still drawn by the stdlib generator
+  (`tools/aetheria_art/`) — consistent ink and density, but not yet Blender-built (the cloth and
+  the paper lantern hang from the shared sway shader, tuned to those sprites). A quadruped rig is
+  the next pipeline extension. The training post, the Lạc Hà stele and spring are Blender-built;
+  the broken vein is painted into the forest floor.
 - `PrototypeGround` remains for any map without a painted layout; both shipped maps are painted.
 - Benchmark palette (≈60) stays below the other essentials: a painterly reference has bright mist
   and waterfalls a frontier village does not, and the quality rule forbids buying it with glow or
@@ -264,5 +266,5 @@ any asset.
 | CP8 Pixel output | PASS | 25 sheets pass `style_check`; animate validator; anchors; profile check |
 | CP9 Godot | PASS | existing `CharacterVisualProfileData`/`CharacterVisualComponent`; 795 tests, 3 E2E |
 | CP10 Golden scene | PASS | Thôn Lạc Hà painted + Blender village; Rừng Vỡ Mạch; `capture_motion golden` |
-| CP11 Benchmark | PASS | 80.4 / 100, every essential ≥ 50 |
+| CP11 Benchmark | PASS | 79.4 / 100 (80.4 before the site props were rebuilt), every essential ≥ 50 |
 | CP12 Second actor | PASS | Lâm Nguyệt (+ Thẩm Bất Kỳ, Kha Thản, the Thanh Vân robe) by design data only — no renderer change |

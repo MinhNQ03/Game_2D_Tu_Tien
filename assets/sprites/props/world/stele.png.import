@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b7shaluv6avt1"
-path="res://.godot/imported/prop_vein_fissure.png-67147d8e0249c301cc6404a84e2e4a49.ctex"
+uid="uid://3oikbicus8o0"
+path="res://.godot/imported/stele.png-d427d29ee151a9ae320d70f671eea0e5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/props/prop_vein_fissure.png"
-dest_files=["res://.godot/imported/prop_vein_fissure.png-67147d8e0249c301cc6404a84e2e4a49.ctex"]
+source_file="res://assets/sprites/props/world/stele.png"
+dest_files=["res://.godot/imported/stele.png-d427d29ee151a9ae320d70f671eea0e5.ctex"]
 
 [params]
 
