@@ -17,6 +17,7 @@ pixel/pngout.py                  the one PNG writer: 8-bit palette + alpha, loss
 validate/style_check.py          measures produced art against the DNA (JSON verdict, exit code)
 validate/review_sheet.py         the visual-review boards (per actor, icons)
 validate/visual_benchmark.py     the structural benchmark against the quality reference
+validate/determinism_check.py    every stage under several hash seeds: same bytes or exit 1
 model/icons.py, model/props3d.py icon and world-prop geometry (same primitives as the cultivator)
 blender/build_icons.py, build_props.py   icon / prop passes (props catch their cast shadow)
 designs/icons.yaml, props.yaml   icon and prop designs (ramps in DNA roles)

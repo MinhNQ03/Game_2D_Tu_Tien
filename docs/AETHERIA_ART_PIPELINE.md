@@ -130,6 +130,14 @@ the cell (no step ever showed); at 45 the seated knee was cut. Profiles carry
 
 Every opaque sprite pixel is one of the actor's ramp tones or the ink. Not resize-and-pixelate.
 
+**Deterministic (D-063).** The same passes give the same bytes, run after run. Every majority vote
+(cluster correction, despeckle) goes through `pixelize._majority`: the most common key, a tie to
+the key met first in the fixed neighbour scan. (`max(set(keys), key=keys.count)` broke ties by
+set order, which for material NAMES follows Python's per-process string-hash seed — the same
+passes made different pixels.) `validate/determinism_check.py` runs the real stages (props,
+icons, every actor, the UI kit) under several hash seeds and compares every file byte for byte;
+run it before committing regenerated art.
+
 ## 7. Icons — `model/icons.py`, `blender/build_icons.py`, `designs/icons.yaml`
 
 Items are objects resting on the ground plane (pill dish, spirit stone, jian, folded robe,

@@ -4437,3 +4437,30 @@ weapon rack block the gaps between their legs, which is right for a fence and a 
   imports `aetheria_art.sheet` (the legacy generator's package) for the one PropData writer. Kept
   for A2 (one writer); to be moved to a neutral module both pipelines import.
 
+### Pre-A3 — the pixelizer is deterministic (A2 review, P1-PRE-A3)
+
+**Bug.** Rebuilding the SAME Blender passes gave different pixels from run to run (A2:
+`spirit_spring.png` changed between `PYTHONHASHSEED` 1, 2 and 3). New A3 art must not be built on
+a pipeline that cannot reproduce its own output.
+
+**Root cause.** Three majority votes broke ties with `max(set(keys), key=keys.count)` —
+`clean` (twice) and `despeckle`. Among equal counts that returns whichever key the SET yields
+first; the keys hold a material's NAME, and Python randomizes string hashing per process, so the
+order — and the pixel — followed the hash seed. (`rasterize` was already stable: its vote runs
+over a dict in insertion order. The ground painter and the UI kit hash with their own integer
+function. Pinning `PYTHONHASHSEED` would only have hidden this.)
+
+**Fix.** One rule, `pixelize._majority`: `Counter(keys).most_common(1)` — the most common key,
+a tie to the key met FIRST in the caller's fixed neighbour scan (documented `Counter` behaviour).
+
+**Evidence.** `validate/determinism_check.py` (new, committed) runs the real stages — props,
+icons, all five actors, the UI kit — once per hash seed and compares every file it writes. Fixed:
+99 files byte-identical across seeds 1, 2, 3 (50 s). Test-the-test: on the old code the same
+check reports `spirit_spring.png` and exits 1.
+
+**The art, regenerated.** The committed art had been built under whatever seed each run drew, so
+the deterministic output differs from it only where a tie used to be broken by chance: 774 of
+408,665 opaque pixels (0.19%) across 34 files, at most 52 in one 40-cell sheet, ZERO silhouette
+changes (alpha identical everywhere) — single-pixel tone flips inside the figures, invisible at
+6× (inspected). The regenerated, reproducible art is committed with the fix.
+

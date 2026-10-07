@@ -11,6 +11,7 @@ is exactly one of the actor's ramp tones or the style's ink.
 """
 import json
 import math
+from collections import Counter
 import os
 import sys
 
@@ -124,6 +125,15 @@ def rasterize(spec, passes, k, portrait=False):
     return grid
 
 
+def _majority(keys):
+    """The most common key; a TIE goes to the key met FIRST in the caller's fixed scan order
+    (`Counter.most_common` keeps first-encountered order among equal counts). Deterministic by
+    construction. It replaces `max(set(keys), key=keys.count)`, which broke ties by SET order —
+    for keys holding a material's NAME that order follows Python's per-process string-hash seed,
+    so the same passes produced different pixels from one run to the next (D-063)."""
+    return Counter(keys).most_common(1)[0][0]
+
+
 def _neigh(grid, x, y):
     H, W = len(grid), len(grid[0])
     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -152,10 +162,10 @@ def clean(spec, grid):
             same_mat = [n for n in ns if n[0] == c[0]]
             if same_mat:
                 tones = [n[1] for n in same_mat]
-                out[y][x][1] = max(set(tones), key=tones.count)
+                out[y][x][1] = _majority(tones)
             elif len(ns) >= 3:
                 keys = [(n[0], n[1]) for n in ns]
-                mat, tone = max(set(keys), key=keys.count)
+                mat, tone = _majority(keys)
                 out[y][x][0], out[y][x][1] = mat, tone
     return out
 
@@ -200,7 +210,7 @@ def despeckle(spec, grid):
             keys = [(n[0], n[1]) for n in ns
                     if mats[n[0]]["priority"] < PROTECTED_PRIORITY]
             if keys:
-                out[y][x][0], out[y][x][1] = max(set(keys), key=keys.count)
+                out[y][x][0], out[y][x][1] = _majority(keys)
     return out
 
 

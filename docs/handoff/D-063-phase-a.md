@@ -22,7 +22,7 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
 | A new ANSWER identical to one WAITING in the immediate lane returns instead of showing (the "visible on its frame" invariant) | A1 review | open — fix + regression test |
 | playtest 05c/05d: pin that the setup pickups were actually collected | A1 review | open |
 | `pixel/pixelize.py` → `aetheria_art.sheet` dependency (one PropData writer, wrong direction) | A2 review P2 | technical debt — move the writer to a neutral module |
-| Pixelizer non-determinism (`max(set(keys))` over string keys) | A2 | fix REQUIRED before A3 art |
+| Pixelizer non-determinism (`max(set(keys))` over string keys) | A2 | FIXED (`_majority`; `validate/determinism_check.py`, 3 seeds × 99 files identical) |
 | `19_natural_encounter` playtest step is timing-flaky (30-round budget vs real-time wolf) | A2 | open — harness |
 | D-062 boulder / well: round art on rectangular footprints | A2 audit | known limitation |
 | Notices waiting when the map changes are freed with that map's HUD | A1 | known limitation |
