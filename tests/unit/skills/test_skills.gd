@@ -230,6 +230,39 @@ func test_the_bolt_strikes_the_first_target_on_its_path_and_stuns() -> void:
 	_end(parts)
 
 
+## TRAVEL must read (D-062 §25): a bolt crosses a yard in a quarter second, so when it lands its
+## whole path stays as an AFTERIMAGE for a moment, then dissipates and the feedback goes idle.
+func test_a_landed_bolt_leaves_a_brief_afterimage_then_dissipates() -> void:
+	var parts := _session()
+	var skills: SkillRuntime = parts[4]
+	(parts[5] as CharacterState).set_cultivation(&"realm_hau_thien", 9, 0)
+	(parts[2] as KnowledgeRuntime).grant(&"know_loi_chi", &"t")
+	skills.learn_available()
+	_run(skills, 30.0)
+	_target(parts, Vector2(120, 0), &"wolf_a")
+	var feedback := CastFeedback.new()
+	add_to_tree(feedback)
+	feedback.bind_runtime(skills)
+	assert_eq(skills.request_cast(&"tech_loi_chi"), &"", "the bolt is cast")
+	var saw_flight := false
+	var saw_afterimage := false
+	for _i in 120:
+		skills.tick(1.0 / 60.0)
+		feedback.advance(1.0 / 60.0)
+		saw_flight = saw_flight or not skills.bolts().is_empty()
+		if skills.bolts().is_empty() and saw_flight and feedback.afterimage_count() > 0:
+			saw_afterimage = true
+			break
+	assert_true(saw_flight, "the bolt was in flight")
+	assert_true(saw_afterimage, "and on landing its path stays as an afterimage")
+	for _i in 30:
+		feedback.advance(1.0 / 60.0)
+	assert_eq(feedback.afterimage_count(), 0, "the afterimage dissipates")
+	feedback.bind_runtime(null)
+	free_node(feedback)
+	_end(parts)
+
+
 func test_a_blow_before_the_release_breaks_the_cast_and_spends_nothing() -> void:
 	var parts := _session()
 	var skills: SkillRuntime = parts[4]

@@ -1,0 +1,20 @@
+{
+  "image": "aetheria_gameplay_quality_reference.png",
+  "status": "REFERENCE ONLY - NON-RUNTIME - COMPOSITION / QUALITY BENCHMARK - NOT PRODUCTION ART",
+  "screen": [1536, 1024],
+  "note": "Regions measured by eye on the 1536x1024 reference (D-062 CP11). The HUD regions include features Aetheria canon FORBIDS (minimap, chat, quest tracker, right menu column - R-7); they are annotated so the reference's HUD OCCUPANCY is measured honestly, never as a target to copy.",
+  "hud": [
+    ["identity", 10, 8, 390, 145],
+    ["quest_tracker", 10, 190, 300, 108],
+    ["clock", 1230, 18, 120, 42],
+    ["minimap", 1352, 6, 182, 196],
+    ["location", 1378, 198, 136, 52],
+    ["menu_column", 1460, 300, 72, 420],
+    ["chat", 8, 800, 400, 215],
+    ["skill_bar", 480, 880, 740, 140]
+  ],
+  "actors": {
+    "player": [560, 390, 135, 150],
+    "enemy": [970, 440, 110, 160]
+  }
+}

@@ -36,3 +36,9 @@ docs/design_refs/
 # so Godot never imports a render pass as a game texture (L-044).
 tools/aetheria_art_pipeline/work/
 *.blend1
+
+# D-062 visual benchmark: the gameplay QUALITY REFERENCE image is a generated picture with no
+# recorded rights — REFERENCE ONLY, NON-RUNTIME, NOT PRODUCTION ART. It stays out of git (and out
+# of res:// via docs/.gdignore); the committed README and annotation describe it, and the scorer
+# reports "reference missing" rather than inventing numbers without it.
+docs/visual_benchmarks/*.png

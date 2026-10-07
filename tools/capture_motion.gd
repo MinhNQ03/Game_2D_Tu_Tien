@@ -17,6 +17,9 @@ extends SceneTree
 ## USAGE (needs a display; do NOT pass --headless)
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
+## Scenarios: walk_stop_turn, strike_the_post, ambient, cultivation, techniques, golden,
+## field_fight (second user argument runs one).
+##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
 ## on top of the camera's own zoom) and `<out>/scene_<name>.png` full frames. Exit code 1 if any
 ## scenario could not run — a missing strip must never look like a passing one.
@@ -76,6 +79,9 @@ func _run() -> void:
 	if _only == "" or _only == "techniques":
 		print("[capture_motion] scenario techniques")
 		await _scenario_techniques()
+	if _only == "" or _only == "golden":
+		print("[capture_motion] scenario golden")
+		await _scenario_golden()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -283,6 +289,154 @@ func _scenario_field_fight() -> void:
 	_save_strip("motion_strike_wolf", strike)
 	await _settle()
 	await _shot("scene_field_after")
+
+
+## THE GOLDEN COMBAT SCENE (D-062 CP10): the benchmark frame. Thôn Lạc Hà, the protagonist at
+## the training yard meeting a Vụ Lang at range with Lôi Chỉ (the bolt crosses the yard between
+## them), Lâm Nguyệt (the second golden actor, the same pipeline) watching from the grass, the
+## full HUD.
+##
+## SETUP, stated plainly: the realm, the techniques and the wolf are placed through the
+## runtimes' public API (a spawn table built here, `CombatRuntime.spawn_from_table`), and Lâm
+## Nguyệt is a visual figure placed for the frame — there is no NPC system before P16, and this
+## scene does not pretend one. Everything after the setup is real input and the real runtime.
+## Writes `golden_combat.png` (the frame with the most technique on screen), the frames around
+## it, and `golden_combat.json`: where the HUD, the actors and the screen are, for the benchmark.
+func _scenario_golden() -> void:
+	var player := _player()
+	var knowledge := _main.get_node_or_null("Systems/KnowledgeRuntime") as KnowledgeRuntime
+	var cultivation := _main.get_node_or_null("Systems/CultivationRuntime") as CultivationRuntime
+	var skills := _main.get_node_or_null("Systems/SkillRuntime") as SkillRuntime
+	var combat := _main.get_node_or_null("Systems/CombatRuntime")
+	var host := _map_node("CombatTargets")
+	if player == null or knowledge == null or skills == null or combat == null or host == null:
+		_fail("golden: pieces missing")
+		return
+	var state: CharacterState = player.call("get_character_state")
+	knowledge.grant(&"know_dan_khi_quyet", &"capture")
+	if state.realm_id == &"realm_pham":
+		cultivation.get_service().gather(state, 999)
+		cultivation.get_service().breakthrough(state)
+		cultivation.realm_advanced.emit(state.realm_id, state.realm_layer, true)
+	knowledge.grant(&"know_thanh_phong_chuong", &"capture")
+	knowledge.grant(&"know_loi_chi", &"capture")
+	# Lâm Nguyệt on the square, facing the yard.
+	var lin := CharacterVisualComponent.new()
+	lin.name = "GoldenLinYue"
+	_map_node("Visual/Decor").add_child(lin)
+	lin.setup(load("res://data/characters/visual/cultivator_f_visual.tres"))
+	lin.global_position = Vector2(560, 372)
+	lin.update_facing(Vector2(1, 0.4), false)
+	# The player at the yard, READY (full linh khí) before the wolf exists — a wolf released
+	# while the pool refills simply bites (the second take showed a defeated player).
+	player.global_position = Vector2(628, 440)
+	while skills.qi() < 30.0:
+		await physics_frame
+	await _hold(&"move_right")
+	var table := EnemySpawnTableData.new()
+	table.map_id = &"map_hub"
+	table.enemies = [load("res://data/enemies/enemy_mist_wolf.tres")]
+	table.positions = PackedVector2Array([Vector2(800, 436)])
+	combat.call("spawn_from_table", table, host)
+	var wolf := _first_enemy()
+	if wolf == null:
+		_fail("golden: the wolf did not spawn")
+		return
+	# Let it come: cast when it is within the cone's reach — bounded, because a wolf that is
+	# left to circle bites (the first take waited for a 58px approach and the frame showed a
+	# defeated player).
+	var waited := 0
+	# A RANGED exchange (the bolt's reach): the wolf is met at a distance, not in the bite.
+	while wolf.global_position.distance_to(player.global_position) > 150.0 and waited < 120:
+		await physics_frame
+		waited += 1
+	# Every rendered frame from the key press on — the gather, the release and the blade's
+	# travel are a handful of frames each, and sampling every third one missed the gather.
+	var best := -1
+	var best_score := -1.0
+	var frames: Array[Image] = []
+	var rects: Array = []
+	# SLOW MOTION for the capture only: reading a frame back stalls the renderer, physics runs
+	# several steps to catch up, and a quarter-second bolt crossed the yard between two reads.
+	Engine.time_scale = 0.25
+	Input.action_press(&"skill_2")
+	for i in 30:
+		if i == 4:
+			Input.action_release(&"skill_2")
+		await process_frame
+		var image := root.get_texture().get_image()
+		frames.append(image)
+		rects.append(_actor_rects(player, wolf, lin))
+		var score := _technique_on_screen(image)
+		if score > best_score:
+			best_score = score
+			best = i
+	Engine.time_scale = 1.0
+	for i in frames.size():
+		frames[i].save_png("%s/golden_%02d.png" % [_out_dir, i])
+	if best < 0 or frames[best].save_png("%s/golden_combat.png" % _out_dir) != OK:
+		_fail("golden: could not write the golden frame")
+		return
+	_written.append("golden_combat.png")
+	# the regions OF THE CHOSEN FRAME (the first take wrote them after the wolf had closed in)
+	_write_golden_regions(rects[best])
+	lin.queue_free()
+
+
+## How much TECHNIQUE is on screen: playfield pixels within reach of the Phong hues the cast
+## draws (`CastFeedback.PHONG` / `PHONG_LIGHT`), never the HUD corners. Picks the frame at the
+## release, not a guess at a frame count. (A saturation test picked lit grass.)
+func _technique_on_screen(image: Image) -> float:
+	var size := image.get_size()
+	var hits := 0
+	for y in range(int(size.y * 0.2), int(size.y * 0.85), 2):
+		for x in range(int(size.x * 0.2), int(size.x * 0.8), 2):
+			var c := image.get_pixel(x, y)
+			for hue in [CastFeedback.PHONG, CastFeedback.PHONG_LIGHT, CastFeedback.LOI,
+					CastFeedback.LOI_LIGHT]:
+				if absf(c.r - hue.r) + absf(c.g - hue.g) + absf(c.b - hue.b) < 0.16:
+					hits += 1
+					break
+	return float(hits)
+
+
+## The actors' screen rects in the CURRENT frame.
+func _actor_rects(player: Node2D, wolf: Node2D, lin: Node2D) -> Dictionary:
+	var canvas := root.get_canvas_transform()
+	var actors := {}
+	for entry in [["player", player, Vector2(32, 48)], ["second_actor", lin, Vector2(32, 48)],
+			["enemy", wolf, Vector2(32, 32)]]:
+		var node := entry[1] as Node2D
+		var box: Vector2 = entry[2]
+		var feet: Vector2 = canvas * node.global_position
+		var scale := canvas.get_scale().x
+		actors[entry[0]] = [feet.x - box.x * scale * 0.5, feet.y - box.y * scale,
+			box.x * scale, box.y * scale]
+	return actors
+
+
+## Screen rects of what the benchmark compares: the HUD's visible surfaces and the actors of the
+## chosen frame. Written beside the frame, so a score is about THIS frame's composition.
+func _write_golden_regions(actors: Dictionary) -> void:
+	var hud_rects: Array = []
+	var hud := _map_node("GameplayHUD")
+	if hud != null:
+		var hud_root := hud.get_node_or_null("HudRoot") as Control
+		if hud_root != null:
+			for child in hud_root.get_children():
+				var control := child as Control
+				if control == null or not control.visible or control.size.x <= 0.0:
+					continue
+				var r := control.get_global_rect()
+				hud_rects.append([control.name, r.position.x, r.position.y, r.size.x, r.size.y])
+	var data := {"screen": [root.size.x, root.size.y], "actors": actors, "hud": hud_rects}
+	var file := FileAccess.open("%s/golden_combat.json" % _out_dir, FileAccess.WRITE)
+	if file == null:
+		_fail("golden: could not write the regions")
+		return
+	file.store_string(JSON.stringify(data, "  "))
+	file.close()
+	_written.append("golden_combat.json")
 
 
 # === Helpers ================================================================
