@@ -166,6 +166,12 @@ func is_paddy_cell(cell: Vector2i) -> bool:
 		and posmod(cell.y - y0, period_y) < paddy_block_height
 
 
+## Flooded in any way (the tiled floor only floods paddies). The question a prop placement asks
+## of either floor (`PaintedGround.is_flooded_cell`).
+func is_flooded_cell(cell: Vector2i) -> bool:
+	return is_paddy_cell(cell)
+
+
 ## A stable per-cell variant index in [0, count).
 ##
 ## A cheap integer hash, NOT `randi()`: the map must paint identically every run (D-040 — no

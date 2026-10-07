@@ -78,10 +78,10 @@ def rasterize(spec, passes, k, portrait=False):
                     r, g, b, a = passes.idd[i]
                     if a < 128:
                         continue
-                    covered += 1
                     mid = int(round(r / 20.0))
                     if mid not in mats:
-                        continue
+                        continue        # transparent, or a prop's shadow-catching ground
+                    covered += 1
                     counts[mid] = counts.get(mid, 0) + 1
                     light_sum[mid] = light_sum.get(mid, 0.0) + _decode(passes.ld[i][0])
                     depth_sum[mid] = depth_sum.get(mid, 0.0) + _decode(passes.dd[i][0])
@@ -391,3 +391,114 @@ def build_icons(icon_spec, frames_dir, root):
                 os.path.join(root, rel))
             written.append(rel)
     return written
+
+
+def cast_shadow(passes, k, ground_id, lit_fraction=0.62):
+    """Where the ground plane is SHADOWED: per output pixel, True when most of its samples are
+    ground and their light falls below `lit_fraction` of the ground's fully-lit level. The
+    shadow a house or a tree throws, measured from the canonical light — never painted."""
+    W, H = passes.w // k, passes.h // k
+    ground_light = []
+    for i, (r, g, b, a) in enumerate(passes.idd):
+        if a >= 128 and int(round(r / 20.0)) == ground_id:
+            ground_light.append(_decode(passes.ld[i][0]))
+    if not ground_light:
+        return [[False] * W for _ in range(H)]
+    ground_light.sort()
+    lit = ground_light[int(len(ground_light) * 0.9)]
+    out = [[False] * W for _ in range(H)]
+    for oy in range(H):
+        for ox in range(W):
+            n = dark = 0
+            for sy in range(k):
+                row = (oy * k + sy) * passes.w + ox * k
+                for sx in range(k):
+                    r, g, b, a = passes.idd[row + sx]
+                    if a >= 128 and int(round(r / 20.0)) == ground_id:
+                        n += 1
+                        if _decode(passes.ld[row + sx][0]) < lit * lit_fraction:
+                            dark += 1
+            out[oy][ox] = n * 2 > k * k and dark * 2 > n
+    return out
+
+
+def prop_image(spec, frames_dir, prop_id, k, ground_id):
+    """A world prop: the character adapter for the object, its ink outline, then the CAST
+    shadow under it in the style's contact-shadow colour (never outlined, never over the
+    object)."""
+    passes = Passes(frames_dir, prop_id)
+    grid = rasterize(spec, passes, k)
+    grid = despeckle(spec, inner_contours(spec, clean(spec, grid)))
+    img = to_image(spec, grid)
+    shadow = cast_shadow(passes, k, ground_id)
+    cs = spec["style"]["contact_shadow"]
+    tone = tuple(cs["rgb"]) + (int(round(cs["alpha"] * 255)),)
+    px = img.load()
+    for y in range(img.height):
+        for x in range(img.width):
+            if px[x, y][3] == 0 and shadow[y][x]:
+                px[x, y] = tone
+    return img
+
+
+def build_props(prop_spec, frames_dir, root):
+    """Every prop -> assets/sprites/props/world/<id>.png (cropped to its pixels) and
+    data/world/props/<id>.tres (PropData: the texture, the origin, the collision footprint)."""
+    k = prop_spec["render_scale"]
+    written = []
+    os.makedirs(os.path.join(root, "assets/sprites/props/world"), exist_ok=True)
+    os.makedirs(os.path.join(root, "data/world/props"), exist_ok=True)
+    for prop_id, spec in prop_spec["props"].items():
+        with open(os.path.join(frames_dir, prop_id + ".json")) as f:
+            meta = json.load(f)
+        img = prop_image(spec, frames_dir, prop_id, k, prop_spec["ground_id"])
+        bbox = img.getbbox()
+        img = img.crop(bbox)
+        ox, oy = meta["origin"][0] - bbox[0], meta["origin"][1] - bbox[1]
+        tex_rel = "assets/sprites/props/world/%s.png" % prop_id
+        img.save(os.path.join(root, tex_rel))
+        foot = _footprint(spec, meta)
+        tres_rel = "data/world/props/%s.tres" % prop_id
+        with open(os.path.join(root, tres_rel), "w", encoding="utf-8") as f:
+            f.write(
+                '[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]\n\n'
+                '[ext_resource type="Script" path="res://src/data/world/prop_data.gd" '
+                'id="1_prop"]\n'
+                '[ext_resource type="Texture2D" path="res://%s" id="2_tex"]\n\n'
+                "[resource]\n"
+                'script = ExtResource("1_prop")\n'
+                'id = &"%s"\n'
+                'texture = ExtResource("2_tex")\n'
+                "origin = Vector2(%d, %d)\n"
+                "footprint = Rect2(%g, %g, %g, %g)\n"
+                "sways = %s\n" % (tex_rel, prop_id, round(ox), round(oy), foot[0], foot[1],
+                                   foot[2], foot[3], "true" if spec["kind"] == "broadleaf_tree"
+                                   else "false"))
+        written += [tex_rel, tres_rel]
+    return written
+
+
+def _footprint(spec, meta):
+    """The prop's SOLID base in world px, relative to its origin (the front base centre). The
+    ground's depth is foreshortened by the camera (sin of the elevation)."""
+    ppu = meta["px_per_unit"]
+    squash = meta["ground_squash"]
+    p = spec.get("params", {})
+    kind = spec["kind"]
+    if kind == "dwelling":
+        w, d = p.get("w", 150.0) + 8, p.get("d", 96.0) + 8
+    elif kind == "outpost_hall":
+        w, d = p.get("w", 200.0) + 28, p.get("d", 120.0) + 34
+    elif kind == "broadleaf_tree":
+        w, d = 16.0 * p.get("scale", 1.0), 12.0 * p.get("scale", 1.0)
+        return (-w * ppu / 2, -d * ppu * squash / 2, w * ppu, d * ppu * squash)
+    elif kind == "fence":
+        w, d = p.get("length", 150.0), 6.0
+        return (-w * ppu / 2, -d * ppu * squash / 2, w * ppu, d * ppu * squash)
+    elif kind == "well":
+        w, d = 44.0, 40.0
+    elif kind == "weapon_rack":
+        w, d = 64.0, 8.0
+    else:
+        return (0, 0, 0, 0)
+    return (-w * ppu / 2, -d * ppu * squash, w * ppu, d * ppu * squash)

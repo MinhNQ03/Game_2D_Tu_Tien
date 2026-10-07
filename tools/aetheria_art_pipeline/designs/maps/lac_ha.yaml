@@ -1,0 +1,74 @@
+# THÔN LẠC HÀ — the frontier village (map_hub). D-062 CP10 golden gameplay scene layout.
+#
+# Canon (WORLD_BIBLE §4.5, CANON_LEDGER map_hub): a Hoang Vực village — mortals and tán tu,
+# thin administration, beside the lesser outpost of a larger power (Thanh Vân's banners). No
+# palace, no floating peaks (R-9). A stream comes down past the west houses; a stone square is
+# the village's one paved place, in front of the sect's small outpost hall; packed-earth roads
+# run east to Rừng Vỡ Mạch and west over the plank bridge; terraced paddies on the east rise.
+#
+# Coordinates are WORLD pixels (1 art px = 1 world px). The map's gameplay anchors are fixed by
+# the scene and its tests and the layout is drawn AROUND them: spawn (496,304), the field exit
+# (944,304), Lạc Hà spring (408,336), the stele (576,296), the training post (680,408).
+#
+# The ground painter (`world/ground.py`) turns this into the floor texture and the layout data
+# the game reads (flooded cells, water blockers). Shapes are painted in list order; later wins.
+
+id: lac_ha
+tile: 16
+fill_rect: [1, 1, 60, 36]          # tiles — must equal MapData.bounds / 16 (test-pinned)
+walkway_half_height: 3              # tiles either side of the centre row that stay dry
+
+regions:
+  # the paved square in front of the outpost (worn flagstones)
+  - {kind: stone, poly: [[392, 236], [628, 236], [652, 262], [652, 360], [626, 384],
+                         [404, 384], [380, 362], [380, 258]]}
+  # the outpost's forecourt steps line (a darker stone apron along the hall's front)
+  - {kind: stone_dark, poly: [[430, 206], [610, 206], [616, 238], [424, 238]]}
+  # packed-earth roads
+  - {kind: earth, path: [[650, 304], [760, 300], [860, 308], [978, 304]], width: 46}
+  - {kind: earth, path: [[382, 312], [300, 318], [210, 310], [150, 312], [14, 306]], width: 40}
+  - {kind: earth, path: [[300, 316], [292, 260], [292, 214]], width: 26}       # to the NW house
+  - {kind: earth, path: [[520, 384], [516, 452], [500, 540]], width: 24}       # south lane
+  # the training yard (beaten earth) around the post
+  - {kind: yard, poly: [[618, 372], [760, 366], [790, 392], [784, 470], [626, 476], [606, 440]]}
+  # the stream, and its plank bridge on the west road
+  - {kind: water, path: [[196, 14], [178, 90], [190, 170], [160, 250], [150, 320], [166, 410],
+                         [140, 500], [150, 594]], width: 30}
+  - {kind: bridge, rect: [126, 292, 70, 28]}
+  # terraced paddies on the east rise: [x, y, w, h], bunds drawn round each
+  - {kind: paddy, rect: [736, 40, 104, 70]}
+  - {kind: paddy, rect: [852, 40, 108, 70]}
+  - {kind: paddy, rect: [736, 122, 104, 70]}
+  - {kind: paddy, rect: [852, 122, 108, 70]}
+  - {kind: paddy, rect: [820, 430, 140, 64]}
+  - {kind: paddy, rect: [820, 506, 140, 64]}
+
+# where the floor is NOT walkable (water), as polygons for the collision bodies; the bridge
+# gap is simply where the polygons stop
+blockers:
+  - [[166, 14], [226, 14], [208, 90], [220, 170], [190, 250], [180, 290], [126, 290],
+     [130, 250], [160, 170], [148, 90]]
+  - [[122, 322], [182, 322], [196, 410], [170, 500], [180, 594], [120, 594], [110, 500],
+     [136, 410]]
+
+# solid props (WorldProp + data/world/props/<prop>.tres), at their ORIGIN: the centre of the
+# front base. Kept clear of every gameplay anchor and of the spawn -> exit corridor (tested).
+props:
+  - {name: OutpostHall, prop: outpost_hall, at: [520, 236]}   # the banners flank its door
+  - {name: HouseNW, prop: dwelling_a, at: [290, 205]}         # end of the north-west lane
+  - {name: HouseSW, prop: dwelling_b, at: [290, 548]}
+  - {name: Well, prop: well, at: [346, 262]}                  # where the lane meets the road
+  - {name: YardRack, prop: weapon_rack, at: [740, 382]}
+  - {name: YardFence, prop: fence_long, at: [700, 480]}
+  - {name: TreeW1, prop: tree_broadleaf, at: [70, 140]}       # the west bank, beyond the stream
+  - {name: TreeW2, prop: tree_broadleaf, at: [84, 470]}
+  - {name: TreeW3, prop: tree_small, at: [56, 262]}
+  - {name: TreeW4, prop: tree_small, at: [100, 572]}
+  - {name: TreeNE, prop: tree_broadleaf, at: [690, 196]}
+  - {name: TreeS, prop: tree_broadleaf, at: [430, 522]}
+  - {name: TreeSE, prop: tree_small, at: [780, 566]}
+  - {name: TreeN, prop: tree_small, at: [384, 132]}
+
+# decorative sprites from the older set that the new floor makes wrong (a broadleaf drawn at
+# another density, grass tufts on paving or in water) are removed by the scene sync
+retire_decor: [TreeNW, TreeSW, TreeN, TreeS, TreeNE]

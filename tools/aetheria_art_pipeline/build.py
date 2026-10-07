@@ -8,6 +8,8 @@
   build.py review <actor>          work/<actor>/review.png: turnaround, face, portrait, sheets
   build.py icons-spec              designs/icons.yaml -> work/icons/spec.json (Blender reads this)
   build.py icons                   Blender icon passes (work/icons) -> the 32x32 icons
+  build.py props-spec              designs/props.yaml -> work/props/spec.json
+  build.py props                   Blender prop passes (work/props) -> world prop sprites + data
 
 Blender is a BUILD tool here, never a runtime dependency: it renders controlled passes into
 work/ (gitignored); this side turns them into the committed 32x48 sheets.
@@ -128,6 +130,57 @@ def resolve_icons():
     return out
 
 
+GROUND_ID = 12      # the material id reserved for the shadow-catching ground (id*20 <= 255)
+
+
+def resolve_props():
+    """designs/props.yaml + style + the canonical camera -> one spec per world prop. Each prop
+    numbers only the materials it uses (the id pass holds at most 11 + the ground)."""
+    sys.path.insert(0, os.path.join(PIPE, "model"))
+    import props3d
+    with open(os.path.join(PIPE, "designs", "props.yaml"), encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    with open(os.path.join(PIPE, "designs", "cultivator.yaml"), encoding="utf-8") as f:
+        camera = yaml.safe_load(f)["camera"]["gameplay"]
+    st = style.load()
+    out = {"render_scale": data["render_scale"], "camera": camera, "ground_id": GROUND_ID,
+           "props": {}}
+    for prop_id, prop in data["props"].items():
+        used = []
+        for part in props3d.build(prop):
+            if part["material"] not in used:
+                used.append(part["material"])
+        if len(used) >= GROUND_ID:
+            raise SystemExit("prop %s uses %d materials; the id pass holds %d"
+                             % (prop_id, len(used), GROUND_ID - 1))
+        mats = {}
+        for i, name in enumerate(used):
+            m = data["common"][name]
+            mats[name] = {"id": i + 1, "ramp": [style.resolve_colour(c, st) for c in m["ramp"]],
+                          "priority": float(m.get("priority", 1.0)),
+                          "highlight": bool(m.get("highlight", False)),
+                          "flat": bool(m.get("flat", False)), "min_tone": 0, "min_coverage": 2}
+        out["props"][prop_id] = {
+            "id": prop_id, "kind": prop["kind"], "params": prop.get("params", {}),
+            "materials": mats,
+            "style": {"ink": style.role("ink", st),
+                      "contact_shadow": {"rgb": style.hex_rgb(
+                          st["lighting"]["contact_shadow"]["colour"]),
+                          "alpha": st["lighting"]["contact_shadow"]["alpha"]},
+                      "lighting": st["lighting"], "pixel": st["pixel_adaptation"]},
+        }
+    return out
+
+
+def write_prop_spec():
+    out_dir = os.path.join(WORK, "props")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "spec.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(resolve_props(), f, indent=1, ensure_ascii=False)
+    return path
+
+
 def write_icon_spec():
     out_dir = os.path.join(WORK, "icons")
     os.makedirs(out_dir, exist_ok=True)
@@ -150,7 +203,7 @@ def write_spec(actor_id):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("cmd", choices=["resolve", "design-sheet", "pixel", "all-pixel", "review",
-                                       "icons-spec", "icons"])
+                                       "icons-spec", "icons", "props-spec", "props"])
     ap.add_argument("actor", nargs="?")
     args = ap.parse_args(argv)
     if args.cmd == "resolve":
@@ -173,6 +226,13 @@ def main(argv=None):
         sys.path.insert(0, os.path.join(PIPE, "validate"))
         import review_sheet
         print(review_sheet.build_icons(resolve_icons(), ROOT, os.path.join(WORK, "icons")))
+    elif args.cmd == "props-spec":
+        print(write_prop_spec())
+    elif args.cmd == "props":
+        sys.path.insert(0, os.path.join(PIPE, "pixel"))
+        import pixelize
+        for p in pixelize.build_props(resolve_props(), os.path.join(WORK, "props"), ROOT):
+            print("wrote", p)
     elif args.cmd == "review":
         sys.path.insert(0, os.path.join(PIPE, "validate"))
         import review_sheet

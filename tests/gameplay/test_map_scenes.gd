@@ -43,23 +43,32 @@ func _assert_map_structure(scene: PackedScene, data_path: String) -> void:
 	assert_not_null(map.get_node_or_null("Camera2D"), "map has a Camera2D")
 	assert_not_null(map.get_node_or_null("HUD/MapLabel"), "map has a HUD/MapLabel")
 
-	# Visual root renders via the prototype TileMapLayer (not a Polygon2D-only floor).
+	# The floor is TEXTURE art: a tiled TileMapLayer, or (D-062) the painted floor drawn from the
+	# map's layout data — never a Polygon2D-only floor.
 	var ground := map.get_node_or_null("Visual/Ground")
-	assert_not_null(ground, "map has a Visual/Ground tile layer")
-	assert_true(ground is TileMapLayer, "ground is a TileMapLayer (texture-based, not Polygon2D)")
+	assert_not_null(ground, "map has a Visual/Ground floor")
+	assert_true(ground is TileMapLayer or ground is PaintedGround,
+		"ground is a TileMapLayer or a PaintedGround (texture-based, not Polygon2D)")
 	if ground is TileMapLayer:
 		assert_not_null((ground as TileMapLayer).tile_set, "ground has a TileSet assigned")
-		# D-029: pixel-art tiles render nearest-filtered (no blur) like the rest of the world.
-		assert_eq((ground as TileMapLayer).texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
-			"ground TileMapLayer is nearest-filtered (pixel art)")
+	if ground is PaintedGround:
+		var layout := (ground as PaintedGround).layout
+		assert_not_null(layout, "the painted floor has its layout data")
+		if layout != null:
+			assert_eq(" | ".join(layout.validation_errors()), "",
+				"the painted floor's layout is complete")
+	if ground is CanvasItem:
+		# D-029: pixel art renders nearest-filtered (no blur) like the rest of the world.
+		assert_eq((ground as CanvasItem).texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+			"the floor is nearest-filtered (pixel art)")
 
 	# SOURCE-OF-TRUTH GUARD (D-036): `MapData.bounds` drives the camera limits and the camera
 	# zoom, while the painted floor lives in the SCENE as `fill_rect` (tile coords). If the
 	# two drift, the camera is clamped to the wrong rectangle — either letting the view run
 	# off the painted floor, or over-zooming to "cover" a map larger than what exists. They
 	# are authored by hand in different files, so they are checked against each other here.
-	if ground is TileMapLayer and data != null:
-		var cells: Rect2i = (ground as TileMapLayer).fill_rect
+	if ground != null and data != null:
+		var cells: Rect2i = ground.get("fill_rect")
 		var painted := Rect2(
 			Vector2(cells.position) * TILE_PX, Vector2(cells.size) * TILE_PX)
 		assert_eq(data.bounds, painted,
@@ -437,21 +446,22 @@ func test_paddy_layout_leaves_a_dry_walkway_and_clears_the_walls() -> void:
 		assert_not_null(map, "%s map instantiates" % label)
 		if map == null:
 			continue
-		var ground := map.get_node_or_null("Visual/Ground") as TileMapLayer
+		# Either floor answers the same questions (fill_rect, walkway, is_paddy_cell).
+		var ground := map.get_node_or_null("Visual/Ground")
 		assert_not_null(ground, "%s has a ground layer" % label)
 		if ground == null:
 			map.free()
 			continue
 
-		var rect: Rect2i = ground.fill_rect
+		var rect: Rect2i = ground.get("fill_rect")
 		var centre_y := rect.position.y + int(rect.size.y * 0.5)
-		var half: int = ground.walkway_half_height
+		var half: int = int(ground.get("walkway_half_height"))
 
 		# 1. The walkway band must be completely dry, across the FULL width of the map.
 		var flooded_on_walkway := 0
 		for x in range(rect.position.x, rect.position.x + rect.size.x):
 			for dy in range(-half, half + 1):
-				if ground.is_paddy_cell(Vector2i(x, centre_y + dy)):
+				if ground.call("is_paddy_cell", Vector2i(x, centre_y + dy)):
 					flooded_on_walkway += 1
 		assert_eq(flooded_on_walkway, 0,
 			("%s: the central walkway (%d rows) is entirely dry — %d flooded cell(s) would "
@@ -464,14 +474,14 @@ func test_paddy_layout_leaves_a_dry_walkway_and_clears_the_walls() -> void:
 		var x1 := rect.position.x + rect.size.x - 1
 		var y1 := rect.position.y + rect.size.y - 1
 		for x in range(rect.position.x, rect.position.x + rect.size.x):
-			if ground.is_paddy_cell(Vector2i(x, rect.position.y)):
+			if ground.call("is_paddy_cell", Vector2i(x, rect.position.y)):
 				flooded_on_edge += 1
-			if ground.is_paddy_cell(Vector2i(x, y1)):
+			if ground.call("is_paddy_cell", Vector2i(x, y1)):
 				flooded_on_edge += 1
 		for y in range(rect.position.y, rect.position.y + rect.size.y):
-			if ground.is_paddy_cell(Vector2i(rect.position.x, y)):
+			if ground.call("is_paddy_cell", Vector2i(rect.position.x, y)):
 				flooded_on_edge += 1
-			if ground.is_paddy_cell(Vector2i(x1, y)):
+			if ground.call("is_paddy_cell", Vector2i(x1, y)):
 				flooded_on_edge += 1
 		assert_eq(flooded_on_edge, 0,
 			"%s: no paddy touches the map edge (%d did)" % [label, flooded_on_edge])
@@ -481,7 +491,7 @@ func test_paddy_layout_leaves_a_dry_walkway_and_clears_the_walls() -> void:
 		var flooded_total := 0
 		for y in range(rect.position.y, rect.position.y + rect.size.y):
 			for x in range(rect.position.x, rect.position.x + rect.size.x):
-				if ground.is_paddy_cell(Vector2i(x, y)):
+				if ground.call("is_paddy_cell", Vector2i(x, y)):
 					flooded_total += 1
 		assert_true(flooded_total > 0,
 			"%s: the layout actually places paddies (a layout that floods nothing is a flat "
@@ -531,7 +541,7 @@ func test_decor_props_are_rooted_on_dry_ground() -> void:
 	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
 		var map: Node = (entry[0] as PackedScene).instantiate()
 		var label := String(entry[1])
-		var ground := map.get_node("Visual/Ground") as PrototypeGround
+		var ground := map.get_node("Visual/Ground")
 		var checked := 0
 		for child in map.get_node("Visual/Decor").get_children():
 			var sprite := child as Sprite2D
@@ -544,8 +554,8 @@ func test_decor_props_are_rooted_on_dry_ground() -> void:
 					% [label, sprite.name, str(sprite.offset)])
 			var cell := Vector2i(floori(sprite.position.x / 16.0),
 				floori(sprite.position.y / 16.0))
-			assert_false(ground.is_paddy_cell(cell),
-				"%s '%s' does not stand in a flooded paddy (cell %s)"
+			assert_false(bool(ground.call("is_flooded_cell", cell)),
+				"%s '%s' does not stand in flooded ground (cell %s)"
 					% [label, sprite.name, str(cell)])
 		assert_true(checked >= 10, "%s checked its props (%d)" % [label, checked])
 		map.free()
@@ -600,3 +610,91 @@ func test_the_field_has_drifting_mist() -> void:
 			assert_true(material != null and material.shader.resource_path == MIST_SHADER,
 				"'%s' drifts (mist_drift material)" % bank.name)
 	map.free()
+
+
+## The water you SEE is the water that STOPS you (D-062): every open-water cell of a painted
+## floor lies inside one of the map's water blockers — built from the same layout data — and the
+## bridge is where the blockers stop, so the west road stays a road.
+func test_painted_water_is_the_water_that_blocks() -> void:
+	var map: Node = HubScene.instantiate()  # NOT added to the tree (L-010)
+	var ground := map.get_node_or_null("Visual/Ground") as PaintedGround
+	var water := map.get_node_or_null("Collision/Water") as WaterBlockers
+	if ground == null:
+		map.free()
+		return  # a tiled floor has no open water to check
+	assert_not_null(water, "a painted floor with water has its blockers under Collision/")
+	if water == null or ground.layout == null:
+		map.free()
+		return
+	var layout := ground.layout
+	assert_true(water.polygon_count() > 0, "the stream has blocking polygons")
+	var cells := 0
+	var covered := 0
+	for y in layout.fill_rect.size.y:
+		for x in layout.fill_rect.size.x:
+			var cell := layout.fill_rect.position + Vector2i(x, y)
+			if not layout.is_water_cell(cell):
+				continue
+			cells += 1
+			var centre := (Vector2(cell) + Vector2(0.5, 0.5)) * float(layout.tile_px)
+			for poly in layout.blockers:
+				if Geometry2D.is_point_in_polygon(centre, poly):
+					covered += 1
+					break
+	assert_true(cells > 0, "the hub's stream paints open water")
+	assert_true(float(covered) >= 0.9 * float(cells),
+		"%d of %d open-water cells are blocked — painted water must not be walkable" % [
+			covered, cells])
+	# The bridge: the west road's centre line crosses the stream between two blockers.
+	var road := Vector2(150, 306)
+	for poly in layout.blockers:
+		assert_false(Geometry2D.is_point_in_polygon(road, poly),
+			"the plank bridge at %s is walkable" % str(road))
+	map.free()
+
+
+## Solid world props (D-062) stand where the PLAYER cannot be blocked: no footprint covers a
+## gameplay anchor (a spawn, an exit, a cultivation site, a knowledge source, a pickup, a combat
+## target) or the spawn -> exit corridor, and every prop's origin stands on dry ground.
+func test_solid_props_never_block_the_play() -> void:
+	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
+		var map: Node2D = (entry[0] as PackedScene).instantiate()  # NOT in the tree (L-010)
+		var label := String(entry[1])
+		var props: Array[WorldProp] = []
+		for child in map.get_node("Visual/Decor").get_children():
+			if child is WorldProp:
+				props.append(child as WorldProp)
+		var anchors: Array[Vector2] = []
+		for path in ["Spawns", "Exits", "CultivationSites", "KnowledgeSources", "Pickups",
+				"CombatTargets"]:
+			var holder := map.get_node_or_null(path)
+			if holder == null:
+				continue
+			for child in holder.get_children():
+				if child is Node2D:
+					anchors.append((child as Node2D).position)
+		var ground := map.get_node("Visual/Ground")
+		var spawn := map.get_node_or_null("Spawns/spawn_default") as Node2D
+		for prop in props:
+			if prop.prop == null:
+				continue
+			var foot := prop.prop.footprint
+			if foot.size.x <= 0.0:
+				continue
+			var rect := Rect2(prop.position + foot.position, foot.size).grow(8.0)
+			for anchor in anchors:
+				assert_false(rect.has_point(anchor),
+					"%s '%s' footprint %s keeps clear of the anchor at %s" % [
+						label, prop.name, str(rect), str(anchor)])
+			if spawn != null:
+				for exit_zone in map.get_node("Exits").get_children():
+					var a := spawn.position
+					var b := (exit_zone as Node2D).position
+					var closest := Geometry2D.get_closest_point_to_segment(rect.get_center(),
+						a, b)
+					assert_false(rect.grow(MIN_PATH_CLEARANCE_PX * 0.5).has_point(closest),
+						"%s '%s' stays off the spawn -> exit line" % [label, prop.name])
+			var cell := Vector2i(floori(prop.position.x / 16.0), floori(prop.position.y / 16.0))
+			assert_false(bool(ground.call("is_flooded_cell", cell)),
+				"%s '%s' stands on dry ground" % [label, prop.name])
+		map.free()

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/world/prop_data.gd" id="1_prop"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/world/weapon_rack.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_prop")
+id = &"weapon_rack"
+texture = ExtResource("2_tex")
+origin = Vector2(31, 37)
+footprint = Rect2(-29.5385, -3.69231, 59.0769, 3.69231)
+sways = false

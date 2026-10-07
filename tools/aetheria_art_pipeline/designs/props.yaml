@@ -1,0 +1,36 @@
+# The Hoang Vực village prop set (D-062 CP10) — rendered by the character pipeline's passes at
+# the character's pixel density, cast shadows caught on the ground, adapted by the same pixelizer.
+#
+# Materials are ramps [deep, shadow, base, light] in the world roles of the Visual DNA: slate
+# roof tile, timber, lime plaster (warm paper-white, never pure white), fieldstone, the outpost's
+# cinnabar lacquer as its ONE saturated accent, gilt only on its name board. Foliage is darker
+# and bluer than the meadow so a canopy separates from the grass by value.
+
+render_scale: 4
+
+common:
+  roof:         {ramp: ["#232a36", "#323b4b", "#454f62", "#5f6a7e"], highlight: true}
+  roof_dark:    {ramp: ["#191d26", "#232934", "#2f3644", "#3f4757"], flat: true, priority: 1.4}
+  timber:       {ramp: ["#2b1d14", "#3d291c", "#523726", "#6a4a33"], priority: 1.3}
+  timber_light: {ramp: ["#4a3322", "#664730", "#83603f", "#a07a52"]}
+  plaster:      {ramp: ["#8c8473", "#b4ab97", "#d6ccb6", "#ebe3d0"], highlight: true}
+  stone:        {ramp: ["#4c4e56", "#62656e", "#7a7d86", "#9598a0"]}
+  stone_light:  {ramp: ["#62656e", "#7a7d86", "#9598a0", "#b1b3b9"]}
+  door:         {ramp: ["#1e1612", "#2b201a", "#3a2c23", "#4c3a2e"], priority: 1.5}
+  paper:        {ramp: ["#9a8f78", "#c4b896", "#ddd2b2", "#efe6cc"], priority: 1.4}
+  lacquer_red:  {ramp: ["#4f1a1e", "#741f26", "#9a2c33", "#bd4a4c"], highlight: true, priority: 1.4}
+  gilt:         {ramp: ["#5b4524", "#86683a", "#c9a865", "#e6cf93"], flat: true, priority: 2.0}
+  bark:         {ramp: ["#241b16", "#33271f", "#46362a", "#5a4636"]}
+  leaves:       {ramp: ["#1e3a2e", "#2a4d36", "#3a6440", "#56804c"], highlight: true}
+  water:        {ramp: ["#163a52", "#1f5680", "#2f6f8f", "#5f97b5"], flat: true}
+
+props:
+  dwelling_a:     {kind: dwelling, params: {w: 150, d: 96, h: 64}}
+  dwelling_b:     {kind: dwelling, params: {w: 120, d: 90, h: 60}}
+  outpost_hall:   {kind: outpost_hall, params: {w: 196, d: 116, h: 76}}
+  tree_broadleaf: {kind: broadleaf_tree, params: {seed: 3, scale: 1.0}}
+  tree_small:     {kind: broadleaf_tree, params: {seed: 9, scale: 0.72}}
+  fence_long:     {kind: fence, params: {length: 150}}
+  fence_short:    {kind: fence, params: {length: 90}}
+  well:           {kind: well}
+  weapon_rack:    {kind: weapon_rack}
