@@ -40,6 +40,9 @@ const BUTTON_TEXTURES := {
 	"disabled": UIPalette.TEX_BUTTON_DISABLED,
 }
 
+## A meter's value text: the smallest size it may shrink to, and its inset from the ends.
+const METER_TEXT_MIN_SIZE := 11
+const METER_TEXT_PAD := 4
 
 ## Per-role modulation applied to the button plate. `Color(1,1,1)` means "leave the art
 ## exactly as drawn", which is why SECONDARY is the untinted baseline.
@@ -204,6 +207,7 @@ static func set_cultivation_meter_value(
 	var label := bar.get_node_or_null("Value") as Label
 	if label != null:
 		label.text = text
+		fit_meter_text(bar)
 	bar.max_value = float(maxi(1, cost))
 	bar.value = float(clampi(into, 0, maxi(1, cost))) if cost > 0 else 1.0
 	bar.add_theme_stylebox_override("fill", _gauge_fill_stylebox(
@@ -234,8 +238,27 @@ static func _meter(meter_name: String, height: int, fill: Color) -> ProgressBar:
 	# A `ProgressBar` is not a container, so the label is anchored over it rather than laid
 	# out by it. FULL_RECT with offsets, not `set_anchors_preset` (L-028).
 	value_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# The text never leaves its gauge: clipped as a last guard, and shrunk to fit first (a
+	# long realm name in one language spilled over the plaque's edge — capture review, D-062).
+	value_label.clip_text = true
 	bar.add_child(value_label)
+	bar.resized.connect(func() -> void: fit_meter_text(bar))
 	return bar
+
+
+## Fit a meter's value text to the meter: the hint size if it fits, one step smaller at a time
+## down to METER_TEXT_MIN_SIZE. Measured with the label's own font, so it holds per language.
+static func fit_meter_text(bar: ProgressBar) -> void:
+	var label := bar.get_node_or_null("Value") as Label if is_instance_valid(bar) else null
+	if label == null or bar.size.x <= 0.0:
+		return
+	var font := label.get_theme_font("font")
+	var room := bar.size.x - float(METER_TEXT_PAD * 2)
+	var size := UIPalette.FONT_SIZE_HINT
+	while size > METER_TEXT_MIN_SIZE and font != null \
+			and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > room:
+		size -= 1
+	label.add_theme_font_size_override("font_size", size)
 
 
 ## Push a value into a gauge built by `vitals_gauge()`: the bar, the text, and the critical
@@ -251,6 +274,7 @@ static func set_gauge_value(bar: ProgressBar, current: int, maximum: int) -> voi
 	var label := bar.get_node_or_null("Value") as Label
 	if label != null:
 		label.text = "%d / %d" % [safe_current, safe_max]
+		fit_meter_text(bar)
 	var fraction := float(safe_current) / float(safe_max)
 	var fill: Color = UIPalette.GAUGE_FILL_LOW if fraction <= UIPalette.GAUGE_LOW_FRACTION \
 		else UIPalette.GAUGE_FILL
@@ -305,6 +329,7 @@ static func set_xp_meter_value(
 	var label := bar.get_node_or_null("Value") as Label
 	if label != null:
 		label.text = text
+		fit_meter_text(bar)
 	if at_ceiling or cost <= 0:
 		bar.max_value = 1.0
 		bar.value = 1.0

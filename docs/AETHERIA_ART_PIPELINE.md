@@ -210,9 +210,10 @@ Each measure scores 0–100 (similarity with a stated tolerance, or DNA complian
 means; total = Σ weight·score/100. **PASS ≥ 60 with every essential category ≥ 50.** Output:
 `scorecard.json` + `scorecard.md` with both values and the reason for each measure.
 
-**Current (golden frame, Lôi Chỉ at range in Thôn Lạc Hà): 79.4 / 100 PASS** — composition 96.1,
-palette 59.8, environment 96.0, character 94.7, combat 45.3, UI 78.4, VFX 61.7, pixel 100
-(`docs/visual_benchmarks/scorecard.md`). The loop that got there: the first golden frame scored
+**Current (golden frame, Lôi Chỉ at range in Thôn Lạc Hà): 79.4 / 100 PASS** — composition 95.7,
+palette 59.4, environment 94.0, character 94.7, combat 42.1, UI 78.8, VFX 59.4, pixel 100
+(`docs/visual_benchmarks/scorecard.md`; re-captured after the capture-review UX fixes — the
+realm meter now spans the identity plaque). The loop that got there: the first golden frame scored
 62.3 and FAILED palette at 37 (a one-band, low-contrast world) and combat at 8.6 (a melee clinch
 unlike a readable duel); the world was re-lit (value range on paving, earth and meadow), the scene
 re-staged as a ranged exchange, and the techniques made readable.

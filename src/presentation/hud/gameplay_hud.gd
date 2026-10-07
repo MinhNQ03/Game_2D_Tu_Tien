@@ -229,11 +229,18 @@ func _build_ui() -> void:
 	identity_body.add_theme_constant_override("separation", UIPalette.SPACE_SM)
 	identity_panel.add_child(identity_body)
 
+	# Tier 1, WHO I AM: the medallion row, then the realm meter across the plaque's width.
+	var identity_tier := VBoxContainer.new()
+	identity_tier.name = "IdentityTier"
+	identity_tier.add_theme_constant_override("separation", UIPalette.ROW_GAP)
+	identity_body.add_child(identity_tier)
+
 	var identity_row := HBoxContainer.new()
+	identity_row.name = "IdentityRow"
 	# SPACE_SM: the medallion's own ring is the gap's visual edge, so the text sits close to it
 	# and the plaque stays clear of the playfield centre (§3c).
 	identity_row.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	identity_body.add_child(identity_row)
+	identity_tier.add_child(identity_row)
 
 	# The identity MEDALLION (D-062): the player's own pixel portrait, rendered by the art
 	# pipeline from the SAME model as the sprite on the map, in a lacquer disc under an
@@ -322,9 +329,12 @@ func _build_ui() -> void:
 	# The tu vi meter (Phase 12): the SECOND progression axis, in its own row and its own hue,
 	# and it writes the realm's name in its value — "Phàm Nhân · 12/30" — so the player reads
 	# WHAT they are becoming, not just how full a bar is. Hidden until a cultivation view arrives.
+	# FULL PLAQUE WIDTH, under the medallion row (D-062 capture review): in the text column it
+	# was ~160px, and "Commanding Heaven 9 · Complete" cannot fit that at a legible size — it
+	# spilled past the plaque's edge. The realm is the longest line the plaque writes.
 	_cultivation_meter = UITheme.cultivation_meter()
 	_cultivation_meter.visible = false
-	identity_text.add_child(_cultivation_meter)
+	identity_tier.add_child(_cultivation_meter)
 
 	# The level-up celebration drives the BADGE, not the meter: the meter's job is to be read
 	# accurately, and a flashing bar is harder to read, while a badge catching light is

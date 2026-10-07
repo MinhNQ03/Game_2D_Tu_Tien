@@ -673,3 +673,29 @@ func _read_source(path: String) -> String:
 	var text := file.get_as_text()
 	file.close()
 	return text
+
+
+## A meter's text never leaves its gauge (D-062 capture review: "Acquired Heaven 1 · Ready"
+## spilled past the identity plaque's edge at 1280x720). The text shrinks to fit the gauge as
+## laid out — measured with the label's own font. (The HUD's realm meter is wider than this
+## narrow probe: `test_the_realm_meter_reads_whole_in_both_languages`.)
+func test_a_long_meter_text_shrinks_to_fit_its_gauge() -> void:
+	var bar := UIThemeScript.cultivation_meter()
+	add_to_tree(bar)
+	bar.size = Vector2(160, UIPaletteScript.XP_METER_HEIGHT)
+	await scene_tree.process_frame
+	for text in ["Acquired Heaven 1 · Ready", "Acquired Heaven 9 · Stalled",
+			"Hậu Thiên tầng 1 · Đột phá", "Hậu Thiên tầng 9 · Cần ngộ",
+			"Trọng Thiên tầng 9 · Viên mãn"]:
+		UIThemeScript.set_cultivation_meter_value(bar, 3, 40, true, text)
+		var label := bar.get_node("Value") as Label
+		var size := label.get_theme_font_size("font_size")
+		var width := label.get_theme_font("font").get_string_size(
+			text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		assert_true(width <= bar.size.x,
+			"'%s' fits its %dpx gauge at %dpx (%.0f px wide)" % [text, bar.size.x, size, width])
+		assert_true(size >= UIThemeScript.METER_TEXT_MIN_SIZE, "and stays legible (%d)" % size)
+	UIThemeScript.set_cultivation_meter_value(bar, 3, 40, false, "3/40")
+	assert_eq((bar.get_node("Value") as Label).get_theme_font_size("font_size"),
+		UIPaletteScript.FONT_SIZE_HINT, "a short text keeps the full hint size")
+	free_node(bar)

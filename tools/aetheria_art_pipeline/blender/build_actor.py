@@ -40,8 +40,8 @@ NO_CAST = ("hair", "eye", "lash", "pin")
 # in aetheria_style.yaml are then fractions of "fully lit", not of an arbitrary render level.
 KEY_ENERGY = 2.6
 DIRECTIONS = (("down", 0.0), ("up", 180.0), ("left", -90.0), ("right", 90.0))
-# The facing that renders the MIRRORED actions (motion.mirror): the striking hand stays the
-# near one, so LEFT is RIGHT reflected — strike height, VFX origin and anchors agree.
+# The facing that renders the MIRRs RIGHT rORED actions (motion.mirror): the striking hand stays the
+# near one, so LEFT ieflected — strike height, VFX origin and anchors agree.
 MIRRORED = ("left",)
 MIRROR_SUFFIX = "_M"
 DEPTH_SPAN = 40.0

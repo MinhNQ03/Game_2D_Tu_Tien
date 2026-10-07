@@ -170,8 +170,8 @@ UI_HUD_CULTIVATE_STOP,Rise,Thu công
 UI_HUD_BREAKTHROUGH_ACTION,Break through,Đột phá
 UI_HUD_REALM_LAYER,{realm} {layer},{realm} tầng {layer}
 UI_HUD_CULTIVATION_PROGRESS,{realm} · {into}/{cost},{realm} · {into}/{cost}
-UI_HUD_CULTIVATION_READY,{realm} · Ready,{realm} · Có thể đột phá
-UI_HUD_CULTIVATION_BLOCKED,{realm} · Needs insight,{realm} · Cần ngộ thêm
+UI_HUD_CULTIVATION_READY,{realm} · Ready,{realm} · Đột phá
+UI_HUD_CULTIVATION_BLOCKED,{realm} · Stalled,{realm} · Cần ngộ
 UI_HUD_CULTIVATION_COMPLETE,{realm} · Complete,{realm} · Viên mãn
 UI_HUD_KNOWLEDGE_GAINED,Learned: {name},Tri thức mới: {name}
 UI_HUD_BREAKTHROUGH_REALM,Realm breakthrough,Đột phá cảnh giới

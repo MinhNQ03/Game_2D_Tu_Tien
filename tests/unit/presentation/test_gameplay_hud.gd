@@ -251,10 +251,13 @@ func test_identity_plaque_separates_personal_identity_from_affiliation() -> void
 	for child in body.get_children():
 		kinds.append(_class_of(child))
 	assert_eq(kinds.size(), 3,
-		"the plaque has exactly three tiers: identity row, divider, sect chip (got %s)"
+		"the plaque has exactly three tiers: identity, divider, sect chip (got %s)"
 			% str(kinds))
 	if kinds.size() == 3:
-		assert_eq(kinds[0], "HBoxContainer", "tier 1 is the portrait + name/title row")
+		# Tier 1 stacks the portrait + name row over the full-width realm meter (D-062).
+		assert_eq(kinds[0], "VBoxContainer", "tier 1 is the identity tier")
+		assert_eq(_class_of(body.get_child(0).get_child(0)), "HBoxContainer",
+			"which opens with the portrait + name/title row")
 		assert_eq(kinds[1], "TextureRect", "an ornamental rule divides the two tiers")
 		assert_eq(kinds[2], "HBoxContainer", "tier 2 is the sect chip")
 
@@ -1543,6 +1546,41 @@ func test_the_dock_keys_never_cover_the_qi_gauge() -> void:
 				"keycap %s stays off the qi gauge %s" % [rect, gauge.get_global_rect()])
 			assert_true(rect.end.y > (cap.get_parent() as Control).get_global_rect().end.y,
 				"the keycap still hangs off its slot's corner (read as a key, not a label)")
+	free_node(hud)
+
+
+## The realm meter writes the LONGEST line in the plaque — "Commanding Heaven 9 · Complete".
+## In the text column it was ~160px and the English line spilled past the plaque's edge
+## (D-062 capture review); across the plaque it is read whole, at the full hint size, in both
+## languages, at every state the meter can show.
+func test_the_realm_meter_reads_whole_in_both_languages() -> void:
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	var before := String(loc.call("get_language")) if loc != null else "vi"
+	var hud := _hud()
+	_populate_plaques(hud)
+	for code in ["en", "vi"]:
+		_use_language(code)
+		for state in ["progress", "ready", "blocked", "ceiling"]:
+			var view := _cultivation_at_site()
+			view.realm_name_key = &"REALM_NGU_THIEN_NAME"  # the longest realm name in en
+			view.progress = 230
+			view.can_breakthrough = state == "ready"
+			view.blocked_by_knowledge = state == "blocked"
+			view.at_ceiling = state == "ceiling"
+			hud.call("set_cultivation_view", view)
+			await scene_tree.process_frame
+			var meter := hud.find_child("CultivationMeter", true, false) as Control
+			var label := meter.get_node("Value") as Label
+			var size := label.get_theme_font_size("font_size")
+			var width := label.get_theme_font("font").get_string_size(
+				label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			assert_true(width <= meter.size.x - 2 * UITheme.METER_TEXT_PAD,
+				"%s '%s' fits the %dpx meter (%.0f px)" % [code, label.text, meter.size.x, width])
+			assert_eq(size, UIPalette.FONT_SIZE_HINT,
+				"%s '%s' needs no shrinking across the plaque" % [code, label.text])
+			assert_true(_identity_plaque(hud).get_global_rect().encloses(
+				meter.get_global_rect()), "and the meter lies inside the plaque")
+	_use_language(before)
 	free_node(hud)
 
 

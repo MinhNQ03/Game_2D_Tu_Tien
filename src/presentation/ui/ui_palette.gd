@@ -396,6 +396,11 @@ const DISABLED := COLOR_SURFACE_DISABLED
 ## 18px. Measured at the new value: identity plaque **224**, map plaque 177, plus one
 ## `HUD_MARGIN` of breathing room for the frame's corner ornaments (drawn OUTSIDE the control's
 ## rect) = **242**. That the number moved itself is the workflow working, not a failure.
+##
+## **D-062: unchanged.** The realm meter left the text column for a full-width row under the
+## medallion row (the English realm line could not fit the column), and the title row it used
+## to replace stays hidden while it shows, so the plaque still measures inside the reserve —
+## re-checked by the same test, not by eye.
 const TOP_PLAQUE_RESERVE := 242
 
 
