@@ -832,10 +832,12 @@ func _identity_plaque(hud: Node) -> PanelContainer:
 	var root := _hud_root(hud)
 	if root == null:
 		return null
-	for child in root.get_children():
-		var panel := child as PanelContainer
-		if panel != null and _count_class(panel, "NinePatchRect") > 0:
-			return panel
+	# By NAME: the portrait slot's old marker (a NinePatch frame over a painted crop) went
+	# away with the medallion (D-062), and a structural marker that changes with the art is
+	# exactly the kind that silently stops finding anything.
+	var panel := root.get_node_or_null("IdentityPlaque") as PanelContainer
+	if panel != null and panel.find_child("Portrait", true, false) != null:
+		return panel
 	return null
 
 
@@ -1289,12 +1291,16 @@ func test_the_prompt_strip_sits_on_a_quiet_band_and_the_tracked_plaques_stay_fra
 	assert_not_null(strip, "the prompt strip is found by name")
 	if strip != null:
 		var band := strip.get_theme_stylebox("panel")
-		assert_true(band is StyleBoxFlat,
-			"the prompts sit on the flat hint band, not a textured frame (got %s)"
-				% _class_of_resource(band))
-		if band is StyleBoxFlat:
-			assert_true((band as StyleBoxFlat).bg_color.a < 1.0,
-				"and the band is translucent, so the world shows through a passive hint")
+		var plaque := UITheme.panel_stylebox()
+		if band is StyleBoxTexture and plaque is StyleBoxTexture:
+			assert_ne((band as StyleBoxTexture).texture.resource_path,
+				(plaque as StyleBoxTexture).texture.resource_path,
+				"the prompts sit on the quiet band, never on the framed plaque")
+			assert_eq((band as StyleBoxTexture).texture.resource_path, UIPalette.TEX_BAND_RIGHT,
+				"the band that fades toward the playfield from the left edge")
+		var probe := _band_probe()
+		assert_true(probe.a < 1.0,
+			"and the band is translucent, so the world shows through a passive hint")
 	if UITheme.textures_present():
 		for plaque_name in ["IdentityPlaque", "MapPlaque", "TargetPlaque"]:
 			var plaque := hud.find_child(plaque_name, true, false) as Control
@@ -1306,17 +1312,16 @@ func test_the_prompt_strip_sits_on_a_quiet_band_and_the_tracked_plaques_stay_fra
 	free_node(hud)
 
 
-## The hint band is a LEGAL text surface over ANY background (D-057).
+## The hint band is a LEGAL text surface over ANY background (D-057, re-pinned D-062).
 ##
 ## The prompts are the light-only text palette, so what shows through the band must still
-## measure as a dark surface. Composited over pure white — the worst thing any floor, prop or
-## sprite could put behind it — the band must stay under the brightness limit the whole UI
-## uses. Derived from the tokens, so retuning the alpha below legibility fails here.
+## measure as a dark surface. MEASURED on the kit's band where the text sits (the solid run),
+## composited over pure white — the worst thing any floor, prop or sprite could put behind it —
+## it must stay under the brightness limit the whole UI uses.
 func test_the_hint_band_is_a_legal_text_surface_over_any_background() -> void:
-	var band := UITheme.hint_band_stylebox()
-	var fill := band.bg_color
-	var over_white := fill.lerp(Color.WHITE, 1.0 - fill.a)
-	var brightness := 255.0 * (0.299 * over_white.r + 0.587 * over_white.g
+	var fill := _band_probe()
+	var over_white := fill.lerp(Color(1.0, 1.0, 1.0, 1.0), 1.0 - fill.a)
+	var brightness: float = 255.0 * (0.299 * over_white.r + 0.587 * over_white.g
 		+ 0.114 * over_white.b)
 	assert_true(brightness < UIPalette.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
 		("the band over pure white measures %.0f, under the %d limit for a surface carrying "
@@ -1325,6 +1330,19 @@ func test_the_hint_band_is_a_legal_text_surface_over_any_background() -> void:
 	assert_true(fill.a < 1.0,
 		"and it is still translucent: an opaque band is just a frameless box (alpha %.2f)"
 			% fill.a)
+
+
+## The band's colour where the prompts sit: the middle of its SOLID run (the fade is where it
+## hands back to the world, and no text is placed there).
+func _band_probe() -> Color:
+	var texture := load(UIPalette.TEX_BAND_RIGHT) as Texture2D
+	if texture == null:
+		return Color(0, 0, 0, 1)
+	var image := texture.get_image()
+	if image.is_compressed():
+		image.decompress()
+	return image.get_pixel(UIPalette.BAND_SOLID_MARGIN + UIPalette.SPACE_MD,
+		image.get_height() / 2)
 
 
 ## A defeated target's plaque states the outcome instead of keeping an empty row (D-057).

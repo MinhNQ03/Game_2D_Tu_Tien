@@ -26,10 +26,17 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	if _item == null or _item.item == null or _item.item.icon == null:
+	if _item == null or _item.item == null:
+		return
+	var tex: Texture2D = _item.item.world_icon if _item.item.world_icon != null \
+		else _item.item.icon
+	if tex == null:
 		return
 	draw_rect(Rect2(Vector2(-5, -1), Vector2(10, 2)), SHADOW)
 	var bob := roundf(sin(_time * 2.2) * 1.5)
-	draw_texture(_item.item.icon, Vector2(-8, -18 + bob))
+	# Centred on its own size, resting 2px above the shadow (whole pixels: never a half-pixel
+	# seam under nearest filtering).
+	var top_left := Vector2(-floorf(tex.get_width() / 2.0), -tex.get_height() - 2 + bob)
+	draw_texture(tex, top_left)
 	if fposmod(_time, 2.4) < 0.18:
-		draw_rect(Rect2(Vector2(-3, -15 + bob), Vector2(1, 1)), GLINT)
+		draw_rect(Rect2(top_left + Vector2(5, 3), Vector2(1, 1)), GLINT)

@@ -14,7 +14,6 @@ class_name InventoryPanel
 signal use_requested(item_id: StringName, equipped: bool)
 
 const PANEL_MIN_WIDTH := 300
-const ICON_PX := 32
 
 var _loc: Node = null
 var _input: Node = null
@@ -141,13 +140,8 @@ func _row(row: Dictionary, selected: bool) -> Control:
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", UIPalette.SPACE_SM)
 	frame.add_child(line)
-	var icon := TextureRect.new()
-	icon.texture = row["icon"]
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
-	line.add_child(icon)
+	# The item in the kit's slot — the same family as the technique dock (D-062).
+	line.add_child(UITheme.icon_slot(row["icon"]))
 	var name_label := _label(UIPalette.FONT_SIZE_BODY,
 		UIPalette.COLOR_TEXT if row["usable"] else UIPalette.COLOR_TEXT_MUTED)
 	name_label.text = _t(String(row["name_key"]))

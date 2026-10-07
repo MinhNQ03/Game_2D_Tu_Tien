@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/data/items/item_data.gd" id="1_item"]
 [ext_resource type="Texture2D" path="res://assets/sprites/items/item_manual_phong.png" id="2_icon"]
+[ext_resource type="Texture2D" path="res://assets/sprites/items/world/item_manual_phong.png" id="9_world"]
 
 [resource]
 script = ExtResource("1_item")
@@ -9,6 +10,7 @@ id = &"item_manual_phong"
 name_key = &"ITEM_MANUAL_PHONG_NAME"
 desc_key = &"ITEM_MANUAL_PHONG_DESC"
 icon = ExtResource("2_icon")
+world_icon = ExtResource("9_world")
 category = 2
 stack_max = 1
 use_kind = 3

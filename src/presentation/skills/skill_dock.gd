@@ -2,18 +2,24 @@ extends PanelContainer
 class_name SkillDock
 ## SkillDock — Aetheria presentation (the learned techniques and the linh khí pool, Phase 15).
 ##
-## Bottom-RIGHT, on the quiet hint band (`UI_UX_BIBLE.md` §3c weight ladder: the player TRACKS
-## it, but it is not identity), opposite the prompt strip and clear of the bottom-centre
-## announcements. Hidden until a technique is learned — a dock of empty slots is a promise the
-## game cannot keep yet. Each slot: the skill's icon, its key, a cooldown shade draining from the
-## top, and dimmed when it cannot be cast now (cooldown, not enough qi, a cast in flight). Under
-## them, the linh khí bar — a gauge for a stat a system now owns (`SkillRuntime`).
+## BOTTOM-CENTRE (D-062): the player's hands are under the player. Below the playfield's clear
+## zone and the announcement band, so it never covers the fight or a notice. Hidden until a
+## technique is learned — a dock of empty slots is a promise the game cannot keep yet.
 ##
-## Compact by budget: the permanent HUD must stay under 15% of the screen; this adds ~0.5%.
+## Each slot is the kit's icon slot (`UITheme.slot_texture`) — the SAME family as the satchel's
+## item slots — with an inner ring in the technique's ELEMENT hue, the icon in its well, the key
+## on a keycap, and a cooldown shade draining from the top INSIDE the well (never over the gold
+## frame). A slot that cannot be cast now (cooldown, not enough qi, a cast in flight) dims.
+## Under the slots, the linh khí bar — a gauge for a stat a system owns (`SkillRuntime`).
+##
+## No plate of its own: the slots are framed objects, and a box around framed objects is the
+## "four giant permanent boxes" the brief forbids. Compact by budget: the permanent HUD must
+## stay under 15% of the screen.
 
-const SLOT_PX := 32
-const QI_BAR_HEIGHT := 6
+const WELL_INSET := 4
+const QI_BAR_HEIGHT := 8
 const QI_FILL := Color(0.60, 0.86, 0.96)
+const COOLDOWN_SHADE := Color(0.02, 0.03, 0.06, 0.72)
 
 var _slots: HBoxContainer
 var _qi_bar: ProgressBar
@@ -23,13 +29,14 @@ var _view: SkillView = null
 
 func _ready() -> void:
 	_input = get_node_or_null("/root/InputService")
-	add_theme_stylebox_override("panel", UITheme.hint_band_stylebox())
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", UIPalette.SPACE_SM)
 	add_child(box)
 	_slots = HBoxContainer.new()
 	_slots.name = "Slots"
+	_slots.alignment = BoxContainer.ALIGNMENT_CENTER
 	_slots.add_theme_constant_override("separation", UIPalette.SPACE_SM)
 	box.add_child(_slots)
 	_qi_bar = UITheme.qi_bar(QI_BAR_HEIGHT, QI_FILL)
@@ -71,40 +78,43 @@ func refresh() -> void:
 
 
 func _make_slot() -> Control:
-	var slot := Control.new()
-	slot.custom_minimum_size = Vector2(SLOT_PX, SLOT_PX)
-	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var icon := TextureRect.new()
-	icon.name = "Icon"
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_SCALE
-	icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	slot.add_child(icon)
+	# The kit's icon slot (the satchel's family), plus the dock's own cooldown shade and keycap.
+	var slot := UITheme.icon_slot()
 	var shade := ColorRect.new()
 	shade.name = "Cooldown"
-	shade.color = Color(0, 0, 0, 0.6)
+	shade.color = COOLDOWN_SHADE
+	shade.position = Vector2(WELL_INSET, WELL_INSET)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(shade)
+	# The key on a keycap, hanging off the slot's lower edge — the dock is read "press this".
+	var cap := PanelContainer.new()
+	cap.name = "KeyCap"
+	cap.add_theme_stylebox_override("panel", UITheme.badge_stylebox())
+	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(cap)
 	var key := Label.new()
 	key.name = "Key"
-	key.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	key.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_BADGE)
 	key.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
-	key.position = Vector2(1, -4)
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	slot.add_child(key)
+	cap.add_child(key)
 	return slot
 
 
 func _fill_slot(slot: Control, row: Dictionary) -> void:
-	(slot.get_node("Icon") as TextureRect).texture = row["icon"]
+	UITheme.set_icon_slot(slot, row["icon"], StringName(row.get("element", &"")))
 	var total := float(row["cooldown_total"])
 	var fraction := clampf(float(row["cooldown_left"]) / total, 0.0, 1.0) if total > 0.0 else 0.0
+	var well := float(UIPalette.SLOT_PX - WELL_INSET * 2)
 	var shade := slot.get_node("Cooldown") as ColorRect
-	shade.position = Vector2.ZERO
-	shade.size = Vector2(SLOT_PX, roundf(SLOT_PX * fraction))
+	shade.size = Vector2(well, roundf(well * fraction))
+	shade.visible = fraction > 0.0
 	var action := StringName("skill_%d" % int(row["slot"]))
-	(slot.get_node("Key") as Label).text = String(_input.call("get_action_display_label",
+	var cap := slot.get_node("KeyCap") as PanelContainer
+	(cap.get_node("Key") as Label).text = String(_input.call("get_action_display_label",
 		action)) if _input != null else str(row["slot"])
+	cap.reset_size()
+	cap.position = Vector2(UIPalette.SLOT_PX - cap.size.x + UIPalette.SPACE_SM,
+		UIPalette.SLOT_PX - cap.size.y * 0.5)
 	slot.modulate = Color.WHITE if bool(row["ready"]) else Color(0.6, 0.6, 0.65)

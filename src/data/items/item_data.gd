@@ -19,6 +19,10 @@ enum UseKind { NONE, HEAL, ABSORB_QI, READ }
 @export var name_key: StringName = &""
 @export var desc_key: StringName = &""
 @export var icon: Texture2D = null
+## The item as it LIES IN THE WORLD: the same Blender model as `icon`, framed for a 16px cell
+## (D-062). The 32px slot icon drawn on the ground would stand two-thirds of a person tall.
+## Null falls back to `icon`.
+@export var world_icon: Texture2D = null
 @export var category: Category = Category.CONSUMABLE
 @export var stack_max: int = 1
 @export var use_kind: UseKind = UseKind.NONE

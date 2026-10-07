@@ -75,3 +75,28 @@ def build(spec, root, work, scale=4):
     out = os.path.join(work, "review.png")
     board.save(out)
     return out
+
+
+def build_icons(icon_spec, root, work, scale=4):
+    """The icon review board: each icon's beauty render above its 32px icon in its UI slot
+    (element ring for a technique) at 1x and magnified — what the dock and the satchel show."""
+    slot_for = {"skill_thanh_phong_chuong": "slot_phong", "skill_loi_chi": "slot_loi"}
+    ids = list(icon_spec["icons"])
+    cw = 136
+    board = Image.new("RGBA", (len(ids) * cw, 128 + 40 * scale + 56), (40, 50, 45, 255))
+    for i, icon_id in enumerate(ids):
+        beauty = os.path.join(work, icon_id + "_beauty.png")
+        if os.path.exists(beauty):
+            board.alpha_composite(Image.open(beauty).convert("RGBA").resize((128, 128)),
+                                  (i * cw, 0))
+        slot = Image.open(os.path.join(root, "assets/ui/aetheria_ink/%s.png"
+                                       % slot_for.get(icon_id, "slot"))).convert("RGBA")
+        icon = Image.open(os.path.join(root, "assets/sprites/items/%s.png" % icon_id))
+        framed = slot.copy()
+        framed.alpha_composite(icon.convert("RGBA"), (4, 4))
+        board.alpha_composite(framed.resize((40 * scale // 2, 40 * scale // 2), Image.NEAREST),
+                              (i * cw + 28, 136))
+        board.alpha_composite(framed, (i * cw + 48, 136 + 40 * scale // 2 + 8))
+    out = os.path.join(work, "review_icons.png")
+    board.save(out)
+    return out

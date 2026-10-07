@@ -72,7 +72,30 @@ though self-made art needs no external attribution.
 > `Sprite2D` decorations under each map's `Visual/Decor` — no collision, exit, camera, spawn,
 > MapData or gameplay change. Still a self-made tier; a bespoke art pass can replace it later.
 
-## Production UI art — Xianxia Pixel Pack (CC0, D-028)
+## LIVE UI — the ink-lacquer kit + Blender icons — **self-made / project-owned** (D-062)
+
+ORIGINAL Aetheria art, generated from the Visual DNA (`tools/aetheria_art_pipeline/style/
+aetheria_style.yaml`, style version 1.0). Nothing in it is sampled, traced, cropped or recoloured
+from a reference, a moodboard or a third-party pack. Regenerate, never hand-edit.
+
+| # | Name | Type | Source / Author | License | Used in | Attr.? |
+|---|------|------|-----------------|---------|---------|--------|
+| K1 | `assets/ui/aetheria_ink/{plaque,band_right,band_left}.png` | UI surfaces (pixel, 9-slice) | self-made — `tools/aetheria_art_pipeline/ui/ui_kit.py` | project-owned | every plaque, side panel, menu panel; the quiet band (`UITheme.panel_stylebox`, `hint_band_stylebox`) | No |
+| K2 | `assets/ui/aetheria_ink/button_{normal,hover,focus,pressed,disabled}.png` | five designed button states | self-made — `ui_kit.py` | project-owned | every button (`UITheme.button_stylebox`) | No |
+| K3 | `assets/ui/aetheria_ink/{keycap,gauge_well,gauge_fill,slot,slot_phong,slot_loi,slot_hoa,slot_thuy}.png` | keycap, meter material, icon slots | self-made — `ui_kit.py` | project-owned | prompts, every meter, satchel + technique dock | No |
+| K4 | `assets/ui/aetheria_ink/{divider,frame_mask,corner_fret}.png` | white ornament masks (tinted) | self-made — `ui_kit.py` | project-owned | dividers, frames, full-screen corners | No |
+| K5 | `assets/ui/aetheria_ink/medallion_*.png` (96×96) | identity medallions | self-made — `ui_kit.py` framing the pipeline's 80px portraits (P62c) | project-owned | HUD identity plaque (`UITheme.portrait_texture`) | No |
+| K6 | `assets/sprites/items/{item_*,skill_*}.png` (32×32) and `assets/sprites/items/world/item_*.png` (16×16) | item / equipment / technique icons, world pickups | self-made — modelled in **Blender 5.2** (`model/icons.py`, `blender/build_icons.py`), adapted by `pixel/pixelize.py` (`build.py icons`) — the same passes, light and ink as the characters | project-owned | `ItemData.icon` / `world_icon`, `SkillData.icon` | No |
+
+**RETIRED (D-062) and removed from the repository** — the rows in the sections below are kept as
+history only: the CC0 Xianxia Pixel Pack UI (`assets/ui/xianxia/`, U-rows), the three Kenney
+ornament masks (`assets/ui/kenney_borders/`), the painted button plates and icons
+(`assets/ui/aetheria/buttons/`, `assets/ui/aetheria/icons/`) with `tools/repair_button_plate.py`,
+the painted HUD portraits (`cultivator_male.png`, `cultivator_female.png`), and the stdlib 16px item
+and skill icons. The painted menu backdrop (`assets/ui/aetheria/backdrop/cloud_peaks.png`, A4) is
+the one painted asset still live — behind the menu only.
+
+## Production UI art — Xianxia Pixel Pack (CC0, D-028) — RETIRED D-062
 
 The live UI (menu + HUD, via `UITheme`/`UIPalette`, `assets/ui/xianxia/`) uses the CC0
 **Xianxia Pixel Pack** UI set — jade/ink/silk/rosewood 9-slice panels + jade/silk buttons +

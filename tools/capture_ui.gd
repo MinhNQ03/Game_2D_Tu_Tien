@@ -139,6 +139,10 @@ func _run() -> void:
 			if _toggle_panel(hud, "_faction_panel"):
 				await _settle()
 				await _shot("08_faction_panel")
+				_toggle_panel(hud, "_faction_panel")
+			if hud.has_method("is_sect_panel_open") and bool(hud.call("is_sect_panel_open")):
+				_toggle_panel(hud, "_sect_panel")
+			await _capture_satchel_and_equipment(main, hud)
 
 	print("[capture] wrote %d file(s) to %s" % [_written.size(), _out_dir])
 	for name in _written:
@@ -148,6 +152,67 @@ func _run() -> void:
 	# A capture run that skipped a state is a FAILED run, not a partial success — the caller
 	# (a human, or a future CI visual gate) must be able to tell from the exit code.
 	quit(1 if _failed else 0)
+
+
+## 9-11: the satchel with real items in it, the protagonist WEARING the Thanh Vân robe (the
+## equipment visual swap), and the technique dock. SETUP goes through the runtimes' public API —
+## the same concession the E2E flows make — because walking to every pickup would turn a
+## screenshot into a playthrough. A state that could not be reached writes NO file and fails
+## the run: a capture named after a state it is not in is the lie this tool exists to prevent.
+func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:
+	var inventory := main.get_node_or_null("Systems/InventoryRuntime")
+	var equipment := main.get_node_or_null("Systems/EquipmentRuntime")
+	var world := main.get_node_or_null("Systems/WorldRuntime")
+	if inventory == null or equipment == null or world == null:
+		push_error("[capture] the inventory/equipment runtimes are missing under Main/Systems")
+		_failed = true
+		return
+	for item_id in [&"item_bo_huyet_dan", &"item_linh_thach", &"item_kiem_thanh_thiet",
+			&"item_dao_bao_thanh_van", &"item_manual_phong", &"item_manual_loi"]:
+		inventory.call("give", item_id, 2 if item_id == &"item_bo_huyet_dan" else 1)
+	world.call("refresh_active_map_inventory_view")
+	hud.call("open_inventory")
+	await _settle()
+	if not bool(hud.call("is_inventory_open")):
+		push_error("[capture] the satchel did not open")
+		_failed = true
+		return
+	await _shot("09_satchel")
+	hud.call("close_inventory")
+	# The techniques need Hậu Thiên 1 and the breathing method (canon gates, P12/P15): the same
+	# setup `capture_motion.gd techniques` uses. Then reading both manuals teaches them through
+	# the Knowledge Core, and the dock appears.
+	var knowledge := main.get_node_or_null("Systems/KnowledgeRuntime") as KnowledgeRuntime
+	var cultivation := main.get_node_or_null("Systems/CultivationRuntime") as CultivationRuntime
+	var player := _player(hud)
+	if knowledge != null and cultivation != null and player != null:
+		var state: CharacterState = player.call("get_character_state")
+		knowledge.grant(&"know_dan_khi_quyet", &"capture")
+		if state.realm_id == &"realm_pham":
+			cultivation.get_service().gather(state, 999)
+			cultivation.get_service().breakthrough(state)
+			cultivation.realm_advanced.emit(state.realm_id, state.realm_layer, true)
+	inventory.call("use", &"item_manual_phong")
+	inventory.call("use", &"item_manual_loi")
+	var worn := String(equipment.call("equip", &"item_dao_bao_thanh_van"))
+	await _settle()
+	await _settle()
+	if worn != "":
+		push_error("[capture] equipping the Thanh Vân robe was refused: %s" % worn)
+		_failed = true
+		return
+	await _shot("10_equipped_and_dock")
+
+
+## The player body under the HUD's map (`PlayerHost`), or null.
+func _player(hud: Node) -> Node2D:
+	var host := hud.get_parent().get_node_or_null("PlayerHost")
+	if host == null:
+		return null
+	for child in host.get_children():
+		if child is CharacterBody2D:
+			return child as Node2D
+	return null
 
 
 ## Switch the live `Localization` to the requested language and CONFIRM it took.

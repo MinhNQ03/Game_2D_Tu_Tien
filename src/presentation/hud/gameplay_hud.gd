@@ -73,10 +73,6 @@ const SECT_EMBLEM_PX := 20
 ## scaled to this band, so it reads as a thin engraved rule rather than a picture.
 const DIVIDER_HEIGHT := 8
 
-## How far the painted portrait is inset inside its frame, so the frame's border art overlaps
-## the picture's edge instead of the picture spilling over the border.
-const PORTRAIT_INSET := 5
-
 var _loc: Node = null
 var _input: Node = null
 var _bus: Node = null
@@ -164,7 +160,7 @@ var _faction_panel: FactionPanel
 # input context so the move keys choose a row instead of walking the player.
 var _inventory_panel: InventoryPanel
 var _inventory_modal: bool = false
-# The skill dock (Phase 15): bottom-right, hidden until a technique is learned.
+# The skill dock (Phase 15): bottom-centre (D-062), hidden until a technique is learned.
 var _skill_dock: SkillDock
 var _politics_view: SectPoliticsView = null  # read-only politics view; may be null
 var _world_sim_view: WorldSimView = null  # read-only world-sim view (Phase 08); may be null
@@ -234,56 +230,32 @@ func _build_ui() -> void:
 	identity_panel.add_child(identity_body)
 
 	var identity_row := HBoxContainer.new()
-	identity_row.add_theme_constant_override("separation", UIPalette.SPACE_MD)
+	# SPACE_SM: the medallion's own ring is the gap's visual edge, so the text sits close to it
+	# and the plaque stays clear of the playfield centre (§3c).
+	identity_row.add_theme_constant_override("separation", UIPalette.SPACE_SM)
 	identity_body.add_child(identity_row)
 
-	# Portrait frame slot (empty well for now; a portrait texture drops in later).
-	# A NinePatchRect, NOT a TextureRect: `portrait_frame.png` is 218x118 (measured, D-034)
-	# and a TextureRect reports its whole texture as the minimum size, which is what pushed a
-	# giant empty rosewood plate over the identity text. Nine-patching keeps the frame's
-	# corners crisp at the small size we actually want (`06-art-assets.md` nine-slice rule).
-	# The well is a stack: the painted portrait UNDER the rosewood nine-patch frame, so the
-	# frame's border art overlaps the portrait's edges the way a real mounted picture does.
-	# The frame alone was what shipped before — an empty plate with nothing in it (D-044).
+	# The identity MEDALLION (D-062): the player's own pixel portrait, rendered by the art
+	# pipeline from the SAME model as the sprite on the map, in a lacquer disc under an
+	# antique-gold ring. Drawn at 1x with NEAREST — it is pixel art, and resampling a portrait
+	# is how the old painted one went soft. The ring is part of the art, so nothing is drawn
+	# over it (the old frame overlay existed only because the painted crop had none).
 	var portrait_well := Control.new()
-	portrait_well.custom_minimum_size = Vector2(
-		UIPalette.IDENTITY_PORTRAIT_PX, UIPalette.IDENTITY_PORTRAIT_PX)
+	portrait_well.name = "PortraitWell"
+	portrait_well.custom_minimum_size = Vector2(UIPalette.MEDALLION_PX, UIPalette.MEDALLION_PX)
 	portrait_well.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	identity_row.add_child(portrait_well)
 
-	# The painted face. An `AtlasTexture` head crop (see `UITheme.portrait_texture`) because
-	# the source is a full standing figure; inset by the frame's border so the art sits INSIDE
-	# the frame rather than under its edge.
 	_portrait = TextureRect.new()
 	_portrait.name = "Portrait"
-	# LINEAR: painted art, not pixel art — and this is a DOWNscale (310px source into a 56px
-	# well), where nearest would alias the face badly.
-	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_portrait.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_portrait.offset_left = PORTRAIT_INSET
-	_portrait.offset_top = PORTRAIT_INSET
-	_portrait.offset_right = -PORTRAIT_INSET
-	_portrait.offset_bottom = -PORTRAIT_INSET
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_portrait.texture = UITheme.portrait_texture()
 	_portrait.visible = _portrait.texture != null
 	portrait_well.add_child(_portrait)
-
-	# The frame, drawn OVER the portrait — and it must be a HOLLOW one, which is why this is
-	# `UITheme.ornament_frame()` and no longer `portrait_frame.png`.
-	#
-	# D-034 MEASURED `portrait_frame.png` at centre brightness 229: it is an opaque light
-	# PANEL, not a frame. Nine-patching it over the portrait therefore painted a cream plate
-	# straight across the face, and the identity plaque shipped for two phases showing an
-	# empty slot that read as a missing asset — the measurement was on record and the
-	# consequence of drawing an opaque centre OVER something was not drawn from it.
-	# `frame_ornate.png` measures centre alpha 0, so it frames without covering (L-021).
-	var portrait_frame := UITheme.ornament_frame()
-	portrait_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait_well.add_child(portrait_frame)
 
 	var identity_text := VBoxContainer.new()
 	identity_text.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -673,12 +645,15 @@ func _build_ui() -> void:
 		inventory_use_requested.emit(item_id, equipped))
 	root.add_child(_inventory_panel)
 
+	# The technique dock sits BOTTOM-CENTRE (D-062): the composition every action game reads —
+	# the player's hands are under the player. It is below the playfield's clear zone and
+	# below the announcement band, so it never covers the fight or a notice.
 	_skill_dock = SkillDock.new()
 	_skill_dock.name = "SkillDock"
-	_skill_dock.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_skill_dock.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_skill_dock.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_skill_dock.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_skill_dock.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_skill_dock.position = Vector2(-UIPalette.HUD_MARGIN, -UIPalette.HUD_MARGIN)
+	_skill_dock.position = Vector2(0, -UIPalette.HUD_MARGIN)
 	root.add_child(_skill_dock)
 
 	_faction_panel = FactionPanelScript.new() as FactionPanel

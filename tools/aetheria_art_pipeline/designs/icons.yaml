@@ -1,0 +1,64 @@
+# The Aetheria icon set (D-062 CP2 — aetheria_style.yaml §7 icon grammar).
+#
+# ONE family: items are OBJECTS resting on the ground plane under the canonical light; techniques
+# are SIGILS of their element's force standing in the picture plane. All are rendered by the
+# character pipeline's passes and pixelized by the same adapter at 32x32, so an icon and a
+# sprite share light direction, ramp logic and the one ink outline. Colours are ramps
+# [deep, shadow, base, light]; a role name resolves through the style palette.
+#
+# `output` is the asset the game already references (ItemData / SkillData `icon`), so the art
+# changes and no data file does.
+
+cell: [32, 32]
+world_cell: [16, 16]          # the item lying in the world (ItemData.world_icon)
+render_scale: 4
+
+icons:
+  item_bo_huyet_dan:
+    kind: pill_dish
+    materials:
+      porcelain: {ramp: ["#4f6e66", "#7fa194", "#b4cfc2", "#e2efe8"], highlight: true}
+      pill:      {ramp: ["#5e1a22", "#8f2a33", "#c4424a", "#f08a7e"], highlight: true, priority: 1.4}
+  item_linh_thach:
+    kind: spirit_stone
+    materials:
+      crystal:   {ramp: ["#1d5c74", "#3a97b5", "#85ccea", "#e2f6ff"], highlight: true}
+  item_kiem_thanh_thiet:
+    kind: jian
+    materials:
+      steel:       {ramp: ["#2c3a4a", "#55697e", "#8fa5b8", "#d8e4ee"], highlight: true}
+      steel_light: {ramp: ["#8fa5b8", "#b6c8d6", "#d8e4ee", "#f4f8fb"], priority: 1.6, flat: true}
+      brass:       {ramp: ["#5b4524", "#86683a", "#c9a865", "#e6cf93"], highlight: true, priority: 1.8}
+      wrap:        {ramp: ["#1b1414", "#2f2422", "#46352f", "#5c463c"]}
+      accent:      {ramp: ["#164638", "#215f4e", "#2d7c64", "#4ca383"], flat: true}
+  item_dao_bao_thanh_van:
+    kind: folded_robe
+    materials:
+      cloth: {ramp: ["#18324a", "#28536f", "#3c7591", "#6fa9bf"], highlight: true}
+      inner: {ramp: ["#8f969f", "#c8ccd2", "#e9ebee", "#ffffff"], priority: 1.4}
+      trim:  {ramp: ["#5b4524", "#7f6436", "#a88a4f", "#c9a865"], priority: 1.6, flat: true}
+      sash:  {ramp: ["#8c8573", "#b8b09c", "#ddd6c4", "#f3eee2"], priority: 1.3, flat: true}
+  item_manual_phong:
+    kind: manual
+    materials:
+      cover:  {ramp: ["#1b2236", "#2b3552", "#3f4c72", "#5c6a92"], highlight: true}
+      paper:  {ramp: ["#8c7f63", "#c4b18c", "#e6d9bf", "#f6eedc"]}
+      thread: {ramp: ["#5b4524", "#7f6436", "#a88a4f", "#c9a865"], priority: 1.6, flat: true}
+      accent: {ramp: ["#2c7a63", "#4fb08a", "#9ee6b8", "#d6f8e4"], priority: 2.5, flat: true}
+  item_manual_loi:
+    kind: manual
+    materials:
+      cover:  {ramp: ["#1b2236", "#2b3552", "#3f4c72", "#5c6a92"], highlight: true}
+      paper:  {ramp: ["#8c7f63", "#c4b18c", "#e6d9bf", "#f6eedc"]}
+      thread: {ramp: ["#5b4524", "#7f6436", "#a88a4f", "#c9a865"], priority: 1.6, flat: true}
+      accent: {ramp: ["#4c3a8a", "#7a64c4", "#bc9eff", "#e8ddff"], priority: 2.5, flat: true}
+  skill_thanh_phong_chuong:
+    kind: sigil_wind
+    materials:
+      sigil:      {ramp: ["#2c7a63", "#4fb08a", "#9ee6b8", "#e6fff0"], highlight: true}
+      sigil_core: {ramp: ["#9ee6b8", "#c8f4d8", "#ecfff4", "#ffffff"], priority: 1.6, flat: true}
+  skill_loi_chi:
+    kind: sigil_thunder
+    materials:
+      sigil:      {ramp: ["#4c3a8a", "#7a64c4", "#bc9eff", "#f2ebff"], highlight: true}
+      sigil_core: {ramp: ["#bc9eff", "#dccdff", "#f2ebff", "#ffffff"], priority: 1.6, flat: true}

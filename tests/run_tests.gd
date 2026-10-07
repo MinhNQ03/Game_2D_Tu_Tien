@@ -2,7 +2,7 @@ extends SceneTree
 ## Headless test runner for Aetheria (custom runner — decision D-004).
 ##
 ## Run with:
-##   godot --headless --path . -s res://tests/run_tests.gd
+##   godot --headless --path . -s res://tests/run_tests.gd [-- <path substring> ...]
 ##
 ## Recursively discovers every `test_*.gd` under the test directories (including nested
 ## folders like tests/unit/combat/test_damage.gd), instantiates each (must extend
@@ -75,6 +75,18 @@ func _run() -> void:
 		print("[tests] RESULT: FAIL — required smoke test not found.")
 		quit(1)
 		return
+
+	# Optional SUBSET for local iteration: `-- <substring> ...` keeps only the test files whose
+	# path contains one of the substrings. CI passes none and always runs everything; the
+	# required-test check above already ran against the full discovery.
+	var only := OS.get_cmdline_user_args()
+	if not only.is_empty():
+		found_files = found_files.filter(func(path: String) -> bool:
+			for part in only:
+				if path.contains(part):
+					return true
+			return false)
+		print("[tests] subset %s: %d file(s)" % [str(only), found_files.size()])
 
 	# Baseline phase of the shared GameState autoload before any test runs.
 	var baseline_phase: Variant = _shared_gamestate_phase()

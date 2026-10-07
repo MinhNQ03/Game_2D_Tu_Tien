@@ -135,15 +135,16 @@ func test_the_xp_meter_is_distinguishable_from_the_health_gauge() -> void:
 
 	# 2. HUE — gold for progression, jade for vitals. Read off the actual styleboxes, not off
 	#    the palette, so pointing the meter at the wrong token fails here.
-	var xp_fill := xp.get_theme_stylebox("fill") as StyleBoxFlat
-	var hp_fill := health.get_theme_stylebox("fill") as StyleBoxFlat
-	assert_not_null(xp_fill, "the meter has a flat fill")
+	var xp_fill := xp.get_theme_stylebox("fill")
+	var hp_fill := health.get_theme_stylebox("fill")
+	assert_not_null(xp_fill, "the meter has a fill")
 	assert_not_null(hp_fill, "and so does the gauge")
 	if xp_fill != null and hp_fill != null:
-		assert_ne(str(xp_fill.bg_color), str(hp_fill.bg_color),
-			"the two fills are different colours (xp=%s hp=%s)"
-				% [str(xp_fill.bg_color), str(hp_fill.bg_color)])
-		assert_eq(str(xp_fill.bg_color), str(UIPalette.XP_METER_FILL),
+		var xp_hue := UITheme.fill_color(xp_fill)
+		var hp_hue := UITheme.fill_color(hp_fill)
+		assert_ne(str(xp_hue), str(hp_hue),
+			"the two fills are different colours (xp=%s hp=%s)" % [str(xp_hue), str(hp_hue)])
+		assert_eq(str(xp_hue), str(UIPalette.XP_METER_FILL),
 			"and the XP fill is the gold progression token, not the jade vitals one")
 
 	# 3. TEXT — each writes its own numbers, so the distinction survives without colour.
@@ -178,9 +179,9 @@ func test_the_ceiling_reads_as_complete_rather_than_zero_of_zero() -> void:
 		"a maxed meter is FULL, not empty — the raw numbers at the ceiling are 0 and 0")
 	assert_false("0 / 0" in _all_text(hud),
 		"and it never writes `0 / 0`, which is what the raw pair would say")
-	var fill := meter.get_theme_stylebox("fill") as StyleBoxFlat
+	var fill := meter.get_theme_stylebox("fill")
 	if fill != null:
-		assert_eq(str(fill.bg_color), str(UIPalette.XP_METER_FILL_COMPLETE),
+		assert_eq(str(UITheme.fill_color(fill)), str(UIPalette.XP_METER_FILL_COMPLETE),
 			"the ceiling uses its own fill, so 'maxed' and 'nearly full' are not the same "
 			+ "picture")
 	free_node(hud)

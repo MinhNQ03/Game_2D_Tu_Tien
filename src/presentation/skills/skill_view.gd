@@ -5,7 +5,7 @@ class_name SkillView
 
 var qi: float = 0.0
 var qi_max: int = 0
-## One per LEARNED technique, by key: { "slot", "technique_id", "name_key", "icon",
+## One per LEARNED technique, by key: { "slot", "technique_id", "name_key", "icon", "element",
 ## "cooldown_left", "cooldown_total", "qi_cost", "ready" }.
 var slots: Array[Dictionary] = []
 
@@ -23,6 +23,7 @@ static func make(runtime: SkillRuntime) -> SkillView:
 		view.slots.append({
 			"slot": technique.slot, "technique_id": technique.id,
 			"name_key": technique.name_key, "icon": technique.skill.icon,
+			"element": technique.skill.element,
 			"cooldown_left": left, "cooldown_total": technique.skill.cooldown,
 			"qi_cost": technique.skill.qi_cost,
 			"ready": left <= 0.0 and runtime.qi() >= float(technique.skill.qi_cost)

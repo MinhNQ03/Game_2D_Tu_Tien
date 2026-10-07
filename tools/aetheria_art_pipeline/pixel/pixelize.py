@@ -356,3 +356,38 @@ def _check_profile(spec, root):
         text = f.read()
     if want not in text:
         raise SystemExit("PROFILE MISMATCH: %s must declare `%s`" % (path, want))
+
+
+def icon(spec, frames_dir, icon_id, k, cell, shadow=True):
+    """One icon from its passes: the character adapter, then a small contact shadow for an
+    object resting on the ground (a sigil floats: no shadow; a WORLD icon gets its shadow from
+    the pickup, not baked in)."""
+    grid = rasterize(spec, Passes(frames_dir, icon_id), k)
+    grid = despeckle(spec, inner_contours(spec, clean(spec, grid)))
+    if spec["kind"].startswith("sigil") or not shadow:
+        return to_image(spec, grid)
+    # the shadow under the object's lowest opaque row: an object rests ON it
+    rows = [y for y, row in enumerate(grid) if any(c is not None for c in row)]
+    base = (rows[-1] + 0.5) if rows else cell[1] * 0.8
+    return to_image(spec, grid, (cell[0] / 2.0, base), (cell[0] * 0.40, 1.6))
+
+
+def build_icons(icon_spec, frames_dir, root):
+    """Every icon in designs/icons.yaml -> assets/sprites/items/<id>.png (the paths the data
+    already references)."""
+    k = icon_spec["render_scale"]
+    cell = icon_spec["cell"]
+    written = []
+    for icon_id, spec in icon_spec["icons"].items():
+        img = icon(spec, frames_dir, icon_id, k, cell)
+        rel = "assets/sprites/items/%s.png" % icon_id
+        img.save(os.path.join(root, rel))
+        written.append(rel)
+        world = icon_spec.get("world_cell")
+        if world and os.path.exists(os.path.join(frames_dir, icon_id + "_w_id.png")):
+            os.makedirs(os.path.join(root, "assets/sprites/items/world"), exist_ok=True)
+            rel = "assets/sprites/items/world/%s.png" % icon_id
+            icon(spec, frames_dir, icon_id + "_w", k, world, shadow=False).save(
+                os.path.join(root, rel))
+            written.append(rel)
+    return written

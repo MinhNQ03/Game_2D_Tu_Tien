@@ -6,6 +6,8 @@
   build.py pixel <actor>           Blender frames (work/<actor>/frames) -> sheets + anchors + portrait
   build.py all-pixel               every actor in designs/actors/
   build.py review <actor>          work/<actor>/review.png: turnaround, face, portrait, sheets
+  build.py icons-spec              designs/icons.yaml -> work/icons/spec.json (Blender reads this)
+  build.py icons                   Blender icon passes (work/icons) -> the 32x32 icons
 
 Blender is a BUILD tool here, never a runtime dependency: it renders controlled passes into
 work/ (gitignored); this side turns them into the committed 32x48 sheets.
@@ -99,6 +101,42 @@ def resolve(actor_id):
     return spec
 
 
+def resolve_icons():
+    """designs/icons.yaml + style -> one spec per icon, in the SAME shape the character passes
+    use (materials with ids and ramps, the style's ink, light and pixel rules)."""
+    with open(os.path.join(PIPE, "designs", "icons.yaml"), encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    st = style.load()
+    out = {"cell": data["cell"], "world_cell": data.get("world_cell"),
+           "render_scale": data["render_scale"], "icons": {}}
+    for icon_id, icon in data["icons"].items():
+        mats = {}
+        for i, (name, m) in enumerate(icon["materials"].items()):
+            ramp = [style.resolve_colour(c, st) for c in m["ramp"]]
+            mats[name] = {"id": i + 1, "ramp": ramp, "priority": float(m.get("priority", 1.0)),
+                          "highlight": bool(m.get("highlight", False)),
+                          "flat": bool(m.get("flat", False)), "min_tone": 0,
+                          "min_coverage": int(m.get("min_coverage", 2))}
+        out["icons"][icon_id] = {
+            "id": icon_id, "kind": icon["kind"], "materials": mats,
+            "style": {"ink": style.role("ink", st),
+                      "contact_shadow": {"rgb": style.hex_rgb(
+                          st["lighting"]["contact_shadow"]["colour"]),
+                          "alpha": st["lighting"]["contact_shadow"]["alpha"]},
+                      "lighting": st["lighting"], "pixel": st["pixel_adaptation"]},
+        }
+    return out
+
+
+def write_icon_spec():
+    out_dir = os.path.join(WORK, "icons")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "spec.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(resolve_icons(), f, indent=1, ensure_ascii=False)
+    return path
+
+
 def write_spec(actor_id):
     spec = resolve(actor_id)
     out_dir = os.path.join(WORK, actor_id)
@@ -111,7 +149,8 @@ def write_spec(actor_id):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", choices=["resolve", "design-sheet", "pixel", "all-pixel", "review"])
+    ap.add_argument("cmd", choices=["resolve", "design-sheet", "pixel", "all-pixel", "review",
+                                       "icons-spec", "icons"])
     ap.add_argument("actor", nargs="?")
     args = ap.parse_args(argv)
     if args.cmd == "resolve":
@@ -124,6 +163,16 @@ def main(argv=None):
         sys.path.insert(0, os.path.join(PIPE, "pixel"))
         import pixelize
         pixelize.build_actor(resolve(args.actor), os.path.join(WORK, args.actor), ROOT)
+    elif args.cmd == "icons-spec":
+        print(write_icon_spec())
+    elif args.cmd == "icons":
+        sys.path.insert(0, os.path.join(PIPE, "pixel"))
+        import pixelize
+        for p in pixelize.build_icons(resolve_icons(), os.path.join(WORK, "icons"), ROOT):
+            print("wrote", p)
+        sys.path.insert(0, os.path.join(PIPE, "validate"))
+        import review_sheet
+        print(review_sheet.build_icons(resolve_icons(), ROOT, os.path.join(WORK, "icons")))
     elif args.cmd == "review":
         sys.path.insert(0, os.path.join(PIPE, "validate"))
         import review_sheet

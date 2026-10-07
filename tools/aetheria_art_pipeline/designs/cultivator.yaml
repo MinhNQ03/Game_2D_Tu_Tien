@@ -86,8 +86,9 @@ camera:
   gameplay: {elevation_deg: 30.0, cell: [32, 48], render_scale: 4, feet_row: 43.0,
              ortho_units: 52.0}
   presentation: {elevation_deg: 12.0, focal_mm: 85, size: [768, 1024], distance: 150}
-  # head and shoulders: the frame spans z 30.5..50.5 (collar to crown) at 56 px
-  portrait: {elevation_deg: 8.0, size: [56, 56], render_scale: 4, frame: [30.5, 50.5]}
+  # head and shoulders: the frame spans z 30.5..50.5 (collar to crown) at 80 px — the HUD
+  # medallion disc (ui_kit medallion, diameter 80) shows it at 1x, never resampled
+  portrait: {elevation_deg: 8.0, size: [80, 80], render_scale: 4, frame: [30.5, 50.5]}
 
 animations:                         # frame counts are the runtime contract (CharacterVisualProfileData)
   idle: {frames: 6, loops: true}

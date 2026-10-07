@@ -53,34 +53,35 @@ func test_all_ui_textures_exist() -> void:
 	assert_true(UIThemeScript.textures_present(), "UITheme reports all textures present")
 
 
-## When the textures are present the panel/button must actually be asset-backed
-## (StyleBoxTexture), not the flat fallback — proving the UI uses REAL pixel-art assets.
-## The key badge is deliberately NOT asset-backed; see the dedicated test below.
+## When the textures are present every surface must actually be asset-backed (StyleBoxTexture),
+## not the flat fallback — proving the UI uses the REAL kit (D-062), keycap included.
 func test_theme_is_asset_backed_when_textures_present() -> void:
 	if not UIThemeScript.textures_present():
 		return  # textures not imported (shouldn't happen in CI); asset-contract test covers it
 	assert_true(UIThemeScript.panel_stylebox() is StyleBoxTexture,
 		"panel uses an asset-backed StyleBoxTexture")
-	assert_true(UIThemeScript.button_stylebox("normal") is StyleBoxTexture,
-		"button uses an asset-backed StyleBoxTexture")
-	assert_true(UIThemeScript.accent_panel_stylebox() is StyleBoxTexture,
-		"the light accent plate uses an asset-backed StyleBoxTexture")
+	for state in UIThemeScript.BUTTON_TEXTURES:
+		assert_true(UIThemeScript.button_stylebox(state) is StyleBoxTexture,
+			"the '%s' button uses an asset-backed StyleBoxTexture" % state)
+	assert_true(UIThemeScript.badge_stylebox() is StyleBoxTexture, "the keycap is the kit's")
+	assert_true(UIThemeScript.hint_band_stylebox() is StyleBoxTexture, "the band is the kit's")
 
 
-## REGRESSION GUARD (D-034): the text-bearing panel must use the DARK ink texture.
-##
-## `panel.png` was measured at centre brightness 230 (near white) while every text token in
-## UIPalette is light, so pairing them rendered near-white text on a near-white plate — the
-## unreadable Phase-06 HUD. If someone points `panel_stylebox()` back at `TEX_PANEL`, this
-## fails instead of shipping an invisible HUD again.
+## REGRESSION GUARD (D-034, re-pinned D-062): the text-bearing panel is the kit's PLAQUE, and
+## its centre MEASURES dark — every text token is light, and a light plate behind light text
+## is the unreadable Phase-06 HUD. Measured, not trusted: a regenerated kit that brightened the
+## lacquer fails here.
 func test_text_panel_uses_the_dark_surface() -> void:
 	if not UIThemeScript.textures_present():
 		return
 	var box := UIThemeScript.panel_stylebox() as StyleBoxTexture
 	assert_not_null(box, "panel stylebox is texture-backed")
-	assert_not_null(box.texture, "panel stylebox carries a texture")
-	assert_eq(box.texture.resource_path, UIPaletteScript.TEX_PANEL_INSET,
-		"the panel that carries light text uses the DARK inset texture, not the light plate")
+	assert_eq(box.texture.resource_path, UIPaletteScript.TEX_PLAQUE,
+		"the panel that carries light text is the kit's lacquer plaque")
+	var brightness := _centre_brightness(UIPaletteScript.TEX_PLAQUE)
+	assert_true(brightness >= 0.0 and brightness < UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
+		"the plaque's measured centre (%.0f) is DARK, under the %d limit"
+			% [brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
 
 
 ## REGRESSION GUARD (D-034): text must never be drawn on top of the 9-slice border band.
@@ -100,16 +101,20 @@ func test_panel_content_margin_clears_the_frame_border() -> void:
 		"bottom content margin clears the 9-slice border")
 
 
-## REGRESSION GUARD (D-034): the key badge is a deliberate FLAT chip, not the pack texture.
-## `key_badge.png` is a 61x61 corner ornament whose centre pixel is fully TRANSPARENT, so it
-## cannot back a key glyph; 9-slicing it to keycap size collapsed its border bands and the
-## prompts rendered as smudges. A keycap needs a solid contrasting fill.
-func test_key_badge_is_a_solid_chip_not_the_hollow_ornament() -> void:
-	var badge := UIThemeScript.badge_stylebox()
-	assert_true(badge is StyleBoxFlat,
-		"the keycap is a solid flat chip (key_badge.png has a transparent centre)")
-	var flat := badge as StyleBoxFlat
-	assert_true(flat.bg_color.a > 0.5, "the keycap has an opaque fill behind the glyph")
+## REGRESSION GUARD (D-034, re-pinned D-062): a keycap needs a SOLID face under its glyph. The
+## Phase-06 badge was a hollow ornament and rendered key glyphs as smudges; the kit's keycap is
+## measured opaque at its centre, and its lip band is never stretched.
+func test_key_badge_is_a_solid_keycap_not_a_hollow_ornament() -> void:
+	var badge := UIThemeScript.badge_stylebox() as StyleBoxTexture
+	assert_not_null(badge, "the keycap is the kit's texture")
+	if badge == null:
+		return
+	assert_eq(badge.texture.resource_path, UIPaletteScript.TEX_KEYCAP, "the keycap texture")
+	var image := _image(UIPaletteScript.TEX_KEYCAP)
+	assert_true(image.get_pixel(image.get_width() / 2, image.get_height() / 2 - 2).a > 0.99,
+		"the keycap's face under the glyph is opaque")
+	assert_eq(int(badge.texture_margin_bottom), UIPaletteScript.KEYCAP_LIP,
+		"the lip is its own 9-slice band, so the cap keeps its depth at any width")
 
 
 ## The light text tokens rely on an outline to stay readable over map art / lighter plates.
@@ -125,11 +130,10 @@ func test_palette_tokens_are_sane() -> void:
 	assert_true(UIPaletteScript.FONT_SIZE_TITLE > UIPaletteScript.FONT_SIZE_BODY,
 		"title font is larger than body")
 	assert_true(UIPaletteScript.SPACE_LG > 0, "spacing tokens are positive")
-	assert_true(UIPaletteScript.NINE_PATCH_MARGIN > 0, "nine-patch margin is positive")
-	# 9 pixel-art xianxia textures + 5 painted-tier assets (D-044). It was 10 + 5 until D-050
-	# retired `title_divider.png` — the divider moved to the tintable ornament mask, so the
-	# jade fill is no longer a runtime texture and no longer belongs in the runtime contract.
-	assert_eq(UIPaletteScript.UI_TEXTURES.size(), 14, "all UI textures are registered")
+	assert_true(UIPaletteScript.PLAQUE_MARGIN > 0, "the plaque's nine-slice margin is positive")
+	# 17 kit textures (plaque, 2 bands, 5 button plates, keycap, gauge well + fill, slot,
+	# divider, frame, corner fret, 2 medallions) + the painted menu backdrop (D-062).
+	assert_eq(UIPaletteScript.UI_TEXTURES.size(), 18, "all UI textures are registered")
 
 
 # --- D-041 production-foundation visual pass ---------------------------------
@@ -186,16 +190,17 @@ func test_backdrop_layers_are_code_built_not_assets() -> void:
 	assert_true(edge.a > centre.a, "the vignette darkens toward the edge")
 
 
-## The corner ornament reuses `key_badge.png` for what D-034 MEASURED it to be — a hollow
-## corner piece. This pins the decision so a future pass does not put it back under a glyph.
-func test_corner_ornament_resolves_to_the_hollow_badge_art() -> void:
-	assert_true(ResourceLoader.exists(UIPaletteScript.TEX_KEY_BADGE),
-		"the ornament source texture is present")
+## The full-screen corner ornament is the kit's HOLLOW fret mask (measured: transparent at its
+## centre, so it frames and never covers), and the keycap is still its own solid cap.
+func test_corner_ornament_is_the_hollow_fret() -> void:
+	assert_true(ResourceLoader.exists(UIPaletteScript.TEX_CORNER_FRET),
+		"the corner fret texture is present")
 	assert_not_null(UIThemeScript.corner_ornament(), "the ornament texture loads")
-	# And the keycap must still be the DRAWN chip, never this hollow art (D-034 regression).
-	var badge := UIThemeScript.badge_stylebox()
-	assert_true(badge is StyleBoxFlat,
-		"the key badge is still a drawn flat chip, not the hollow ornament texture")
+	var image := _image(UIPaletteScript.TEX_CORNER_FRET)
+	assert_true(image.get_pixel(image.get_width() / 2, image.get_height() / 2).a < 0.01,
+		"the fret is hollow at its centre")
+	assert_ne(UIPaletteScript.TEX_CORNER_FRET, UIPaletteScript.TEX_KEYCAP,
+		"and the keycap is never this ornament")
 
 
 ## Layout tokens must be internally consistent, or the menu plaque clips its own buttons.
@@ -206,9 +211,9 @@ func test_layout_tokens_are_coherent() -> void:
 	# The plaque must leave room for the 9-slice border band on BOTH sides, or the button
 	# would be drawn over the frame art (the D-034 content-margin lesson, applied to layout).
 	var border_room := UIPaletteScript.MENU_PANEL_WIDTH - UIPaletteScript.MENU_BUTTON_WIDTH
-	assert_true(border_room >= UIPaletteScript.INSET_MARGIN * 2,
+	assert_true(border_room >= UIPaletteScript.PLAQUE_MARGIN * 2,
 		"the plaque clears its own border band on both sides (%d >= %d)"
-		% [border_room, UIPaletteScript.INSET_MARGIN * 2])
+		% [border_room, UIPaletteScript.PLAQUE_MARGIN * 2])
 	for token in [
 		UIPaletteScript.BUTTON_HEIGHT, UIPaletteScript.TITLE_GAP, UIPaletteScript.SECTION_GAP,
 		UIPaletteScript.ROW_GAP, UIPaletteScript.PANEL_GUTTER, UIPaletteScript.HUD_MARGIN,
@@ -246,141 +251,98 @@ func test_backdrop_ground_is_dark_enough_for_light_text() -> void:
 
 # --- D-044 painted UI tier ---------------------------------------------------
 
-## THE GUARD THIS PROJECT WAS MISSING: the button surface must be dark enough to carry the
-## light-only text palette.
-##
-## D-034 established the rule and the measured threshold (`SURFACE_LIGHT_BRIGHTNESS_LIMIT`,
-## 120) and enforced it for PANELS — but the buttons were left on `button_normal.png`, whose
-## centre brightness is **202**, i.e. in violation the whole time. Only the text outline was
-## holding legibility together, and the bright plate is what read as "plastic".
-##
-## It asserts the ASSET PATH rather than re-measuring pixels: the measured facts live in
-## `UIPalette`, and what can silently regress is somebody repointing the stylebox back at the
-## light pixel-art plate. That is exactly what this catches.
+## THE GUARD THIS PROJECT WAS MISSING (D-044, re-pinned D-062): every button plate a label sits
+## on must MEASURE dark at its centre, or the light-only text palette is illegal on it. The
+## focus plate is the exception by design — it is drawn OVER the normal one and must be HOLLOW.
 func test_button_surface_is_dark_enough_for_light_text() -> void:
 	if not UIThemeScript.textures_present():
 		return
-	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+	for state in UIThemeScript.BUTTON_TEXTURES:
 		var box := UIThemeScript.button_stylebox(state) as StyleBoxTexture
 		assert_not_null(box, "the '%s' button is texture-backed" % state)
 		if box == null:
 			continue
-		assert_not_null(box.texture, "the '%s' button carries a texture" % state)
-		assert_eq(box.texture.resource_path, UIPaletteScript.TEX_BUTTON_PAINTED,
-			("the '%s' button uses the DARK painted plate (measured centre 32), never the "
-				+ "light xianxia plate (202) — the light one breaks the %d brightness limit "
-				+ "that the text palette depends on")
-				% [state, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
+		assert_eq(box.texture.resource_path, String(UIThemeScript.BUTTON_TEXTURES[state]),
+			"the '%s' button wears its own designed plate" % state)
+		var path := String(UIThemeScript.BUTTON_TEXTURES[state])
+		if state == "focus":
+			var image := _image(path)
+			assert_true(image.get_pixel(image.get_width() / 2, image.get_height() / 2).a < 0.01,
+				"the focus plate is hollow: it rings the normal plate, never covers the label")
+			continue
+		var brightness := _centre_brightness(path)
+		assert_true(brightness < UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
+			"the '%s' plate's measured centre (%.0f) is under the %d limit"
+				% [state, brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
 
 
-## Every per-state tint must keep the plate dark. The tints are multiplicative, so a factor
-## above ~3.7 would be needed to cross the limit from the plate's centre — but a future "let's
-## brighten hover" edit is exactly the kind of change that would reintroduce the defect, so the
-## headroom is pinned rather than assumed.
-##
-## The centre brightness is MEASURED from the shipped plate, not typed beside it (L-029): it
-## was a literal 29 while the art was the raw crop, and a re-derived plate (D-056 UI pass, 32)
-## would have left the literal quietly describing a file that no longer exists.
+## Every per-state tint keeps every plate dark: a tint never exceeds 1 on any channel, so no
+## state can lift a measured-dark plate past the limit the text palette depends on.
 func test_button_state_tints_cannot_brighten_past_the_limit() -> void:
-	var image := _painted_plate_image()
-	assert_not_null(image, "the painted plate yields an image to measure")
-	if image == null:
-		return
-	var centre := image.get_pixel(image.get_width() / 2, image.get_height() / 2)
-	var brightness := 255.0 * (0.299 * centre.r + 0.587 * centre.g + 0.114 * centre.b)
-	assert_true(brightness > 0.0 and brightness < UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
-		"the plate's measured centre (%.0f) is a DARK surface under the %d limit"
-			% [brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT])
-	var headroom := float(UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT) / maxf(brightness, 1.0)
-	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+	for state in UIThemeScript.BUTTON_TEXTURES:
 		var tint := UIThemeScript.state_modulate(state)
-		var strongest := maxf(maxf(tint.r, tint.g), tint.b)
-		assert_true(strongest < headroom,
-			("the '%s' tint (max channel %.2f) keeps the measured centre brightness %.0f under "
-				+ "the %d limit (headroom %.2fx)")
-				% [state, strongest, brightness, UIPaletteScript.SURFACE_LIGHT_BRIGHTNESS_LIMIT,
-					headroom])
+		assert_true(maxf(maxf(tint.r, tint.g), tint.b) <= 1.0,
+			"the '%s' tint (%s) never brightens its plate" % [state, str(tint)])
+	# The states must be DRAWN apart, not tinted apart: five distinct plates.
+	var seen: Array[String] = []
+	for state in UIThemeScript.BUTTON_TEXTURES:
+		var path := String(UIThemeScript.BUTTON_TEXTURES[state])
+		assert_false(seen.has(path), "the '%s' state has its own plate" % state)
+		seen.append(path)
 
 
-## A label never lies on an ORNAMENT of the painted plate (D-056 UI pass).
-##
-## This used to assert `content_margin >= texture_margin` on every side, which was the right
-## proxy only while the slice bands were symmetric. They no longer are: the RIGHT band is wide
-## so the cloud motif is not stretched, and the cloud is a faint wash a label may sit over —
-## so the right-hand rule is now stated as what it always meant: clear the GOLD end-cap.
-## On the left the emblem fills the whole band, so there the old rule IS the intent.
-func test_painted_button_label_clears_every_ornament() -> void:
+## A label never lies on the gold hairline or its knots: every state's content margins clear
+## the 9-slice bands that hold them, and the vertical bands fit inside the authored height.
+func test_button_label_clears_the_hairline() -> void:
 	if not UIThemeScript.textures_present():
 		return
-	var box := UIThemeScript.button_stylebox("normal") as StyleBoxTexture
-	assert_true(box.content_margin_left >= box.texture_margin_left,
-		("the label (pad %d) clears the qi-swirl emblem, which fills the whole left band (%d)")
-			% [int(box.content_margin_left), int(box.texture_margin_left)])
-	assert_true(box.content_margin_right > UIPaletteScript.PAINTED_BUTTON_GOLD_RIGHT,
-		"and (pad %d) clears the gold end-cap on the right (%dpx)"
-			% [int(box.content_margin_right), UIPaletteScript.PAINTED_BUTTON_GOLD_RIGHT])
-	assert_true(box.content_margin_top >= box.texture_margin_top, "and the top frame")
-	assert_true(box.content_margin_bottom >= box.texture_margin_bottom, "and the bottom")
-	# The vertical 9-slice bands must fit inside the authored button height, or they collapse
-	# into each other and the plate reads as squashed.
-	assert_true(box.texture_margin_top + box.texture_margin_bottom
-			< UIPaletteScript.BUTTON_HEIGHT,
-		"the unstretched vertical bands (%d+%d) fit inside BUTTON_HEIGHT (%d)"
-			% [int(box.texture_margin_top), int(box.texture_margin_bottom),
-				UIPaletteScript.BUTTON_HEIGHT])
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var box := UIThemeScript.button_stylebox(state) as StyleBoxTexture
+		assert_true(box.content_margin_left >= box.texture_margin_left
+				and box.content_margin_right >= box.texture_margin_right,
+			"the '%s' label clears the side bands (knots and hairline)" % state)
+		assert_true(box.content_margin_top >= box.texture_margin_top - 1
+				and box.content_margin_bottom >= box.texture_margin_bottom - 1,
+			"and the top/bottom bands (pressed may sink the label by one pixel)")
+		assert_true(box.texture_margin_top + box.texture_margin_bottom
+				< UIPaletteScript.BUTTON_HEIGHT,
+			"the unstretched vertical bands fit inside BUTTON_HEIGHT")
 
 
-## The painted plate is drawn UNDISTORTED at the authored button size (D-056 UI pass).
-##
-## Found by opening a capture at 3x, invisible to every assertion before this one: the raw
-## 245x90 crop was 9-sliced into a 64px box with 44px side bands, so most of the ~95px emblem
-## sat in the STRETCHED centre (drawn ~1.6x wide) and the side bands were squashed vertically.
-## Each of the three conditions below is one way that comes back.
-func test_painted_button_plate_is_not_distorted_at_the_authored_size() -> void:
-	var image := _painted_plate_image()
-	assert_not_null(image, "the painted plate yields an image to measure")
+## The plate is drawn UNDISTORTED at any authored size: the 9-slice bands leave a stretchable
+## centre inside the plate and inside the menu button's width, so only the flat lacquer run
+## between the knots ever stretches (D-056's lesson: an ornament in a stretched band distorts).
+func test_button_plate_slices_leave_a_stretchable_centre() -> void:
+	var image := _image(UIPaletteScript.TEX_BUTTON_NORMAL)
+	assert_not_null(image, "the plate yields an image to measure")
 	if image == null:
 		return
-	# 1. It ships at the button's height, so the side bands are drawn 1:1 vertically.
-	assert_eq(image.get_height(), UIPaletteScript.BUTTON_HEIGHT,
-		("the plate is exactly BUTTON_HEIGHT (%d) tall — at any other height the emblem in "
-			+ "the side band is squashed or stretched vertically") % UIPaletteScript.BUTTON_HEIGHT)
-	# 2. The two protected bands leave a stretchable centre INSIDE the plate.
-	var slices := (UIPaletteScript.PAINTED_BUTTON_SLICE_LEFT
-		+ UIPaletteScript.PAINTED_BUTTON_SLICE_RIGHT)
-	assert_true(slices < image.get_width(),
-		"the side bands (%d) leave a stretchable centre in the %dpx plate"
-			% [slices, image.get_width()])
-	# 3. And at the authored width the centre only ever STRETCHES, never compresses the bands.
-	assert_true(slices < UIPaletteScript.MENU_BUTTON_WIDTH,
-		"the side bands (%d) fit inside MENU_BUTTON_WIDTH (%d)"
-			% [slices, UIPaletteScript.MENU_BUTTON_WIDTH])
+	var slices_h := UIPaletteScript.BUTTON_SLICE_H * 2
+	var slices_v := UIPaletteScript.BUTTON_SLICE_V * 2
+	assert_true(slices_h < image.get_width() and slices_v < image.get_height(),
+		"the bands (%d x %d) leave a stretchable centre in the %dx%d plate"
+			% [slices_h, slices_v, image.get_width(), image.get_height()])
+	assert_true(slices_h < UIPaletteScript.MENU_BUTTON_WIDTH,
+		"and fit inside MENU_BUTTON_WIDTH (%d)" % UIPaletteScript.MENU_BUTTON_WIDTH)
 
 
-## The plate has no opaque background around its chamfered silhouette (D-056 UI pass).
-##
-## The raw crop was opaque navy edge to edge, so every menu button drew a dark RECTANGLE
-## around the plate, which read as a box behind the button rather than as the button. This
-## measures the four corners — outside the chamfer by construction — so swapping the raw crop
-## back in fails here.
-func test_painted_button_plate_background_is_transparent() -> void:
-	var image := _painted_plate_image()
-	assert_not_null(image, "the painted plate yields an image to measure")
-	if image == null:
-		return
-	var w := image.get_width() - 1
-	var h := image.get_height() - 1
-	for corner in [Vector2i(0, 0), Vector2i(w, 0), Vector2i(0, h), Vector2i(w, h)]:
-		assert_true(image.get_pixelv(corner).a < 0.05,
-			"the plate's corner %s is transparent (alpha %.2f), not an opaque background"
-				% [str(corner), image.get_pixelv(corner).a])
-	# The WELL is still solid: a fill that leaked through the frame would hollow the button.
-	assert_true(image.get_pixel(image.get_width() / 2, image.get_height() / 2).a > 0.99,
-		"and the well the label sits on is fully opaque")
+## The plate has no opaque background around its chamfered silhouette: the four corners are
+## transparent (a dark RECTANGLE behind the button read as a box, not a button), and the well
+## the label sits on is solid.
+func test_button_plate_background_is_transparent() -> void:
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var image := _image(String(UIThemeScript.BUTTON_TEXTURES[state]))
+		var w := image.get_width() - 1
+		var h := image.get_height() - 1
+		for corner in [Vector2i(0, 0), Vector2i(w, 0), Vector2i(0, h), Vector2i(w, h)]:
+			assert_true(image.get_pixelv(corner).a < 0.05,
+				"the '%s' plate's corner %s is transparent" % [state, str(corner)])
+		assert_true(image.get_pixel(image.get_width() / 2, image.get_height() / 2).a > 0.6,
+			"and its well is solid enough to carry a label")
 
 
-func _painted_plate_image() -> Image:
-	var texture := load(UIPaletteScript.TEX_BUTTON_PAINTED) as Texture2D
+func _image(path: String) -> Image:
+	var texture := load(path) as Texture2D
 	if texture == null:
 		return null
 	var image := texture.get_image()
@@ -389,31 +351,32 @@ func _painted_plate_image() -> Image:
 	return image
 
 
-## The painted backdrop and the portrait crop must actually resolve — these are the two assets
-## that replaced "a plaque on a flat gradient" and "an empty portrait well".
+## Perceived brightness (0-255) of a texture's centre pixel, composited over black.
+func _centre_brightness(path: String) -> float:
+	var image := _image(path)
+	if image == null:
+		return -1.0
+	var c := image.get_pixel(image.get_width() / 2, image.get_height() / 2)
+	return 255.0 * c.a * (0.299 * c.r + 0.587 * c.g + 0.114 * c.b)
+
+
+## The painted backdrop and the identity medallion must resolve. The medallion is the actor's
+## own pipeline portrait (D-062): square, at the size the HUD draws it 1:1, and the female
+## variant is different art.
 func test_painted_backdrop_and_portrait_resolve() -> void:
 	assert_not_null(UIThemeScript.menu_backdrop(), "the painted menu backdrop loads")
 	var portrait := UIThemeScript.portrait_texture()
-	assert_not_null(portrait, "the painted portrait loads")
+	assert_not_null(portrait, "the identity medallion loads")
 	if portrait == null:
 		return
-	# It must be a SQUARE crop: the source is a full standing figure, and handing the raw
-	# 310x560 texture to a square well would show the character's midriff instead of a face.
-	var atlas := portrait as AtlasTexture
-	assert_not_null(atlas, "the portrait is an AtlasTexture crop, not the whole figure")
-	if atlas == null:
-		return
-	assert_eq(int(atlas.region.size.x), int(atlas.region.size.y),
-		"the crop is square, so it fits a square portrait well without distortion")
-	assert_eq(int(atlas.region.position.y), 0,
-		"and is taken from the TOP of the figure, where the head is")
-	assert_true(atlas.region.size.x > 0.0, "the crop has a real area")
-	# The two portraits must be different art, or the female variant is pointless.
-	var female := UIThemeScript.portrait_texture(true) as AtlasTexture
-	assert_not_null(female, "the female portrait loads")
+	assert_eq(portrait.get_width(), portrait.get_height(), "the medallion is square")
+	assert_eq(portrait.get_width(), UIPaletteScript.MEDALLION_PX,
+		"and exactly the size the HUD draws it, so it is never resampled")
+	var female := UIThemeScript.portrait_texture(true)
+	assert_not_null(female, "the female medallion loads")
 	if female != null:
-		assert_ne(female.atlas.resource_path, atlas.atlas.resource_path,
-			"the two portrait variants are different source art")
+		assert_ne(female.resource_path, portrait.resource_path,
+			"the two medallions are different art")
 
 
 # === D-050: the ornament seam is CENTRAL, and the chosen assets are what was measured ===
@@ -460,7 +423,7 @@ func test_d050_the_divider_comes_from_one_central_factory() -> void:
 	# of the constant does not slip past. The palette (which declares the paths) and the theme
 	# (the one factory) are the only files allowed to name them.
 	var divider_tokens: Array[String] = [
-		"TEX_ORNAMENT_DIVIDER", "divider_rule.png", "title_divider.png",
+		"TEX_ORNAMENT_DIVIDER", "divider.png", "divider_rule.png", "title_divider.png",
 	]
 	var seam_owners: Array[String] = ["ui_palette.gd", "ui_theme.gd"]
 	var offenders: Array[String] = []
@@ -589,13 +552,12 @@ func test_d050_the_backdrop_button_and_scroll_body_come_from_the_theme() -> void
 func test_d050_the_promoted_ornament_assets_are_present() -> void:
 	for path in [
 		UIPalette.TEX_ORNAMENT_DIVIDER,
-		UIPalette.TEX_ORNAMENT_DIVIDER_FADE,
 		UIPalette.TEX_ORNAMENT_FRAME,
 	]:
 		assert_true(ResourceLoader.exists(String(path)),
 			"the promoted ornament asset '%s' exists in runtime assets" % String(path))
-	# The frame's 9-slice margin must be >= its MEASURED border band (8px), or the corners
-	# stretch — the `content_margin >= texture_margin` rule applied to a NinePatch.
+	# The frame's 9-slice margin must be >= its border band (the notched corner reaches 5px in),
+	# or the corners stretch — the `content_margin >= texture_margin` rule for a NinePatch.
 	assert_true(UIPalette.ORNAMENT_FRAME_MARGIN >= 8,
 		"the frame's patch margin (%d) is at least its measured 8px border band"
 			% UIPalette.ORNAMENT_FRAME_MARGIN)

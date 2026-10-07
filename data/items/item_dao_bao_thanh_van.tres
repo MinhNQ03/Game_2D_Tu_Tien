@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="ItemData" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/data/items/item_data.gd" id="1_item"]
 [ext_resource type="Texture2D" path="res://assets/sprites/items/item_dao_bao_thanh_van.png" id="2_icon"]
 [ext_resource type="Resource" path="res://data/equipment/equip_dao_bao_thanh_van.tres" id="3_equip"]
+[ext_resource type="Texture2D" path="res://assets/sprites/items/world/item_dao_bao_thanh_van.png" id="9_world"]
 
 [resource]
 script = ExtResource("1_item")
@@ -10,6 +11,7 @@ id = &"item_dao_bao_thanh_van"
 name_key = &"ITEM_DAO_BAO_THANH_VAN_NAME"
 desc_key = &"ITEM_DAO_BAO_THANH_VAN_DESC"
 icon = ExtResource("2_icon")
+world_icon = ExtResource("9_world")
 category = 3
 stack_max = 1
 use_kind = 0

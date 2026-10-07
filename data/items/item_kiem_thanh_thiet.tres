@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="ItemData" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/data/items/item_data.gd" id="1_item"]
 [ext_resource type="Texture2D" path="res://assets/sprites/items/item_kiem_thanh_thiet.png" id="2_icon"]
 [ext_resource type="Resource" path="res://data/equipment/equip_kiem_thanh_thiet.tres" id="3_equip"]
+[ext_resource type="Texture2D" path="res://assets/sprites/items/world/item_kiem_thanh_thiet.png" id="9_world"]
 
 [resource]
 script = ExtResource("1_item")
@@ -10,6 +11,7 @@ id = &"item_kiem_thanh_thiet"
 name_key = &"ITEM_KIEM_THANH_THIET_NAME"
 desc_key = &"ITEM_KIEM_THANH_THIET_DESC"
 icon = ExtResource("2_icon")
+world_icon = ExtResource("9_world")
 category = 3
 stack_max = 1
 use_kind = 0
