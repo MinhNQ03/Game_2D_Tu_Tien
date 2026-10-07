@@ -34,9 +34,9 @@ const INTANGIBLE_BY_DESIGN := {
 		"hangs from the post; the post's foot is the body",
 }
 
-## Where the world's drawn things live in a map.
+## Where the world's drawn things live in a map (the training post is a combat target).
 const WORLD_HOLDERS: Array[String] = ["Visual/Decor", "Visual/Atmosphere", "KnowledgeSources",
-	"CultivationSites"]
+	"CultivationSites", "CombatTargets"]
 
 ## A pixel is DRAWN MASS from this alpha up; a baked cast shadow is lighter and is not mass.
 const MASS_ALPHA := 200
@@ -95,7 +95,7 @@ func _approach_from_every_side(data: PropData, reach: float, label: String) -> v
 	var probe := _player_probe()
 	world.add_child(probe)
 	await scene_tree.physics_frame
-	var outline := _footprint_polygon(data)
+	var outline := _body_polygon(data)
 	assert_false(outline.is_empty(), "%s: has a body to meet" % label)
 	for side in APPROACHES:
 		var dir := side.normalized()
@@ -130,13 +130,25 @@ func test_a_walk_meets_every_kind_of_decor_and_is_never_trapped() -> void:
 
 # --- every drawn mass is a body, or is intangible on purpose ---------------------------------
 
-## The RULE (D-063): what is drawn with physical mass has a body — a PropBody under (or beside)
-## its sprite, built from the PropData of THAT texture, at the sprite's own origin — or is listed
-## in INTANGIBLE_BY_DESIGN with the reason. And an intangible thing never grew a body.
+## The RULE (D-063): what is drawn with physical mass has a body with a REAL collision shape —
+## a PropBody under (or beside) its sprite, a WorldProp around the sprite it builds, a body like
+## the training post around its own — built from the PropData of THAT texture at the sprite's own
+## origin; or it is listed in INTANGIBLE_BY_DESIGN with the reason. An intangible thing has no
+## body. The maps are instantiated off-tree, so every WorldProp and PropBody is first BUILT the
+## way `_ready` builds it: a WorldProp's sprite only exists after that, and a scan that skipped
+## the step would never see the pipeline's art at all.
 func test_every_drawn_mass_has_a_body_or_is_intangible_by_design() -> void:
 	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
 		var map: Node = (entry[0] as PackedScene).instantiate()  # NOT in the tree (L-010)
+		var world_props := 0
+		for found in map.find_children("*", "StaticBody2D", true, false):
+			if found is WorldProp:
+				(found as WorldProp).build()
+				world_props += 1
+			elif found is PropBody:
+				(found as PropBody).build()
 		var checked := 0
+		var checked_world_props := 0
 		for holder_path in WORLD_HOLDERS:
 			var holder := map.get_node_or_null(holder_path)
 			if holder == null:
@@ -157,51 +169,66 @@ func test_every_drawn_mass_has_a_body_or_is_intangible_by_design() -> void:
 					% [where, path.get_file()] + "in INTANGIBLE_BY_DESIGN")
 				if body == null:
 					continue
-				assert_true(body.prop != null and body.prop.texture == sprite.texture,
+				assert_true(_has_collision(body),
+					"%s: its body has a real collision shape, not just data" % where)
+				var data := _data_of(body)
+				if data == null:
+					continue  # a body with its own authored shape (the training post)
+				if body is WorldProp:
+					checked_world_props += 1
+				assert_eq(data.texture, sprite.texture,
 					"%s stands on the PropData of its own texture" % where)
-				assert_true(body.prop != null and body.prop.footprint.has_area(),
-					"%s: with a real footprint" % where)
-				var body_at := body.position if body.get_parent() == sprite \
-					else body.position - sprite.position
-				assert_eq(body_at, Vector2.ZERO, "%s: the body stands at the sprite's origin"
-					% where)
+				assert_eq(_origin_offset(sprite, body), Vector2.ZERO,
+					"%s: the body stands at the sprite's origin" % where)
 		assert_true(checked >= 10,
-			"%s: the walk saw the world's sprites (%d)" % [entry[1], checked])
+			"%s: the scan saw the world's sprites (%d)" % [entry[1], checked])
+		assert_eq(checked_world_props, world_props,
+			"%s: every WorldProp's BUILT sprite was scanned (%d of %d)"
+				% [entry[1], checked_world_props, world_props])
 		map.free()
 
 
 # --- the body sits under the drawn mass ---------------------------------------------------
 
-## NO INVISIBLE WALL: every point on a body's edge lies on (or beside) a drawn pixel.
-## NO GHOST MASS: the drawn base is solid — the middle of its base row lies inside the body.
+## NO INVISIBLE WALL: every sample on a body's edge lies on (or beside) a drawn pixel.
+## NO GHOST MASS: the drawn base is solid — every drawn pixel in the middle 60% of the base row
+## lies INSIDE the body's actual shape (the rectangle, or the round body's rim polygon), tested
+## as point-in-polygon in the prop's own space.
 func test_each_body_sits_under_the_mass_that_is_drawn() -> void:
 	var bodied := _prop_body_data()
 	assert_true(bodied.size() >= 6,
 		"the stele, the spring and the four kinds of decor stand on bodies (%d)" % bodied.size())
 	for data: PropData in bodied:
 		var image: Image = data.texture.get_image()
-		var outline := _footprint_polygon(data)
-		assert_false(outline.is_empty(), "%s: drawn with mass, so it has a body" % data.id)
-		for point in outline:
+		var polygon := _body_polygon(data)
+		assert_false(polygon.is_empty(), "%s: drawn with mass, so it has a body" % data.id)
+		if polygon.is_empty():
+			continue
+		for point in _edge_samples(polygon):
 			assert_true(_near_mass(image, point + data.origin),
 				"%s: the body's edge at %s is drawn — no invisible wall" % [data.id, str(point)])
-		# the drawn base: the row above the ground line, or a round base's middle row
+		# the drawn base: the row just above the ground line, or a round base's middle row
 		var base_row := int(data.origin.y + data.footprint.get_center().y) \
 			if data.footprint_round else int(data.origin.y) - 1
-		var span := _mass_span(image, base_row)
-		assert_true(span.y > span.x, "%s: its base row %d is drawn" % [data.id, base_row])
-		var inner := Vector2(lerpf(span.x, span.y, 0.2), lerpf(span.x, span.y, 0.8)) \
-			- Vector2(data.origin.x, data.origin.x)
-		assert_true(inner.x >= data.footprint.position.x and inner.y <= data.footprint.end.x,
-			"%s: the middle of its drawn base (%s) is inside the body (%.1f..%.1f) — no ghost mass"
-				% [data.id, str(inner), data.footprint.position.x, data.footprint.end.x])
+		var columns := _mass_columns(image, base_row)
+		assert_true(columns.size() >= 3, "%s: its base row %d is drawn" % [data.id, base_row])
+		var trim := int(floor(columns.size() * 0.2))
+		var inside := 0
+		for i in range(trim, columns.size() - trim):
+			var point := Vector2(columns[i] + 0.5, base_row + 0.5) - data.origin
+			assert_true(Geometry2D.is_point_in_polygon(point, polygon),
+				"%s: the drawn base pixel at %s (prop space) is inside the body — no ghost mass"
+					% [data.id, str(point)])
+			inside += 1
+		assert_true(inside >= 2, "%s: the base check sampled the base (%d px)" % [data.id, inside])
 
 
 # --- helpers ----------------------------------------------------------------------------
 
-## The PropBody standing a sprite on the ground: a child of the sprite (decor), or a sibling
-## under the same owner (a stele's Stone and its Body).
-func _body_of(sprite: Sprite2D) -> PropBody:
+## The body a sprite stands on: a PropBody child (decor), a PropBody sibling under the same owner
+## (a stele's Stone and its Body), or the physics body that OWNS the sprite (the sprite a
+## WorldProp builds, the training post's Visual). Null when it stands on nothing.
+func _body_of(sprite: Sprite2D) -> CollisionObject2D:
 	for child in sprite.get_children():
 		if child is PropBody:
 			return child as PropBody
@@ -210,7 +237,35 @@ func _body_of(sprite: Sprite2D) -> PropBody:
 		for sibling in parent.get_children():
 			if sibling is PropBody:
 				return sibling as PropBody
+	if parent is PhysicsBody2D:
+		return parent as PhysicsBody2D
 	return null
+
+
+## A body that stops a walk has at least one collision shape with an actual shape in it.
+func _has_collision(body: CollisionObject2D) -> bool:
+	for child in body.get_children():
+		var shape := child as CollisionShape2D
+		if shape != null and shape.shape != null and not shape.disabled:
+			return true
+	return false
+
+
+func _data_of(body: CollisionObject2D) -> PropData:
+	if body is PropBody:
+		return (body as PropBody).prop
+	if body is WorldProp:
+		return (body as WorldProp).prop
+	return null
+
+
+## How far the body's origin sits from the sprite's (zero when it stands where it is drawn).
+func _origin_offset(sprite: Sprite2D, body: CollisionObject2D) -> Vector2:
+	if body.get_parent() == sprite:
+		return body.position
+	if sprite.get_parent() == body:
+		return sprite.position + sprite.offset + _data_of(body).origin
+	return body.position - sprite.position
 
 
 ## Every PropData a PropBody stands on, in either map, once each.
@@ -254,29 +309,35 @@ func _probe_polygon(probe: CharacterBody2D) -> PackedVector2Array:
 		centre + Vector2(-half.x, half.y)])
 
 
-## The body's outline in the prop's own space: the rectangle, or the round footprint's rim —
-## exactly the shape `PropBody.make_footprint` builds.
-func _footprint_polygon(data: PropData) -> PackedVector2Array:
+## The body's SHAPE in the prop's own space — exactly what `PropBody.make_footprint` builds: the
+## rectangle's four corners, or the round body's rim. Empty for a walk-through prop.
+func _body_polygon(data: PropData) -> PackedVector2Array:
 	var footprint := PropBody.make_footprint(data)
-	var out := PackedVector2Array()
 	if footprint == null:
-		return out  # a walk-through prop: nothing to stand under the drawing
+		return PackedVector2Array()
+	var out := PackedVector2Array()
 	if footprint.shape is ConvexPolygonShape2D:
 		out = (footprint.shape as ConvexPolygonShape2D).points
 	else:
-		var r := Rect2(footprint.position - (footprint.shape as RectangleShape2D).size * 0.5,
-			(footprint.shape as RectangleShape2D).size)
-		out = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end,
-			Vector2(r.position.x, r.end.y), r.get_center() + Vector2(0, r.size.y * 0.5),
-			r.get_center() - Vector2(0, r.size.y * 0.5)])
+		var half := (footprint.shape as RectangleShape2D).size * 0.5
+		var c := footprint.position
+		out = PackedVector2Array([c + Vector2(-half.x, -half.y), c + Vector2(half.x, -half.y),
+			c + Vector2(half.x, half.y), c + Vector2(-half.x, half.y)])
 	footprint.free()
 	return out
 
 
-## Overlap of the probe with a body outline (its hull: the rectangle's outline also carries two
-## mid-edge samples for the drawn-mass check).
+## Points along a body's edge: every vertex and the middle of every side.
+func _edge_samples(polygon: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in polygon.size():
+		out.append(polygon[i])
+		out.append((polygon[i] + polygon[(i + 1) % polygon.size()]) * 0.5)
+	return out
+
+
 func _overlaps(a: PackedVector2Array, b: PackedVector2Array) -> bool:
-	return not Geometry2D.intersect_polygons(a, Geometry2D.convex_hull(b)).is_empty()
+	return not Geometry2D.intersect_polygons(a, b).is_empty()
 
 
 func _near_mass(image: Image, pixel: Vector2) -> bool:
@@ -291,13 +352,10 @@ func _near_mass(image: Image, pixel: Vector2) -> bool:
 	return false
 
 
-## The first and last DRAWN-MASS pixel of a texture row, as (first, last + 1).
-func _mass_span(image: Image, row: int) -> Vector2:
-	var first := -1
-	var last := -1
+## The columns of a texture row that are DRAWN MASS, left to right.
+func _mass_columns(image: Image, row: int) -> Array[int]:
+	var out: Array[int] = []
 	for x in image.get_width():
 		if image.get_pixel(x, row).a8 >= MASS_ALPHA:
-			if first < 0:
-				first = x
-			last = x
-	return Vector2(first, last + 1) if first >= 0 else Vector2.ZERO
+			out.append(x)
+	return out

@@ -1134,11 +1134,11 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 	assert_false(hud.notice_backlog_overflowed(), "a normal backlog")
 	# Push on: the plinth still holds. Then leave: the body never traps the player.
 	var pinned := player.global_position
-	await _hold_move(MOVE_UP, 20)
+	assert_eq(await _hold_move(MOVE_UP, 20), 20, "the push held the key for all 20 physics frames")
 	assert_true(player.global_position.y >= pinned.y - 0.5,
 		"pushing on does not pass through the stele (%.1f -> %.1f)"
 			% [pinned.y, player.global_position.y])
-	await _hold_move(MOVE_DOWN, 30)
+	assert_eq(await _hold_move(MOVE_DOWN, 30), 30, "the way back held the key for 30 frames")
 	assert_true(player.global_position.y > pinned.y + 8.0,
 		"and the player walks away freely (%.1f -> %.1f)" % [pinned.y, player.global_position.y])
 
@@ -1192,6 +1192,8 @@ func _walk_until_blocked(player: Node2D, action: StringName, frames: int) -> boo
 	var blocked := false
 	for _i in frames:
 		await scene_tree.physics_frame
+		if not Input.is_action_pressed(action):
+			break  # the key was let go: whatever stopped the body, it was not proven blocked
 		still = still + 1 if player.global_position.distance_to(last) < 0.05 else 0
 		last = player.global_position
 		if still >= 6:
@@ -1202,12 +1204,18 @@ func _walk_until_blocked(player: Node2D, action: StringName, frames: int) -> boo
 	return blocked
 
 
-func _hold_move(action: StringName, frames: int) -> void:
+## Press, hold across `frames` PHYSICS frames, release, one more frame. Returns how many of those
+## frames the key was OBSERVED held, so a caller can assert the hold it claims really happened.
+func _hold_move(action: StringName, frames: int) -> int:
 	Input.action_press(action)
+	var held := 0
 	for _i in frames:
 		await scene_tree.physics_frame
+		if Input.is_action_pressed(action):
+			held += 1
 	Input.action_release(action)
 	await scene_tree.physics_frame
+	return held
 
 
 ## Hold `action` across PHYSICS frames, then release. The cultivation runtime reads its intent

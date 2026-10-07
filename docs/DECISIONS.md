@@ -4394,9 +4394,13 @@ rocks (hub ×2, field ×3) — were bare `Sprite2D`s: walked through, like the s
   the body). Pickups are collected by walking onto them; the field's broken vein is painted on
   the floor.
 - **The rule, tested:** every sprite in a map's world holders (`Visual/Decor`,
-  `Visual/Atmosphere`, `KnowledgeSources`, `CultivationSites`) either stands on a PropBody of its
-  own texture at its own origin, or is listed as intangible with a reason — and an intangible
-  sprite never has a body. A new sprite with neither fails the build.
+  `Visual/Atmosphere`, `KnowledgeSources`, `CultivationSites`, `CombatTargets`) — including the
+  sprite each `WorldProp` BUILDS — stands on a body with a real collision shape (a PropBody, the
+  WorldProp itself, or a body like the training post) built from the PropData of its own texture
+  at its own origin, or is listed as intangible with a reason; an intangible sprite never has a
+  body. A new sprite with neither fails the build. (As first committed the scan ran on scenes
+  instantiated off-tree, where a WorldProp has not built its sprite yet, so it never saw the
+  pipeline's art — corrected in the A2 hardening below.)
 - **Layout nudge:** the field's north gate lantern moved (100,280) → (100,276): with a body, its
   foot was 23 px from the hub-bound spawn → exit line, one under the corridor rule's 24.
 
@@ -4412,3 +4416,24 @@ check over every pipeline prop: the houses, the hall, the trees and the pines pa
 and the WELL are round but have rectangular footprints, so their front corners (±23 / ±20 px)
 block a few pixels of open ground — both are candidates for `footprint_round`; the fence and the
 weapon rack block the gaps between their legs, which is right for a fence and a rack.
+
+### A2 hardening (checkpoint review)
+
+- **WorldProp coverage (P1-TEST-1).** The mass/body rule now BUILDS every WorldProp and PropBody
+  off-tree first (what `_ready` does), requires a real `CollisionShape2D` with a shape — not just
+  data — and asserts that every WorldProp's built sprite was scanned. Test-the-test: with
+  `tree_small`'s footprint zeroed, the rule names five WorldProp-built tree sprites.
+- **The hold helpers (P1-TEST-2).** The reported early release is not in the code: all three
+  E2E helpers release after their loops (verified on the committed file). The concern behind it —
+  a push that is claimed but not proven — was real: `_hold_move` now returns the frames the key
+  was OBSERVED held, the E2E asserts 20 and 30, and `_walk_until_blocked` stops if the key was
+  let go. Test-the-test: releasing inside the loop fails with "expected 20 but got 1".
+- **Containment by geometry (P1-TEST-3).** The ghost-mass check held an X range in a `Vector2`
+  and compared it with the footprint's bounding rectangle only. It is now point-in-polygon: every
+  drawn pixel in the middle 60% of the base row, in the prop's own space (x AND y), must lie
+  inside the body's actual shape — the rectangle or the round body's rim. Test-the-test: a stele
+  footprint shifted 8 px right flags each base pixel left outside it.
+- **Technical debt (P2), recorded in the handoff:** `pixel/pixelize.py` (the canonical pipeline)
+  imports `aetheria_art.sheet` (the legacy generator's package) for the one PropData writer. Kept
+  for A2 (one writer); to be moved to a neutral module both pipelines import.
+
