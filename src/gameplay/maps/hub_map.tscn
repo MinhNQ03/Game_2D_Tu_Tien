@@ -1,9 +1,7 @@
-[gd_scene load_steps=46 format=3]
+[gd_scene load_steps=44 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
-[ext_resource type="Script" path="res://src/gameplay/maps/painted_ground.gd" id="3_painted"]
-[ext_resource type="Resource" path="res://data/maps/ground/lac_ha_ground.tres" id="4_layout"]
 [ext_resource type="Script" path="res://src/gameplay/maps/water_blockers.gd" id="5_water"]
 [ext_resource type="PackedScene" path="res://src/gameplay/entities/training_dummy.tscn" id="10_dummy"]
 
@@ -16,7 +14,6 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_banner_pole.png" id="20_pole"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern_post.png" id="20_post"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="20_rock"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_tree_broadleaf.png" id="20_tree"]
 [ext_resource type="Shader" path="res://src/presentation/ambient/pixel_sway.gdshader" id="30_sway"]
 
 [ext_resource type="Script" path="res://src/presentation/ambient/wind_field.gd" id="40_wind"]
@@ -36,6 +33,8 @@
 [ext_resource type="Resource" path="res://data/items/item_kiem_thanh_thiet.tres" id="53_sword"]
 [ext_resource type="Resource" path="res://data/items/item_dao_bao_thanh_van.tres" id="54_robe"]
 
+[ext_resource type="Script" path="res://src/gameplay/maps/painted_ground.gd" id="p_ground"]
+[ext_resource type="Resource" path="res://data/maps/ground/lac_ha_ground.tres" id="p_layout"]
 [ext_resource type="Script" path="res://src/gameplay/world/props/world_prop.gd" id="p_script"]
 [ext_resource type="Resource" path="res://data/world/props/dwelling_a.tres" id="p_dwelling_a"]
 [ext_resource type="Resource" path="res://data/world/props/dwelling_b.tres" id="p_dwelling_b"]
@@ -53,15 +52,6 @@ shader_parameter/bend = 2.0
 shader_parameter/wind_px = 1.2
 shader_parameter/wind_hz = 0.55
 shader_parameter/gust_px = 1.0
-
-[sub_resource type="ShaderMaterial" id="Mat_tree"]
-shader = ExtResource("30_sway")
-shader_parameter/pivot_row = 43.0
-shader_parameter/span_rows = 40.0
-shader_parameter/bend = 2.6
-shader_parameter/wind_px = 1.5
-shader_parameter/wind_hz = 0.22
-shader_parameter/gust_px = 1.5
 
 [sub_resource type="ShaderMaterial" id="Mat_cloth"]
 shader = ExtResource("30_sway")
@@ -105,8 +95,8 @@ y_sort_enabled = true
 z_index = -2
 texture_filter = 1
 centered = false
-script = ExtResource("3_painted")
-layout = ExtResource("4_layout")
+script = ExtResource("p_ground")
+layout = ExtResource("p_layout")
 
 [node name="Decor" type="Node2D" parent="Visual"]
 y_sort_enabled = true
@@ -513,7 +503,7 @@ shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="Water" type="StaticBody2D" parent="Collision"]
 script = ExtResource("5_water")
-layout = ExtResource("4_layout")
+layout = ExtResource("p_layout")
 
 [node name="CombatTargets" type="Node2D" parent="."]
 y_sort_enabled = true

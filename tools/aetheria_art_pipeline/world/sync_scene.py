@@ -29,6 +29,35 @@ def _blocks(text):
     return head, rest
 
 
+def _drop_unused_ext(text):
+    """Remove every ext_resource no `ExtResource("id")` references any more (the retired tile
+    set, a retired decor texture), so a synced scene carries no dead dependencies."""
+    def used(match):
+        rid = match.group(1)
+        return match.group(0) if 'ExtResource("%s")' % rid in text else ""
+    text = re.sub(r'\[ext_resource [^\]]*id="([^"]+)"\]\n', used, text)
+
+    def used_sub(match):
+        rid = match.group(1)
+        return match.group(0) if 'SubResource("%s")' % rid in text else ""
+    # a sub_resource block runs to the next blank line
+    text = re.sub(r'\[sub_resource [^\]]*id="([^"]+)"\]\n(?:[^\n]+\n)*\n', used_sub, text)
+    return re.sub(r'\[ext_resource [^\]]*id="([^"]+)"\]\n', used, text)
+
+
+def _painted_ground(block, layout_id):
+    """The scene's `Visual/Ground` as a PaintedGround bound to this layout's data (idempotent: a
+    Ground already painted is rewritten the same way)."""
+    if not re.match(r'\[node name="Ground" type="(TileMapLayer|Sprite2D)" parent="Visual"\]', block):
+        return block
+    return ('[node name="Ground" type="Sprite2D" parent="Visual"]\n'
+            "z_index = -2\n"
+            "texture_filter = 1\n"
+            "centered = false\n"
+            'script = ExtResource("p_ground")\n'
+            'layout = ExtResource("p_layout")\n')
+
+
 def sync(layout_id, scene_rel):
     with open(os.path.join(PIPE, "designs", "maps", layout_id + ".yaml"), encoding="utf-8") as f:
         L = yaml.safe_load(f)
@@ -54,13 +83,20 @@ def sync(layout_id, scene_rel):
                 pos = re.search(r"\nposition = Vector2\(([-\d.]+), ([-\d.]+)\)", b)
                 if pos:
                     x, y = int(float(pos.group(1))) - ox, int(float(pos.group(2))) - oy
-                    if not (0 <= x < w and 0 <= y < h) or mat[y * w + x] != ground.GRASS:
+                    if not (0 <= x < w and 0 <= y < h) or \
+                            mat[y * w + x] not in (ground.GRASS, ground.FOREST):
                         continue
         kept.append(b)
+    # the floor: a tiled Ground becomes the PaintedGround drawn from this layout
+    kept = [_painted_ground(b, layout_id) for b in kept]
     # ext resources: the WorldProp script and each prop's data
     ext_ids = {}
     head = re.sub(r'\n\[ext_resource [^\]]*id="(p_[^"]+)"\]', "", head)
     lines = []
+    lines.append('[ext_resource type="Script" path="res://src/gameplay/maps/painted_ground.gd" '
+                 'id="p_ground"]')
+    lines.append('[ext_resource type="Resource" path="res://data/maps/ground/%s_ground.tres" '
+                 'id="p_layout"]' % layout_id)
     lines.append('[ext_resource type="Script" path="%s" id="p_script"]' % PROP_SCRIPT)
     for p in sorted({e["prop"] for e in L.get("props", [])}):
         ext_ids[p] = "p_%s" % p
@@ -84,6 +120,7 @@ def sync(layout_id, scene_rel):
             out.extend(n.rstrip("\n") + "\n" for n in nodes)
             placed = True
     text = head + "\n" + "\n".join(x.rstrip("\n") + "\n" for x in out)
+    text = _drop_unused_ext(text)
     count = text.count("[ext_resource") + text.count("[sub_resource")
     text = re.sub(r"load_steps=\d+", "load_steps=%d" % (count + 1), text, count=1)
     with open(scene, "w", encoding="utf-8") as f:

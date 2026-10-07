@@ -137,6 +137,11 @@ future phase would otherwise walk into.
 | R-9 | Floating mountains, waterfall palaces, cherry blossoms as THE world | the player starts in the **Hoang Vực** frontier — thin administration, unstable veins; that grandeur is **Thiên Nguyên Vực**, reached in Act IV and meant to feel like entering a capital | `WORLD_BIBLE.md` §4.1, §4.5 |
 | R-10 | Taglines and labels: 九霄 ("Nine Heavens"), "Where mortals, spirits and the cosmos coexist", "Cultivation is becoming the highest version of oneself" | not canon text; Aetheria's one-sentence world is the Hạo Nguyên Giới covenant sentence | `WORLD_BIBLE.md` §1 |
 | R-11 | Metadata: "Total Assets: 500+ images", "Version 1.0/1.1", dates in 2025 | the pack holds 13 images; its labels are illustrative, not records | §2.2 |
+| R-12 | The D-062 gameplay QUALITY REFERENCE (`docs/visual_benchmarks/`): an isometric camera | top-down 2D at a 30° 3/4 view; the reference is scored for STRUCTURE, never its projection | M-9.4, D-062 |
+| R-13 | The same reference: minimap, MP bar, circular skill ring, right-hand menu column, world chat, quest tracker | none exist in canon UI (R-7); the reference's HUD occupancy is measured, not copied — the benchmark scores the DNA's 8-15% band | `UI_UX_BIBLE.md` §3c, D-062 |
+| R-14 | The same reference: cherry blossoms, floating cliffs and waterfalls as the starting village | Thôn Lạc Hà is a Hoang Vực frontier village: timber, slate, paddies, a stream (R-9) | `WORLD_BIBLE.md` §4.5 |
+| R-15 | The same reference: "Thanh Vân Sơn" | canon is Thanh Vân Phong (the sect's seat) | `CANON_LEDGER.md` |
+| R-16 | The same reference: a blue-vs-red elemental clash at screen centre | one element per technique, its one permanent hue (§3 of COMBAT_DESIGN); restraint over spectacle | `aetheria_style.yaml` §6 |
 
 **I-2.2 — Words on a reference board are never content.** Labels, captions, realm names,
 element names and taglines in the pack are not canon and must not reach a localization key, a

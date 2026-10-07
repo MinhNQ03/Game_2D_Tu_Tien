@@ -23,6 +23,8 @@ common:
   bark:         {ramp: ["#241b16", "#33271f", "#46362a", "#5a4636"]}
   leaves:       {ramp: ["#1e3a2e", "#2a4d36", "#3a6440", "#56804c"], highlight: true}
   water:        {ramp: ["#163a52", "#1f5680", "#2f6f8f", "#5f97b5"], flat: true}
+  needles:      {ramp: ["#162c26", "#1f3b30", "#2b4d3a", "#3f6448"], highlight: true}
+  moss:         {ramp: ["#2c4a2c", "#3b5e36", "#4f7642", "#688f52"], flat: true}
 
 props:
   dwelling_a:     {kind: dwelling, params: {w: 150, d: 96, h: 64}}
@@ -34,3 +36,6 @@ props:
   fence_short:    {kind: fence, params: {length: 90}}
   well:           {kind: well}
   weapon_rack:    {kind: weapon_rack}
+  pine:           {kind: pine, params: {seed: 5, scale: 1.0}}
+  pine_small:     {kind: pine, params: {seed: 11, scale: 0.75}}
+  boulder:        {kind: boulder, params: {seed: 7, scale: 1.0}}

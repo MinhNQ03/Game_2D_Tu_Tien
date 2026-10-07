@@ -141,7 +141,8 @@ func _scenario_strike_the_post() -> void:
 ## all by the same amount (no synchronized wallpaper).
 func _scenario_ambient() -> void:
 	var banner := _map_node("Visual/Decor/BannerW") as Node2D
-	var tree := _map_node("Visual/Decor/TreeN") as Node2D
+	# the Blender-built broadleaf by the outpost (D-062): its canopy wears the shared sway
+	var tree := _map_node("Visual/Decor/Prop_TreeNE") as Node2D
 	if banner == null or tree == null:
 		_fail("ambient: hub decor missing")
 		return
@@ -160,7 +161,7 @@ func _scenario_ambient() -> void:
 	await _settle()
 	frames = []
 	for i in 6:
-		frames.append(_cell(tree.global_position + Vector2(0, -22)))
+		frames.append(_cell(tree.global_position + Vector2(0, -66)))
 		for _f in 20:
 			await process_frame
 	_save_strip("motion_tree_wind", frames)

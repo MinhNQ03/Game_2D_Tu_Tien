@@ -1,19 +1,15 @@
-[gd_scene load_steps=32 format=3]
+[gd_scene load_steps=35 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
-[ext_resource type="TileSet" path="res://data/maps/east_asian_tileset.tres" id="3_tileset"]
-[ext_resource type="Script" path="res://src/gameplay/maps/prototype_ground.gd" id="4_ground"]
 
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_grass_1.png" id="20_grass1"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_grass_2.png" id="20_grass2"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_grass_3.png" id="20_grass3"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern_hanging.png" id="20_lantern"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_mist.png" id="20_mist"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_planter.png" id="20_planter"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_lantern_post.png" id="20_post"]
 [ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="20_rock"]
-[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_tree_broadleaf.png" id="20_tree"]
 [ext_resource type="Shader" path="res://src/presentation/ambient/pixel_sway.gdshader" id="30_sway"]
 [ext_resource type="Shader" path="res://src/presentation/ambient/mist_drift.gdshader" id="31_mist"]
 
@@ -30,6 +26,14 @@
 
 [ext_resource type="Script" path="res://src/presentation/inventory/pickup_feedback.gd" id="52_pickuplook"]
 
+[ext_resource type="Script" path="res://src/gameplay/maps/painted_ground.gd" id="p_ground"]
+[ext_resource type="Resource" path="res://data/maps/ground/vo_mach_ground.tres" id="p_layout"]
+[ext_resource type="Script" path="res://src/gameplay/world/props/world_prop.gd" id="p_script"]
+[ext_resource type="Resource" path="res://data/world/props/boulder.tres" id="p_boulder"]
+[ext_resource type="Resource" path="res://data/world/props/pine.tres" id="p_pine"]
+[ext_resource type="Resource" path="res://data/world/props/pine_small.tres" id="p_pine_small"]
+[ext_resource type="Resource" path="res://data/world/props/tree_broadleaf.tres" id="p_tree_broadleaf"]
+[ext_resource type="Resource" path="res://data/world/props/tree_small.tres" id="p_tree_small"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
 shader_parameter/pivot_row = 11.0
@@ -38,15 +42,6 @@ shader_parameter/bend = 2.0
 shader_parameter/wind_px = 1.2
 shader_parameter/wind_hz = 0.55
 shader_parameter/gust_px = 1.0
-
-[sub_resource type="ShaderMaterial" id="Mat_tree"]
-shader = ExtResource("30_sway")
-shader_parameter/pivot_row = 43.0
-shader_parameter/span_rows = 40.0
-shader_parameter/bend = 2.6
-shader_parameter/wind_px = 1.5
-shader_parameter/wind_hz = 0.22
-shader_parameter/gust_px = 1.5
 
 [sub_resource type="ShaderMaterial" id="Mat_lantern"]
 shader = ExtResource("30_sway")
@@ -77,98 +72,125 @@ position = Vector2(496, 304)
 [node name="Visual" type="Node2D" parent="."]
 y_sort_enabled = true
 
-[node name="Ground" type="TileMapLayer" parent="Visual"]
+[node name="Ground" type="Sprite2D" parent="Visual"]
 z_index = -2
 texture_filter = 1
-tile_set = ExtResource("3_tileset")
-script = ExtResource("4_ground")
-fill_rect = Rect2i(1, 1, 60, 36)
-walkway_half_height = 2
-paddy_block_width = 9
-paddy_block_height = 6
+centered = false
+script = ExtResource("p_ground")
+layout = ExtResource("p_layout")
 
 [node name="Decor" type="Node2D" parent="Visual"]
 y_sort_enabled = true
 
-[node name="TreeW1" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(40, 150)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineW1" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(60, 120)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
 
-[node name="TreeW2" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(40, 490)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineW2" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(120, 196)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine_small")
 
-[node name="TreeN1" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(232, 200)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineW3" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(70, 462)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
 
-[node name="TreeN2" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(612, 130)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineW4" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(138, 548)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine_small")
 
-[node name="TreeN3" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(806, 200)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineN1" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(250, 92)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
 
-[node name="TreeE1" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(940, 150)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineN2" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(330, 168)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine_small")
 
-[node name="TreeS1" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(424, 488)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineN3" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(400, 108)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
 
-[node name="TreeS2" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(806, 488)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineS1" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(212, 470)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
 
-[node name="TreeS3" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(232, 584)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineS2" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(300, 566)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine_small")
 
-[node name="TreeE2" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_tree")
-position = Vector2(944, 470)
-texture = ExtResource("20_tree")
-centered = false
-offset = Vector2(-20, -43)
+[node name="Prop_PineS3" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(470, 566)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
+
+[node name="Prop_PineS4" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(720, 572)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine_small")
+
+[node name="Prop_PineE1" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(780, 96)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
+
+[node name="Prop_PineE2" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(880, 236)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine_small")
+
+[node name="Prop_PineE3" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(920, 474)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine")
+
+[node name="Prop_PineE4" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(810, 540)
+script = ExtResource("p_script")
+prop = ExtResource("p_pine_small")
+
+[node name="Prop_OakN" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(528, 150)
+script = ExtResource("p_script")
+prop = ExtResource("p_tree_broadleaf")
+
+[node name="Prop_OakE" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(864, 392)
+script = ExtResource("p_script")
+prop = ExtResource("p_tree_broadleaf")
+
+[node name="Prop_OakW" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(256, 400)
+script = ExtResource("p_script")
+prop = ExtResource("p_tree_small")
+
+[node name="Prop_RockNE1" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(876, 120)
+script = ExtResource("p_script")
+prop = ExtResource("p_boulder")
+
+[node name="Prop_RockNE2" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(930, 168)
+script = ExtResource("p_script")
+prop = ExtResource("p_boulder")
+
+[node name="Prop_RockS" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(452, 420)
+script = ExtResource("p_script")
+prop = ExtResource("p_boulder")
+
+[node name="Prop_RockE" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(766, 262)
+script = ExtResource("p_script")
+prop = ExtResource("p_boulder")
 
 [node name="LanternN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
@@ -216,13 +238,6 @@ offset = Vector2(-8, -15)
 texture_filter = 1
 position = Vector2(936, 214)
 texture = ExtResource("20_rock")
-centered = false
-offset = Vector2(-8, -15)
-
-[node name="PlanterE" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-position = Vector2(860, 312)
-texture = ExtResource("20_planter")
 centered = false
 offset = Vector2(-8, -15)
 
@@ -362,27 +377,11 @@ texture = ExtResource("20_grass2")
 centered = false
 offset = Vector2(-8, -11)
 
-[node name="Grass17" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_grass")
-position = Vector2(685, 166)
-texture = ExtResource("20_grass3")
-centered = false
-offset = Vector2(-8, -11)
-
 [node name="Grass18" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
 material = SubResource("Mat_grass")
 position = Vector2(719, 166)
 texture = ExtResource("20_grass1")
-centered = false
-offset = Vector2(-8, -11)
-
-[node name="Grass19" type="Sprite2D" parent="Visual/Decor"]
-texture_filter = 1
-material = SubResource("Mat_grass")
-position = Vector2(688, 454)
-texture = ExtResource("20_grass2")
 centered = false
 offset = Vector2(-8, -11)
 

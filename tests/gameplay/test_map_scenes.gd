@@ -493,9 +493,17 @@ func test_paddy_layout_leaves_a_dry_walkway_and_clears_the_walls() -> void:
 			for x in range(rect.position.x, rect.position.x + rect.size.x):
 				if ground.call("is_paddy_cell", Vector2i(x, y)):
 					flooded_total += 1
-		assert_true(flooded_total > 0,
-			"%s: the layout actually places paddies (a layout that floods nothing is a flat "
-				% label + "single-material floor again)")
+		# 3. ...and the floor is not ONE material. The tiled floor proves it by placing
+		#    paddies; a painted floor (D-062) names its materials, and a forest has no paddies.
+		if ground is PaintedGround:
+			var painted := (ground as PaintedGround).layout.materials
+			assert_true(painted.size() >= 3,
+				"%s: the painted floor uses several materials (%s), not one stamped everywhere"
+					% [label, str(painted)])
+		else:
+			assert_true(flooded_total > 0,
+				"%s: the layout actually places paddies (a layout that floods nothing is a flat "
+					% label + "single-material floor again)")
 		# Never added to the tree, so it is freed directly rather than via `free_node` (L-019:
 		# a Node created in a test must be released by that test either way).
 		map.free()

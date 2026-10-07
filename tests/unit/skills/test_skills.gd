@@ -263,6 +263,26 @@ func test_a_landed_bolt_leaves_a_brief_afterimage_then_dissipates() -> void:
 	_end(parts)
 
 
+## The wind blade's polygon is drawable at EVERY stage of its sweep: from the palm (tiny radius)
+## to the cone's edge, thick to thin, any facing. A degenerate horn once failed triangulation in a
+## real capture; this sweeps the space the release actually covers.
+func test_the_wind_blade_is_drawable_through_its_whole_sweep() -> void:
+	var half := deg_to_rad(70.0 * 0.5)
+	var bad := 0
+	var checked := 0
+	for radius in [6.0, 8.0, 12.0, 20.0, 34.0, 52.0, 60.0]:
+		for thickness in [1.0, 1.5, 2.5, 3.6, 5.0]:
+			for k in 8:
+				var angle := float(k) * TAU / 8.0
+				for widen in [0.6, 0.8, 1.0]:
+					var polygon := CastFeedback.crescent_polygon(Vector2(0, -20), radius, angle,
+						half * widen, thickness)
+					checked += 1
+					if Geometry2D.triangulate_polygon(polygon).is_empty():
+						bad += 1
+	assert_eq(bad, 0, "%d of %d crescent polygons failed to triangulate" % [bad, checked])
+
+
 func test_a_blow_before_the_release_breaks_the_cast_and_spends_nothing() -> void:
 	var parts := _session()
 	var skills: SkillRuntime = parts[4]

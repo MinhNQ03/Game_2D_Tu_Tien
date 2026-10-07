@@ -19,6 +19,9 @@ class_name GroundLayoutData
 @export var paddy_cells: PackedByteArray = PackedByteArray()
 ## One byte per cell of `fill_rect`, row-major: 1 = open water (stream, pond).
 @export var water_cells: PackedByteArray = PackedByteArray()
+## The materials the floor is painted with (grass, earth, stone, water, ...), as the painter
+## names them — the proof a floor is not one material stamped everywhere.
+@export var materials: PackedStringArray = PackedStringArray()
 ## Polygons (world px) the water blocks walking in; the gaps between them are the crossings.
 @export var blockers: Array[PackedVector2Array] = []
 

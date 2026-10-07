@@ -238,7 +238,47 @@ def weapon_rack(d):
     return parts
 
 
+def pine(d):
+    """A frontier pine: a straight trunk under stacked, ragged tiers of needles — the forest's
+    vertical, so Rừng Vỡ Mạch reads as a FOREST and not a park of round trees."""
+    seed = int(d.get("seed", 1))
+    s = d.get("scale", 1.0)
+    parts = [_part("trunk", "bark", tube([(0, 0, 0), (0, 1, 60 * s)], [5 * s, 2.5 * s], 8,
+                                         up=(0, -1, 0)), smooth=True)]
+    tiers = [(18, 34, 30), (38, 28, 26), (56, 21, 22), (72, 14, 18), (86, 8, 14)]
+    for i, (z, r, h) in enumerate(tiers):
+        m = Mesh()
+        rings = []
+        for k, (zz, rr) in enumerate(((z * s, r * s), (z * s + h * s * 0.45, r * s * 0.7),
+                                      ((z + h) * s, 0.8 * s))):
+            ring = []
+            for j in range(20):
+                a = math.tau * j / 20
+                jag = 1.0 + (0.22 if j % 2 else -0.08) * (1.0 if k == 0 else 0.5)
+                jag += (_h(i, j, seed) - 0.5) * 0.2
+                ring.append((rr * jag * math.cos(a), rr * jag * math.sin(a) * 0.92, zz))
+            rings.append(ring)
+        m.add_ring_loft(rings, cap_start=True, cap_end=True)
+        parts.append(_part("tier%d" % i, "needles", m))
+    return parts
+
+
+def boulder(d):
+    """A weathered boulder with moss on its crown: flat-shaded facets so the key light chips it
+    into planes."""
+    seed = int(d.get("seed", 1))
+    s = d.get("scale", 1.0)
+    m = sphere((0, 14 * s, 15 * s), (26 * s, 18 * s, 17 * s), 12, 8)
+    m.verts = [(x + (_h(int(x), int(z), seed) - 0.5) * 6 * s,
+                y + (_h(int(y), int(x), seed) - 0.5) * 5 * s,
+                max(0.0, z + (_h(int(z), int(y), seed) - 0.5) * 5 * s)) for x, y, z in m.verts]
+    moss = sphere((-4 * s, 16 * s, 29 * s), (17 * s, 12 * s, 4 * s), 10, 6)
+    return [_part("rock", "stone", m), _part("moss", "moss", moss, smooth=True)]
+
+
 BUILDERS = {
+    "pine": pine,
+    "boulder": boulder,
     "dwelling": dwelling,
     "outpost_hall": outpost_hall,
     "broadleaf_tree": broadleaf_tree,

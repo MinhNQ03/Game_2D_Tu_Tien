@@ -52,8 +52,12 @@
 ## 3. Anchor & collision (the alignment rule)
 
 - **Anchor at the FEET.** The sprite is drawn so the character's feet sit on the node origin
-  (the component lifts a `frame_size.y`-tall sprite up by its full height). This makes
-  depth-sorting and "standing on a tile" correct and consistent for every character.
+  (the component lifts a `frame_size.y`-tall sprite up by its full height, less
+  `anchor_offset.y`). This makes depth-sorting and "standing on a tile" correct and consistent
+  for every character. The Blender-built sheets stand their feet on **row 43** of the 48px cell
+  and their profiles declare `anchor_offset = (0, 5)` (D-062): seen from 30°, a forward foot and
+  the near knee of the lotus seat project below the origin and must stay inside the cell. The
+  pipeline fails a build whose profile disagrees.
 - **Collision footprint is INDEPENDENT of sprite height.** The body/collision shape
   represents where the character stands (roughly the feet + a small torso radius), NOT the
   full drawn height. A 24px-tall sprite does not get a 24px-tall collider — the collider is a
@@ -149,9 +153,11 @@ plugs into without changing `CharacterVisualComponent` or the profile contract.
 ## 8. Provenance (hard rule)
 
 - Every character texture has a clear source + license recorded in `docs/ASSET_LICENSES.md`.
-- The Phase-05 prototype sheets are **self-made / project-owned**, reproducible via
-  `tools/gen_prototype_assets.py` (pure-stdlib PNG writer; the runtime never depends on it).
-  They are PROTOTYPE art — a real art pass replaces them later.
+- Every humanoid sheet, anchor file and portrait is **self-made / project-owned** and built by
+  ONE source since D-062: the Blender pipeline (`tools/aetheria_art_pipeline/`, design data per
+  actor, `docs/AETHERIA_ART_PIPELINE.md`). The stdlib humanoid generator was retired so no two
+  tools write the same sheet; `tools/gen_prototype_assets.py` still draws the creature and the
+  older props. The runtime never depends on either.
 - No screenshot/Pinterest/mirror/unknown-license/AI-of-unclear-rights asset ever enters the
   project (`.kiro/steering/06-art-assets.md`).
 - **Reference libraries are research, never source art.** Everything under `docs/design_refs/` —

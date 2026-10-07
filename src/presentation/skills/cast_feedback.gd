@@ -301,25 +301,49 @@ func _draw_gust() -> void:
 ## (`thickness`) at its middle and tapering to the horns, with an optional lit outer edge.
 func _draw_crescent(origin: Vector2, radius: float, angle: float, half: float,
 		thickness: float, body: Color, edge: Color, fade: float) -> void:
-	var outer := PackedVector2Array()
-	var inner := PackedVector2Array()
-	var steps := 14
-	for i in steps + 1:
-		var u := float(i) / float(steps)
-		var a := angle - half + 2.0 * half * u
-		var w := thickness * sin(PI * u)
-		var dir := Vector2.from_angle(a)
-		outer.append((origin + dir * (radius + w * 0.5)).round())
-		inner.append((origin + dir * (radius - w * 0.5)).round())
-	var polygon := outer.duplicate()
-	for i in range(inner.size() - 1, -1, -1):
-		polygon.append(inner[i])
-	if polygon.size() >= 3 and thickness >= 1.0:
+	var outer := crescent_edge(origin, radius, angle, half, thickness)
+	var polygon := crescent_polygon(origin, radius, angle, half, thickness)
+	if thickness >= 1.0 and not Geometry2D.triangulate_polygon(polygon).is_empty():
 		draw_colored_polygon(polygon, body)
 	if edge.a > 0.0:
 		var lit := edge
 		lit.a = 0.9 * fade
-		draw_polyline(outer, lit, 1.0)
+		var snapped := PackedVector2Array()
+		for p in outer:
+			snapped.append(p.round())
+		draw_polyline(snapped, lit, 1.0)
+
+
+const CRESCENT_STEPS := 14
+
+
+## The crescent's outer edge (public for tests).
+static func crescent_edge(origin: Vector2, radius: float, angle: float, half: float,
+		thickness: float) -> PackedVector2Array:
+	return _crescent_side(origin, radius, angle, half, thickness, 0.5)
+
+
+## The crescent's outline as one polygon: the outer edge out, the inner edge back. The horns keep
+## a sliver of width so the band never collapses to a line — a zero-width horn made the polygon
+## degenerate and the triangulation fail in a real capture (public for tests).
+static func crescent_polygon(origin: Vector2, radius: float, angle: float, half: float,
+		thickness: float) -> PackedVector2Array:
+	var polygon := _crescent_side(origin, radius, angle, half, thickness, 0.5)
+	var inner := _crescent_side(origin, radius, angle, half, thickness, -0.5)
+	for i in range(inner.size() - 1, -1, -1):
+		polygon.append(inner[i])
+	return polygon
+
+
+static func _crescent_side(origin: Vector2, radius: float, angle: float, half: float,
+		thickness: float, side: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in CRESCENT_STEPS + 1:
+		var u := float(i) / float(CRESCENT_STEPS)
+		var a := angle - half + 2.0 * half * u
+		var w := maxf(0.6, thickness * sin(PI * u))
+		points.append(origin + Vector2.from_angle(a) * (radius + w * side))
+	return points
 
 
 ## Remember every bolt in flight; one that has vanished from the runtime LANDED — keep its

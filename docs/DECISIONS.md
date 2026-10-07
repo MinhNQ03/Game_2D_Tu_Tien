@@ -4207,3 +4207,43 @@ from a scorched page beside the broken vein in Rừng Vỡ Mạch. Both require 
 technique (no second weapon family exists to make the rule mean something); no element
 resistances (the resistance side of the formula has no consumer yet).
 
+
+## D-062 — Visual identity lock: the Visual DNA, the Blender golden pipeline, the live UI, the benchmark
+
+**Why.** The production foundation worked and did not look like one game: a stdlib pose-drawn
+figure, a flat CC0 UI pack beside a glossy painted tier, a 16px tile floor stamped on a grid, 16px
+icons each in its own idiom, a dark-haired painted portrait over a white-haired sprite. D-062 locks
+ONE visual DNA and builds every representation from it. Full method, numbers and the checkpoint
+record: `docs/AETHERIA_ART_PIPELINE.md`.
+
+**Decided.**
+- **The Visual DNA is data** (`tools/aetheria_art_pipeline/style/aetheria_style.yaml`, style 1.0):
+  palette roles, light, outline, character, materials, VFX, icon, UI, world and pixel-adaptation
+  rules, measurable where they can be (`validate/style_check.py`). Producers ask for roles.
+- **Blender is a build tool.** One canonical cultivator (`designs/cultivator.yaml`), one rig, one
+  renderer; actors are design data (player, Thanh Vân robe, Lâm Nguyệt, Thẩm Bất Kỳ, Kha Thản).
+  Exact ID/light/depth passes are adapted by `pixel/pixelize.py` — never resize-and-pixelate; every
+  opaque pixel is an authored ramp tone or the ink. LEFT renders mirrored actions (the strike stays
+  at chest height). Feet stand on row 43 (`anchor_offset (0, 5)`, build-checked). The stdlib
+  humanoid generator is retired: one source per sheet.
+- **The face follows the moodboards' principle, the size follows canon.** Head ≈ 1/3 at 32×48
+  (R-5); an oval sculpted face, almond eyes, brows, nose and mouth as portrait LOD; real hands that
+  leave the sleeve. The HUD portrait is a medallion of the same model.
+- **The live UI is an original ink-lacquer kit** (`ui/ui_kit.py`): neither the xianxia pack nor the
+  painted plates; five designed button states, keycap, carved meters, one icon-slot family; the
+  technique dock moved bottom-centre. Theme tests re-pinned to the same MEASURED invariants.
+- **Icons, props and floors come from the same pipeline**: Blender-modelled item/technique icons
+  (32px slot + 16px world, `ItemData.world_icon`); Blender-built architecture and trees with cast
+  shadows at the character's density (`WorldProp` + `PropData`); floors painted from layout data
+  (`PaintedGround` + `GroundLayoutData`, `WaterBlockers`) for Thôn Lạc Hà and Rừng Vỡ Mạch, with
+  scene sync from the layout (idempotent).
+- **Techniques read through the whole energy chain**: a crescent wind blade born at the palm; a
+  forked bolt that leaves an afterimage of its path.
+- **The benchmark is structural** (`validate/visual_benchmark.py`): composition, palette,
+  environment, silhouette, combat, UI, VFX, pixel — explainable per measure, DNA rules as
+  compliance. Golden frame (`capture_motion golden`): **80.4 / 100 PASS**. The quality reference
+  stays gitignored, REFERENCE ONLY; its canon conflicts are R-12..R-16.
+
+**Not done, on purpose.** P16–P20 systems (Lâm Nguyệt stands in the golden frame as a placed
+figure, not an NPC system); a quadruped rig for the wolf (the next pipeline extension); the older
+stdlib props (spring, stele, post, banners, lanterns) stay until their Blender pass.

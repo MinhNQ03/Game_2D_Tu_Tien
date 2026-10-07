@@ -32,7 +32,13 @@ import style  # noqa: E402
 ST = style.load()
 
 # Material codes (the order is the paint priority when two shapes overlap: later wins).
-GRASS, STONE, STONE_DARK, EARTH, YARD, WATER, BRIDGE, PADDY, BUND = range(9)
+GRASS, STONE, STONE_DARK, EARTH, YARD, WATER, BRIDGE, PADDY, BUND, FOREST, LITTER, \
+    FISSURE, ROCK = range(13)
+KINDS = {"grass": GRASS, "stone": STONE, "stone_dark": STONE_DARK, "earth": EARTH,
+         "yard": YARD, "water": WATER, "bridge": BRIDGE, "paddy": PADDY, "forest": FOREST,
+         "litter": LITTER, "fissure": FISSURE, "rock": ROCK}
+ROUGH = {EARTH: 2.2, YARD: 2.5, WATER: 2.0, STONE: 0.0, STONE_DARK: 0.0, BRIDGE: 0.0,
+         PADDY: 0.0, FOREST: 3.0, LITTER: 3.2, FISSURE: 1.6, GRASS: 2.5, ROCK: 3.0}
 
 # Ramps [deep, shadow, base, light] — the DNA world roles where one exists, their neighbours
 # where the ramp needs a step the palette does not name.
@@ -46,6 +52,16 @@ RAMPS = {
     PADDY: [(36, 70, 66), (44, 86, 78), (54, 100, 88), (92, 140, 122)],
     "WOOD": [(52, 36, 26), (72, 50, 34), (92, 62, 42), (116, 82, 56)],
 }
+# The forest floor: the meadow's family in canopy shade — darker, cooler.
+RAMPS[FOREST] = [(40, 64, 44), (50, 78, 52), (62, 94, 60), (76, 110, 68), (92, 126, 78)]
+RAMPS[LITTER] = [(70, 62, 48), (90, 80, 60), (110, 98, 72), (132, 118, 86)]
+LEAF_FLECKS = [(150, 104, 52), (128, 86, 44), (110, 120, 60)]
+# The broken vein: fractured stone with qi seeping along its cracks (aetheria_style §5 "spirit":
+# emissive only where it carries force — here, the cracks, one pixel wide).
+RAMPS[FISSURE] = [(58, 60, 70), (72, 75, 86), (88, 92, 104), (106, 110, 122)]
+QI_CRACK = [(47, 112, 150), (133, 204, 234)]
+# Living rock: no laid kerb, moss in its cracks, lit on the faces that turn to the key light.
+RAMPS[ROCK] = [(70, 72, 78), (88, 90, 96), (108, 110, 116), (128, 130, 135)]
 MORTAR = (70, 72, 80)
 WET_BANK = (60, 54, 46)
 RICE = [(62, 110, 52), (86, 138, 62), (112, 160, 76)]
@@ -145,13 +161,12 @@ def paint(layout_path):
     tile = L["tile"]
     fx, fy, fw, fh = L["fill_rect"]
     ox, oy, w, h = fx * tile, fy * tile, fw * tile, fh * tile
-    mat = [GRASS] * (w * h)
+    base = KINDS[L.get("base", "grass")]
+    mat = [base] * (w * h)
     region_masks = {}
     for k, shape in enumerate(L["regions"]):
-        code = {"stone": STONE, "stone_dark": STONE_DARK, "earth": EARTH, "yard": YARD,
-                "water": WATER, "bridge": BRIDGE, "paddy": PADDY}[shape["kind"]]
-        rough = {EARTH: 2.2, YARD: 2.5, WATER: 2.0, STONE: 0.0, STONE_DARK: 0.0, BRIDGE: 0.0,
-                 PADDY: 0.0}[code]
+        code = KINDS[shape["kind"]]
+        rough = ROUGH[code]
         if code == PADDY:
             # the bund ring first, then the flooded field inside it
             x, y, rw, rh = shape["rect"]
@@ -189,7 +204,42 @@ def paint(layout_path):
             i = y * w + x
             m = mat[i]
             wxp, wyp = x + ox, y + oy
-            if m == GRASS:
+            if m == FOREST:
+                t = 0.5 + 0.55 * (n_big[i] - 0.5) + 0.35 * (n_mid[i] - 0.5) \
+                    + 0.18 * (n_fine[i] - 0.5)
+                c = _tone(RAMPS[FOREST], t)
+            elif m == LITTER:
+                ramp = RAMPS[LITTER]
+                t = 0.45 * n_big[i] + 0.4 * n_mid[i] + 0.3 * (n_fine[i] - 0.5) + 0.1
+                c = _tone(ramp, t)
+                if _hash(wxp, wyp, 91) < 0.05:
+                    c = LEAF_FLECKS[int(_hash(wxp, wyp, 93) * 2.99)]   # fallen leaves
+                elif at(x, y - 1) in (FOREST, GRASS):
+                    c = ramp[0]
+            elif m == ROCK:
+                ramp = RAMPS[ROCK]
+                if stone_mortar[i]:
+                    c = RAMPS[FOREST][1] if _hash(wxp, wyp, 101) < 0.5 else RAMPS[ROCK][0]
+                else:
+                    base_t = 1 + int(_hash(stone_ids[i], 9, 103) * 2.6)
+                    c = ramp[max(0, min(3, base_t))]
+                    if (y - 1) >= 0 and stone_mortar[i - w]:
+                        c = ramp[min(3, base_t + 1)]
+                    elif (y + 1) < h and stone_mortar[i + w]:
+                        c = ramp[max(0, base_t - 1)]
+            elif m == FISSURE:
+                ramp = RAMPS[FISSURE]
+                if stone_mortar[i]:
+                    # a crack: dark in its depth, and along part of it the qi seeping out
+                    lit = _hash(stone_ids[i] % 991, 5, 97) < 0.45
+                    c = (QI_CRACK[1] if _hash(wxp // 2, wyp // 2, 99) < 0.55 else QI_CRACK[0]) \
+                        if lit else MORTAR
+                else:
+                    base_t = 1 + int(_hash(stone_ids[i], 7, 47) * 2.6)
+                    c = ramp[max(0, min(3, base_t))]
+                    if (y - 1) >= 0 and stone_mortar[i - w]:
+                        c = ramp[min(3, base_t + 1)]
+            elif m == GRASS:
                 # broad sunlit drifts, a little mid-scale clumping, a whisper of grain: a
                 # meadow, not camouflage (the first pass had the contrast of a pattern)
                 t = 0.5 + 0.62 * (n_big[i] - 0.5) + 0.38 * (n_mid[i] - 0.5) \
@@ -273,7 +323,7 @@ def paint(layout_path):
                 if _hash(wxp, wyp, 73) < 0.25 and not below_water:
                     c = RAMPS[GRASS][2]      # grass on the bund's crown
             # wet earth: one ring of dark bank around open water
-            if m == GRASS or m == EARTH:
+            if m in (GRASS, EARTH, FOREST):
                 if WATER in (at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)):
                     c = WET_BANK
             px[x, y] = c + (255,)
@@ -283,15 +333,16 @@ def paint(layout_path):
     for y in range(2, h - 2):
         for x in range(1, w - 1):
             i = y * w + x
-            if mat[i] != GRASS:
+            if mat[i] not in (GRASS, FOREST):
                 continue
+            ramp = RAMPS[mat[i]]
             wxp, wyp = x + ox, y + oy
             hsh = _hash(wxp, wyp, 81)
-            if hsh < 0.010 * (0.4 + n_big[i]) and mat[i - 2 * w] == GRASS:
-                px[x, y] = RAMPS[GRASS][0] + (255,)
-                px[x, y - 1] = RAMPS[GRASS][3] + (255,)
-                px[x - 1, y - 1] = RAMPS[GRASS][4] + (255,)
-                px[x + 1, y - 2] = RAMPS[GRASS][3] + (255,)
+            if hsh < 0.010 * (0.4 + n_big[i]) and mat[i - 2 * w] == mat[i]:
+                px[x, y] = ramp[0] + (255,)
+                px[x, y - 1] = ramp[3] + (255,)
+                px[x - 1, y - 1] = ramp[4] + (255,)
+                px[x + 1, y - 2] = ramp[3] + (255,)
             elif hsh > 0.9994:
                 px[x, y] = FLOWERS[int(_hash(wxp, wyp, 83) * 2.99)] + (255,)
 
@@ -333,9 +384,12 @@ def write(layout_id):
         "walkway_half_height = %d\n"
         "paddy_cells = PackedByteArray(%s)\n"
         "water_cells = PackedByteArray(%s)\n"
+        "materials = PackedStringArray(%s)\n"
         "blockers = [%s]\n"
     ) % (tex_rel, layout_id, fx, fy, fw, fh, tile, L["walkway_half_height"],
-         ", ".join(map(str, paddy)), ", ".join(map(str, water)), blockers)
+         ", ".join(map(str, paddy)), ", ".join(map(str, water)),
+         ", ".join('"%s"' % k for k, code in sorted(KINDS.items(), key=lambda kv: kv[1])
+                   if code in set(mat)), blockers)
     out_dir = os.path.join(ROOT, "data", "maps", "ground")
     os.makedirs(out_dir, exist_ok=True)
     tres_rel = "data/maps/ground/%s_ground.tres" % layout_id

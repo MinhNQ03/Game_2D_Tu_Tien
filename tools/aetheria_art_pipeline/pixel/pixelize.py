@@ -472,8 +472,8 @@ def build_props(prop_spec, frames_dir, root):
                 "origin = Vector2(%d, %d)\n"
                 "footprint = Rect2(%g, %g, %g, %g)\n"
                 "sways = %s\n" % (tex_rel, prop_id, round(ox), round(oy), foot[0], foot[1],
-                                   foot[2], foot[3], "true" if spec["kind"] == "broadleaf_tree"
-                                   else "false"))
+                                   foot[2], foot[3], "true" if spec["kind"] in (
+                                       "broadleaf_tree", "pine") else "false"))
         written += [tex_rel, tres_rel]
     return written
 
@@ -489,6 +489,12 @@ def _footprint(spec, meta):
         w, d = p.get("w", 150.0) + 8, p.get("d", 96.0) + 8
     elif kind == "outpost_hall":
         w, d = p.get("w", 200.0) + 28, p.get("d", 120.0) + 34
+    elif kind == "boulder":
+        sc = p.get("scale", 1.0)
+        w, d = 50.0 * sc, 34.0 * sc
+    elif kind == "pine":
+        w, d = 12.0 * p.get("scale", 1.0), 10.0 * p.get("scale", 1.0)
+        return (-w * ppu / 2, -d * ppu * squash / 2, w * ppu, d * ppu * squash)
     elif kind == "broadleaf_tree":
         w, d = 16.0 * p.get("scale", 1.0), 12.0 * p.get("scale", 1.0)
         return (-w * ppu / 2, -d * ppu * squash / 2, w * ppu, d * ppu * squash)

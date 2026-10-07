@@ -1,0 +1,57 @@
+# RỪNG VỠ MẠCH — the Broken-Vein Forest (map_field). D-062 world pass.
+#
+# Canon (WORLD_BIBLE §4.5, CL-08, CL-11): the forest beside Thôn Lạc Hà where the vein beneath
+# breaks — mist, wolves, an unstable seam of qi. A game trail runs from the village gate (west)
+# into a clearing; one branch climbs to the north-east rocks (the Lôi manual's cairn), one goes
+# down to the BROKEN VEIN, where fractured stone seeps qi along its cracks.
+#
+# Fixed anchors (scene + tests): spawn (496,304), from_hub (92,304), exit to hub (48,304), the
+# broken vein site (616,472), pickups (598,486) (640,462) (420,300) (690,190); wolves spawn at
+# (632,168) and (360,536) (data/enemies/spawn_table_field.tres).
+
+id: vo_mach
+tile: 16
+fill_rect: [1, 1, 60, 36]
+walkway_half_height: 3
+base: forest
+
+regions:
+  - {kind: litter, poly: [[410, 250], [520, 238], [590, 262], [596, 344], [520, 370], [420, 352],
+                          [392, 300]]}                                         # the clearing
+  - {kind: litter, poly: [[548, 420], [640, 404], [700, 440], [692, 516], [600, 540], [540, 506]]}
+  - {kind: earth, path: [[14, 304], [120, 306], [230, 318], [360, 300], [496, 304], [600, 300],
+                         [700, 322], [860, 300], [978, 310]], width: 28}
+  - {kind: earth, path: [[560, 312], [584, 380], [612, 440]], width: 22}       # down to the vein
+  - {kind: earth, path: [[604, 298], [648, 240], [688, 198]], width: 18}       # up to the cairn
+  - {kind: rock, poly: [[800, 40], [960, 40], [960, 168], [900, 186], [824, 150]]}   # NE rocks
+  - {kind: fissure, poly: [[574, 450], [626, 436], [664, 458], [652, 500], [604, 508], [570, 486]]}
+  - {kind: litter, poly: [[600, 160], [700, 150], [736, 200], [690, 226], [620, 212]]}
+
+blockers: []
+
+props:
+  - {name: PineW1, prop: pine, at: [60, 120]}
+  - {name: PineW2, prop: pine_small, at: [120, 196]}
+  - {name: PineW3, prop: pine, at: [70, 462]}
+  - {name: PineW4, prop: pine_small, at: [138, 548]}
+  - {name: PineN1, prop: pine, at: [250, 92]}
+  - {name: PineN2, prop: pine_small, at: [330, 168]}
+  - {name: PineN3, prop: pine, at: [400, 108]}
+  - {name: PineS1, prop: pine, at: [212, 470]}
+  - {name: PineS2, prop: pine_small, at: [300, 566]}
+  - {name: PineS3, prop: pine, at: [470, 566]}
+  - {name: PineS4, prop: pine_small, at: [720, 572]}
+  - {name: PineE1, prop: pine, at: [780, 96]}
+  - {name: PineE2, prop: pine_small, at: [880, 236]}
+  - {name: PineE3, prop: pine, at: [920, 474]}
+  - {name: PineE4, prop: pine_small, at: [810, 540]}
+  - {name: OakN, prop: tree_broadleaf, at: [528, 150]}
+  - {name: OakE, prop: tree_broadleaf, at: [864, 392]}
+  - {name: OakW, prop: tree_small, at: [256, 400]}
+  - {name: RockNE1, prop: boulder, at: [876, 120]}
+  - {name: RockNE2, prop: boulder, at: [930, 168]}
+  - {name: RockS, prop: boulder, at: [452, 420]}
+  - {name: RockE, prop: boulder, at: [766, 262]}
+
+retire_decor: [TreeW1, TreeW2, TreeN1, TreeN2, TreeN3, TreeE1, TreeS1, TreeS2, TreeS3, TreeE2,
+               PlanterE]

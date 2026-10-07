@@ -11,10 +11,13 @@
 
 ## 1. The existing UI is a FOUNDATION, not a ceiling
 
-The live UI is the CC0 **Xianxia Pixel Pack** set wired through `UIPalette` → `UITheme` (D-028),
-hardened for legibility from *measured* asset pixels (D-034), with Vietnamese as the default
-language (D-035), and **composed** to this document's visual direction in D-041. It is
-**production foundation**: real, shipped, tested — and explicitly not final.
+The live UI is the **ink-lacquer kit** (D-062): ORIGINAL art generated from the Visual DNA
+(`tools/aetheria_art_pipeline/ui/ui_kit.py`, `docs/AETHERIA_ART_PIPELINE.md` §9) and wired through
+`UIPalette` → `UITheme` → screens. It replaced the CC0 Xianxia Pixel Pack (D-028, flat "plastic"
+plates) and the glossy painted plates (D-044, a mobile-MMO read). What the earlier passes learned
+stays as measured invariants on the new art: dark text surfaces (D-034), Vietnamese first (D-035),
+the composition of D-041, the weight ladder of D-057. Production foundation: real, shipped, tested
+— and explicitly not final.
 
 **Do not destroy it.** Phase 25 is consolidation and polish, not a rescue rewrite. Every new
 screen is built on this language; if a screen needs something the language lacks, the language
@@ -323,13 +326,10 @@ literals anywhere in `src/presentation` outside `ui_palette.gd`/`ui_theme.gd`, a
 (`ROLE_PRIMARY`/`SECONDARY`/`DANGER`) or a palette token; geometry arrives as a named layout
 token. That is what makes a retheme a palette edit rather than a sweep.
 
-**Swapping the art is four named roots, not one — and that is deliberate.** `UI_ASSET_DIR`
-(pixel xianxia), `ORNAMENT_DIR` (tintable Kenney masks), `PAINTED_UI_DIR` (painted tier) and
-`PORTRAIT_DIR` all live in `ui_palette.gd`, and they are separate **because the tiers do not
-share rules**: pixel art is nearest-filtered and integer-scaled, painted art is LINEAR and may
-stretch (`06-art-assets.md`). Collapsing them into one directory would be tidier to describe
-and would lose the distinction that keeps gold filigree from stair-stepping. Changing the pack
-for a tier means editing that tier's constants plus the per-slot 9-slice margins beside them.
+**Swapping the art is one generator and one root.** `UI_ASSET_DIR` (`assets/ui/aetheria_ink`)
+holds every UI texture the kit writes; the slices beside each constant are the kit's own (D-062).
+A restyle is a re-run of `ui_kit.py` from a changed DNA, never a screen edit. The one painted asset
+left (`PAINTED_UI_DIR`, the menu backdrop scene) is LINEAR and never carries text.
 
 **Adding a screen inherits the foundation by construction.** Call `UITheme.build_backdrop(self)`
 and `UITheme.menu_button(role)` and the screen already has the composition, the interaction
@@ -376,11 +376,17 @@ with three untinted buttons — not a decision, just construction nobody copied.
   `Cấp / Kinh nghiệm / Thăng cấp` and are forbidden from using *tu vi*, *đột phá* or *cảnh
   giới* — asserted in both languages. The HUD is the only place the player actually looks, so
   borrowing cultivation words there would tell them the two axes are one thing (D-054).
-- **The key chip is drawn, not asset-backed** (`key_badge.png` measures centre alpha 0 — it is
-  a corner ornament). Swap it back the day real keycap art lands.
-- **Visual regressions are caught by a human looking at `tools/capture_ui.gd` output**, not by
-  a test. There is no image-diff gate, so "run the captures and look" is a required step of
-  any UI change, not an optional nicety (§3b).
+- **The key chip is the kit's raised keycap** (D-062): solid under the glyph (measured), its lip a
+  separate 9-slice band, a jade edge because a key is interaction.
+- **The technique dock sits bottom-centre** (D-062): the player's hands under the player, below
+  the clear zone and the announcement band; its slots are the satchel's slot family
+  (`UITheme.icon_slot`) with an element ring.
+- **The identity portrait is a medallion of the actor's own pipeline portrait** (D-062): the face
+  in the HUD is the figure on the map, drawn 1:1, never resampled.
+- **Visual regressions are caught by a human looking at `tools/capture_ui.gd` output**, AND
+  scored structurally: `capture_motion golden` + `validate/visual_benchmark.py` (D-062) gives the
+  golden frame an explainable score against the quality reference (never a pixel diff). "Run the
+  captures and look" stays a required step of any UI change (§3b).
 
 ## 9. What this document does NOT do
 
