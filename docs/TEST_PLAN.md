@@ -988,3 +988,9 @@ meets each from 4 sides and 4 corners — stopped outside, inside the reach, hel
 to leave; no invisible wall, no ghost mass). `test_solid_props_never_block_the_play` also walks
 `PropBody`. E2E `_prove_cultivation` walks INTO the stele with a real held key. Playtest 05e/05f.
 
+**D-063 A2b (the decor drawn with mass):** `test_prop_bodies.gd` +2 — every drawn sprite in the
+world holders stands on a PropBody of its own texture at its own origin, or is
+INTANGIBLE_BY_DESIGN with a reason (and never has a body); a walk meets each kind of decor from 8
+directions and is never trapped (vacuity-guarded: at least the 4 kinds). The mass check covers
+every PropBody's data. Playtest 05g. Suite: 821 tests.
+

@@ -9,6 +9,7 @@ so the cloth waves and the lantern swings while the wood stays put.
 import os
 
 from . import raster
+from . import sheet
 
 TILE = 16
 INK = (18, 18, 26, 255)
@@ -27,6 +28,25 @@ def _save(root, rel, px):
     raster.write_png(os.path.join(root, rel), px)
     w, h = raster.size(px)
     print("wrote %s (%dx%d)" % (rel, w, h))
+
+
+def _save_solid(root, prop_id, px, depth, footprint_round=False):
+    """Save a prop that STANDS on the ground, and its PropData (D-063): the solid base MEASURED
+    from the pixels just drawn — the widest drawn span in the `depth` rows above the ground line —
+    so the body cannot drift from the art. The origin is that base's centre on the sprite's
+    bottom row: where a scene stands the prop on its ground line."""
+    rel = "assets/sprites/props/%s.png" % prop_id
+    _save(root, rel, px)
+    w, h = raster.size(px)
+    bottom = max(y for y in range(h) if any(px[y][x][3] for x in range(w)))
+    xs = [x for y in range(bottom - depth + 1, bottom + 1) for x in range(w) if px[y][x][3]]
+    x0, x1 = min(xs), max(xs)
+    ox, oy = (x0 + x1 + 1) // 2, h - 1
+    footprint = (x0 - ox, bottom + 1 - depth - oy, x1 + 1 - x0, depth)
+    sheet.write_prop_resource(os.path.join(root, "data/world/props/%s.tres" % prop_id), prop_id,
+                              rel, (ox, oy), footprint, footprint_round)
+    print("wrote data/world/props/%s.tres (origin %s, footprint %s)" % (prop_id, (ox, oy),
+                                                                        footprint))
 
 
 # --- moving props (D-057B) -----------------------------------------------------------------
@@ -70,7 +90,7 @@ def gen_banner(root):
     raster.oval(pole, 8, 2.5, 1.6, 1.6, (206, 176, 104, 255))              # gilded finial
     raster.oval(pole, 8, 45.5, 4, 1.6, (96, 100, 104, 255))                # stone footing
     raster.outline(pole, INK)
-    _save(root, "assets/sprites/props/prop_banner_pole.png", pole)
+    _save_solid(root, "prop_banner_pole", pole, depth=4)            # the stone footing
 
     cloth = raster.blank(20, 28)                                            # 6px of air: the wave
     silk = (226, 230, 236, 255)
@@ -107,7 +127,7 @@ def gen_lantern_post(root):
     raster.rect(post, 3, 6, 17, 7, raster.shade(wood, 1.3))
     raster.oval(post, 4.5, 45.5, 3, 1.4, (96, 100, 104, 255))
     raster.outline(post, INK)
-    _save(root, "assets/sprites/props/prop_lantern_post.png", post)
+    _save_solid(root, "prop_lantern_post", post, depth=4)           # the post's foot
 
     lantern = raster.blank(16, 24)                                          # 3px of air for swing
     red = (176, 48, 48, 255)
@@ -159,7 +179,7 @@ def gen_rock(root):
     raster.oval(px, 11, 12, 3, 2, raster.shade(stone, 0.72))
     for (x, y) in [(4, 7), (10, 6), (13, 10)]:
         px[y][x] = (72, 120, 64, 255)
-    _save(root, "assets/sprites/props/prop_rock.png", px)
+    _save_solid(root, "prop_rock", px, depth=6, footprint_round=True)  # a round stone
 
 
 def gen_planter(root):
@@ -171,7 +191,7 @@ def gen_planter(root):
     raster.rect(px, 4, 9, 12, 15, pot)
     raster.rect(px, 4, 13, 12, 15, raster.shade(pot, 0.72))
     raster.rect(px, 4, 9, 12, 10, raster.shade(pot, 1.2))
-    _save(root, "assets/sprites/props/prop_planter.png", px)
+    _save_solid(root, "prop_planter", px, depth=4)                  # the pot
 
 
 def gen_emblems(root):

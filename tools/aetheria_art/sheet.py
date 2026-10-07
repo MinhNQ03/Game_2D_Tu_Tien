@@ -56,6 +56,32 @@ def _diff(a, b):
     return n
 
 
+def write_prop_resource(path, prop_id, texture_rel, origin, footprint, footprint_round=False,
+                        sways=False):
+    """Write a `PropData` .tres — the ONE writer of prop data, for the Blender pipeline's props and
+    this generator's alike (D-063): the texture, the ORIGIN (the texture pixel a scene stands on
+    the prop's ground line), and the solid FOOTPRINT in world px relative to that origin (zero
+    size = walk-through); `footprint_round` makes the body the ellipse inscribed in it."""
+    body = (
+        '[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]\n\n'
+        '[ext_resource type="Script" path="res://src/data/world/prop_data.gd" id="1_prop"]\n'
+        '[ext_resource type="Texture2D" path="res://%s" id="2_tex"]\n\n'
+        "[resource]\n"
+        'script = ExtResource("1_prop")\n'
+        'id = &"%s"\n'
+        'texture = ExtResource("2_tex")\n'
+        "origin = Vector2(%d, %d)\n"
+        "footprint = Rect2(%g, %g, %g, %g)\n"
+        "%s"
+        "sways = %s\n" % (texture_rel, prop_id, round(origin[0]), round(origin[1]),
+                           footprint[0], footprint[1], footprint[2], footprint[3],
+                           "footprint_round = true\n" if footprint_round else "",
+                           "true" if sways else "false"))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(body)
+
+
 def write_anchor_resource(path, resource_id, cell_size, anchors, feet_row=None):
     """Write a `CharacterAnchorData` .tres.
 

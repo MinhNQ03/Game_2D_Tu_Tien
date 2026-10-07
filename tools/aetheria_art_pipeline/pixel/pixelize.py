@@ -475,6 +475,8 @@ def prop_image(spec, frames_dir, prop_id, k, ground_id):
 def build_props(prop_spec, frames_dir, root):
     """Every prop -> assets/sprites/props/world/<id>.png (cropped to its pixels) and
     data/world/props/<id>.tres (PropData: the texture, the origin, the collision footprint)."""
+    sys.path.insert(0, os.path.join(root, "tools"))
+    from aetheria_art import sheet as legacy_sheet
     k = prop_spec["render_scale"]
     written = []
     os.makedirs(os.path.join(root, "assets/sprites/props/world"), exist_ok=True)
@@ -488,27 +490,11 @@ def build_props(prop_spec, frames_dir, root):
         ox, oy = meta["origin"][0] - bbox[0], meta["origin"][1] - bbox[1]
         tex_rel = "assets/sprites/props/world/%s.png" % prop_id
         pngout.save(img, os.path.join(root, tex_rel))
-        foot = _footprint(spec, meta)
         tres_rel = "data/world/props/%s.tres" % prop_id
-        with open(os.path.join(root, tres_rel), "w", encoding="utf-8") as f:
-            f.write(
-                '[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]\n\n'
-                '[ext_resource type="Script" path="res://src/data/world/prop_data.gd" '
-                'id="1_prop"]\n'
-                '[ext_resource type="Texture2D" path="res://%s" id="2_tex"]\n\n'
-                "[resource]\n"
-                'script = ExtResource("1_prop")\n'
-                'id = &"%s"\n'
-                'texture = ExtResource("2_tex")\n'
-                "origin = Vector2(%d, %d)\n"
-                "footprint = Rect2(%g, %g, %g, %g)\n"
-                "%s"
-                "sways = %s\n" % (tex_rel, prop_id, round(ox), round(oy), foot[0], foot[1],
-                                   foot[2], foot[3],
-                                   "footprint_round = true\n"
-                                   if spec["kind"] in ROUND_FOOTPRINTS else "",
-                                   "true" if spec["kind"] in (
-                                       "broadleaf_tree", "pine") else "false"))
+        legacy_sheet.write_prop_resource(
+            os.path.join(root, tres_rel), prop_id, tex_rel, (ox, oy), _footprint(spec, meta),
+            footprint_round=spec["kind"] in ROUND_FOOTPRINTS,
+            sways=spec["kind"] in ("broadleaf_tree", "pine"))
         written += [tex_rel, tres_rel]
     return written
 

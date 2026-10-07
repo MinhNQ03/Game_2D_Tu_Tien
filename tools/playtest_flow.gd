@@ -85,6 +85,7 @@ func _run() -> void:
 	await _step_hud_present(map)
 	await _step_feedback(map)
 	await _step_physical_truth(map)
+	await _step_decor_solid(map)
 	await _step_move(map)
 	await _step_toggle_panel(map)
 	await _step_attack(map)
@@ -307,6 +308,49 @@ func _step_physical_truth(map: Node) -> void:
 			_walk_note(far_bank, spring.global_position)],
 		bank_ok and far_ok and _held_and_free(bank) and _held_and_free(far_bank), started,
 		bank["shot"])
+
+
+## D-063 A2b: the decor drawn with mass is solid too — a REAL held key walks the player into a
+## banner pole, a lantern post, a planter and a rock in the hub. Where the walk must stop is read
+## from each prop's OWN PropData (its footprint's edge plus the player's box), never typed here.
+func _step_decor_solid(map: Node) -> void:
+	var started := Time.get_ticks_msec()
+	var player := _player_of(map)
+	if player == null:
+		_record("05g_decor_solid", "a player in the hub", "missing", false, started)
+		return
+	# [decor node, approach side, the key toward it, the key back]
+	var cases := [["Visual/Decor/BannerW", Vector2.DOWN, &"move_up", &"move_down"],
+		["Visual/Decor/PlanterW", Vector2.DOWN, &"move_up", &"move_down"],
+		["Visual/Decor/RockN", Vector2.DOWN, &"move_up", &"move_down"],
+		["Visual/Decor/LanternN", Vector2.LEFT, &"move_right", &"move_left"]]
+	var notes: Array[String] = []
+	var ok := true
+	var shot := ""
+	for entry in cases:
+		var decor := map.get_node_or_null(String(entry[0])) as Node2D
+		var body := decor.get_node_or_null("Body") as PropBody if decor != null else null
+		if body == null or body.prop == null:
+			notes.append("%s: NO BODY" % entry[0])
+			ok = false
+			continue
+		var side: Vector2 = entry[1]
+		var foot := body.prop.footprint
+		var walk := await _walk_into(player, decor.global_position + side * 48.0, entry[2],
+			entry[3], "05g_%s_contact" % decor.name if shot == "" else "")
+		if shot == "":
+			shot = walk["shot"]
+		var rel: Vector2 = walk["feet"] - decor.global_position
+		# The nearest the feet may come: the footprint's edge plus the player's box (18 x 12, its
+		# top 12 px above the feet), less the physics margin.
+		var outside := rel.y >= foot.end.y + 12.0 - 0.5 if side == Vector2.DOWN \
+			else rel.x <= foot.position.x - 9.0 + 0.5
+		var good: bool = walk["stopped"] and outside and _held_and_free(walk)
+		ok = ok and good
+		notes.append("%s %s" % [decor.name, _walk_note(walk, decor.global_position)])
+	_record("05g_decor_solid",
+		"each decor walk stops OUTSIDE its footprint; push holds; leaving is free",
+		" | ".join(notes), ok, started, shot)
 
 
 ## SETUP the start, then a REAL held key until the body stops (6 still physics frames); then

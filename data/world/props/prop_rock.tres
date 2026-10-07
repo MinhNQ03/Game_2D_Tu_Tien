@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/world/prop_data.gd" id="1_prop"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_rock.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_prop")
+id = &"prop_rock"
+texture = ExtResource("2_tex")
+origin = Vector2(8, 15)
+footprint = Rect2(-7, -5, 15, 6)
+footprint_round = true
+sways = false

@@ -1,4 +1,4 @@
-[gd_scene load_steps=34 format=3]
+[gd_scene load_steps=37 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -33,6 +33,9 @@
 [ext_resource type="Resource" path="res://data/world/props/pine_small.tres" id="p_pine_small"]
 [ext_resource type="Resource" path="res://data/world/props/tree_broadleaf.tres" id="p_tree_broadleaf"]
 [ext_resource type="Resource" path="res://data/world/props/tree_small.tres" id="p_tree_small"]
+[ext_resource type="Script" path="res://src/gameplay/world/props/prop_body.gd" id="pb_script"]
+[ext_resource type="Resource" path="res://data/world/props/prop_lantern_post.tres" id="pb_lantern"]
+[ext_resource type="Resource" path="res://data/world/props/prop_rock.tres" id="pb_rock"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
 shader_parameter/pivot_row = 11.0
@@ -193,10 +196,14 @@ prop = ExtResource("p_boulder")
 
 [node name="LanternN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
-position = Vector2(100, 280)
+position = Vector2(100, 276)
 texture = ExtResource("20_post")
 centered = false
 offset = Vector2(-5, -47)
+
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/LanternN"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_lantern")
 
 [node name="Lantern" type="Sprite2D" parent="Visual/Decor/LanternN"]
 texture_filter = 1
@@ -212,6 +219,10 @@ texture = ExtResource("20_post")
 centered = false
 offset = Vector2(-5, -47)
 
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/LanternS"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_lantern")
+
 [node name="Lantern" type="Sprite2D" parent="Visual/Decor/LanternS"]
 texture_filter = 1
 material = SubResource("Mat_lantern")
@@ -226,6 +237,10 @@ texture = ExtResource("20_rock")
 centered = false
 offset = Vector2(-8, -15)
 
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/RockN"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_rock")
+
 [node name="RockS" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
 position = Vector2(584, 460)
@@ -233,12 +248,20 @@ texture = ExtResource("20_rock")
 centered = false
 offset = Vector2(-8, -15)
 
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/RockS"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_rock")
+
 [node name="RockE" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
 position = Vector2(936, 214)
 texture = ExtResource("20_rock")
 centered = false
 offset = Vector2(-8, -15)
+
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/RockE"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_rock")
 
 [node name="Grass00" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1

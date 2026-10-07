@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="PropData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/world/prop_data.gd" id="1_prop"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_banner_pole.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_prop")
+id = &"prop_banner_pole"
+texture = ExtResource("2_tex")
+origin = Vector2(8, 47)
+footprint = Rect2(-4, -3, 9, 4)
+sways = false

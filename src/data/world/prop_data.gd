@@ -1,9 +1,11 @@
 extends Resource
 class_name PropData
 ## PropData — Aetheria data (one world prop, D-062). Written by the art pipeline
-## (`build.py props`), never by hand: the sprite the prop wears, where its ORIGIN (the centre of
-## its front base — the line the depth sort compares) falls in that sprite, and the solid
-## footprint a body cannot walk through, in world px relative to the origin.
+## (`build.py props`), or by the stdlib generator for the decor it still draws
+## (`tools/gen_prototype_assets.py`, footprint MEASURED from the drawn pixels, D-063) — never by
+## hand: the sprite the prop wears, where its ORIGIN (the centre of its front base — the line the
+## depth sort compares) falls in that sprite, and the solid footprint a body cannot walk through,
+## in world px relative to the origin. Both write it through `aetheria_art.sheet`.
 
 @export var id: StringName = &""
 @export var texture: Texture2D = null

@@ -12,6 +12,7 @@ extends TestCase
 ## distance test — adding a body changed no interaction).
 
 const HubScene := preload("res://src/gameplay/maps/hub_map.tscn")
+const FieldScene := preload("res://src/gameplay/maps/field_map.tscn")
 const PlayerScene := preload("res://src/gameplay/entities/player.tscn")
 const STELE := preload("res://data/world/props/stele.tres")
 const SPRING := preload("res://data/world/props/spirit_spring.tres")
@@ -19,6 +20,23 @@ const SPRING := preload("res://data/world/props/spirit_spring.tres")
 ## The eight ways a walk meets a thing: from each side, and from each corner.
 const APPROACHES: Array[Vector2] = [Vector2.DOWN, Vector2.UP, Vector2.LEFT, Vector2.RIGHT,
 	Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]
+
+## What a player WALKS THROUGH, and why — the only drawn things with no body. Anything else drawn
+## in the world must stand on a PropBody (or be a WorldProp): a new sprite with neither fails.
+const INTANGIBLE_BY_DESIGN := {
+	"res://assets/sprites/props/prop_grass_1.png": "ground cover: a player walks through grass",
+	"res://assets/sprites/props/prop_grass_2.png": "ground cover: a player walks through grass",
+	"res://assets/sprites/props/prop_grass_3.png": "ground cover: a player walks through grass",
+	"res://assets/sprites/props/prop_mist.png": "atmosphere: mist drifts above the ground",
+	"res://assets/sprites/props/prop_banner_cloth.png":
+		"hangs from the pole above head height; the pole's footing is the body",
+	"res://assets/sprites/props/prop_lantern_hanging.png":
+		"hangs from the post; the post's foot is the body",
+}
+
+## Where the world's drawn things live in a map.
+const WORLD_HOLDERS: Array[String] = ["Visual/Decor", "Visual/Atmosphere", "KnowledgeSources",
+	"CultivationSites"]
 
 ## A pixel is DRAWN MASS from this alpha up; a baked cast shadow is lighter and is not mass.
 const MASS_ALPHA := 200
@@ -88,9 +106,10 @@ func _approach_from_every_side(data: PropData, reach: float, label: String) -> v
 		var feet := probe.global_position
 		assert_false(_overlaps(_probe_polygon(probe), outline),
 			"%s: it stops OUTSIDE the body (feet at %s)" % [case, str(feet)])
-		assert_true(feet.length() <= reach,
-			"%s: and still inside the reach — %.1f px from the origin, reach %.0f"
-				% [case, feet.length(), reach])
+		if reach < INF:
+			assert_true(feet.length() <= reach,
+				"%s: and still inside the reach — %.1f px from the origin, reach %.0f"
+					% [case, feet.length(), reach])
 		probe.move_and_collide(-dir * 40.0)
 		assert_true(probe.global_position.distance_to(feet) < 1.0,
 			"%s: pushing on does not pass through" % case)
@@ -99,19 +118,76 @@ func _approach_from_every_side(data: PropData, reach: float, label: String) -> v
 	free_node(world)
 
 
+func test_a_walk_meets_every_kind_of_decor_and_is_never_trapped() -> void:
+	var walked := 0
+	for data: PropData in _prop_body_data():
+		if data != STELE and data != SPRING:
+			walked += 1
+			await _approach_from_every_side(data, INF, String(data.id))
+	assert_true(walked >= 4, "the banner pole, lantern post, rock and planter were walked into "
+		+ "(%d) — a walk over nothing proves nothing" % walked)
+
+
+# --- every drawn mass is a body, or is intangible on purpose ---------------------------------
+
+## The RULE (D-063): what is drawn with physical mass has a body — a PropBody under (or beside)
+## its sprite, built from the PropData of THAT texture, at the sprite's own origin — or is listed
+## in INTANGIBLE_BY_DESIGN with the reason. And an intangible thing never grew a body.
+func test_every_drawn_mass_has_a_body_or_is_intangible_by_design() -> void:
+	for entry in [[HubScene, "hub"], [FieldScene, "field"]]:
+		var map: Node = (entry[0] as PackedScene).instantiate()  # NOT in the tree (L-010)
+		var checked := 0
+		for holder_path in WORLD_HOLDERS:
+			var holder := map.get_node_or_null(holder_path)
+			if holder == null:
+				continue
+			for found in holder.find_children("*", "Sprite2D", true, false):
+				var sprite := found as Sprite2D
+				if sprite.texture == null:
+					continue
+				checked += 1
+				var path := sprite.texture.resource_path
+				var body := _body_of(sprite)
+				var where := "%s %s" % [entry[1], str(map.get_path_to(sprite))]
+				if INTANGIBLE_BY_DESIGN.has(path):
+					assert_null(body, "%s is intangible by design (%s) and has no body"
+						% [where, INTANGIBLE_BY_DESIGN[path]])
+					continue
+				assert_not_null(body, "%s (%s) is drawn with mass: it needs a body, or a reason "
+					% [where, path.get_file()] + "in INTANGIBLE_BY_DESIGN")
+				if body == null:
+					continue
+				assert_true(body.prop != null and body.prop.texture == sprite.texture,
+					"%s stands on the PropData of its own texture" % where)
+				assert_true(body.prop != null and body.prop.footprint.has_area(),
+					"%s: with a real footprint" % where)
+				var body_at := body.position if body.get_parent() == sprite \
+					else body.position - sprite.position
+				assert_eq(body_at, Vector2.ZERO, "%s: the body stands at the sprite's origin"
+					% where)
+		assert_true(checked >= 10,
+			"%s: the walk saw the world's sprites (%d)" % [entry[1], checked])
+		map.free()
+
+
 # --- the body sits under the drawn mass ---------------------------------------------------
 
 ## NO INVISIBLE WALL: every point on a body's edge lies on (or beside) a drawn pixel.
 ## NO GHOST MASS: the drawn base is solid — the middle of its base row lies inside the body.
 func test_each_body_sits_under_the_mass_that_is_drawn() -> void:
-	for data: PropData in [STELE, SPRING]:
+	var bodied := _prop_body_data()
+	assert_true(bodied.size() >= 6,
+		"the stele, the spring and the four kinds of decor stand on bodies (%d)" % bodied.size())
+	for data: PropData in bodied:
 		var image: Image = data.texture.get_image()
 		var outline := _footprint_polygon(data)
 		assert_false(outline.is_empty(), "%s: drawn with mass, so it has a body" % data.id)
 		for point in outline:
 			assert_true(_near_mass(image, point + data.origin),
 				"%s: the body's edge at %s is drawn — no invisible wall" % [data.id, str(point)])
-		var base_row := int(data.origin.y) - (0 if data.footprint_round else 1)
+		# the drawn base: the row above the ground line, or a round base's middle row
+		var base_row := int(data.origin.y + data.footprint.get_center().y) \
+			if data.footprint_round else int(data.origin.y) - 1
 		var span := _mass_span(image, base_row)
 		assert_true(span.y > span.x, "%s: its base row %d is drawn" % [data.id, base_row])
 		var inner := Vector2(lerpf(span.x, span.y, 0.2), lerpf(span.x, span.y, 0.8)) \
@@ -122,6 +198,33 @@ func test_each_body_sits_under_the_mass_that_is_drawn() -> void:
 
 
 # --- helpers ----------------------------------------------------------------------------
+
+## The PropBody standing a sprite on the ground: a child of the sprite (decor), or a sibling
+## under the same owner (a stele's Stone and its Body).
+func _body_of(sprite: Sprite2D) -> PropBody:
+	for child in sprite.get_children():
+		if child is PropBody:
+			return child as PropBody
+	var parent := sprite.get_parent()
+	if parent is KnowledgeSource or parent is CultivationSite:
+		for sibling in parent.get_children():
+			if sibling is PropBody:
+				return sibling as PropBody
+	return null
+
+
+## Every PropData a PropBody stands on, in either map, once each.
+func _prop_body_data() -> Array[PropData]:
+	var out: Array[PropData] = []
+	for scene: PackedScene in [HubScene, FieldScene]:
+		var map := scene.instantiate()
+		for found in map.find_children("*", "StaticBody2D", true, false):
+			var body := found as PropBody
+			if body != null and body.prop != null and not out.has(body.prop):
+				out.append(body.prop)
+		map.free()
+	return out
+
 
 ## A body with the REAL player's collision shape and mask (read from player.tscn, so a resized
 ## player cannot leave this test measuring a stale box).

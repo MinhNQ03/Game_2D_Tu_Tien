@@ -4372,3 +4372,43 @@ against the bodiless data and scene all four new tests fail ("the walk is stoppe
 tie with `max(set(keys))` over material NAMES, and Python randomizes string hashing per process —
 `PYTHONHASHSEED=2` reproduces the committed art, seeds 1 and 3 change one or two pixels of
 `spirit_spring.png`. A2 regenerated only the two `.tres` files and kept every PNG at HEAD.
+
+### A2b — The decor drawn with mass, and what is intangible by design
+
+**Same root cause, smaller objects.** The stdlib decor that STANDS on the ground — the hub's two
+sect banner poles, the lantern posts (hub ×2, field ×2), the planters (hub ×2) and the small
+rocks (hub ×2, field ×3) — were bare `Sprite2D`s: walked through, like the stele.
+
+**Decision.**
+- **PHYSICAL / BLOCKING:** each stands on a `PropBody` child built from its own
+  `data/world/props/prop_*.tres`. Those are written by the generator that DRAWS the sprite
+  (`tools/aetheria_art/props.py _save_solid`), MEASURED from the pixels just drawn — the widest
+  drawn span in the rows above the ground line (pole footing 9 × 4, lantern foot 8 × 4, pot
+  8 × 4, rock 15 × 6 and round) — so a body cannot drift from its art; the measured origins
+  equal the scenes' existing offsets exactly. One writer for all prop data,
+  `aetheria_art.sheet.write_prop_resource`, now also used by the Blender pipeline (regenerated
+  byte-identical).
+- **INTANGIBLE_BY_DESIGN** (no body, on purpose, each with its reason — the list lives in
+  `tests/gameplay/test_prop_bodies.gd` and is enforced): grass tufts (ground cover), mist
+  (atmosphere), the banner cloth and the hanging lantern (they hang from a post whose foot is
+  the body). Pickups are collected by walking onto them; the field's broken vein is painted on
+  the floor.
+- **The rule, tested:** every sprite in a map's world holders (`Visual/Decor`,
+  `Visual/Atmosphere`, `KnowledgeSources`, `CultivationSites`) either stands on a PropBody of its
+  own texture at its own origin, or is listed as intangible with a reason — and an intangible
+  sprite never has a body. A new sprite with neither fails the build.
+- **Layout nudge:** the field's north gate lantern moved (100,280) → (100,276): with a body, its
+  foot was 23 px from the hub-bound spawn → exit line, one under the corridor rule's 24.
+
+**Tests.** `test_every_drawn_mass_has_a_body_or_is_intangible_by_design` (both maps);
+`test_a_walk_meets_every_kind_of_decor_and_is_never_trapped` (the player's own shape, 8
+directions, each kind); `test_each_body_sits_under_the_mass_that_is_drawn` now covers every
+PropBody's data (6 kinds). Playtest 05g: real held keys into a banner pole, a planter, a rock
+(from the south) and a lantern post (from the west). Test-the-test: on the A2a scenes the rule
+names all 13 bodiless decor sprites and the walk/mass tests fail; grass and mist are not flagged.
+
+**Audit of the D-062 WorldProps (report only, outside A2).** Running the same "no invisible wall"
+check over every pipeline prop: the houses, the hall, the trees and the pines pass; the BOULDER
+and the WELL are round but have rectangular footprints, so their front corners (±23 / ±20 px)
+block a few pixels of open ground — both are candidates for `footprint_round`; the fence and the
+weapon rack block the gaps between their legs, which is right for a fence and a rack.

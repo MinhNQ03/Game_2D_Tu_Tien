@@ -1,4 +1,4 @@
-[gd_scene load_steps=47 format=3]
+[gd_scene load_steps=51 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -47,6 +47,10 @@
 [ext_resource type="Script" path="res://src/gameplay/world/props/prop_body.gd" id="pb_script"]
 [ext_resource type="Resource" path="res://data/world/props/spirit_spring.tres" id="pb_spring"]
 [ext_resource type="Resource" path="res://data/world/props/stele.tres" id="pb_stele"]
+[ext_resource type="Resource" path="res://data/world/props/prop_banner_pole.tres" id="pb_banner"]
+[ext_resource type="Resource" path="res://data/world/props/prop_lantern_post.tres" id="pb_lantern"]
+[ext_resource type="Resource" path="res://data/world/props/prop_planter.tres" id="pb_planter"]
+[ext_resource type="Resource" path="res://data/world/props/prop_rock.tres" id="pb_rock"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
 shader_parameter/pivot_row = 11.0
@@ -181,6 +185,10 @@ texture = ExtResource("20_pole")
 centered = false
 offset = Vector2(-8, -47)
 
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/BannerW"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_banner")
+
 [node name="Cloth" type="Sprite2D" parent="Visual/Decor/BannerW"]
 texture_filter = 1
 material = SubResource("Mat_cloth")
@@ -194,6 +202,10 @@ position = Vector2(540, 252)
 texture = ExtResource("20_pole")
 centered = false
 offset = Vector2(-8, -47)
+
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/BannerE"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_banner")
 
 [node name="Cloth" type="Sprite2D" parent="Visual/Decor/BannerE"]
 texture_filter = 1
@@ -209,6 +221,10 @@ texture = ExtResource("20_post")
 centered = false
 offset = Vector2(-5, -47)
 
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/LanternN"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_lantern")
+
 [node name="Lantern" type="Sprite2D" parent="Visual/Decor/LanternN"]
 texture_filter = 1
 material = SubResource("Mat_lantern")
@@ -222,6 +238,10 @@ position = Vector2(936, 386)
 texture = ExtResource("20_post")
 centered = false
 offset = Vector2(-5, -47)
+
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/LanternS"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_lantern")
 
 [node name="Lantern" type="Sprite2D" parent="Visual/Decor/LanternS"]
 texture_filter = 1
@@ -237,12 +257,20 @@ texture = ExtResource("20_rock")
 centered = false
 offset = Vector2(-8, -15)
 
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/RockN"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_rock")
+
 [node name="RockS" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
 position = Vector2(676, 470)
 texture = ExtResource("20_rock")
 centered = false
 offset = Vector2(-8, -15)
+
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/RockS"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_rock")
 
 [node name="PlanterW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
@@ -251,12 +279,20 @@ texture = ExtResource("20_planter")
 centered = false
 offset = Vector2(-8, -15)
 
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/PlanterW"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_planter")
+
 [node name="PlanterE" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
 position = Vector2(570, 262)
 texture = ExtResource("20_planter")
 centered = false
 offset = Vector2(-8, -15)
+
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/PlanterE"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_planter")
 
 [node name="Grass00" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1

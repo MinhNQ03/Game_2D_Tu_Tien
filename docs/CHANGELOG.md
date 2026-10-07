@@ -14,6 +14,8 @@ Dates are ISO (YYYY-MM-DD).
   and you stop at its plinth — and can read it from there, from any side; the spring's ring of
   stones is round, and you sit on its bank, not in the water. The stele now stands by the mouth
   of the east road, so the way to the woods is clear.
+- **Banner poles, lantern posts, planters and rocks are solid too.** Grass, mist, a banner's
+  cloth and a hanging lantern you still walk through — on purpose.
 
 ### 2026-10-08 — Immediate feedback (D-063 A1)
 
