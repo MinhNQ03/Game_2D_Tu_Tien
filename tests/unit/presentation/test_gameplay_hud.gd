@@ -1517,6 +1517,35 @@ func test_a_settled_hud_does_no_per_frame_work() -> void:
 	free_node(hud)
 
 
+## The dock reads "press this key" without hiding anything it shows: each keycap sits on its
+## slot's corner, never on the qi gauge under the slots (a key over the gauge hid the low end of
+## the pool — the part the player needs before casting).
+func test_the_dock_keys_never_cover_the_qi_gauge() -> void:
+	var hud := _hud()
+	hud.call("set_skill_view", _skills_learned())
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	var dock := hud.find_child("SkillDock", true, false) as Control
+	assert_true(dock != null and dock.visible, "the dock is up with techniques learned")
+	if dock == null:
+		free_node(hud)
+		return
+	var gauge: Control = null
+	for node in dock.find_children("*", "ProgressBar", true, false):
+		gauge = node as Control
+	var caps := dock.find_children("KeyCap", "", true, false)
+	assert_eq(caps.size(), 2, "one keycap per learned technique")
+	assert_not_null(gauge, "the qi gauge is in the dock")
+	if gauge != null:
+		for cap in caps:
+			var rect := (cap as Control).get_global_rect()
+			assert_false(rect.intersects(gauge.get_global_rect()),
+				"keycap %s stays off the qi gauge %s" % [rect, gauge.get_global_rect()])
+			assert_true(rect.end.y > (cap.get_parent() as Control).get_global_rect().end.y,
+				"the keycap still hangs off its slot's corner (read as a key, not a label)")
+	free_node(hud)
+
+
 func _collect_processing(node: Node, busy: Array[String]) -> int:
 	if node.is_processing() or node.is_physics_processing():
 		busy.append("%s (%s)" % [node.name, node.get_class()])

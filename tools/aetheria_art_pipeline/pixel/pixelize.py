@@ -204,6 +204,35 @@ def despeckle(spec, grid):
     return out
 
 
+def drop_islands(grid, min_px=4):
+    """Opaque islands smaller than `min_px` (8-connected) are dropped. At icon scale a 1-3px
+    fleck cut off from the subject — the tip of a thin stroke that fell between samples — gets
+    its own ink ring and reads as dirt floating beside the icon, not as part of it."""
+    H, W = len(grid), len(grid[0])
+    seen = [[False] * W for _ in range(H)]
+    out = [list(row) for row in grid]
+    for y0 in range(H):
+        for x0 in range(W):
+            if seen[y0][x0] or grid[y0][x0] is None:
+                continue
+            island, stack = [], [(x0, y0)]
+            seen[y0][x0] = True
+            while stack:
+                x, y = stack.pop()
+                island.append((x, y))
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        nx, ny = x + dx, y + dy
+                        if (0 <= nx < W and 0 <= ny < H and not seen[ny][nx]
+                                and grid[ny][nx] is not None):
+                            seen[ny][nx] = True
+                            stack.append((nx, ny))
+            if len(island) < min_px:
+                for x, y in island:
+                    out[y][x] = None
+    return out
+
+
 def to_image(spec, grid, shadow_centre=None, shadow_radii=None):
     mats = spec["materials"]
     ink = tuple(spec["style"]["ink"]) + (255,)
@@ -365,7 +394,7 @@ def icon(spec, frames_dir, icon_id, k, cell, shadow=True):
     object resting on the ground (a sigil floats: no shadow; a WORLD icon gets its shadow from
     the pickup, not baked in)."""
     grid = rasterize(spec, Passes(frames_dir, icon_id), k)
-    grid = despeckle(spec, inner_contours(spec, clean(spec, grid)))
+    grid = drop_islands(despeckle(spec, inner_contours(spec, clean(spec, grid))))
     if spec["kind"].startswith("sigil") or not shadow:
         return to_image(spec, grid)
     # the shadow under the object's lowest opaque row: an object rests ON it

@@ -2,13 +2,13 @@ extends PanelContainer
 class_name InventoryPanel
 ## InventoryPanel — Aetheria presentation (the bag, opened with the `inventory` key, Phase 13).
 ##
-## A bounded side panel like the sect panel (same frame, same scroll body, same hierarchy:
-## title → rows → the selected item's description → the keys). KEYBOARD FIRST: the semantic
-## move_up / move_down actions choose a row, `interact` uses it, `inventory` closes — read through
-## `InputService.is_modal_action_just_pressed` while the HUD holds a UI_MODAL context, so the
-## player does not walk while choosing a pill. It decides nothing: a use is REQUESTED
-## (`use_requested`) and the `InventoryRuntime` decides; the outcome comes back as a new view and
-## a HUD notice.
+## A bounded side panel like the sect panel (same frame, same hierarchy: title → rows → the
+## selected item's description → the keys); only the rows scroll, the rest is pinned.
+## KEYBOARD FIRST: the semantic move_up / move_down actions choose a row, `interact` uses it,
+## `inventory` closes — read through `InputService.is_modal_action_just_pressed` while the HUD
+## holds a UI_MODAL context, so the player does not walk while choosing a pill. It decides
+## nothing: a use is REQUESTED (`use_requested`) and the `InventoryRuntime` decides; the outcome
+## comes back as a new view and a HUD notice.
 
 ## `equipped`: the row was something worn (WorldRuntime takes it off instead of using it).
 signal use_requested(item_id: StringName, equipped: bool)
@@ -19,6 +19,7 @@ var _loc: Node = null
 var _input: Node = null
 var _title: Label
 var _list: VBoxContainer
+var _scroll: ScrollContainer
 var _empty: Label
 var _desc: Label
 var _keys: Label
@@ -32,22 +33,33 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", UITheme.panel_stylebox())
 	custom_minimum_size = Vector2(PANEL_MIN_WIDTH, 0)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var box := UITheme.scroll_body(self)
+	# Only the ROWS scroll. The title above and the selected item's description + keys below
+	# are pinned: on a short screen a whole-panel scroll cut the description mid-line at the
+	# frame's edge — the one text the player opened the satchel to read.
+	var column := VBoxContainer.new()
+	column.name = "Column"
+	column.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(column)
 	_title = _label(UIPalette.FONT_SIZE_SUBTITLE, UIPalette.COLOR_TITLE)
-	box.add_child(_title)
-	box.add_child(UITheme.ornament_divider())
+	column.add_child(_title)
+	column.add_child(UITheme.ornament_divider())
+	var box := UITheme.scroll_body(column)
+	_scroll = box.get_parent().get_parent() as ScrollContainer
 	_list = VBoxContainer.new()
-	_list.name = "Rows"
+	_list.name = "ItemRows"
 	_list.add_theme_constant_override("separation", UIPalette.ROW_GAP)
 	box.add_child(_list)
 	_empty = _label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TEXT_MUTED)
 	box.add_child(_empty)
-	box.add_child(UITheme.ornament_divider())
+	column.add_child(UITheme.ornament_divider())
 	_desc = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
+	_desc.name = "Description"
 	_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_desc)
+	column.add_child(_desc)
 	_keys = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_ACCENT)
-	box.add_child(_keys)
+	_keys.name = "Keys"
+	column.add_child(_keys)
 	set_process(false)
 	refresh()
 
@@ -117,6 +129,10 @@ func refresh() -> void:
 	_empty.text = _t("UI_INVENTORY_EMPTY")
 	for i in rows.size():
 		_list.add_child(_row(rows[i], i == _selected))
+	# The rows are not focusable (keyboard-first through InputService), so `follow_focus`
+	# cannot keep the selection in view: scroll to it once the new rows have their layout.
+	if not rows.is_empty():
+		_reveal_selected.call_deferred()
 	if rows.is_empty():
 		_desc.text = ""
 	else:
@@ -126,6 +142,15 @@ func refresh() -> void:
 	var close_key: String = String(_input.call("get_action_display_label", &"inventory")) \
 		if _input != null else "I"
 	_keys.text = _t_args("UI_INVENTORY_KEYS", {"use": use_key, "close": close_key})
+
+
+func _reveal_selected() -> void:
+	if _scroll == null or not is_inside_tree():
+		return
+	var live := _list.get_children().filter(func(c: Node) -> bool:
+		return not c.is_queued_for_deletion())
+	if _selected < live.size():
+		_scroll.ensure_control_visible(live[_selected] as Control)
 
 
 func _row(row: Dictionary, selected: bool) -> Control:

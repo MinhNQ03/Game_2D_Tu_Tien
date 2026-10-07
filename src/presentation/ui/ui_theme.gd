@@ -505,8 +505,12 @@ static func inset_stylebox() -> StyleBox:
 
 ## StyleBox for the key badge (the "E"/"Esc" keycap): the kit's raised lacquer cap with a jade
 ## edge. Opaque under the glyph (a keycap needs a solid face); the lip is never stretched.
-static func badge_stylebox() -> StyleBox:
-	var box := _texture_box(UIPalette.TEX_KEYCAP, UIPalette.KEYCAP_SLICE, UIPalette.SPACE_SM, 2)
+## `compact`: the keycap that sits ON something (a dock slot's corner) — the same cap, tighter
+## padding, so it marks the corner instead of covering the icon.
+static func badge_stylebox(compact: bool = false) -> StyleBox:
+	var pad_h := 4 if compact else UIPalette.SPACE_SM
+	var pad_v := 0 if compact else 2
+	var box := _texture_box(UIPalette.TEX_KEYCAP, UIPalette.KEYCAP_SLICE, pad_h, pad_v)
 	if box == null:
 		var flat := StyleBoxFlat.new()
 		flat.bg_color = UIPalette.COLOR_BADGE
@@ -514,7 +518,7 @@ static func badge_stylebox() -> StyleBox:
 		flat.set_border_width_all(1)
 		return flat
 	box.texture_margin_bottom = UIPalette.KEYCAP_LIP
-	box.content_margin_bottom = UIPalette.KEYCAP_LIP - 2
+	box.content_margin_bottom = UIPalette.KEYCAP_LIP - (5 if compact else 2)
 	return box
 
 

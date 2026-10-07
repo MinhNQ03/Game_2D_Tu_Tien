@@ -17,6 +17,10 @@ class_name SkillDock
 ## stay under 15% of the screen.
 
 const WELL_INSET := 4
+## How far the keycap hangs past the slot's lower-right corner. The bar below starts after it,
+## so a key never sits on the qi gauge.
+const CAP_OVERHANG := 5
+const KEY_FONT_SIZE := 13
 const QI_BAR_HEIGHT := 8
 const QI_FILL := Color(0.60, 0.86, 0.96)
 const COOLDOWN_SHADE := Color(0.02, 0.03, 0.06, 0.72)
@@ -32,7 +36,7 @@ func _ready() -> void:
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	box.add_theme_constant_override("separation", CAP_OVERHANG + UIPalette.SPACE_SM)
 	add_child(box)
 	_slots = HBoxContainer.new()
 	_slots.name = "Slots"
@@ -86,16 +90,16 @@ func _make_slot() -> Control:
 	shade.position = Vector2(WELL_INSET, WELL_INSET)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(shade)
-	# The key on a keycap, hanging off the slot's lower edge — the dock is read "press this".
+	# The key on a keycap, on the slot's lower-right corner — the dock is read "press this".
 	var cap := PanelContainer.new()
 	cap.name = "KeyCap"
-	cap.add_theme_stylebox_override("panel", UITheme.badge_stylebox())
+	cap.add_theme_stylebox_override("panel", UITheme.badge_stylebox(true))
 	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(cap)
 	var key := Label.new()
 	key.name = "Key"
 	key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	key.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_BADGE)
+	key.add_theme_font_size_override("font_size", KEY_FONT_SIZE)
 	key.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
 	key.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cap.add_child(key)
@@ -115,6 +119,6 @@ func _fill_slot(slot: Control, row: Dictionary) -> void:
 	(cap.get_node("Key") as Label).text = String(_input.call("get_action_display_label",
 		action)) if _input != null else str(row["slot"])
 	cap.reset_size()
-	cap.position = Vector2(UIPalette.SLOT_PX - cap.size.x + UIPalette.SPACE_SM,
-		UIPalette.SLOT_PX - cap.size.y * 0.5)
+	cap.position = Vector2(UIPalette.SLOT_PX - cap.size.x + CAP_OVERHANG,
+		UIPalette.SLOT_PX - cap.size.y + CAP_OVERHANG)
 	slot.modulate = Color.WHITE if bool(row["ready"]) else Color(0.6, 0.6, 0.65)

@@ -148,8 +148,10 @@ def save(img, name):
 
 def plaque():
     """THE text-bearing surface (identity, place, target, side panels, menu panel). 64x64,
-    9-slice margin 14 (content inset >= 14)."""
-    img = plate(64, 64, cut=2)
+    9-slice margin 14 (content inset >= 14). At the TOP of the DNA's translucency range: the
+    world still breathes through, but a bright wall or window behind a line of text no longer
+    prints through it (the mid value let a plaster window cross show beside the medallion)."""
+    img = plate(64, 64, cut=2, alpha=TRANSLUCENCY[1])
     hairline(img, 3, role("gold", 0.78), role("gold_light", 0.9), role("gold_shadow", 0.9),
              notch=3)
     return img
