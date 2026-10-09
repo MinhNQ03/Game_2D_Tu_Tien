@@ -59,12 +59,16 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
   - P2: `slash_the_post` now FAILS LOUDLY per profile path — jian still worn, lifecycle
     entered, visual in ACTION_SLASH showing that profile's slash sheet, ≥1 captured frame
     in the slash action; otherwise `_fail()` + non-zero exit. Stale daobao comment fixed.
-- Evidence — fill after the gates run on the new head (no placeholders at commit):
-  - Tested SHA: ___
-  - GitHub Actions run (URL/ID): ___
-  - Unit suite: ___/___ passed, assertion failures: ___, SCRIPT ERROR: ___, leaks: ___
-  - E2E app / player / world: ___ / ___ / ___
-  - Headless suite repeat: SHA ___, run/log ___ (label local vs GitHub)
+- Evidence at `00e84b0`:
+  - Tested SHA: `00e84b05c6c20e6191cf01d730f468c5d458c15b`
+  - GitHub Actions run: FILL_URL (Foundation gates (Godot 4.7) — SUCCESS, 55s)
+  - Unit suite: 839/839 passed, assertion failures: 0, SCRIPT ERROR: 0, leaks: 0
+    (local full-log scan of `/tmp/tests.log`)
+  - E2E app / player / world: PASS / PASS / PASS (local, fresh runs)
+  - Headless suite repeat: local `/tmp/tests_repeat.log` 839/839 PASS, 0 SCRIPT ERROR;
+    CI headless suite 839/839 PASS
   - Captures `/tmp/motion/motion_slash_post.png` (proto) + `/tmp/motion/motion_slash_post_daobao.png`
-    (daobao): visual inspection ___
+    (daobao): visual inspection PASS — both strips show coil → cut with the blade-tracking
+    trail → post hit-flash mid-cut → low-guard recovery; the daobao look is confirmed by
+    the blue Thanh Vân robe, proving its own sheet/anchors/depths render in the real app.
 - A3 is approved only after every acceptance gate passes on the new head.
