@@ -59,9 +59,11 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
   - P2: `slash_the_post` now FAILS LOUDLY per profile path — jian still worn, lifecycle
     entered, visual in ACTION_SLASH showing that profile's slash sheet, ≥1 captured frame
     in the slash action; otherwise `_fail()` + non-zero exit. Stale daobao comment fixed.
-- Evidence at `00e84b0`:
-  - Tested SHA: `00e84b05c6c20e6191cf01d730f468c5d458c15b`
-  - GitHub Actions run: FILL_URL (Foundation gates (Godot 4.7) — SUCCESS, 55s)
+- Evidence at `c62a321` (docs-only follow-up to `00e84b0`; code gates below ran on `00e84b0`):
+  - Tested SHA: `c62a321a7cb05e6abcdb9f8b5d7f2b77be40b94f`
+  - GitHub Actions run: https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37889854742
+    (CI — SUCCESS on `c62a321`; code run https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37889572471
+    — SUCCESS on `00e84b0`)
   - Unit suite: 839/839 passed, assertion failures: 0, SCRIPT ERROR: 0, leaks: 0
     (local full-log scan of `/tmp/tests.log`)
   - E2E app / player / world: PASS / PASS / PASS (local, fresh runs)
