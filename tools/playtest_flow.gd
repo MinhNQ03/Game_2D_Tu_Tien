@@ -539,8 +539,8 @@ func _walk_onto(map: Node, player: Node2D, path: String,
 		return {"ok": false, "reason": "no live InventoryRuntime", "pickup_id": pid}
 	if bool(inv.call("is_collected", pid)):
 		return {"ok": false,
-			"reason": "pickup_id '%s' already collected before setup — this run cannot prove collection"
-				% pid,
+			"reason": "pickup_id '%s' already collected before setup — this run cannot "
+				% pid + "prove collection",
 			"pickup_id": pid}
 	player.global_position = (pickup as Node2D).global_position
 	for _i in 30:
