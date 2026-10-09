@@ -24,6 +24,8 @@ const VisualScript := preload("res://src/presentation/characters/character_visua
 const AnchorScript := preload("res://src/data/characters/character_anchor_data.gd")
 const AttackDataScript := preload("res://src/data/combat/attack_data.gd")
 const FeedbackScript := preload("res://src/presentation/equipment/equipment_feedback.gd")
+const AttackComponentScript := preload("res://src/gameplay/components/attack_component.gd")
+const RngServiceScript := preload("res://src/domain/worldsim/rng_service.gd")
 
 const PLAYER_PROFILE := "res://data/characters/visual/player_visual.tres"
 const WOLF_PROFILE := "res://data/characters/visual/mist_wolf_visual.tres"
@@ -46,6 +48,32 @@ func _component_for(profile: CharacterVisualProfileData) -> CharacterVisualCompo
 	add_to_tree(component)
 	assert_true(component.setup(profile), "the profile binds")
 	return component
+
+
+## A fighter with a REAL attack lifecycle and a REAL visual, wired the way `Player` wires
+## them: the `AttackComponent` sibling exists before the visual enters the tree, so the
+## visual's `_ready` binds the `attack_started`/`attack_finished` signals — the same seam
+## the game uses. Armed with the real Kiếm attack through the real combat seams
+## (a seeded `CombatService`, a real registry); no test-only production shortcut.
+func _fighter_with_visual(profile_path: String) -> Dictionary:
+	var entity := Node2D.new()
+	var attack: AttackComponent = AttackComponentScript.new()
+	attack.name = "AttackComponent"
+	entity.add_child(attack)
+	var visual: CharacterVisualComponent = VisualScript.new()
+	visual.name = "CharacterVisualComponent"
+	entity.add_child(visual)
+	add_to_tree(entity)
+	var profile := load(profile_path) as CharacterVisualProfileData
+	assert_not_null(profile, "the profile loads")
+	assert_true(visual.setup(profile), "the profile binds")
+	var registry := CombatHurtboxRegistry.new()
+	var rng: RngService = RngServiceScript.new(20261005)
+	var service := CombatService.new(rng.stream(RngService.STREAM_COMBAT))
+	var kiem := load(KIEM_ATTACK) as AttackData
+	assert_true(attack.arm(kiem, service, registry, &"test_attacker"),
+		"the Kiếm arms through the real seams")
+	return {"entity": entity, "attack": attack, "visual": visual, "profile": profile}
 
 
 ## An entity with a visual and a weapon feedback, the way `Player` wires them: the feedback
@@ -111,8 +139,8 @@ func test_slash_plays_the_slash_sheet() -> void:
 	free_node(component)
 
 
-## A look without the slash sheet (the wolf; the daobao look until its sheet is rendered)
-## falls back to the palm strike — never left without a body for its swing.
+## A look without the slash sheet (the wolf) falls back to the palm strike —
+## never left without a body for its swing.
 func test_slash_falls_back_to_attack_without_the_sheet() -> void:
 	var component := _component_for(_profile(WOLF_PROFILE))
 	assert_false(component.play_action(CharacterVisualComponent.ACTION_SLASH),
@@ -313,3 +341,48 @@ func test_typo_body_action_falls_back_without_breaking() -> void:
 		CharacterVisualComponent.ACTION_ATTACK,
 		"an unsupported body still resolves to the palm strike")
 	free_node(component)
+
+
+# === The real attack → presentation chain (D-063 A3 final review) ==================
+
+## The COMPLETE chain through the real signal seam: arming the real Kiếm attack and
+## calling `AttackComponent.request_attack()` must drive the visual into ACTION_SLASH —
+## proving `attack_started` carries the body, not just that `play_action` can render a
+## sheet when called by hand. Covers both player looks.
+func test_real_attack_drives_the_slash_on_both_looks() -> void:
+	for profile_path in [PLAYER_PROFILE, DAOBAO_PROFILE]:
+		var parts := _fighter_with_visual(profile_path)
+		var entity := parts["entity"] as Node2D
+		var attack := parts["attack"] as AttackComponent
+		var visual := parts["visual"] as CharacterVisualComponent
+		var profile := parts["profile"] as CharacterVisualProfileData
+		assert_true(attack.request_attack(),
+			"the swing starts for %s" % profile_path)
+		assert_eq(attack.state(), AttackStateMachine.State.WINDUP,
+			"the lifecycle started")
+		assert_eq(visual.current_action(), CharacterVisualComponent.ACTION_SLASH,
+			"the attack_started signal drove the visual into the slash")
+		assert_eq(visual.get_sprite().texture, profile.slash_sheet,
+			"the slash sheet shows")
+		assert_eq(visual.current_anim(), CharacterVisualProfileData.ANIM_SLASH,
+			"and anchors resolve under the slash key")
+		free_node(entity)
+
+
+## The fallback travels the real chain too: a supported body on a sheet-less look
+## (the wolf) still lands on the palm strike when the swing starts for real — silently,
+## by design, with no warning.
+func test_real_attack_falls_back_to_palm_without_the_sheet() -> void:
+	var parts := _fighter_with_visual(WOLF_PROFILE)
+	var entity := parts["entity"] as Node2D
+	var attack := parts["attack"] as AttackComponent
+	var visual := parts["visual"] as CharacterVisualComponent
+	var profile := parts["profile"] as CharacterVisualProfileData
+	assert_true(attack.request_attack(), "the swing starts")
+	assert_eq(attack.state(), AttackStateMachine.State.WINDUP,
+		"the lifecycle started")
+	assert_eq(visual.current_action(), CharacterVisualComponent.ACTION_ATTACK,
+		"the attack_started signal fell back to the palm strike")
+	assert_eq(visual.get_sprite().texture, profile.attack_sheet,
+		"the palm sheet shows")
+	free_node(entity)

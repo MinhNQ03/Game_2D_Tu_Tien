@@ -153,16 +153,9 @@ func _scenario_slash_the_post() -> void:
 	if not await _equip_hub_sword(player):
 		_fail("slash: could not equip the jian")
 		return
-	player.global_position = post.global_position + Vector2(-26, 2)
-	Input.action_press(&"move_right")
-	await process_frame
-	await process_frame
-	Input.action_release(&"move_right")
-	await _settle()
-	var focus := func() -> Vector2: return post.global_position + Vector2(-14, -16)
-	await _press(&"attack")
-	var frames := await _strip(focus, 24, 1)
-	_save_strip("motion_slash_post", frames)
+	if not await _capture_slash_strip(player, post,
+			"motion_slash_post", "player_proto_slash.png"):
+		return
 	await _settle()
 	# The second player look (D-063 A3 review): the Thanh Van robe swaps the body to the
 	# daobao profile — its own sheet, anchors and depths. Worn as DETERMINISTIC SETUP like
@@ -171,16 +164,69 @@ func _scenario_slash_the_post() -> void:
 	if not await _equip_daobao_robe(player):
 		_fail("slash: could not equip the Thanh Van robe")
 		return
+	if not await _capture_slash_strip(player, post,
+			"motion_slash_post_daobao", "player_daobao_slash.png"):
+		return
+	await _settle()
+
+
+## One guarded slash capture for a single look: positions the player, drives a REAL attack
+## input, and verifies — LOUDLY — that the swing actually happened. The jian must still be
+## worn, the attack lifecycle must have started, the visual must be in ACTION_SLASH showing
+## this profile's slash sheet, and at least one captured frame must belong to the slash.
+## Anything less calls `_fail()` instead of writing a successful-looking strip.
+func _capture_slash_strip(player: Node2D, post: Node2D, strip_name: String,
+		slash_file: String) -> bool:
+	var main := root.get_node_or_null("Main")
+	var equipment := main.get_node_or_null("Systems/EquipmentRuntime") \
+		if main != null else null
+	var attack_comp := player.get_node_or_null("AttackComponent") as AttackComponent
+	var visual := player.call("get_visual_component") as CharacterVisualComponent
+	if equipment == null or attack_comp == null or visual == null:
+		_fail("slash: missing equipment, attack or visual component")
+		return false
 	player.global_position = post.global_position + Vector2(-26, 2)
 	Input.action_press(&"move_right")
 	await process_frame
 	await process_frame
 	Input.action_release(&"move_right")
 	await _settle()
+	if not bool(equipment.call("is_worn", &"item_kiem_thanh_thiet")):
+		_fail("slash: the jian is no longer equipped")
+		return false
+	var focus := func() -> Vector2: return post.global_position + Vector2(-14, -16)
 	await _press(&"attack")
-	var frames_daobao := await _strip(focus, 24, 1)
-	_save_strip("motion_slash_post_daobao", frames_daobao)
-	await _settle()
+	# The lifecycle is real-time: poll briefly for the input to land, then demand proof.
+	# (Polling, not a fixed wait: on a slow frame the press can take a few frames to
+	# register, but the 440 ms lifecycle far outlasts the poll window.)
+	var started := false
+	for _i in 15:
+		await process_frame
+		if attack_comp.state() != AttackStateMachine.State.READY:
+			started = true
+			break
+	if not started:
+		_fail("slash: the attack input did not start the lifecycle")
+		return false
+	if visual.current_action() != CharacterVisualComponent.ACTION_SLASH:
+		_fail("slash: the visual did not enter ACTION_SLASH")
+		return false
+	var tex: Texture2D = visual.get_sprite().texture
+	if tex == null or tex.resource_path.get_file() != slash_file:
+		_fail("slash: the visual is not showing %s" % slash_file)
+		return false
+	var frames: Array[Image] = []
+	var saw_slash := false
+	for _i in 24:
+		await process_frame
+		if visual.current_action() == CharacterVisualComponent.ACTION_SLASH:
+			saw_slash = true
+		frames.append(_cell(focus.call()))
+	if not saw_slash:
+		_fail("slash: no captured frame belonged to the slash action")
+		return false
+	_save_strip(strip_name, frames)
+	return true
 
 
 ## The hub robe, worn as DETERMINISTIC SETUP like the sword above: proves the daobao
