@@ -8,6 +8,18 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-09 — Pickup collection is proven, not inferred (D-063 A1 carried item #2)
+
+- **The playtest now proves setup pickups were really collected.** `_walk_onto()` returns
+  a result dict and fails loudly on a missing node, wrong type, bad pickup_id, an
+  already-collected pickup, or a 30-frame timeout — visibility going false is no longer
+  accepted as proof. A new `05a_pickup_state` step verifies `pickup_hubpill1`,
+  `pickup_hubmanualphong` and `pickup_hubrobe` via the live `InventoryRuntime.is_collected()`
+  even when the frame-pacing environment is invalid, so a bad clock can never silently skip
+  the collection evidence. 05c fails explicitly if either required pickup is uncollected;
+  05d uses explicit expected notice counts instead of a dynamic `waiting.size()`.
+
+
 ### 2026-10-09 — The answer is visible on its frame (D-063 A1 carried item #1)
 
 - **A refusal for a new action is never swallowed by a stale waiting copy.** If an ANSWER
