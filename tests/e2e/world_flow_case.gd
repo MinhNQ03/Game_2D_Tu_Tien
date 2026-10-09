@@ -1028,9 +1028,11 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 	var hud := _find_hud(map)
 	var spring := map.get_node_or_null("CultivationSites/LacHaSpring") as Node2D
 	var stele := map.get_node_or_null("KnowledgeSources/LacHaStele") as Node2D
+	var inventory := main.get_node_or_null("Systems/InventoryRuntime") as InventoryRuntime
 	assert_not_null(spring, "the hub has the Lạc Hà spring")
 	assert_not_null(stele, "the hub has the Lạc Hà stele")
-	if spring == null or stele == null or hud == null:
+	assert_not_null(inventory, "the InventoryRuntime subsystem exists")
+	if spring == null or stele == null or hud == null or inventory == null:
 		return
 	var state: CharacterState = player.call("get_character_state")
 	assert_eq(state.realm_id, &"realm_pham", "a new run starts mortal")
@@ -1047,6 +1049,8 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 	player.global_position = pill.global_position  # setup: walk onto the pickup
 	for _i in 6:
 		await scene_tree.physics_frame
+	assert_true(inventory.is_collected(&"pickup_hubpill1"),
+		"the pill pickup is REALLY collected (is_collected), not merely stepped on")
 	player.global_position = spring.global_position + Vector2(0, 26)
 	for _i in 4:
 		await scene_tree.physics_frame
@@ -1087,6 +1091,12 @@ func _prove_cultivation(main: Node, player: Node2D, map: Node) -> void:
 			player.global_position = pickup.global_position  # setup: walk onto it
 			for _i in 6:
 				await scene_tree.physics_frame
+	# The manual and robe sit 12.8px apart (reach 14px): one placement collects both.
+	# Prove via the authority, not via visibility.
+	assert_true(inventory.is_collected(&"pickup_hubmanualphong"),
+		"the manual pickup is REALLY collected (is_collected)")
+	assert_true(inventory.is_collected(&"pickup_hubrobe"),
+		"the robe pickup is REALLY collected (is_collected)")
 	# The stele is SOLID (D-063 A2): approach it ON FOOT with a REAL held key from the south. The
 	# walk must STOP at the plinth — outside it — and the stele must be readable from there.
 	player.global_position = stele.global_position + Vector2(0, 44)  # setup: south of the stele
