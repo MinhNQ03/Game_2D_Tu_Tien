@@ -1043,6 +1043,13 @@ func notice_kind() -> StringName:
 	return StringName(_shown.get("kind", &""))
 
 
+## The stable identity of the notice on screen (its enqueue sequence number), or 0 when
+## the slot shows none. Two notice instances with identical kind and text have different
+## seq values — the playtest uses this to record each shown instance exactly once.
+func notice_seq() -> int:
+	return int(_shown.get("seq", 0))
+
+
 ## What waits for the slot, in the order it will be shown: the immediate lane, the paused
 ## breakthrough banner (`&"<breakthrough>"`), then the passive lane. For tests and the playtest.
 func pending_notice_keys() -> Array[StringName]:
