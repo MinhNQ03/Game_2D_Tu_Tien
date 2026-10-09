@@ -8,6 +8,15 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-09 — The answer is visible on its frame (D-063 A1 carried item #1)
+
+- **A refusal for a new action is never swallowed by a stale waiting copy.** If an ANSWER
+  was still waiting from an older action when the player acted again, the identical new
+  ANSWER now takes the notice slot immediately; the stale copy is superseded and the
+  interrupted RESULT resumes afterwards. Same-frame duplicate answers are still
+  deduplicated, so one action never queues two copies.
+
+
 ### 2026-10-08 — The stele and the spring are solid (D-063 A2)
 
 - **You can no longer walk through the Lạc Hà stele or into the spring.** Walk up to the stele
