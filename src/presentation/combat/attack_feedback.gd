@@ -60,6 +60,9 @@ const DISSIPATE_PX := 5.0
 ## height above the feet) instead of being drawn across the striker's own legs (M-6.3).
 const DOWN_STRIKE_START_Y := -4.0
 
+## How many tip positions sample the blade's trajectory for the sword crescent (D-063 A3).
+const SWEEP_SAMPLES := 8
+
 ## The height (px above the ground) a sideways strike's air arrives at: the body height of the
 ## things it hits — a wolf's core is ~12px up, a cultivator's ~16-20px.
 const STRIKE_HEIGHT := -13.0
@@ -141,8 +144,9 @@ func _sync() -> void:
 	_telegraph.queue_redraw()
 
 
-## What this node would draw right now, for tests: the phase, its progress, and the release
-## segment (empty outside ACTIVE/RECOVERY).
+## What this node would draw right now, for tests: the phase, its progress, the release
+## segment (empty outside ACTIVE/RECOVERY), and the sword tip's trajectory across the hit
+## window (empty when the swing draws no blade crescent).
 func sample() -> Dictionary:
 	_sync()
 	var segment := _streak_segment(0.0)
@@ -152,6 +156,7 @@ func sample() -> Dictionary:
 		"source": _source,
 		"telegraph": hostile and _state == AttackStateMachine.State.WINDUP,
 		"streak": segment,
+		"sweep": _sweep_points(),
 		"z_index": z_index,
 	}
 
@@ -183,18 +188,81 @@ func _attack_data() -> AttackData:
 	return _attack.attack_data() if _attack != null else null
 
 
+func _visual() -> CharacterVisualComponent:
+	return get_parent().get_node_or_null("CharacterVisualComponent") \
+		as CharacterVisualComponent
+
+
 ## The striking point of the frame being drawn, in this node's space: the visual's `palm`
 ## anchor when the entity has one, else a point a third of the reach along the facing at body
 ## height — a documented degradation, not a guess presented as the hand.
 func _striking_point() -> Vector2:
-	var visual := get_parent().get_node_or_null("CharacterVisualComponent") \
-		as CharacterVisualComponent
+	var visual := _visual()
 	var point := _facing * _reach * 0.33 + Vector2(0.0, -12.0)
 	if visual != null and visual.has_anchor(CharacterVisualProfileData.POINT_PALM):
 		point = visual.position + visual.anchor_point(CharacterVisualProfileData.POINT_PALM)
 	if _facing.y > 0.5:
 		point.y = maxf(point.y, DOWN_STRIKE_START_Y)
 	return point
+
+
+## How far through the WHOLE swing we are, in [0, 1]: the elapsed time across the completed
+## phases plus the current phase's progress, over the authored total. Mirrors the body's own
+## progress mapping, so the VFX trail samples the same frames the body draws (D-063 A3).
+func _swing_progress() -> float:
+	var data := _attack_data()
+	if data == null:
+		return 0.0
+	var total := data.windup_seconds + data.active_seconds + data.recovery_seconds
+	if total <= 0.0:
+		return 0.0
+	var elapsed := 0.0
+	match _state:
+		AttackStateMachine.State.WINDUP:
+			elapsed = _progress * data.windup_seconds
+		AttackStateMachine.State.ACTIVE:
+			elapsed = data.windup_seconds + _progress * data.active_seconds
+		AttackStateMachine.State.RECOVERY:
+			elapsed = data.windup_seconds + data.active_seconds \
+				+ _progress * data.recovery_seconds
+		_:
+			return 0.0
+	return clampf(elapsed / total, 0.0, 1.0)
+
+
+## The blade tip's trajectory across the hit window, in this node's space: the tip anchor of
+## each sampled frame of the swing being drawn. The crescent IS the trajectory the rig drew,
+## so it can never diverge from the blade (D-063 A3). Empty when the swing has no blade
+## trajectory (a palm strike, or a look without the slash sheet) — the caller then draws the
+## legacy arc instead.
+func _sweep_points() -> PackedVector2Array:
+	if _state != AttackStateMachine.State.ACTIVE \
+			and _state != AttackStateMachine.State.RECOVERY:
+		return PackedVector2Array()
+	var visual := _visual()
+	var data := _attack_data()
+	if visual == null or data == null:
+		return PackedVector2Array()
+	if not visual.has_anchor(CharacterVisualProfileData.POINT_BLADE):
+		return PackedVector2Array()
+	var total := data.windup_seconds + data.active_seconds + data.recovery_seconds
+	if total <= 0.0:
+		return PackedVector2Array()
+	var active_start := data.windup_seconds / total
+	var active_end := (data.windup_seconds + data.active_seconds) / total
+	var from := active_start
+	# Through RECOVERY the trail holds the full ACTIVE sweep and fades; it never grows past
+	# the hit window it depicts.
+	var to := minf(_swing_progress(), active_end)
+	if to <= from:
+		return PackedVector2Array()
+	var base := visual.position
+	var pts := PackedVector2Array()
+	for i in SWEEP_SAMPLES:
+		var sp := lerpf(from, to, float(i) / float(SWEEP_SAMPLES - 1))
+		pts.append((base + visual.anchor_point_at_progress(
+			CharacterVisualProfileData.POINT_BLADE, sp)).round())
+	return pts
 
 
 ## The lead streak as [tail, head] in this node's space, or empty when no air is moving.
@@ -277,10 +345,25 @@ func _draw_telegraph() -> void:
 		_telegraph.draw_line((dir * (_reach - 3.0)).round(), (dir * _reach).round(), colour, 1.0)
 
 
-## A Kiếm draws a CRESCENT, not air: the edge sweeping across the arc it actually covers, at body
-## height, growing through the hit window and thinning through the recovery (Phase 14). The
-## palm's air streaks would claim a palm strike while a sword is in the hand.
+## A Kiếm draws a CRESCENT, not air: the edge sweeping across the arc it actually covers,
+## growing through the hit window and thinning through the recovery (Phase 14). The palm's
+## air streaks would claim a palm strike while a sword is in the hand. Since D-063 A3 the
+## crescent is the blade tip's own trajectory across the swing's frames — never a guessed arc.
 func _draw_blade_sweep(alpha: float) -> void:
+	var sweep := _sweep_points()
+	if sweep.size() >= 2:
+		var colour := UIPalette.STRIKE_TRAIL
+		colour.a = alpha
+		draw_polyline(sweep, colour, 2.0)
+		colour.a = alpha * 0.45
+		draw_polyline(sweep, colour, 1.0)
+		return
+	_legacy_blade_arc(alpha)
+
+
+## The feet-centred arc, kept for swings with no blade trajectory: a palm strike while a
+## sword is in the hand (a look without the slash sheet). A documented degradation.
+func _legacy_blade_arc(alpha: float) -> void:
 	var half := deg_to_rad(_arc_degrees * 0.5 * ARC_FRACTION)
 	var start := _facing.angle() - half
 	var sweep := 1.0

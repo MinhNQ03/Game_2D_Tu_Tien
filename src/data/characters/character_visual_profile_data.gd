@@ -37,10 +37,15 @@ const ANIM_WALK := &"walk"
 const ANIM_ATTACK := &"attack"
 const ANIM_MEDITATE := &"meditate"
 const ANIM_CAST := &"cast"
+## The sword cut (D-063 A3): the same attack lifecycle as `ANIM_ATTACK`, a different body —
+## coil → cut → follow-through → guard, drawn only for sword-wielding looks.
+const ANIM_SLASH := &"slash"
 
-## The shared anchor vocabulary (`CharacterAnchorData`): the striking point and the core.
+## The shared anchor vocabulary (`CharacterAnchorData`): the striking point, the core, and
+## the sword tip (D-063 A3).
 const POINT_PALM := &"palm"
 const POINT_CORE := &"core"
+const POINT_BLADE := &"blade"
 
 ## Stable id for this profile (so a template/preview can reference it + a test can assert it).
 @export var id: StringName = &""
@@ -78,6 +83,12 @@ const POINT_CORE := &"core"
 ## gathered at the chest, raised and held, the arm driven out, the settle. The cast presentation
 ## maps PREPARE / CHANNEL / RELEASE / RECOVER onto its quarters, whatever each phase's duration.
 @export var cast_sheet: Texture2D = null
+
+## The SWORD-CUT sheet (OPTIONAL, D-063 A3): the same GRID layout as the attack sheet — one
+## row per direction, N animation columns — played as the one-shot body of a `slash`
+## `AttackData.body_action`. Only sword-wielding looks author it; a profile without it falls
+## back to the `attack` sheet for a slash, so an enemy or NPC is never left without a body.
+@export var slash_sheet: Texture2D = null
 
 ## The pixel size of ONE animation frame (the art baseline, 32x48 since D-046). Collision
 ## footprint is independent of this (anchored at the feet) — see `docs/CHARACTER_ART_BIBLE.md`.
@@ -147,6 +158,8 @@ func validation_errors() -> Array[String]:
 		errors.append_array(_sheet_errors("meditate_sheet", meditate_sheet))
 	if cast_sheet != null:
 		errors.append_array(_sheet_errors("cast_sheet", cast_sheet))
+	if slash_sheet != null:
+		errors.append_array(_sheet_errors("slash_sheet", slash_sheet))
 	if stride_px < 0.0:
 		errors.append("stride_px must be >= 0 (got %f)" % stride_px)
 	var walk_frames := frame_count_of(walk_sheet)
@@ -197,6 +210,8 @@ func sheet_for_anim(anim: StringName) -> Texture2D:
 			return meditate_sheet
 		ANIM_CAST:
 			return cast_sheet
+		ANIM_SLASH:
+			return slash_sheet
 		_:
 			return null
 

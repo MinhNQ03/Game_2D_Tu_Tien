@@ -43,13 +43,24 @@ func _visual() -> CharacterVisualComponent:
 		if parent != null else null
 
 
-## Where the blade is right now: [hilt end, tip], in this node's space (for tests and `_draw`).
+## Where the blade is right now: [grip, tip], in this node's space (for tests and `_draw`).
 func blade_segment() -> PackedVector2Array:
 	var visual := _visual()
 	if _family == &"" or visual == null or not visual.has_anchor(&"core"):
 		return PackedVector2Array()
 	var facing := _facing_vector(visual.get_shown_direction())
-	if visual.current_action() == CharacterVisualComponent.ACTION_ATTACK:
+	if CharacterVisualComponent.is_strike_action(visual.current_action()):
+		# The sword cut (D-063 A3): the blade the rig actually drew, from the gripping palm
+		# to the tip anchor of the frame being drawn — the arm's arc IS the blade's arc, so
+		# the drawn blade and the swing's trail can never diverge.
+		if visual.current_action() == CharacterVisualComponent.ACTION_SLASH \
+				and visual.has_anchor(CharacterVisualProfileData.POINT_BLADE):
+			var grip := visual.position + visual.anchor_point(
+				CharacterVisualProfileData.POINT_PALM)
+			var tip := visual.position + visual.anchor_point(
+				CharacterVisualProfileData.POINT_BLADE)
+			return PackedVector2Array([grip.round(), tip.round()])
+		# The palm strike (or a look without the slash sheet): the old thrust blade.
 		var palm := visual.position + visual.anchor_point(CharacterVisualProfileData.POINT_PALM)
 		return PackedVector2Array([(palm - facing * 3.0).round(),
 			(palm + facing * BLADE_PX).round()])
@@ -58,16 +69,30 @@ func blade_segment() -> PackedVector2Array:
 	return PackedVector2Array([(core + Vector2(6, -12)).round(), (core + Vector2(-6, 4)).round()])
 
 
+## Which z layer the blade draws on right now (for tests and `_draw`).
+func blade_layer() -> int:
+	var visual := _visual()
+	if visual == null:
+		return 0
+	# The sword cut layers from the rig's own per-frame depth (D-063 A3): the coil lays the
+	# blade behind the shoulder, the cut carries it in front — a 2D guess cannot say which.
+	if visual.current_action() == CharacterVisualComponent.ACTION_SLASH \
+			and visual.has_anchor_depth(CharacterVisualProfileData.POINT_BLADE):
+		return 1 if visual.anchor_depth(CharacterVisualProfileData.POINT_BLADE) >= 0.0 else 0
+	var swinging := CharacterVisualComponent.is_strike_action(visual.current_action())
+	var facing_away := visual.get_shown_direction() == CharacterVisualProfileData.Direction.UP
+	# A sheathed blade is seen only where the back is; a swung blade is in front unless the
+	# strike goes away from the viewer.
+	return 1 if (swinging and not facing_away) or (not swinging and facing_away) else 0
+
+
 func _draw() -> void:
 	var visual := _visual()
 	var segment := blade_segment()
 	if segment.size() < 2 or visual == null:
 		return
-	var swinging := visual.current_action() == CharacterVisualComponent.ACTION_ATTACK
-	var facing_away := visual.get_shown_direction() == CharacterVisualProfileData.Direction.UP
-	# Layer: a sheathed blade is seen only where the back is; a swung blade is in front unless
-	# the strike goes away from the viewer.
-	var layer := 1 if (swinging and not facing_away) or (not swinging and facing_away) else 0
+	var swinging := CharacterVisualComponent.is_strike_action(visual.current_action())
+	var layer := blade_layer()
 	if z_index != layer:
 		z_index = layer
 	if swinging:

@@ -7,6 +7,7 @@ script = ExtResource("1_attackdata")
 id = &"attack_player_kiem"
 name_key = &"ATTACK_PLAYER_KIEM_NAME"
 weapon_family = &"weapon_kiem"
+body_action = &"slash"
 windup_seconds = 0.12
 active_seconds = 0.08
 recovery_seconds = 0.24

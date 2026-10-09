@@ -35,6 +35,13 @@ const DIRECTION_COUNT := 4
 ## "<anim>/<point>" -> PackedVector2Array (direction-major, feet-origin relative).
 @export var points: Dictionary = {}
 
+## "<anim>/<point>" -> PackedFloat32Array (direction-major), how far in FRONT of the body's
+## core the point is along the camera's view axis, in px (positive = toward the viewer).
+## Written by the art pipeline only for points whose layering matters (the sword tip of
+## D-063 A3: the coil lays the blade behind the shoulder, the cut carries it in front, and a
+## 2D anchor cannot say which). Absent for every other point; a missing depth is not an error.
+@export var depths: Dictionary = {}
+
 
 func is_valid() -> bool:
 	return validation_errors().is_empty()
@@ -66,6 +73,26 @@ func validation_errors() -> Array[String]:
 		if count == 0 or count % DIRECTION_COUNT != 0:
 			errors.append("'%s' holds %d points, not a whole number of frames x %d directions"
 				% [String(key), count, DIRECTION_COUNT])
+	for key: Variant in depths:
+		if typeof(key) != TYPE_STRING and typeof(key) != TYPE_STRING_NAME:
+			errors.append("depth key %s is not a string" % str(key))
+			continue
+		var parts := String(key).split("/")
+		if parts.size() != 2 or parts[0].is_empty() or parts[1].is_empty():
+			errors.append("depth key '%s' is not '<anim>/<point>'" % String(key))
+			continue
+		var value: Variant = depths[key]
+		if typeof(value) != TYPE_PACKED_FLOAT32_ARRAY:
+			errors.append("depths '%s' is not a PackedFloat32Array" % String(key))
+			continue
+		var point_track := _track(StringName(parts[0]), StringName(parts[1]))
+		if point_track.is_empty():
+			errors.append("depths name '%s' with no point track" % String(key))
+			continue
+		var depth_count := (value as PackedFloat32Array).size()
+		if depth_count != point_track.size():
+			errors.append("depths '%s' hold %d depths, the point track holds %d" % [
+				String(key), depth_count, point_track.size()])
 	return errors
 
 
@@ -76,6 +103,25 @@ func frame_count(anim: StringName, point: StringName) -> int:
 
 func has_point(anim: StringName, point: StringName) -> bool:
 	return not _track(anim, point).is_empty()
+
+
+## True when the pipeline wrote a depth track for `point` of `anim`.
+func has_depth(anim: StringName, point: StringName) -> bool:
+	return not _depth_track(anim, point).is_empty()
+
+
+## The depth of `point` on frame `column` of `anim`, facing `direction`: px in front of the
+## core along the camera's view axis (positive = toward the viewer). `fallback` when the
+## pipeline wrote no depth for the point.
+func depth_at(anim: StringName, point: StringName, direction: int, column: int,
+		fallback: float = 0.0) -> float:
+	var track := _depth_track(anim, point)
+	if track.is_empty():
+		return fallback
+	var frames := _frames_in_f32(track)
+	if direction < 0 or direction >= DIRECTION_COUNT or column < 0 or column >= frames:
+		return fallback
+	return track[direction * frames + column]
 
 
 ## The feet-relative position of `point` on frame `column` of `anim`, facing `direction`.
@@ -103,4 +149,16 @@ func _track(anim: StringName, point: StringName) -> PackedVector2Array:
 	var value: Variant = points.get("%s/%s" % [anim, point])
 	if typeof(value) != TYPE_PACKED_VECTOR2_ARRAY:
 		return PackedVector2Array()
+	return value
+
+
+## Frames per direction in a depth track.
+func _frames_in_f32(track: PackedFloat32Array) -> int:
+	return int(float(track.size()) / float(DIRECTION_COUNT))
+
+
+func _depth_track(anim: StringName, point: StringName) -> PackedFloat32Array:
+	var value: Variant = depths.get("%s/%s" % [anim, point])
+	if typeof(value) != TYPE_PACKED_FLOAT32_ARRAY:
+		return PackedFloat32Array()
 	return value

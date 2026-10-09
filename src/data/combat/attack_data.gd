@@ -19,8 +19,10 @@ class_name AttackData
 ##   * **Elemental type and resistances.** They need the resistance side of the formula.
 ##   * **Technique / equipment multipliers.** Those scalars belong to công pháp and equipment,
 ##     which own their own data; this resource must not grow a copy of them.
-##   * **An animation reference.** Presentation picks its own art from the attack id; the data
-##     layer does not name a sprite (`06-art-assets.md`).
+##   * **An animation reference.** The data layer names no sprite (`06-art-assets.md`); the
+##     one deliberate exception is `body_action` (D-063 A3), a presentation SEMANTIC like
+##     `weapon_family` — the name of the body the swing is performed with, resolved to a
+##     sheet by presentation with fallback, never a sheet reference itself.
 ##   * **Multi-hit sequences and combo links.** A second attack is a second resource; chaining
 ##     is a rule, and no rule needs it yet.
 
@@ -58,6 +60,13 @@ const WEAPON_FAMILIES: Array[StringName] = [&"weapon_kiem", &"weapon_dao", &"wea
 	&"weapon_cung", &"weapon_phap_truong"]
 
 @export var weapon_family: StringName = &""
+
+## Which BODY the swing is performed with (D-063 A3): the presentation action name the
+## `CharacterVisualComponent` plays for this attack. `&"attack"` is the palm strike every
+## profile authors; `&"slash"` is the sword cut only sword-wielding looks carry. A profile
+## without the named sheet falls back to the `attack` sheet, so an enemy or NPC keeps its
+## body. Never empty: the data layer names a body, presentation resolves the sheet.
+@export var body_action: StringName = &"attack"
 
 ## How much of its normal speed the attacker keeps while the swing is in flight (WINDUP, ACTIVE
 ## and RECOVERY), in [0, 1] (D-057B). 1.0 moves freely, 0.0 roots the attacker.
@@ -122,6 +131,8 @@ func is_valid() -> bool:
 			% committed_move_scale)
 	if weapon_family != &"" and not WEAPON_FAMILIES.has(weapon_family):
 		problems.append("weapon_family '%s' is not canon (CL-10)" % weapon_family)
+	if body_action == &"":
+		problems.append("body_action is empty — name the presentation body (attack, slash)")
 	if reach_pixels <= 0.0:
 		problems.append("reach_pixels must be > 0 (got %.2f)" % reach_pixels)
 	if arc_degrees <= 0.0 or arc_degrees > 360.0:

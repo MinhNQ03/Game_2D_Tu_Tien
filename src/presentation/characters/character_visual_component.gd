@@ -13,8 +13,9 @@ class_name CharacterVisualComponent
 ##
 ##   * **LOCOMOTION** — `IDLE` / `WALK`. Continuous, looping, clocked HERE at the profile's
 ##     `frame_duration`.
-##   * **ACTION** — `BASIC_ATTACK` today; `CAST`/`HIT`/`STUN`/`DEATH`/… reserved. Bounded,
-##     ONE-SHOT, non-looping, and **driven from outside** via `drive_action(progress)`.
+##   * **ACTION** — `BASIC_ATTACK` and the sword `SLASH` (D-063 A3) today;
+##     `HIT`/`STUN`/`DEATH`/… reserved. Bounded, ONE-SHOT, non-looping, and **driven from
+##     outside** via `drive_action(progress)`.
 ##
 ## ACTION OUT-RANKS LOCOMOTION, so a character mid-swing shows the swing even while walking.
 ## Facing is shared by both layers: turning mid-swing changes the direction row without
@@ -58,9 +59,8 @@ class_name CharacterVisualComponent
 ## No action playing. Locomotion is showing.
 const ACTION_NONE := &""
 
-## The basic attack. The ONE action implemented; the rest of the vocabulary (CAST, HIT, STUN,
-## DEATH, EMOTE…) is reserved in `docs/PRESENTATION_ARCHITECTURE_CONTRACT.md` §5 and has no
-## implementation here, on purpose — a reserved name is a name, not a feature.
+## The basic attack: the palm strike. Which body an attack plays is data-driven
+## (`AttackData.body_action`); the sword cut below is the second body, resolved with fallback.
 const ACTION_ATTACK := &"attack"
 
 ## Seated cultivation (Phase 12). Driven by the cultivation presentation, not clocked here: the
@@ -70,6 +70,29 @@ const ACTION_MEDITATE := &"meditate"
 ## A technique's cast (Phase 15): one action, four phases, driven by `CastFeedback` from the
 ## `CastStateMachine`'s own phase and progress.
 const ACTION_CAST := &"cast"
+
+## The sword cut (D-063 A3): the same attack lifecycle as `ACTION_ATTACK`, a different body —
+## coil → cut → follow-through → guard, 8 columns driven by the authority's progress. Only
+## sword-wielding looks author the sheet; anything else falls back to the palm strike, so an
+## enemy or NPC is never left without a body for its swing.
+const ACTION_SLASH := &"slash"
+
+
+## True for the attack-family actions: the palm strike and the sword cut. Both are driven by
+## an `AttackComponent` lifecycle and share the strike sync, cancel and finish paths — the
+## body differs, the lifecycle does not.
+static func is_strike_action(action: StringName) -> bool:
+	return action == ACTION_ATTACK or action == ACTION_SLASH
+
+
+## The one-shot column for a driven `progress` in [0, 1] over `total` frames: clamped to the
+## last frame, never wrapped — what makes an action different in kind from a locomotion
+## cycle. Single home for the mapping, so a swing's VFX trail reads the same column the body
+## draws (D-063 A3).
+static func column_for_progress(progress: float, total: int) -> int:
+	if total <= 0:
+		return 0
+	return clampi(int(clampf(progress, 0.0, 1.0) * float(total)), 0, total - 1)
 
 ## How long a 180° turn shows the intermediate facing. Three frames at 60fps: long enough to
 ## read as the body turning, short enough that the input still feels instant (M-4.4).
@@ -206,11 +229,22 @@ func _on_attack_started() -> void:
 	_swing_total = _swing_windup + _swing_active + _swing_recovery
 	if _swing_total <= 0.0:
 		return
-	play_action(ACTION_ATTACK)
+	# The attack names its body (D-063 A3): a sword swing plays the slash sheet, resolved
+	# with fallback so a look without the sheet still gets the palm strike.
+	play_action(resolve_body_action(data.body_action))
+
+
+## Which action body to play for `body_action`: the named one when this profile can draw it,
+## else the palm strike. A profile without the sheet is never left without a body for its
+## swing (D-063 A3).
+func resolve_body_action(body_action: StringName) -> StringName:
+	if body_action != ACTION_NONE and _sheet_for_action(body_action) != null:
+		return body_action
+	return ACTION_ATTACK
 
 
 func _on_attack_finished() -> void:
-	if _action == ACTION_ATTACK:
+	if is_strike_action(_action):
 		end_action()
 
 
@@ -330,6 +364,8 @@ func _sheet_for_action(action: StringName) -> Texture2D:
 	match action:
 		ACTION_ATTACK:
 			return _profile.attack_sheet
+		ACTION_SLASH:
+			return _profile.slash_sheet
 		ACTION_MEDITATE:
 			return _profile.meditate_sheet
 		ACTION_CAST:
@@ -362,6 +398,43 @@ func anchor_point(point: StringName, fallback: Vector2 = Vector2.ZERO) -> Vector
 func has_anchor(point: StringName) -> bool:
 	return (_profile != null and _profile.anchors != null
 		and _profile.anchors.has_point(current_anim(), point))
+
+
+## True when the bound profile names a depth for `point` of the animation showing right now.
+func has_anchor_depth(point: StringName) -> bool:
+	return (_profile != null and _profile.anchors != null
+		and _profile.anchors.has_depth(current_anim(), point))
+
+
+## Where `point` is at a driven action `progress` in [0, 1], in this node's local space. A
+## pure function of (progress, facing): the strike VFX draws the blade's trail from the tip
+## positions the rig actually drew, so the arc and the blade can never diverge (D-063 A3).
+## `fallback` when no action is playing or the point is unnamed.
+func anchor_point_at_progress(point: StringName, progress: float,
+		fallback: Vector2 = Vector2.ZERO) -> Vector2:
+	if _profile == null or _profile.anchors == null or _sprite == null:
+		return fallback
+	if _action == ACTION_NONE:
+		return fallback
+	var sheet := _sheet_for_action(_action)
+	if sheet == null:
+		return fallback
+	var column := column_for_progress(progress, _profile.frame_count_of(sheet))
+	if not _profile.anchors.has_point(_action, point):
+		return fallback
+	return (_profile.anchors.point_at(_action, point, _shown_direction, column, fallback)
+		+ (_sprite.position - _sprite_rest) + _feet_origin())
+
+
+## How far in front of the body's core `point` is on the frame SHOWING right now, in px
+## along the camera's view axis (positive = toward the viewer). Lets a drawn weapon layer in
+## front of or behind the body exactly as the rig holds it (D-063 A3). `fallback` when the
+## profile names no depth for the point.
+func anchor_depth(point: StringName, fallback: float = 0.0) -> float:
+	if _profile == null or _profile.anchors == null:
+		return fallback
+	return _profile.anchors.depth_at(current_anim(), point, _shown_direction, get_column(),
+		fallback)
 
 
 ## The animation name of the sheet showing right now (`CharacterVisualProfileData.ANIM_*`) —
@@ -673,7 +746,7 @@ func _apply_profile_to_sprite() -> void:
 ## layer that waited for the finish signal would leave a corpse frozen mid-thrust. Reading the
 ## state makes cancel, death and session teardown all end the action by the same path.
 func _sync_action_from_authority() -> void:
-	if _action != ACTION_ATTACK or _attack_source == null \
+	if not is_strike_action(_action) or _attack_source == null \
 			or not is_instance_valid(_attack_source):
 		return
 	if _swing_total <= 0.0:
@@ -746,7 +819,7 @@ func _refresh_frame() -> void:
 		# ONE-SHOT: the column is a pure function of the driven progress, CLAMPED to the last
 		# frame rather than wrapped. A modulo here would loop the swing, which is what makes an
 		# action different in kind from a locomotion cycle rather than just a different sheet.
-		_action_column = clampi(int(_action_progress * float(total)), 0, total - 1)
+		_action_column = column_for_progress(_action_progress, total)
 		column = _action_column
 	elif _column >= total:
 		_column = 0
