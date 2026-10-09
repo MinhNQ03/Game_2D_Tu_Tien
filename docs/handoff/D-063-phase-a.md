@@ -66,12 +66,13 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
   re-validation, so no code was changed — the closure is documentation-only.
 - Implementation/code-validation SHA: `00e84b05c6c20e6191cf01d730f468c5d458c15b`
   — CI run https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37889572471 (SUCCESS).
-- Current branch HEAD: `b838eb26166c6a70ac6838c66c3e87813b182b77`
-  — CI run https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37893656907 (SUCCESS,
+- Current branch HEAD: `39845c0bdd151063ccec71c0453123eeb9ed02af`
+  — CI run https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37895099103 (SUCCESS,
   exact head_sha verified; all 13 steps green: lint, import, parse, boot smoke, headless
   suite, 3× E2E). Full CI log text was not downloadable (API 403 without admin rights);
   step-level conclusions are all `success`, and the identical gates were re-run locally
-  with full-log scans (see below).
+  with full-log scans (see below). (Previous HEAD `b838eb2` also CI-SUCCESS, run
+  `37893656907`; all commits since `00e84b0` are documentation-only.)
 - Local repeat (labelled local, Godot 4.7.2 `ed1daf0bf`, Xvfb where a display is needed):
   - Headless unit suite ×2 runs: 839/839 passed, 0 failed assertions, 0 SCRIPT ERROR
     (full-log `grep -c`), 0 leaks.
