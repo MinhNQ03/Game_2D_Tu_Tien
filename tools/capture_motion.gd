@@ -17,8 +17,8 @@ extends SceneTree
 ## USAGE (needs a display; do NOT pass --headless)
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
-## Scenarios: walk_stop_turn, strike_the_post, ambient, cultivation, techniques, golden,
-## field_fight (second user argument runs one).
+## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
+## techniques, golden, field_fight (second user argument runs one).
 ##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
 ## on top of the camera's own zoom) and `<out>/scene_<name>.png` full frames. Exit code 1 if any
@@ -70,6 +70,9 @@ func _run() -> void:
 	if _only == "" or _only == "strike_the_post":
 		print("[capture_motion] scenario strike_the_post")
 		await _scenario_strike_the_post()
+	if _only == "" or _only == "slash_the_post":
+		print("[capture_motion] scenario slash_the_post")
+		await _scenario_slash_the_post()
 	if _only == "" or _only == "ambient":
 		print("[capture_motion] scenario ambient")
 		await _scenario_ambient()
@@ -135,6 +138,60 @@ func _scenario_strike_the_post() -> void:
 	var frames := await _strip(focus, 24, 1)
 	_save_strip("motion_strike_post", frames)
 	await _settle()
+
+
+## D-063 A3: the sword cut with the jian equipped. The default `strike_the_post` uses the
+## bare-fisted loadout (the jian is a hub pickup), so it exercises the fallback body — this
+## scenario picks the jian up and wears it through the real inventory UI first, then strikes
+## the same post. Mirrors tests/e2e/world_flow_case.gd's equip flow; deterministic setup.
+func _scenario_slash_the_post() -> void:
+	var player := _player()
+	var post := _map_node("CombatTargets/TrainingDummy") as Node2D
+	if player == null or post == null:
+		_fail("slash: no player or training post")
+		return
+	if not await _equip_hub_sword(player):
+		_fail("slash: could not equip the jian")
+		return
+	player.global_position = post.global_position + Vector2(-26, 2)
+	Input.action_press(&"move_right")
+	await process_frame
+	await process_frame
+	Input.action_release(&"move_right")
+	await _settle()
+	var focus := func() -> Vector2: return post.global_position + Vector2(-14, -16)
+	await _press(&"attack")
+	var frames := await _strip(focus, 24, 1)
+	_save_strip("motion_slash_post", frames)
+	await _settle()
+
+
+## Pick up the hub jian, then wear it as DETERMINISTIC SETUP (sanctioned by this harness's
+## own docstring and the playtest's L-017 exception): the wear-via-inventory-UI path is
+## proven by tests/e2e/world_flow_case.gd (3/3 green) — this scenario captures the slash
+## VISUAL, not the inventory UI. Everything after the setup is real input + real runtime.
+func _equip_hub_sword(player: Node2D) -> bool:
+	var pickup := _map_node("Pickups/HubSword") as Node2D
+	if pickup == null:
+		_fail("slash: no HubSword pickup in this map")
+		return false
+	player.global_position = pickup.global_position
+	for _i in 6:
+		await physics_frame
+	var main := root.get_node_or_null("Main")
+	var equipment := main.get_node_or_null("Systems/EquipmentRuntime") \
+		if main != null else null
+	if equipment == null:
+		_fail("slash: no EquipmentRuntime")
+		return false
+	var err: StringName = equipment.call("equip", &"item_kiem_thanh_thiet")
+	if err != &"":
+		_fail("slash: equip refused (%s)" % err)
+		return false
+	if not bool(equipment.call("is_worn", &"item_kiem_thanh_thiet")):
+		_fail("slash: equip reported success but the jian is not worn")
+		return false
+	return true
 
 
 ## Two moments a beat apart over the banners and a tree: the wind must have MOVED them, and not
