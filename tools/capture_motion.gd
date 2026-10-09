@@ -164,6 +164,59 @@ func _scenario_slash_the_post() -> void:
 	var frames := await _strip(focus, 24, 1)
 	_save_strip("motion_slash_post", frames)
 	await _settle()
+	# The second player look (D-063 A3 review): the Thanh Van robe swaps the body to the
+	# daobao profile — its own sheet, anchors and depths. Worn as DETERMINISTIC SETUP like
+	# the sword above (the inventory-UI path is proven by tests/e2e/world_flow_case.gd);
+	# everything after the setup is real input + real runtime.
+	if not await _equip_daobao_robe(player):
+		_fail("slash: could not equip the Thanh Van robe")
+		return
+	player.global_position = post.global_position + Vector2(-26, 2)
+	Input.action_press(&"move_right")
+	await process_frame
+	await process_frame
+	Input.action_release(&"move_right")
+	await _settle()
+	await _press(&"attack")
+	var frames_daobao := await _strip(focus, 24, 1)
+	_save_strip("motion_slash_post_daobao", frames_daobao)
+	await _settle()
+
+
+## The hub robe, worn as DETERMINISTIC SETUP like the sword above: proves the daobao
+## profile path of the slash, not the inventory UI.
+func _equip_daobao_robe(player: Node2D) -> bool:
+	var pickup := _map_node("Pickups/HubRobe") as Node2D
+	if pickup == null:
+		_fail("slash: no HubRobe pickup in this map")
+		return false
+	player.global_position = pickup.global_position
+	for _i in 6:
+		await physics_frame
+	var main := root.get_node_or_null("Main")
+	var equipment := main.get_node_or_null("Systems/EquipmentRuntime") \
+		if main != null else null
+	if equipment == null:
+		_fail("slash: no EquipmentRuntime")
+		return false
+	var err: StringName = equipment.call("equip", &"item_dao_bao_thanh_van")
+	if err != &"":
+		_fail("slash: robe equip refused (%s)" % err)
+		return false
+	if not bool(equipment.call("is_worn", &"item_dao_bao_thanh_van")):
+		_fail("slash: equip reported success but the robe is not worn")
+		return false
+	for _i in 3:
+		await process_frame
+	var visual := player.call("get_visual_component") as CharacterVisualComponent
+	if visual == null:
+		_fail("slash: the player has no visual component")
+		return false
+	var tex: Texture2D = visual.get_sprite().texture
+	if tex == null or tex.resource_path.get_file() != "player_daobao_idle.png":
+		_fail("slash: the robe did not swap the body to the daobao look")
+		return false
+	return true
 
 
 ## Pick up the hub jian, then wear it as DETERMINISTIC SETUP (sanctioned by this harness's

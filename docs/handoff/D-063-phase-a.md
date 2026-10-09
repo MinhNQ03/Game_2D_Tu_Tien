@@ -1,4 +1,4 @@
-# D-063 Phase A — handoff (IN PROGRESS: A1, A2 checkpoints passed; A3 next)
+# D-063 Phase A — handoff (IN PROGRESS: A1, A2 checkpoints passed; A3 in review)
 
 Read this first when resuming Phase A. It is written as the stage advances and closed at sign-off.
 
@@ -27,3 +27,38 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
 | D-062 boulder / well: round art on rectangular footprints | A2 audit | known limitation |
 | Notices waiting when the map changes are freed with that map's HUD | A1 | known limitation |
 | Notice line contrast over light paving not verified | A1 | known limitation |
+
+## A3 checkpoint — the sword cut (D-063 A3)
+
+- Scope: `AttackData.body_action` (`attack`/`slash`), `ACTION_SLASH` presentation, blade drawn
+  from rig anchors (palm → tip) with per-frame depth, VFX crescent from the tip trajectory,
+  slash sheets for both player looks (`player_proto`, `player_daobao`). Timing 120/80/240 ms
+  untouched; `CombatService`/damage authority untouched.
+- Commits on `d063/phase-a`: `e8c9a53` (proto art), `dfe20c5` (runtime), `25cbf8d` (capture
+  scenario), `a2145f8` (daobao art).
+- A3 review 2026-10-09: **NOT APPROVED** at `a2145f8` — GitHub Actions run `37884386946`
+  failed the test-integrity gate. `test_slash_presentation.gd` called
+  `AttackData.validation_errors()`, which did not exist: two test methods aborted with
+  SCRIPT ERROR while the local runner still reported "833 passed". **Lesson: always scan the
+  FULL log for SCRIPT ERROR — never trust `tail`.**
+- Hardening (review changes required, this patch):
+  - P1: `AttackData.validation_errors() -> Array[String]` extracted from `is_valid()`;
+    `is_valid()` reuses it and keeps the explicit `push_error`. New `BODY_ACTIONS`
+    vocabulary (`attack`, `slash`): a typo'd body is refused at the boundary.
+    `AttackComponent.arm()` stays fail-closed.
+  - P2: daobao slash regression tests — profile validates, slash sheet is 8×4, slash/blade
+    anchors + depth track match, `slash` resolves without fallback while daobao is active.
+  - P2: unsupported body_action → `push_warning` + fallback to the attack body in
+    `resolve_body_action` (observable, non-fatal); a SUPPORTED body on a sheet-less profile
+    stays a silent fallback by design. Regression tests cover both paths.
+  - Capture: `slash_the_post` now writes `motion_slash_post.png` (proto) AND
+    `motion_slash_post_daobao.png` (daobao look via the Thanh Vân robe, deterministic setup).
+- Evidence — fill after the gates run on the new head (do NOT quote pre-hardening results;
+  the E2E steps were skipped on the failing head):
+  - Tested SHA: ___
+  - GitHub Actions run: ___
+  - Unit suite: ___/___ passed, SCRIPT ERROR: ___, leaks: ___
+  - E2E app / player / world: ___ / ___ / ___
+  - Headless suite repeat (stability): ___
+  - Captures: `/tmp/motion/motion_slash_post.png`, `/tmp/motion/motion_slash_post_daobao.png`
+    — visual inspection: ___

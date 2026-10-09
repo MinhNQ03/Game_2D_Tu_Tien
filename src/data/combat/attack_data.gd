@@ -61,11 +61,18 @@ const WEAPON_FAMILIES: Array[StringName] = [&"weapon_kiem", &"weapon_dao", &"wea
 
 @export var weapon_family: StringName = &""
 
+## The bodies an attack may name (D-063 A3 review): `&"attack"` is the palm strike every
+## profile authors, `&"slash"` the sword cut. Anything else is a content typo — refused at
+## the boundary so it can never silently masquerade as a normal attack. Presentation reads
+## this (with fallback) but never extends it; a new body is a data change first.
+const BODY_ACTIONS: Array[StringName] = [&"attack", &"slash"]
+
 ## Which BODY the swing is performed with (D-063 A3): the presentation action name the
 ## `CharacterVisualComponent` plays for this attack. `&"attack"` is the palm strike every
 ## profile authors; `&"slash"` is the sword cut only sword-wielding looks carry. A profile
 ## without the named sheet falls back to the `attack` sheet, so an enemy or NPC keeps its
-## body. Never empty: the data layer names a body, presentation resolves the sheet.
+## body. Must name a supported body (`BODY_ACTIONS`): the data layer names a body,
+## presentation resolves the sheet.
 @export var body_action: StringName = &"attack"
 
 ## How much of its normal speed the attacker keeps while the swing is in flight (WINDUP, ACTIVE
@@ -110,13 +117,10 @@ const WEAPON_FAMILIES: Array[StringName] = [&"weapon_kiem", &"weapon_dao", &"wea
 @export var critical_multiplier: float = 1.5
 
 
-## True when every authored field is usable. Loud about WHICH field is wrong, because a
-## content error that only says "invalid" sends the author looking through the whole file.
-##
-## Fail-closed validation at the data boundary (`04-coding-standards.md`): the OWNER decides
-## what to do with a false (the catalog/component refuses to arm the attack); this never
-## aborts the process, so a bad `.tres` degrades instead of taking the game down (L-014).
-func is_valid() -> bool:
+## Every content problem with this attack, as human-readable strings. Pure: no errors are
+## emitted, so catalogs, tools and tests can call it freely. `is_valid()` is the loud
+## boundary wrapper around this.
+func validation_errors() -> Array[String]:
 	var problems: Array[String] = []
 	if id == &"":
 		problems.append("id is empty")
@@ -131,8 +135,12 @@ func is_valid() -> bool:
 			% committed_move_scale)
 	if weapon_family != &"" and not WEAPON_FAMILIES.has(weapon_family):
 		problems.append("weapon_family '%s' is not canon (CL-10)" % weapon_family)
-	if body_action == &"":
-		problems.append("body_action is empty — name the presentation body (attack, slash)")
+	if not BODY_ACTIONS.has(body_action):
+		var want := PackedStringArray()
+		for b in BODY_ACTIONS:
+			want.append(String(b))
+		problems.append("body_action '%s' is not a supported body (expected one of: %s)"
+			% [String(body_action), ", ".join(want)])
 	if reach_pixels <= 0.0:
 		problems.append("reach_pixels must be > 0 (got %.2f)" % reach_pixels)
 	if arc_degrees <= 0.0 or arc_degrees > 360.0:
@@ -144,6 +152,17 @@ func is_valid() -> bool:
 			% critical_chance_percent)
 	if critical_multiplier < 1.0:
 		problems.append("critical_multiplier must be >= 1.0 (got %.3f)" % critical_multiplier)
+	return problems
+
+
+## True when every authored field is usable. Loud about WHICH field is wrong, because a
+## content error that only says "invalid" sends the author looking through the whole file.
+##
+## Fail-closed validation at the data boundary (`04-coding-standards.md`): the OWNER decides
+## what to do with a false (the catalog/component refuses to arm the attack); this never
+## aborts the process, so a bad `.tres` degrades instead of taking the game down (L-014).
+func is_valid() -> bool:
+	var problems := validation_errors()
 	if problems.is_empty():
 		return true
 	push_error("[attack] '%s' is invalid: %s" % [id, "; ".join(problems)])

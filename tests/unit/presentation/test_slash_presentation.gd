@@ -27,7 +27,9 @@ const FeedbackScript := preload("res://src/presentation/equipment/equipment_feed
 
 const PLAYER_PROFILE := "res://data/characters/visual/player_visual.tres"
 const WOLF_PROFILE := "res://data/characters/visual/mist_wolf_visual.tres"
+const DAOBAO_PROFILE := "res://data/characters/visual/player_daobao_visual.tres"
 const PLAYER_ANCHORS := "res://data/characters/visual/anchors/player_proto_anchors.tres"
+const DAOBAO_ANCHORS := "res://data/characters/visual/anchors/player_daobao_anchors.tres"
 const KIEM_ATTACK := "res://data/combat/attack_player_kiem.tres"
 
 const DOWN := CharacterVisualProfileData.Direction.DOWN
@@ -246,3 +248,68 @@ func test_tip_at_progress_matches_the_drawn_column() -> void:
 	assert_eq(idle.anchor_point_at_progress(POINT_BLADE, 0.5, Vector2(-1, -1)),
 		Vector2(-1, -1), "with no action playing, the lookup falls back")
 	free_node(idle)
+
+
+# === The daobao look (D-063 A3 review) ==========================================
+
+## The second player look wires the slash sheet too: the profile validates, the sheet has
+## the authored 8x4 layout, and the slash resolves to the slash body — not the fallback.
+## The art review board alone cannot prove the runtime wiring; this does.
+func test_daobao_profile_wires_the_slash_sheet() -> void:
+	var profile := _profile(DAOBAO_PROFILE)
+	assert_true(profile.is_valid(),
+		"the daobao profile validates: %s" % str(profile.validation_errors()))
+	assert_eq(profile.frame_count_of(profile.slash_sheet), 8,
+		"the daobao slash sheet is 8 columns")
+	assert_eq(profile.slash_sheet.get_height(),
+		profile.frame_size.y * CharacterVisualProfileData.DIRECTION_COUNT,
+		"and 4 facing rows")
+	var component := _component_for(profile)
+	assert_eq(component.resolve_body_action(&"slash"),
+		CharacterVisualComponent.ACTION_SLASH,
+		"slash resolves to the slash body, not the fallback")
+	assert_true(component.play_action(CharacterVisualComponent.ACTION_SLASH),
+		"the slash starts")
+	assert_eq(component.get_sprite().texture, profile.slash_sheet,
+		"the daobao slash sheet shows")
+	free_node(component)
+
+
+## The daobao rig authors the blade for every slash frame, with a depth track that agrees.
+func test_daobao_slash_anchors_match_the_sheet() -> void:
+	var anchors := load(DAOBAO_ANCHORS) as CharacterAnchorData
+	assert_not_null(anchors, "the daobao anchors load")
+	assert_true(anchors.has_point(&"slash", POINT_BLADE),
+		"the rig names the blade tip for the slash")
+	assert_eq(anchors.frame_count(&"slash", POINT_BLADE), 8,
+		"one tip per slash frame")
+	assert_true(anchors.has_depth(&"slash", POINT_BLADE),
+		"with a depth track")
+	assert_true(anchors.is_valid(),
+		"tracks agree: %s" % str(anchors.validation_errors()))
+
+
+# === Unsupported bodies stay observable (D-063 A3 review) =========================
+
+## A typo'd body_action is refused at the data boundary, naming the field and the value —
+## it can never silently masquerade as a normal attack.
+func test_typo_body_action_is_refused_at_the_boundary() -> void:
+	var data: AttackData = AttackDataScript.new()
+	data.id = &"attack_test_typo"
+	data.body_action = &"slahs"
+	assert_false(data.is_valid(), "a typo'd body_action is refused")
+	var errors := str(data.validation_errors())
+	assert_true("body_action" in errors, "naming the field")
+	assert_true("slahs" in errors, "and the offending value")
+
+
+## …but the visual never breaks on it: an unsupported name still falls back to the palm
+## strike (with a warning), so a bad string degrades the swing instead of leaving it
+## bodiless. Contrast with a SUPPORTED body on a sheet-less profile, which falls back
+## silently by design (test_slash_falls_back_to_attack_without_the_sheet).
+func test_typo_body_action_falls_back_without_breaking() -> void:
+	var component := _component_for(_profile(PLAYER_PROFILE))
+	assert_eq(component.resolve_body_action(&"slahs"),
+		CharacterVisualComponent.ACTION_ATTACK,
+		"an unsupported body still resolves to the palm strike")
+	free_node(component)

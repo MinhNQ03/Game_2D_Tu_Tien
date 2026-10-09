@@ -236,10 +236,14 @@ func _on_attack_started() -> void:
 
 ## Which action body to play for `body_action`: the named one when this profile can draw it,
 ## else the palm strike. A profile without the sheet is never left without a body for its
-## swing (D-063 A3).
+## swing (D-063 A3). An unsupported (typo'd) name is LOUD — a warning, never silent — but
+## still falls back: a bad string degrades the swing, it never leaves it bodiless.
 func resolve_body_action(body_action: StringName) -> StringName:
 	if body_action != ACTION_NONE and _sheet_for_action(body_action) != null:
 		return body_action
+	if body_action != ACTION_NONE and not AttackData.BODY_ACTIONS.has(body_action):
+		push_warning("[visual] unsupported body_action '%s' — falling back to the attack body"
+			% body_action)
 	return ACTION_ATTACK
 
 
