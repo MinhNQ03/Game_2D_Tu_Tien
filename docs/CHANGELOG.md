@@ -8,6 +8,25 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-09 — D-063 Phase A final closeout (A1#2 identity, A2 deps, 5A/5B/5C)
+
+- **Notice identity is now stable.** `GameplayHUD.notice_seq()` exposes the notice's
+  enqueue sequence number; the playtest records each shown instance by identity, not
+  text-change — two identical kind+text instances are recorded as two. `05d` validates
+  the exact 5-entry sequence (2 lessons + pill/manual/robe) via `NoticeSequenceValidator`;
+  12 regression tests (was 9).
+- **Pixelizer dependency fixed.** `tools/art_sheet/` (neutral) now owns `sheet.py` and
+  `raster.py`; `pixel/pixelize.py`, `gen_prototype_assets.py`, `aetheria_art/beast.py`
+  and `props.py` import from it — no more `pixelize -> aetheria_art.sheet` reverse dep.
+- **19_natural_encounter stabilized.** 30-round budget replaced by 45s wall-clock deadline
+  with state observation; still real keys, no teleport, no fake kill.
+- **5A/5B/5C dispositions:** boulder/well footprints accepted as intentional (feet-area
+  collision); map-change notice disposal accepted as correct (map-owned HUD, no global
+  manager); paving contrast verified acceptable from real captures.
+- **Timing:** 26.44ms mean on llvmpipe (no GPU) vs 20ms threshold — environmental blocker;
+  state/order evidence valid, timing NOT MEASURED.
+
+
 ### 2026-10-09 — Notice order is proven exactly (D-063 A1 carried item #2 reopen fix)
 
 - **05d now proves the exact notice sequence, not just a count.** Root cause: the setup
