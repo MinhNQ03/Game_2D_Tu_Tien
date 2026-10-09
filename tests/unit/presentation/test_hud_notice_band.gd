@@ -191,6 +191,66 @@ func test_a_new_answer_supersedes_a_stale_one() -> void:
 	free_node(hud)
 
 
+## THE VISIBLE-ON-ITS-FRAME INVARIANT (A1 carried item #1). An answer waiting from an
+## older action must not suppress the same answer announced for a NEW action on a later
+## frame: the new answer takes the slot now, the stale waiting copy is superseded, and the
+## interrupted result is kept for its remaining time.
+func test_a_new_actions_answer_is_shown_despite_a_stale_waiting_duplicate() -> void:
+	var before := _language()
+	for code in ["vi", "en"]:
+		_use_language(code)
+		var hud := _hud()
+		hud.call("announce_result", &"UI_HUD_KNOWLEDGE_GAINED", LESSON_A)
+		assert_true(String(hud.call("notice_text")).contains(_t("KNOW_DAN_KHI_QUYET_NAME")),
+			"%s: the lesson is on screen" % code)
+		# The same frame, the refusal arrives: it waits behind the lesson.
+		hud.call("announce_answer", &"UI_CULTIVATE_NO_METHOD")
+		assert_true(String(hud.call("notice_text")).contains(_t("KNOW_DAN_KHI_QUYET_NAME")),
+			"%s: the lesson is still on screen" % code)
+		assert_eq(hud.call("pending_notice_keys"), _keys([&"UI_CULTIVATE_NO_METHOD"]),
+			"%s: the answer waits its turn" % code)
+		# Next frame, the player acts again: the same refusal, a new action.
+		await scene_tree.process_frame
+		hud.call("announce_answer", &"UI_CULTIVATE_NO_METHOD")
+		assert_eq(hud.call("notice_text"), _t("UI_CULTIVATE_NO_METHOD"),
+			"%s: the new answer is on screen right after the call, no frame awaited"
+				% code)
+		assert_eq(hud.call("notice_kind"), GameplayHUD.NOTICE_ANSWER, "%s: as an ANSWER"
+			% code)
+		assert_eq(hud.call("pending_notice_keys"), _keys([&"UI_HUD_KNOWLEDGE_GAINED"]),
+			"%s: the stale duplicate is gone, the interrupted lesson is kept" % code)
+		_expire(hud)
+		assert_true(String(hud.call("notice_text")).contains(_t("KNOW_DAN_KHI_QUYET_NAME")),
+			"%s: the lesson resumes" % code)
+		_expire(hud)
+		assert_eq(hud.call("notice_text"), "",
+			"%s: the band is empty — the stale answer is never shown again" % code)
+		assert_eq(hud.call("pending_notice_keys"), _keys([]), "%s: nothing waits" % code)
+		free_node(hud)
+	_use_language(before)
+
+
+## Same-frame duplicate answers stay deduplicated: two identical refusals for ONE action
+## queue a single waiting copy, never a backlog that reprints after the player stops.
+func test_same_frame_duplicate_answers_are_deduplicated() -> void:
+	var hud := _hud()
+	hud.call("announce_result", &"UI_HUD_KNOWLEDGE_GAINED", LESSON_A)
+	hud.call("announce_answer", &"UI_CULTIVATE_NO_METHOD")
+	hud.call("announce_answer", &"UI_CULTIVATE_NO_METHOD")  # the same frame
+	assert_eq(hud.call("pending_notice_keys"), _keys([&"UI_CULTIVATE_NO_METHOD"]),
+		"one waiting copy, not two")
+	await scene_tree.process_frame
+	hud.call("announce_answer", &"UI_CULTIVATE_NO_METHOD")
+	assert_eq(hud.call("notice_text"), _t("UI_CULTIVATE_NO_METHOD"), "the answer is up")
+	_expire(hud)
+	assert_true(String(hud.call("notice_text")).contains(_t("KNOW_DAN_KHI_QUYET_NAME")),
+		"the lesson resumes")
+	_expire(hud)
+	assert_eq(hud.call("notice_text"), "", "the band is empty, no duplicate reprint")
+	assert_eq(hud.call("pending_notice_keys"), _keys([]), "nothing waits")
+	free_node(hud)
+
+
 ## A result interrupted by the next action is not lost: it resumes for the time it had left —
 ## never less than a readable minimum.
 func test_an_interrupted_result_resumes_for_what_it_had_left() -> void:

@@ -1081,6 +1081,10 @@ func _enqueue_notice(kind: StringName, text_key: StringName, args: Dictionary) -
 		return
 	for waiting in _immediate_lane:
 		if _same_notice(waiting, entry):
+			if kind == NOTICE_ANSWER and int(waiting["frame"]) != int(entry["frame"]):
+				# A new action's ANSWER, not a duplicate of the waiting one: the stale
+				# copy must not suppress it. Fall through to supersede it below.
+				break
 			return  # already waiting its turn
 	if _is_immediate(_shown) and int(_shown["frame"]) == int(entry["frame"]):
 		# Another result of the SAME action (a stele that teaches two things): in order, after it.
