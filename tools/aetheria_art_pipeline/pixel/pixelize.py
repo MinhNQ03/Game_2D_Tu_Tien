@@ -310,7 +310,7 @@ def portrait(spec, frames_dir):
 
 
 def _rows(im):
-    """A PIL cell as the row-major tuple grid `aetheria_art.sheet` verifies."""
+    """A PIL cell as the row-major tuple grid `art_sheet.sheet` verifies."""
     w, h = im.size
     data = list(im.getdata())
     return [data[y * w:(y + 1) * w] for y in range(h)]
@@ -328,7 +328,7 @@ def _assemble(cells):
 def build_actor(spec, work_dir, root):
     """Every animation sheet + the anchor resource for one actor."""
     sys.path.insert(0, os.path.join(root, "tools"))
-    from aetheria_art import sheet as legacy_sheet
+    from art_sheet import sheet as sheet_io
     sys.path.insert(0, os.path.join(PIPE, "model"))
     import motion
     frames_dir = os.path.join(work_dir, "frames")
@@ -357,7 +357,7 @@ def build_actor(spec, work_dir, root):
             cells.append(row)
         # THE VALIDATOR: adjacent frames must differ and facings must differ, or the runtime
         # would animate an index over a motionless figure (L-029). It FAILS the build.
-        legacy_sheet.verify_animates("%s/%s" % (spec["id"], anim),
+        sheet_io.verify_animates("%s/%s" % (spec["id"], anim),
                                      [[_rows(im) for im in row] for row in cells],
                                      loops=info.get("loops", True))
         sheet_img = _assemble(cells)
@@ -383,7 +383,7 @@ def build_actor(spec, work_dir, root):
     # dropped animation would name a sheet the profile does not have)
     depths = {anim: tracks for anim, tracks in projected_depths.items()
               if anim in spec["animations"]}
-    legacy_sheet.write_anchor_resource(path, "anchors_" + spec["id"], (cw, ch), anchors,
+    sheet_io.write_anchor_resource(path, "anchors_" + spec["id"], (cw, ch), anchors,
                                        feet_row=spec["camera"]["gameplay"]["feet_row"],
                                        depths=depths)
     written.append(os.path.relpath(path, root))
@@ -496,7 +496,7 @@ def build_props(prop_spec, frames_dir, root):
     """Every prop -> assets/sprites/props/world/<id>.png (cropped to its pixels) and
     data/world/props/<id>.tres (PropData: the texture, the origin, the collision footprint)."""
     sys.path.insert(0, os.path.join(root, "tools"))
-    from aetheria_art import sheet as legacy_sheet
+    from art_sheet import sheet as sheet_io
     k = prop_spec["render_scale"]
     written = []
     os.makedirs(os.path.join(root, "assets/sprites/props/world"), exist_ok=True)
@@ -511,7 +511,7 @@ def build_props(prop_spec, frames_dir, root):
         tex_rel = "assets/sprites/props/world/%s.png" % prop_id
         pngout.save(img, os.path.join(root, tex_rel))
         tres_rel = "data/world/props/%s.tres" % prop_id
-        legacy_sheet.write_prop_resource(
+        sheet_io.write_prop_resource(
             os.path.join(root, tres_rel), prop_id, tex_rel, (ox, oy), _footprint(spec, meta),
             footprint_round=spec["kind"] in ROUND_FOOTPRINTS,
             sways=spec["kind"] in ("broadleaf_tree", "pine"))

@@ -291,14 +291,17 @@ func _step_feedback(map: Node) -> void:
 	# out-of-order notice fails.
 	started = Time.get_ticks_msec()
 	var sequence: Array[String] = []
-	var last := ""
+	var last_seq := 0
 	var budget := int((expected_passives + 3) * UIPalette.HUD_NOTICE_SECONDS * 75.0)
 	for _i in budget:
 		await process_frame
 		var text := hud.notice_text()
-		if text != "" and text != last:
+		var seq := hud.notice_seq()
+		# Identity, not text: two distinct notice instances with identical kind and
+		# text have different seq values and must both be recorded.
+		if NoticeSequenceValidator.should_record(text, seq, last_seq):
 			sequence.append("%s:%s" % [hud.notice_kind(), text])
-		last = text
+			last_seq = seq
 		if text == "" and hud.pending_notice_keys().is_empty():
 			break
 	var second := String(loc.call("t", "KNOW_LAC_HA_STELE_RECORD_NAME"))
@@ -991,8 +994,14 @@ func _step_natural_encounter(main: Node) -> void:
 	# the observable effect rather than timed (L-016). The two are interleaved because the
 	# creature is hunting back — it closes while the player closes, which is the actual
 	# experience and the reason this cannot be a fixed script.
+	# Deadline-based (not round-count-based): the wolf's real-time lifecycle needs a
+	# wall-clock budget generous enough for approach + multiple swings. 45 seconds is
+	# ample for the authored encounter at 60fps; the loop exits early on kill.
 	var landed := false
-	for _round in 30:
+	var deadline_msec := Time.get_ticks_msec() + 45000
+	var rounds := 0
+	while Time.get_ticks_msec() < deadline_msec:
+		rounds += 1
 		if bool(living.call("is_dead")):
 			break
 		var gap := player.global_position.distance_to(living.global_position)
@@ -1018,6 +1027,9 @@ func _step_natural_encounter(main: Node) -> void:
 				landed = true
 			if bool(living.call("is_dead")):
 				break
+		if landed and bool(living.call("is_dead")):
+			break
+	var timed_out := Time.get_ticks_msec() >= deadline_msec and not landed
 	var killed := bool(living.call("is_dead"))
 	var final_gap := player.global_position.distance_to(living.global_position)
 	var shot := await _shot("19_natural_encounter")
@@ -1037,10 +1049,10 @@ func _step_natural_encounter(main: Node) -> void:
 	_record("19_natural_encounter",
 		"[MODE B] the player closes the distance and kills with NO repositioning by code",
 		("setup{placements=%d initial_gap_px=%.0f} movement{final_gap_px=%.0f} "
-			+ "attack{hp %d -> %d landed=%s killed=%s}") % [
+			+ "attack{hp %d -> %d landed=%s killed=%s rounds=%d timed_out=%s}") % [
 			placements, initial_gap, final_gap, start_hp,
-			int(living.call("get_current_health")), landed, killed],
-		landed and placements == 1, started, shot)
+			int(living.call("get_current_health")), landed, killed, rounds, timed_out],
+		landed and placements == 1 and not timed_out, started, shot)
 
 	# The reward must move again — a second payment, proving the ledger pays per SPAWN rather
 	# than once per session.
