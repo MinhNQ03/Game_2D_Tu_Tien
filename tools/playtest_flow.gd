@@ -186,16 +186,47 @@ func _step_feedback(map: Node) -> void:
 			"hud=%s player=%s spring=%s stele=%s" % [hud != null, player != null,
 				spring != null, stele != null], false, started)
 		return
-	if not await _step_environment():
+	var timing_ok := await _step_environment()
+	# STATE (independent of timing): the setup pickups must REALLY collect via the live
+	# InventoryRuntime — not merely become invisible. This runs even when the frame-pacing
+	# environment is invalid, so a bad clock can never silently skip the collection proof.
+	started = Time.get_ticks_msec()
+	var inv_pre := _inventory()
+	var pre_robe := inv_pre != null and bool(inv_pre.call("is_collected", &"pickup_hubrobe"))
+	var pill := await _walk_onto(map, player, "Pickups/HubPill1", &"pickup_hubpill1")
+	var manual := await _walk_onto(map, player, "Pickups/HubManualPhong",
+		&"pickup_hubmanualphong")
+	# The robe sits 12.8px from the manual (reach 14px): the manual placement collects it
+	# too. Verify via the authority; the run proves collection iff it was uncollected
+	# before this setup phase and is collected now.
+	var inv_post := _inventory()
+	var robe_now := inv_post != null and bool(inv_post.call("is_collected", &"pickup_hubrobe"))
+	var robe := {"ok": robe_now and not pre_robe,
+		"reason": "pickup_hubrobe already collected before setup" if pre_robe
+			else ("" if robe_now else "pickup_hubrobe not collected with the manual"),
+		"pickup_id": &"pickup_hubrobe"}
+	var state_ok: bool = pill["ok"] and manual["ok"] and robe["ok"]
+	_record("05a_pickup_state",
+		"pickup_hubpill1, pickup_hubmanualphong, pickup_hubrobe collected via the live "
+			+ "InventoryRuntime (is_collected), not inferred from visibility",
+		"pill=%s manual=%s robe=%s" % [_describe_setup(pill), _describe_setup(manual),
+			_describe_setup(robe)],
+		state_ok, started)
+	if not timing_ok:
 		for step in ["05b_answer_timing", "05c_result_timing", "05d_notices_kept"]:
-			_record(step, "a valid timing environment", "ENVIRONMENT INVALID — not measured",
+			_record(step, "a valid timing environment", "ENVIRONMENT INVALID — not measured "
+				+ "(pickup state proven in 05a_pickup_state)", false, Time.get_ticks_msec())
+		return
+	if not state_ok:
+		for step in ["05b_answer_timing", "05c_result_timing", "05d_notices_kept"]:
+			_record(step, "setup pickups collected", "SETUP FAILED — timing not attempted",
 				false, Time.get_ticks_msec())
 		return
 	var loc := root.get_node("Localization")
 
 	# 05b — C at the spring, no method yet, with a pickup notice on screen.
+	# (The pill was collected in the setup above; its notice is the pending one.)
 	started = Time.get_ticks_msec()
-	await _walk_onto(map, player, "Pickups/HubPill1")  # SETUP
 	var before := "kind=%s '%s'" % [hud.notice_kind(), hud.notice_text()]
 	player.global_position = spring.global_position + Vector2(0, 26)  # SETUP
 	for _i in 4:
@@ -212,30 +243,48 @@ func _step_feedback(map: Node) -> void:
 		_within(answer) and hud.notice_kind() == GameplayHUD.NOTICE_ANSWER and kept, started,
 		answer["shot"])
 
-	# 05c — two pickups beside the stele, then E on the stele.
+	# 05c — two pickups beside the stele (collected in the setup above), then E on the stele.
+	# The setup already proved collection via is_collected; 05c fails explicitly if either
+	# required pickup did not collect — it never passes on a missing pickup.
 	started = Time.get_ticks_msec()
-	await _walk_onto(map, player, "Pickups/HubManualPhong")  # SETUP
-	await _walk_onto(map, player, "Pickups/HubRobe")  # SETUP
+	var inv := _inventory()
+	var manual_ok := inv != null and bool(inv.call("is_collected", &"pickup_hubmanualphong"))
+	var robe_ok := inv != null and bool(inv.call("is_collected", &"pickup_hubrobe"))
+	if not (manual_ok and robe_ok):
+		_record("05c_result_timing",
+			"pickup_hubmanualphong and pickup_hubrobe collected before the stele read",
+			"manual=%s robe=%s — SETUP NOT PROVEN" % [manual_ok, robe_ok], false, started)
+		# 05d cannot run meaningfully; record it as blocked by the failed setup.
+		_record("05d_notices_kept", "pickup notices kept in order",
+			"blocked: 05c setup failed", false, Time.get_ticks_msec())
+		return
 	player.global_position = stele.global_position + Vector2(0, 14)  # SETUP
 	for _i in 4:
 		await physics_frame
 	var waiting := hud.pending_notice_keys()
+	# Explicit expectation: the two setup pickups each left one passive UI_ITEM_GAINED
+	# notice waiting. Never derive the expected count from waiting.size() — a missing
+	# pickup would shrink that count and let an incomplete run pass.
+	var expected_passives := 2
 	var lesson := String(loc.call("t", "KNOW_DAN_KHI_QUYET_NAME"))
 	var result := await _time_feedback(&"interact", func() -> bool:
 		return hud.notice_text().contains(lesson))
 	_record("05c_result_timing",
-		"lesson visible <= %d rendered frames and <= %.0f ms, ahead of %d waiting notices"
-			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC, waiting.size()],
-		"frames=%d ms=%.1f kind=%s waiting=%s" % [result["frames"], result["ms"],
-			hud.notice_kind(), str(hud.pending_notice_keys())],
+		"lesson visible <= %d rendered frames and <= %.0f ms, ahead of %d waiting pickup notices"
+			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC, expected_passives],
+		"frames=%d ms=%.1f kind=%s waiting=%s (expected %d passives)"
+			% [result["frames"], result["ms"], hud.notice_kind(),
+				str(hud.pending_notice_keys()), expected_passives],
 		_within(result) and hud.notice_kind() == GameplayHUD.NOTICE_RESULT, started,
 		result["shot"])
 
 	# 05d — in real time: the second lesson, then every pickup notice, in order, none lost.
+	# Expected: lesson 1, lesson 2, then exactly the 2 passive pickup notices from the
+	# proven setup (manual + robe). A vacuously small observed count cannot pass.
 	started = Time.get_ticks_msec()
 	var sequence: Array[String] = []
 	var last := ""
-	var budget := int((waiting.size() + 3) * UIPalette.HUD_NOTICE_SECONDS * 75.0)
+	var budget := int((expected_passives + 3) * UIPalette.HUD_NOTICE_SECONDS * 75.0)
 	for _i in budget:
 		await process_frame
 		var text := hud.notice_text()
@@ -248,12 +297,14 @@ func _step_feedback(map: Node) -> void:
 		return e.begins_with(String(GameplayHUD.NOTICE_PASSIVE)))
 	var second := String(loc.call("t", "KNOW_LAC_HA_STELE_RECORD_NAME"))
 	var ok := sequence.size() >= 2 and sequence[0].contains(lesson) \
-		and sequence[1].contains(second) and passives.size() == waiting.size() \
+		and sequence[1].contains(second) and passives.size() == expected_passives \
 		and not hud.notice_backlog_overflowed()
 	_record("05d_notices_kept",
-		"lesson 1, lesson 2, then all %d waiting pickup notices in order; no overflow"
-			% waiting.size(),
-		" | ".join(sequence), ok, started, await _shot("05d_band_drained"))
+		"lesson 1, lesson 2, then exactly %d pickup notices in order; no overflow"
+			% expected_passives,
+		"observed %d passives (expected %d): %s" % [passives.size(), expected_passives,
+			" | ".join(sequence)],
+		ok, started, await _shot("05d_band_drained"))
 
 
 ## D-063 A2: what is drawn with mass stops a walk. REAL held move keys walk the player into the
@@ -458,16 +509,56 @@ func _within(timing: Dictionary) -> bool:
 		and float(timing["ms"]) <= FEEDBACK_MAX_MSEC
 
 
-## SETUP: stand on a pickup until it is collected (its notice is then in the band).
-func _walk_onto(map: Node, player: Node2D, path: String) -> void:
-	var pickup := map.get_node_or_null(path) as Node2D
+## SETUP: stand on a pickup until the live InventoryRuntime reports collection.
+## Returns {"ok": bool, "reason": String, "pickup_id": StringName}.
+## Fails loudly (ok=false) on: missing node, not a WorldItem, empty or unexpected
+## pickup_id, already collected before setup, or no collection within 30 physics frames.
+## Visibility going false is a secondary signal only — `is_collected()` is the proof.
+## Never fakes collection and never writes inventory state directly.
+func _walk_onto(map: Node, player: Node2D, path: String,
+		expected_id: StringName) -> Dictionary:
+	var pickup := map.get_node_or_null(path)
 	if pickup == null:
-		return
-	player.global_position = pickup.global_position
+		return {"ok": false, "reason": "missing pickup node at '%s'" % path,
+			"pickup_id": &""}
+	if not (pickup is WorldItem):
+		return {"ok": false,
+			"reason": "node at '%s' is %s, not a WorldItem" % [path, pickup.get_class()],
+			"pickup_id": &""}
+	var pid := StringName((pickup as WorldItem).pickup_id)
+	if pid == &"":
+		return {"ok": false, "reason": "WorldItem at '%s' has an empty pickup_id" % path,
+			"pickup_id": &""}
+	if pid != expected_id:
+		return {"ok": false,
+			"reason": "WorldItem at '%s' has pickup_id '%s', expected '%s'"
+				% [path, pid, expected_id],
+			"pickup_id": pid}
+	var inv := _inventory()
+	if inv == null:
+		return {"ok": false, "reason": "no live InventoryRuntime", "pickup_id": pid}
+	if bool(inv.call("is_collected", pid)):
+		return {"ok": false,
+			"reason": "pickup_id '%s' already collected before setup — this run cannot prove collection"
+				% pid,
+			"pickup_id": pid}
+	player.global_position = (pickup as Node2D).global_position
 	for _i in 30:
 		await physics_frame
-		if not pickup.visible:
+		if bool(inv.call("is_collected", pid)):
 			break
+	if not bool(inv.call("is_collected", pid)):
+		return {"ok": false,
+			"reason": "pickup_id '%s' not collected within 30 physics frames" % pid,
+			"pickup_id": pid}
+	return {"ok": true, "reason": "", "pickup_id": pid}
+
+
+## One-line observed state for a `_walk_onto` result, for the playtest report.
+func _describe_setup(result: Dictionary) -> String:
+	if bool(result["ok"]):
+		return "collected '%s'" % String(result["pickup_id"])
+	return "FAILED: %s" % String(result["reason"])
 
 
 ## A REAL movement step: a held direction key, and the player's position must change.
@@ -570,6 +661,15 @@ func _progression_level() -> int:
 		return -1
 	var view: ProgressionView = progression.call("build_view")
 	return view.level if view.available else -1
+
+
+## The live `InventoryRuntime`, or null before a session exists. The AUTHORITATIVE
+## owner of pickup collection state — the harness observes it, never writes it.
+func _inventory() -> Node:
+	var main := root.get_node_or_null("Main")
+	if main == null:
+		return null
+	return main.get_node_or_null("Systems/InventoryRuntime")
 
 
 ## The player's cumulative XP from the AUTHORITATIVE CharacterState, or -1 outside a session.
