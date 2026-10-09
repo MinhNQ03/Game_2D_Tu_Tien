@@ -996,6 +996,8 @@ baseline). After A1 carried item #1: 841 tests, 841 passed, 0 failed — verifie
 #127 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37898325053) on
 `1d6b7bc`; latest branch HEAD `7314357` also 841 passed in CI run #130
 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37899934278).
+After A1 item #2 reopen fix: 853 tests, 853 passed, 0 failed — verified locally
+(Godot 4.7.2 `ed1daf0bf`, 0 SCRIPT ERROR, 0 leaks) and by CI on the closeout HEAD.
 
 **D-063 A2a (physical truth — the stele and the spring):** `tests/gameplay/test_prop_bodies.gd`
 (4: the bodies exist from the pipeline's PropData; a walk with the player's own collision shape
