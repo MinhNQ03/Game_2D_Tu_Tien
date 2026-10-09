@@ -20,7 +20,7 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
 | Item | Origin | Status |
 |---|---|---|
 | A new ANSWER identical to one WAITING in the immediate lane returns instead of showing (the "visible on its frame" invariant) | A1 review | RESOLVED 2026-10-09 — `_enqueue_notice()` now distinguishes a same-frame duplicate (deduplicated) from a new action's ANSWER on a later frame (shown immediately, stale copy superseded); 2 regression tests, 841/841 suite green |
-| playtest 05c/05d: pin that the setup pickups were actually collected | A1 review | OPEN / NEEDS REVIEW 2026-10-09 — sequence-count inconsistency found: 05d expected 2 passives but all 3 pickups (pill, manual, robe) were collected; fixing to expect all 3 with explicit identity+order validation |
+| playtest 05c/05d: pin that the setup pickups were actually collected | A1 review | RESOLVED 2026-10-09 (reopen fix) — root cause: 05d expected 2 passives but all 3 pickups were collected (pill notice preserved through interruptions). Fix: `NoticeSequenceValidator` proves the exact 5-entry sequence (lesson 1, lesson 2, pill/manual/robe in emission order) by authored identity (`ITEM_BO_HUYET_DAN_NAME`, `ITEM_MANUAL_PHONG_NAME`, `ITEM_DAO_BAO_THANH_VAN_NAME`), each exactly once; 9 regression tests (missing/duplicate/unexpected/wrong-order/wrong-kind/extra/empty all fail); 05b/05c gameplay always runs, timing NOT MEASURED when pacing invalid; real-app 05d observed "sequence exact" |
 | `pixel/pixelize.py` → `aetheria_art.sheet` dependency (one PropData writer, wrong direction) | A2 review P2 | technical debt — move the writer to a neutral module |
 | Pixelizer non-determinism (`max(set(keys))` over string keys) | A2 | FIXED (`_majority`; `validate/determinism_check.py`, 3 seeds × 99 files identical) |
 | `19_natural_encounter` playtest step is timing-flaky (30-round budget vs real-time wolf) | A2 | open — harness |
@@ -74,14 +74,16 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
   with full-log scans (see below). (Previous HEAD `b838eb2` also CI-SUCCESS, run
   `37893656907`; all commits since `00e84b0` are documentation-only.)
 - Latest repository state (2026-10-09): current branch HEAD
-  `73143579510a89628bb00079c54c88f5c1c4a868` — CI run #130
-  https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37899934278 (SUCCESS).
-  A1 item #1 code SHA `1d6b7bc159d4d7389389a71c97a1228e1d8a15cd` — CI run #127
+  `568bc9c` — CI run https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37910158218
+  (SUCCESS, exact head_sha verified). A1 item #1 code SHA
+  `1d6b7bc159d4d7389389a71c97a1228e1d8a15cd` — CI run #127
   https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37898325053 (SUCCESS).
   A1 item #1: RESOLVED (regression tests
   `test_a_new_actions_answer_is_shown_despite_a_stale_waiting_duplicate` and
   `test_same_frame_duplicate_answers_are_deduplicated`; 841/841 suite green).
-  A3 status remains PASSED.
+  A1 item #2: RESOLVED (reopen fix — `NoticeSequenceValidator`, 9 regression tests,
+  850/850 suite green, real-app 05d "sequence exact"). A3 status remains PASSED.
+  (Historical: HEAD `7314357` CI #130 SUCCESS; Stage 0 docs `467c466` CI #131 SUCCESS.)
 - Local repeat (labelled local, Godot 4.7.2 `ed1daf0bf`, Xvfb where a display is needed):
   - Headless unit suite ×2 runs: 839/839 passed, 0 failed assertions, 0 SCRIPT ERROR
     (full-log `grep -c`), 0 leaks.
