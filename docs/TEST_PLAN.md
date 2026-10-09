@@ -4,7 +4,7 @@
 > Goal: **not** blind 100% coverage — strong coverage of high-risk logic, cheap smoke
 > coverage of the whole flow, and every fixed bug pinned by a regression test.
 >
-> **CURRENT STATUS (through Phase 11 + its D-055 hardening pass):** strategy defined;
+> **CURRENT STATUS (through Phase 15 + D-063 Phase A closeout):** strategy defined;
 > runner + framework in place. The suite covers the core framework (lifecycle/scene-router/
 > input/localization/event-bus/settings), the **session lifecycle contract** (the ordered
 > teardown, D-047), the Player core (stats/health/movement/damage + player↔dummy integration),
