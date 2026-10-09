@@ -8,6 +8,19 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-09 — Notice order is proven exactly (D-063 A1 carried item #2 reopen fix)
+
+- **05d now proves the exact notice sequence, not just a count.** Root cause: the setup
+  collects all three pickups (pill, manual, robe) but 05d expected only 2 passives — the
+  pill notice is real and preserved through interruptions. A new `NoticeSequenceValidator`
+  verifies lesson 1, lesson 2, then pill/manual/robe in emission order, each by authored
+  item identity (`ITEM_BO_HUYET_DAN_NAME`, `ITEM_MANUAL_PHONG_NAME`,
+  `ITEM_DAO_BAO_THANH_VAN_NAME`), each exactly once; 9 regression tests cover
+  missing/duplicate/unexpected/wrong-order/wrong-kind cases. The 05b/05c gameplay
+  interactions now always run even when frame pacing is invalid — only the 2-frame/100ms
+  timing threshold stays NOT MEASURED.
+
+
 ### 2026-10-09 — Pickup collection is proven, not inferred (D-063 A1 carried item #2)
 
 - **The playtest now proves setup pickups were really collected.** `_walk_onto()` returns
