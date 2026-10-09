@@ -236,7 +236,10 @@ def main(argv=None):
     elif args.cmd == "review":
         sys.path.insert(0, os.path.join(PIPE, "validate"))
         import review_sheet
-        print(review_sheet.build(resolve(args.actor), ROOT, os.path.join(WORK, args.actor)))
+        spec = resolve(args.actor)
+        print(review_sheet.build(spec, ROOT, os.path.join(WORK, args.actor)))
+        if "slash" in spec["animations"]:
+            print(review_sheet.build_weapon_action(spec, ROOT, os.path.join(WORK, args.actor)))
     else:
         sys.path.insert(0, os.path.join(PIPE, "pixel"))
         import pixelize

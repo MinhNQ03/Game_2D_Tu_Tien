@@ -82,7 +82,7 @@ def write_prop_resource(path, prop_id, texture_rel, origin, footprint, footprint
         f.write(body)
 
 
-def write_anchor_resource(path, resource_id, cell_size, anchors, feet_row=None):
+def write_anchor_resource(path, resource_id, cell_size, anchors, feet_row=None, depths=None):
     """Write a `CharacterAnchorData` .tres.
 
     `anchors[anim][point]` is a list over DIRECTIONS of per-frame (x, y) CELL-pixel positions.
@@ -92,6 +92,10 @@ def write_anchor_resource(path, resource_id, cell_size, anchors, feet_row=None):
     axis instead of one pixel apart (the RIGHT row is the LEFT row mirrored). Keys are
     "anim/point"; each value is a PackedVector2Array ordered direction-major
     (direction * frames + frame), which the runtime indexes without any per-frame allocation.
+
+    `depths[anim][point]` (optional) is the same layout of per-frame DEPTHS in px — how far in
+    front of the body's core a point is along the camera's view axis (positive = toward the
+    viewer). Written as PackedFloat32Array tracks under `depths`, only for points that carry one.
     """
     cw, ch = cell_size
     # The ground line inside the cell: the bottom edge unless the sheet stands its feet higher
@@ -107,6 +111,13 @@ def write_anchor_resource(path, resource_id, cell_size, anchors, feet_row=None):
                 for (x, y) in frames:
                     coords.append("%g, %g" % (x + 0.5 - cw / 2.0, y + 0.5 - origin))
             lines.append('"%s/%s": PackedVector2Array(%s)' % (anim, point, ", ".join(coords)))
+    depth_lines = []
+    for anim in sorted(depths or {}):
+        for point in sorted(depths[anim]):
+            values = [("%g" % round(float(d), 2)) for frames in depths[anim][point]
+                      for d in frames]
+            depth_lines.append('"%s/%s": PackedFloat32Array(%s)'
+                               % (anim, point, ", ".join(values)))
     body = (
         '[gd_resource type="Resource" script_class="CharacterAnchorData" load_steps=2 format=3]\n\n'
         '[ext_resource type="Script" path="res://src/data/characters/character_anchor_data.gd" '
@@ -117,6 +128,8 @@ def write_anchor_resource(path, resource_id, cell_size, anchors, feet_row=None):
         "frame_size = Vector2i(%d, %d)\n"
         "points = {\n%s\n}\n" % (resource_id, cw, ch, ",\n".join(lines))
     )
+    if depth_lines:
+        body += "depths = {\n%s\n}\n" % ",\n".join(depth_lines)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         f.write(body)

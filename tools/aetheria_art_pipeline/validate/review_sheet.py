@@ -10,6 +10,7 @@ One image a reviewer reads top to bottom:
 It reads only files the pipeline wrote (work/<actor>/ and the committed sheets), so it never
 shows anything the game would not.
 """
+import json
 import os
 
 from PIL import Image
@@ -96,5 +97,55 @@ def build_icons(icon_spec, root, work, scale=4):
                               (i * cw + 28, 136))
         board.alpha_composite(framed, (i * cw + 48, 136 + 40 * scale // 2 + 8))
     out = os.path.join(work, "review_icons.png")
+    board.save(out)
+    return out
+
+
+def build_weapon_action(spec, root, work, anim="slash", grip="palm", tip="blade", scale=7):
+    """The review board for a WEAPON action: every frame of `anim`, all four facings, magnified,
+    with the blade the runtime will draw from the `grip` anchor to the `tip` anchor of that frame
+    — white where the anchor depth says it is in front of the body, grey where behind — and the
+    tip's path through the action. It shows the body and the weapon as the game will layer them,
+    so "do they read as ONE action" is judged on the real data (D-063 A3)."""
+    from PIL import ImageDraw
+    prefix = spec["outputs"]["sheet_prefix"]
+    sheet = Image.open(os.path.join(root, "assets/sprites/characters/%s_%s.png"
+                                    % (prefix, anim))).convert("RGBA")
+    cw, ch = spec["camera"]["gameplay"]["cell"]
+    feet = spec["camera"]["gameplay"]["feet_row"]
+    frames = sheet.width // cw
+    with open(os.path.join(work, "frames", "anchors.json")) as f:
+        anchors = json.load(f)[anim]
+    depths = {}
+    path = os.path.join(work, "frames", "anchor_depths.json")
+    if os.path.exists(path):
+        with open(path) as f:
+            depths = json.load(f).get(anim, {})
+    pad = 24
+    tile_w, tile_h = (cw + pad * 2) * scale, (ch + pad * 2) * scale
+    board = Image.new("RGBA", (tile_w * frames, tile_h * 4), (52, 58, 52, 255))
+    draw = ImageDraw.Draw(board)
+    for d in range(4):
+        trail = []
+        for c in range(frames):
+            cell = sheet.crop((c * cw, d * ch, (c + 1) * cw, (d + 1) * ch))
+            big = _on(GROUND, cell).resize((cw * scale, ch * scale), Image.NEAREST)
+            ox, oy = c * tile_w + pad * scale, d * tile_h + pad * scale
+            board.alpha_composite(big, (ox, oy))
+            gx, gy = anchors[grip][d][c]
+            tx, ty = anchors[tip][d][c]
+            front = depths.get(tip, [[1] * frames] * 4)[d][c] >= 0.0
+            colour = (240, 244, 250, 255) if front else (130, 136, 146, 255)
+            a = (ox + gx * scale, oy + gy * scale)
+            b = (ox + tx * scale, oy + ty * scale)
+            draw.line([a, b], fill=colour, width=3)
+            draw.ellipse([b[0] - 5, b[1] - 5, b[0] + 5, b[1] + 5], outline=(230, 80, 80, 255))
+            trail.append(b)
+            draw.line([(ox, oy + feet * scale), (ox + cw * scale, oy + feet * scale)],
+                      fill=(200, 170, 90, 255), width=1)
+            draw.text((c * tile_w + 6, d * tile_h + 6), "%s f%d %s" % (
+                ("down", "up", "left", "right")[d], c, "front" if front else "behind"),
+                fill=(255, 255, 255, 255))
+    out = os.path.join(work, "review_%s.png" % anim)
     board.save(out)
     return out

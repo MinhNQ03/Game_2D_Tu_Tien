@@ -27,3 +27,14 @@ outputs:
   anchors: player_daobao_anchors
   profile: player_daobao_visual                 # data/characters/visual/<profile>.tres (checked: anchor_offset)
   portrait: player_daobao
+
+# The jian's cut (D-063 A3). Only the player's looks wield a sword, so only they carry the SLASH
+# action (`AttackData.body_action` names it; a look without it falls back to the palm strike) and
+# the `blade` anchor: the blade held IN LINE with the right hand, 20 units from the grip to the
+# tip, so the drawn blade and the cut's trail follow the rig's own hand, frame by frame. `depth`
+# exports how far in front of the body the tip is, so the blade is layered in front of the
+# body or behind it as the rig actually holds it.
+animations:
+  slash: {frames: 8, loops: false}
+anchors:
+  blade: {bone: hand.R, along: 20.0, depth: true}

@@ -482,10 +482,41 @@ def _project(scene, cam, co, cell):
     return (v.x * cell[0], (1.0 - v.y) * cell[1])
 
 
+def _anchor_co(rig, point, mirrored):
+    """Where an anchor point is, in world space, on the pose showing now. A point is a bone name
+    (a hand: the middle of the hand; anything else: the bone's head) or {bone, along}: that point
+    carried `along` model units further down the bone's own axis — a blade held IN LINE with the
+    hand, so the hand's every turn (the arm's arc, the wrist's cock) turns the tip with it."""
+    along = 0.0
+    bone = point
+    if isinstance(point, dict):
+        bone, along = point["bone"], float(point.get("along", 0.0))
+    if mirrored:
+        bone = motion.mirror_name(bone)
+    pb = rig.pose.bones[bone]
+    co = (pb.head + pb.tail) * 0.5 if bone.startswith("hand") else pb.head
+    if along:
+        co = co + (pb.tail - pb.head).normalized() * along
+    return rig.matrix_world @ co
+
+
+def _depth_px(cam, co, ref, px_per_unit):
+    """How much nearer the camera `co` is than `ref`, in gameplay px along the view axis
+    (positive = in front of `ref`, toward the viewer)."""
+    fwd = cam.matrix_world.to_3x3() @ Vector((0.0, 0.0, -1.0))
+    return (ref - co).dot(fwd.normalized()) * px_per_unit
+
+
 def render_frames(spec_path, anims=None, out_dir=None, passes=("id", "light", "depth"),
                   only_frames=None, directions=None):
     """Render every (anim, direction, frame) as exact 1-sample passes at render_scale x the
-    cell, and write anchors.json (cell-pixel coordinates, NOT yet feet-relative)."""
+    cell, and write anchors.json (cell-pixel coordinates, NOT yet feet-relative).
+
+    A point declared with `depth: true` also gets its DEPTH per frame in anchor_depths.json:
+    how far in front of the body's `core` it is along the camera's view axis, in px. A 2D anchor
+    cannot say whether the blade it ends is in front of the body or behind it — the coil lays
+    the blade back over the shoulder, the follow-through carries it past the far hip — and a
+    blade drawn on the wrong side of the body breaks the one-action read (D-063 A3)."""
     spec = load_spec(spec_path)
     scene = bpy.context.scene
     rig = _rig()
@@ -502,34 +533,48 @@ def render_frames(spec_path, anims=None, out_dir=None, passes=("id", "light", "d
     if os.path.exists(anchors_path):
         with open(anchors_path) as f:
             anchors = json.load(f)
+    depths_path = os.path.join(out_dir, "anchor_depths.json")
+    depths = {}
+    if os.path.exists(depths_path):
+        with open(depths_path) as f:
+            depths = json.load(f)
     points = spec["anchors"]
+    deep = [name for name, point in points.items()
+            if isinstance(point, dict) and point.get("depth")]
+    px_per_unit = float(cell[1]) / float(cg.get("ortho_units", cell[1]))
     for anim, info in spec["animations"].items():
         if anims and anim not in anims:
             continue
         per = {name: [] for name in points}
+        per_depth = {name: [] for name in deep}
         for dname, yaw in DIRECTIONS:
             if directions and dname not in directions:
                 per_old = anchors.get(anim, {})
                 for name in points:
                     per[name].append(per_old.get(name, [[]] * 4)[_dir_index(dname)])
+                depth_old = depths.get(anim, {})
+                for name in deep:
+                    per_depth[name].append(depth_old.get(name, [[]] * 4)[_dir_index(dname)])
                 continue
             mirrored = dname in MIRRORED
             rig.animation_data.action = bpy.data.actions[
                 "AE_" + anim + (MIRROR_SUFFIX if mirrored else "")]
             rig.rotation_euler = (0.0, 0.0, math.radians(yaw))
             rows = {name: [] for name in points}
+            depth_rows = {name: [] for name in deep}
             for f in range(info["frames"]):
                 if only_frames is not None and f not in only_frames:
                     continue
                 scene.frame_set(f + 1)
                 bpy.context.view_layer.update()
-                for name, bone in points.items():
-                    if mirrored:
-                        bone = motion.mirror_name(bone)
-                    pb = rig.pose.bones[bone]
-                    co = rig.matrix_world @ ((pb.head + pb.tail) * 0.5 if bone.startswith("hand")
-                                             else pb.head)
-                    rows[name].append(_project(scene, cam, co, cell))
+                for name, point in points.items():
+                    rows[name].append(_project(scene, cam, _anchor_co(rig, point, mirrored),
+                                               cell))
+                if deep:
+                    core = _anchor_co(rig, points.get("core", "core"), mirrored)
+                    for name in deep:
+                        co = _anchor_co(rig, points[name], mirrored)
+                        depth_rows[name].append(round(_depth_px(cam, co, core, px_per_unit), 2))
                 for pas in passes:
                     set_mode(pas)
                     scene.render.filepath = os.path.join(
@@ -537,12 +582,19 @@ def render_frames(spec_path, anims=None, out_dir=None, passes=("id", "light", "d
                     bpy.ops.render.render(write_still=True)
             for name in points:
                 per[name].append(rows[name])
+            for name in deep:
+                per_depth[name].append(depth_rows[name])
         if only_frames is None:
             anchors[anim] = per
+            if deep:
+                depths[anim] = per_depth
     rig.rotation_euler = (0.0, 0.0, 0.0)
     set_mode("beauty")
     with open(anchors_path, "w") as f:
         json.dump(anchors, f)
+    if depths:
+        with open(depths_path, "w") as f:
+            json.dump(depths, f)
     return out_dir
 
 

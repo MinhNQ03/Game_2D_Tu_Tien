@@ -216,6 +216,54 @@ def attack(spec, f):
     return p
 
 
+# --- SLASH: the jian's diagonal cut (the right hand), timed to the gameplay lifecycle (D-063) ---
+# The SAME lifecycle as the palm strike, a different body. The authority's progress drives the
+# columns (the kiem's 120 / 80 / 240 ms make windup 27% / active 18% / recovery 55%, so the
+# windup shows columns 0-2, the hit window 2-3, the recovery 3-7):
+#   0-1 COIL    — weight back onto the rear foot, the sword arm raised high over the right
+#                 shoulder, the elbow folded so the blade lies back over it, the torso wound
+#                 right: the anticipation reads as "a blade is about to come down";
+#   2-3 CUT     — a step in, the arm unfolds and drives DOWN and ACROSS, from high on the right to
+#                 low on the left (a diagonal cut, not a level sweep: it reads as a sword at 32x48
+#                 and it passes through a wolf's height as well as a man's), the torso unwinding
+#                 through it — the hit window is these two columns;
+#   4-5 FOLLOW  — the blade carries on past the left hip and the wrist turns it up out of the
+#                 ground: a cut that ends in the floor is a cut nobody believes;
+#   6-7 RECOVER — back to a LOW GUARD, the point forward and ~25 degrees down, ready again. Not
+#                 level, and never raised: a point aimed AT the camera foreshortens to nothing in
+#                 the DOWN facing (the first take's guard vanished there), and forward-down reads
+#                 from every side while the tip stays above the ground.
+# The blade is held IN LINE with the hand (the anchor `blade` extends the hand bone), so the
+# arm's path IS the blade's path and the wrist sets its angle.
+
+_SLASH = (
+    # root(y fwd-, z), lead foot fwd, rear foot fwd,
+    # sword arm (swing, out, elbow, wrist), guard arm (swing, out, elbow), chest twist, spine, hair
+    ((0.7, -0.5), 0.6, -1.4, (-118.0, 48.0, -62.0, -18.0), (-28.0, 14.0, -36.0), 20.0, 3.0, -3.0),
+    ((1.0, -0.8), 0.8, -1.8, (-150.0, 42.0, -86.0, -30.0), (-40.0, 18.0, -46.0), 28.0, 5.0, -6.0),
+    ((-0.6, -0.6), 3.0, -1.8, (-116.0, 26.0, -26.0, -12.0), (-14.0, 16.0, -30.0), 8.0, -3.0, 6.0),
+    ((-1.4, -0.8), 4.0, -1.6, (-74.0, -16.0, -8.0, 4.0), (16.0, 20.0, -22.0), -18.0, -6.0, 12.0),
+    ((-1.4, -0.9), 3.8, -1.5, (-42.0, -54.0, -14.0, 12.0), (24.0, 18.0, -18.0), -30.0, -6.0, 11.0),
+    ((-0.9, -0.6), 2.8, -1.2, (-36.0, -40.0, -26.0, -10.0), (14.0, 12.0, -16.0), -20.0, -3.0, 6.0),
+    ((-0.4, -0.2), 1.4, -0.7, (-24.0, -20.0, -26.0, -14.0), (5.0, 6.0, -12.0), -8.0, -1.0, 2.0),
+    ((0.0, 0.0), 0.6, -0.6, (-16.0, -6.0, -30.0, -16.0), (0.0, 4.0, -10.0), 0.0, 0.0, 0.0),
+)
+
+
+def slash(spec, f):
+    p = _pose()
+    (ry_, rz_), lead, rear, (sw, out, el, wr), (gsw, gout, gel), tw, sp, hair = _SLASH[f]
+    p["root"] = (0.0, ry_, rz_)
+    # the RIGHT foot leads the cut, as it leads the strike (the cutting side steps in)
+    _legs(spec, p, (rear, 0.0), (lead, 0.0))
+    _arm(p, "R", swing=sw, out=out, elbow=el, wrist=wr)
+    _arm(p, "L", swing=gsw, out=gout, elbow=gel)
+    _set(p, "chest", rz(tw))
+    _set(p, "spine", rx(sp))
+    _hair(p, hair, 0.0)
+    return p
+
+
 # --- CAST (thi triển): seal at the chest, rise, release, recover --------------------------------
 # PREPARE [0,.25) CHANNEL [.25,.5) RELEASE [.5,.75) RECOVER [.75,1] — two columns each.
 
@@ -280,6 +328,7 @@ ANIMATIONS = {
     "attack": attack,
     "meditate": meditate,
     "cast": cast,
+    "slash": slash,
 }
 
 

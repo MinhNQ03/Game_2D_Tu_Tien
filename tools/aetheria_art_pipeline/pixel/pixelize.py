@@ -334,6 +334,11 @@ def build_actor(spec, work_dir, root):
     frames_dir = os.path.join(work_dir, "frames")
     with open(os.path.join(frames_dir, "anchors.json")) as f:
         projected = json.load(f)
+    depths_path = os.path.join(frames_dir, "anchor_depths.json")
+    projected_depths = {}
+    if os.path.exists(depths_path):
+        with open(depths_path) as f:
+            projected_depths = json.load(f)
     out = spec["outputs"]
     cw, ch = spec["camera"]["gameplay"]["cell"]
     anchors = {}
@@ -374,8 +379,13 @@ def build_actor(spec, work_dir, root):
         pngout.save(cell(spec, frames_dir, "idle_down_0"), os.path.join(root, rel))
         written.append(rel)
     path = os.path.join(root, "data/characters/visual/anchors/%s.tres" % out["anchors"])
+    # depths only for the animations this build wrote sheets for (a stale depth track for a
+    # dropped animation would name a sheet the profile does not have)
+    depths = {anim: tracks for anim, tracks in projected_depths.items()
+              if anim in spec["animations"]}
     legacy_sheet.write_anchor_resource(path, "anchors_" + spec["id"], (cw, ch), anchors,
-                                       feet_row=spec["camera"]["gameplay"]["feet_row"])
+                                       feet_row=spec["camera"]["gameplay"]["feet_row"],
+                                       depths=depths)
     written.append(os.path.relpath(path, root))
     _check_profile(spec, root)
     for w in written:
