@@ -66,13 +66,22 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
   re-validation, so no code was changed — the closure is documentation-only.
 - Implementation/code-validation SHA: `00e84b05c6c20e6191cf01d730f468c5d458c15b`
   — CI run https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37889572471 (SUCCESS).
-- Current branch HEAD: `39845c0bdd151063ccec71c0453123eeb9ed02af`
+- HEAD at A3 acceptance: `39845c0bdd151063ccec71c0453123eeb9ed02af`
   — CI run https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37895099103 (SUCCESS,
   exact head_sha verified; all 13 steps green: lint, import, parse, boot smoke, headless
   suite, 3× E2E). Full CI log text was not downloadable (API 403 without admin rights);
   step-level conclusions are all `success`, and the identical gates were re-run locally
   with full-log scans (see below). (Previous HEAD `b838eb2` also CI-SUCCESS, run
   `37893656907`; all commits since `00e84b0` are documentation-only.)
+- Latest repository state (2026-10-09): current branch HEAD
+  `73143579510a89628bb00079c54c88f5c1c4a868` — CI run #130
+  https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37899934278 (SUCCESS).
+  A1 item #1 code SHA `1d6b7bc159d4d7389389a71c97a1228e1d8a15cd` — CI run #127
+  https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37898325053 (SUCCESS).
+  A1 item #1: RESOLVED (regression tests
+  `test_a_new_actions_answer_is_shown_despite_a_stale_waiting_duplicate` and
+  `test_same_frame_duplicate_answers_are_deduplicated`; 841/841 suite green).
+  A3 status remains PASSED.
 - Local repeat (labelled local, Godot 4.7.2 `ed1daf0bf`, Xvfb where a display is needed):
   - Headless unit suite ×2 runs: 839/839 passed, 0 failed assertions, 0 SCRIPT ERROR
     (full-log `grep -c`), 0 leaks.

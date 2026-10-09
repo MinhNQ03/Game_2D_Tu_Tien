@@ -982,7 +982,11 @@ the HUD is read from inside the semantic event (`cultivation_refused`, `knowledg
 text, kind, and the whole waiting backlog kept in order. Real app (`tools/playtest_flow.gd`):
 05a environment validity (an invalid pacing FAILS, never passes), 05b/05c rendered frames and ms
 from the key to the visible line (threshold 2 frames / 100 ms), 05d the real-time order of
-everything that waited. Suite: 815 tests.
+everything that waited. Suite at the original A1 checkpoint: 815 tests (historical
+baseline). After A1 carried item #1: 841 tests, 841 passed, 0 failed — verified by CI run
+#127 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37898325053) on
+`1d6b7bc`; latest branch HEAD `7314357` also 841 passed in CI run #130
+(https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37899934278).
 
 **D-063 A2a (physical truth — the stele and the spring):** `tests/gameplay/test_prop_bodies.gd`
 (4: the bodies exist from the pipeline's PropData; a walk with the player's own collision shape
