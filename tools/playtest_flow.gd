@@ -212,17 +212,17 @@ func _step_feedback(map: Node) -> void:
 		"pill=%s manual=%s robe=%s" % [_describe_setup(pill), _describe_setup(manual),
 			_describe_setup(robe)],
 		state_ok, started)
-	if not timing_ok:
-		for step in ["05b_answer_timing", "05c_result_timing", "05d_notices_kept"]:
-			_record(step, "a valid timing environment", "ENVIRONMENT INVALID — not measured "
-				+ "(pickup state proven in 05a_pickup_state)", false, Time.get_ticks_msec())
-		return
 	if not state_ok:
 		for step in ["05b_answer_timing", "05c_result_timing", "05d_notices_kept"]:
-			_record(step, "setup pickups collected", "SETUP FAILED — timing not attempted",
+			_record(step, "setup pickups collected", "SETUP FAILED — gameplay not attempted",
 				false, Time.get_ticks_msec())
 		return
 	var loc := root.get_node("Localization")
+	# TIMING vs STATE/ORDER are separate evidence types. The 2-frame/100ms threshold is
+	# only meaningful with a valid pacing environment; the gameplay interactions (C/E)
+	# and the notice-order validation run regardless, so an invalid clock cannot hide
+	# a broken sequence.
+	var timing_label := "" if timing_ok else " [TIMING NOT MEASURED — invalid environment]"
 
 	# 05b — C at the spring, no method yet, with a pickup notice on screen.
 	# (The pill was collected in the setup above; its notice is the pending one.)
@@ -235,12 +235,16 @@ func _step_feedback(map: Node) -> void:
 	var answer := await _time_feedback(&"cultivate", func() -> bool:
 		return hud.notice_text() == refusal)
 	var kept := hud.pending_notice_keys().has(&"UI_ITEM_GAINED")
+	var timing_part := "frames=%d ms=%.1f" % [answer["frames"], answer["ms"]]
+	if not timing_ok:
+		timing_part = "NOT MEASURED (invalid pacing)"
 	_record("05b_answer_timing",
-		"refusal visible <= %d rendered frames and <= %.0f ms; the pickup notice kept"
-			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC],
-		"frames=%d ms=%.1f kind=%s kept=%s (band before: %s)" % [answer["frames"],
-			answer["ms"], hud.notice_kind(), kept, before],
-		_within(answer) and hud.notice_kind() == GameplayHUD.NOTICE_ANSWER and kept, started,
+		"refusal visible <= %d rendered frames and <= %.0f ms; the pickup notice kept%s"
+			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC, timing_label],
+		"%s kind=%s kept=%s (band before: %s)" % [timing_part, hud.notice_kind(), kept,
+			before],
+		(timing_ok and _within(answer) or not timing_ok)
+			and hud.notice_kind() == GameplayHUD.NOTICE_ANSWER and kept, started,
 		answer["shot"])
 
 	# 05c — two pickups beside the stele (collected in the setup above), then E on the stele.
@@ -261,26 +265,30 @@ func _step_feedback(map: Node) -> void:
 	player.global_position = stele.global_position + Vector2(0, 14)  # SETUP
 	for _i in 4:
 		await physics_frame
-	var waiting := hud.pending_notice_keys()
-	# Explicit expectation: the two setup pickups each left one passive UI_ITEM_GAINED
-	# notice waiting. Never derive the expected count from waiting.size() — a missing
-	# pickup would shrink that count and let an incomplete run pass.
-	var expected_passives := 2
+	# Explicit expectation: all three setup pickups (pill, manual, robe) each left one
+	# passive UI_ITEM_GAINED notice waiting. Never derive the expected count from a dynamic
+	# queue size — a missing pickup would shrink that count and let an incomplete run pass.
+	var expected_passives := 3
 	var lesson := String(loc.call("t", "KNOW_DAN_KHI_QUYET_NAME"))
 	var result := await _time_feedback(&"interact", func() -> bool:
 		return hud.notice_text().contains(lesson))
+	var timing_part_c := "frames=%d ms=%.1f" % [result["frames"], result["ms"]]
+	if not timing_ok:
+		timing_part_c = "NOT MEASURED (invalid pacing)"
 	_record("05c_result_timing",
-		"lesson visible <= %d rendered frames and <= %.0f ms, ahead of %d waiting pickup notices"
-			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC, expected_passives],
-		"frames=%d ms=%.1f kind=%s waiting=%s (expected %d passives)"
-			% [result["frames"], result["ms"], hud.notice_kind(),
-				str(hud.pending_notice_keys()), expected_passives],
-		_within(result) and hud.notice_kind() == GameplayHUD.NOTICE_RESULT, started,
+		"lesson visible <= %d rendered frames and <= %.0f ms, ahead of %d waiting pickup notices%s"
+			% [FEEDBACK_MAX_FRAMES, FEEDBACK_MAX_MSEC, expected_passives, timing_label],
+		"%s kind=%s waiting=%s (expected %d passives)" % [timing_part_c,
+			hud.notice_kind(), str(hud.pending_notice_keys()), expected_passives],
+		(timing_ok and _within(result) or not timing_ok)
+			and hud.notice_kind() == GameplayHUD.NOTICE_RESULT, started,
 		result["shot"])
 
 	# 05d — in real time: the second lesson, then every pickup notice, in order, none lost.
-	# Expected: lesson 1, lesson 2, then exactly the 2 passive pickup notices from the
-	# proven setup (manual + robe). A vacuously small observed count cannot pass.
+	# Expected: lesson 1, lesson 2, then exactly the 3 passive pickup notices from the
+	# proven setup (pill, manual, robe — in emission order). Each notice is verified by
+	# its authored identity, not just a count: a missing, duplicate, unexpected or
+	# out-of-order notice fails.
 	started = Time.get_ticks_msec()
 	var sequence: Array[String] = []
 	var last := ""
@@ -293,17 +301,26 @@ func _step_feedback(map: Node) -> void:
 		last = text
 		if text == "" and hud.pending_notice_keys().is_empty():
 			break
-	var passives := sequence.filter(func(e: String) -> bool:
-		return e.begins_with(String(GameplayHUD.NOTICE_PASSIVE)))
 	var second := String(loc.call("t", "KNOW_LAC_HA_STELE_RECORD_NAME"))
-	var ok := sequence.size() >= 2 and sequence[0].contains(lesson) \
-		and sequence[1].contains(second) and passives.size() == expected_passives \
-		and not hud.notice_backlog_overflowed()
+	var pill_name := String(loc.call("t", "ITEM_BO_HUYET_DAN_NAME"))
+	var manual_name := String(loc.call("t", "ITEM_MANUAL_PHONG_NAME"))
+	var robe_name := String(loc.call("t", "ITEM_DAO_BAO_THANH_VAN_NAME"))
+	var expected: Array = [
+		{"kind": String(GameplayHUD.NOTICE_RESULT), "contains": lesson},
+		{"kind": String(GameplayHUD.NOTICE_RESULT), "contains": second},
+		{"kind": String(GameplayHUD.NOTICE_PASSIVE), "contains": pill_name},
+		{"kind": String(GameplayHUD.NOTICE_PASSIVE), "contains": manual_name},
+		{"kind": String(GameplayHUD.NOTICE_PASSIVE), "contains": robe_name},
+	]
+	var verdict: Dictionary = NoticeSequenceValidator.validate(sequence, expected)
+	var ok: bool = bool(verdict["ok"]) and not hud.notice_backlog_overflowed()
+	var detail := String(verdict["reason"]) if not bool(verdict["ok"]) else "sequence exact"
+	if hud.notice_backlog_overflowed():
+		detail += "; BACKLOG OVERFLOWED"
 	_record("05d_notices_kept",
-		"lesson 1, lesson 2, then exactly %d pickup notices in order; no overflow"
-			% expected_passives,
-		"observed %d passives (expected %d): %s" % [passives.size(), expected_passives,
-			" | ".join(sequence)],
+		"lesson 1, lesson 2, then pill/manual/robe pickup notices in emission order, "
+			+ "each exactly once; no overflow",
+		"%s: %s" % [detail, " | ".join(sequence)],
 		ok, started, await _shot("05d_band_drained"))
 
 
