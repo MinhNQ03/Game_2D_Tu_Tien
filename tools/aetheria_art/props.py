@@ -8,8 +8,8 @@ so the cloth waves and the lantern swings while the wood stays put.
 """
 import os
 
-from . import raster
-from . import sheet
+from art_sheet import raster
+from art_sheet import sheet
 
 TILE = 16
 INK = (18, 18, 26, 255)

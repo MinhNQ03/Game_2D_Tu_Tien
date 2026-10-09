@@ -81,3 +81,22 @@ func test_wrong_kind_fails() -> void:
 func test_empty_sequence_fails() -> void:
 	var verdict: Dictionary = NoticeSequenceValidator.validate([], _expected())
 	assert_false(bool(verdict["ok"]), "empty observed sequence fails")
+
+
+func test_should_record_new_instance_with_identical_text() -> void:
+	# Two consecutive instances with identical kind+text but different seq are
+	# recorded as two instances — the text-change heuristic would collapse them.
+	assert_true(NoticeSequenceValidator.should_record("passive:X", 41, 40),
+		"new seq records even with identical text")
+	assert_true(NoticeSequenceValidator.should_record("passive:X", 42, 41),
+		"third instance with identical text also records")
+
+func test_should_record_rejects_repeated_seq() -> void:
+	assert_false(NoticeSequenceValidator.should_record("passive:X", 40, 40),
+		"same seq does not record twice")
+
+func test_should_record_rejects_empty_identity() -> void:
+	assert_false(NoticeSequenceValidator.should_record("passive:X", 0, 39),
+		"zero seq (empty slot) never records")
+	assert_false(NoticeSequenceValidator.should_record("", 41, 40),
+		"empty text never records even with a valid seq")

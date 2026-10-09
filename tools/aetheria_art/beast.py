@@ -9,7 +9,7 @@ bushy tail — and it walks with a four-beat gait in which each leg swings and p
 The MIST is its identity, not decoration: translucent pale-jade wisps trail off the spine and
 the tail tip. They are drawn after the outline, so they read as vapour rather than as fur.
 """
-from . import raster
+from art_sheet import raster
 
 W, H = 32, 32
 INK = (18, 18, 26, 255)

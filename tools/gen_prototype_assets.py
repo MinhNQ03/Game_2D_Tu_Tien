@@ -33,7 +33,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from aetheria_art import beast, props, raster, sheet  # noqa: E402
+from aetheria_art import beast, props
+from art_sheet import raster, sheet  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANCHOR_DIR = "data/characters/visual/anchors"
