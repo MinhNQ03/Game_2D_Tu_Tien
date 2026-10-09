@@ -19,7 +19,7 @@ usually LOCKED: a vsynced window then presents at ~1 Hz, so every real-app run u
 
 | Item | Origin | Status |
 |---|---|---|
-| A new ANSWER identical to one WAITING in the immediate lane returns instead of showing (the "visible on its frame" invariant) | A1 review | open — fix + regression test |
+| A new ANSWER identical to one WAITING in the immediate lane returns instead of showing (the "visible on its frame" invariant) | A1 review | RESOLVED 2026-10-09 — `_enqueue_notice()` now distinguishes a same-frame duplicate (deduplicated) from a new action's ANSWER on a later frame (shown immediately, stale copy superseded); 2 regression tests, 841/841 suite green |
 | playtest 05c/05d: pin that the setup pickups were actually collected | A1 review | open |
 | `pixel/pixelize.py` → `aetheria_art.sheet` dependency (one PropData writer, wrong direction) | A2 review P2 | technical debt — move the writer to a neutral module |
 | Pixelizer non-determinism (`max(set(keys))` over string keys) | A2 | FIXED (`_majority`; `validate/determinism_check.py`, 3 seeds × 99 files identical) |
