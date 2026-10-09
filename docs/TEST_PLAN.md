@@ -984,10 +984,14 @@ text, kind, and the whole waiting backlog kept in order. Real app (`tools/playte
 the setup pickups (`pickup_hubpill1`, `pickup_hubmanualphong`, `pickup_hubrobe`) are proven
 collected via the live `InventoryRuntime.is_collected()`, never inferred from visibility;
 this state proof runs even when the timing environment is invalid, so a bad clock cannot
-silently skip the collection evidence. 05b/05c rendered frames and ms from the key to the
-visible line (threshold 2 frames / 100 ms), 05d the real-time order of everything that
-waited with explicit expected pickup-notice counts (never derived from a dynamic
-`waiting.size()`). Suite at the original A1 checkpoint: 815 tests (historical
+silently skip the collection evidence. 05b/05c: the real C/E gameplay interactions always
+run; the 2-frame/100 ms timing threshold is NOT MEASURED when pacing is invalid, but the
+answer/result visibility and notice-preservation checks still run. 05d validates the exact
+notice sequence via `NoticeSequenceValidator`: lesson 1, lesson 2, then the three pickup
+notices (pill, manual, robe — in emission order), each verified by authored identity
+(`ITEM_BO_HUYET_DAN_NAME`, `ITEM_MANUAL_PHONG_NAME`, `ITEM_DAO_BAO_THANH_VAN_NAME`), each
+exactly once; a missing, duplicate, unexpected or out-of-order notice fails. Never derived
+from a dynamic `waiting.size()`. Suite at the original A1 checkpoint: 815 tests (historical
 baseline). After A1 carried item #1: 841 tests, 841 passed, 0 failed — verified by CI run
 #127 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37898325053) on
 `1d6b7bc`; latest branch HEAD `7314357` also 841 passed in CI run #130
