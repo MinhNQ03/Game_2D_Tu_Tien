@@ -198,12 +198,23 @@ func _step_feedback(map: Node) -> void:
 		&"pickup_hubmanualphong")
 	# The robe sits 12.8px from the manual (reach 14px): the manual placement collects it
 	# too. Verify via the authority; the run proves collection iff it was uncollected
-	# before this setup phase and is collected now.
+	# before this setup phase and is collected now, with the count matching the
+	# authored WorldItem.
 	var inv_post := _inventory()
 	var robe_now := inv_post != null and bool(inv_post.call("is_collected", &"pickup_hubrobe"))
-	var robe := {"ok": robe_now and not pre_robe,
+	var robe_node := map.get_node_or_null("Pickups/HubRobe")
+	var robe_count_ok := false
+	if robe_node != null and robe_node is WorldItem and inv_post != null:
+		var rwi := robe_node as WorldItem
+		if rwi.item != null and rwi.item.id != &"":
+			var rc_after := int(inv_post.call("count_of", StringName(rwi.item.id)))
+			# The robe was uncollected before setup (pre_robe false); its count must
+			# have increased by exactly the authored count.
+			robe_count_ok = rc_after == rwi.count
+	var robe := {"ok": robe_now and not pre_robe and robe_count_ok,
 		"reason": "pickup_hubrobe already collected before setup" if pre_robe
-			else ("" if robe_now else "pickup_hubrobe not collected with the manual"),
+			else ("pickup_hubrobe count mismatch" if robe_now and not robe_count_ok
+				else ("" if robe_now else "pickup_hubrobe not collected with the manual")),
 		"pickup_id": &"pickup_hubrobe"}
 	var state_ok: bool = pill["ok"] and manual["ok"] and robe["ok"]
 	_record("05a_pickup_state",
@@ -562,6 +573,18 @@ func _walk_onto(map: Node, player: Node2D, path: String,
 			"reason": "pickup_id '%s' already collected before setup — this run cannot "
 				% pid + "prove collection",
 			"pickup_id": pid}
+	var wi := pickup as WorldItem
+	if wi.item == null or wi.item.id == &"":
+		return {"ok": false,
+			"reason": "WorldItem at '%s' has no usable item (id empty)" % path,
+			"pickup_id": pid}
+	if wi.count < 1:
+		return {"ok": false,
+			"reason": "WorldItem at '%s' has count %d < 1" % [path, wi.count],
+			"pickup_id": pid}
+	var item_id := StringName(wi.item.id)
+	var expected_count := wi.count
+	var count_before := int(inv.call("count_of", item_id))
 	player.global_position = (pickup as Node2D).global_position
 	for _i in 30:
 		await physics_frame
@@ -570,6 +593,12 @@ func _walk_onto(map: Node, player: Node2D, path: String,
 	if not bool(inv.call("is_collected", pid)):
 		return {"ok": false,
 			"reason": "pickup_id '%s' not collected within 30 physics frames" % pid,
+			"pickup_id": pid}
+	var count_after := int(inv.call("count_of", item_id))
+	if count_after != count_before + expected_count:
+		return {"ok": false,
+			"reason": "pickup_id '%s' collected but count %d -> %d, expected +%d"
+				% [pid, count_before, count_after, expected_count],
 			"pickup_id": pid}
 	return {"ok": true, "reason": "", "pickup_id": pid}
 
@@ -1029,8 +1058,8 @@ func _step_natural_encounter(main: Node) -> void:
 				break
 		if landed and bool(living.call("is_dead")):
 			break
-	var timed_out := Time.get_ticks_msec() >= deadline_msec and not landed
 	var killed := bool(living.call("is_dead"))
+	var timed_out := Time.get_ticks_msec() >= deadline_msec and not killed
 	var final_gap := player.global_position.distance_to(living.global_position)
 	var shot := await _shot("19_natural_encounter")
 	# EVIDENCE, separated by what produced it. The previous version reported one number called
@@ -1052,7 +1081,7 @@ func _step_natural_encounter(main: Node) -> void:
 			+ "attack{hp %d -> %d landed=%s killed=%s rounds=%d timed_out=%s}") % [
 			placements, initial_gap, final_gap, start_hp,
 			int(living.call("get_current_health")), landed, killed, rounds, timed_out],
-		landed and placements == 1 and not timed_out, started, shot)
+		landed and killed and placements == 1 and not timed_out, started, shot)
 
 	# The reward must move again — a second payment, proving the ledger pays per SPAWN rather
 	# than once per session.
