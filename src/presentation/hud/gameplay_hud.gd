@@ -1519,6 +1519,7 @@ func open_inventory() -> void:
 	if _input != null and not _inventory_modal:
 		_input.call("push_modal_context")
 		_inventory_modal = true
+		_refresh_focus()
 
 
 ## Close the bag and give input back to the world. Safe when closed.
@@ -1529,6 +1530,7 @@ func close_inventory() -> void:
 	if _input != null and _inventory_modal:
 		_input.call("pop_context")
 		_inventory_modal = false
+		_refresh_focus()
 
 
 func is_inventory_open() -> bool:
@@ -1568,6 +1570,7 @@ func _show_shop() -> void:
 		_input.call("push_modal_context")
 		_shop_modal = true
 	_refresh_prompts()
+	_refresh_focus()
 
 
 func _hide_shop() -> void:
@@ -1578,6 +1581,7 @@ func _hide_shop() -> void:
 		_input.call("pop_context")
 		_shop_modal = false
 		_refresh_prompts()
+		_refresh_focus()
 
 
 func is_shop_open() -> bool:
@@ -1674,7 +1678,10 @@ func _hide_dialogue() -> void:
 func _refresh_focus() -> void:
 	var focused := _dialogue_modal or _prompt_kind != PROMPT_NONE
 	if _prompt_strip != null:
-		_prompt_strip.visible = not focused
+		# The strip is nothing but key prompts, so it stands down under EVERY surface that
+		# holds the keys (PX-4): with the shop or the satchel open none of them acts either,
+		# and its "Esc" would name something other than what Esc does there.
+		_prompt_strip.visible = not (focused or _shop_modal or _inventory_modal)
 	# The dock decides its own `visible` (it hides with no techniques), so it is faded, not
 	# hidden: its own rule is untouched when the talk ends.
 	if _skill_dock != null:

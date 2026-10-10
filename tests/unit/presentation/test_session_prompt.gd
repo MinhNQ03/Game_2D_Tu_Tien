@@ -100,3 +100,42 @@ func test_the_prompt_fits_and_reads_in_both_languages() -> void:
 		assert_true(box.size.y <= 720.0 * 0.3, "[%s] and is short (%.0f px)" % [code, box.size.y])
 	_use_language("vi")
 	free_node(hud)
+
+
+## PX-4: a prompt disappears the moment a modal takes the keys. The strip advertised attack,
+## the sect and politics panels and "Esc Menu" under an open shop and an open satchel, where
+## none of those keys acts and Esc closes the surface instead (seen in a real-window capture).
+func test_the_prompt_strip_stands_down_under_every_surface_that_holds_the_keys() -> void:
+	var input: Node = scene_tree.root.get_node("InputService")
+	input.call("set_gameplay_context")
+	var hud := _hud()
+	var strip := hud.find_child("PromptStrip", true, false) as Control
+	assert_true(strip.visible, "in the world the strip shows the keys that act")
+	hud.open_inventory()
+	assert_eq(int(input.call("current_context")), int(input.Context.UI_MODAL), "satchel: modal")
+	assert_false(strip.visible, "so the strip stands down under the satchel")
+	hud.close_inventory()
+	assert_true(strip.visible, "and returns with the keys")
+	var shop := ShopView.new()
+	shop.open = true
+	shop.shop_id = &"shop_ko_than_packs"
+	shop.name_key = &"SHOP_KO_THAN_PACKS_NAME"
+	shop.keeper_name_key = &"CHARACTER_SCOUT_KO_NAME"
+	shop.currency_name_key = &"ITEM_LINH_THACH_NAME"
+	hud.set_shop_view(shop)
+	assert_false(strip.visible, "it stands down under the shop")
+	hud.set_shop_view(ShopView.make_closed())
+	assert_true(strip.visible, "and returns when the shop closes")
+	# One surface handing over to another never leaves the strip up in between or after.
+	hud.open_inventory()
+	hud.set_shop_view(shop)
+	assert_false(hud.is_inventory_open(), "the shop closes the satchel")
+	assert_false(strip.visible, "and the strip stays down")
+	hud.show_defeat()
+	hud.set_shop_view(ShopView.make_closed())
+	assert_false(strip.visible, "the session's own box still holds it down after the shop closes")
+	free_node(hud)
+	assert_eq(int(input.call("current_context")), int(input.Context.GAMEPLAY),
+		"freeing the HUD gives back every context it took")
+	input.call("set_menu_context")
+
