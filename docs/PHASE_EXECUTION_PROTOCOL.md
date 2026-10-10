@@ -9,7 +9,8 @@
 > a green pipeline is not a finished phase.
 > **NOT the owner of:** coding standards (`04-coding-standards.md`), the review loop for an
 > individual change (`08-ai-review-protocol.md`), the CI-failure procedure
-> (`10-ci-failure-protocol.md`), or UI design direction (`UI_UX_BIBLE.md`).
+> (`10-ci-failure-protocol.md`), UI design direction (`UI_UX_BIBLE.md`), or the player-side
+> rules and gates A–E (`PLAYER_EXPERIENCE_STANDARD.md` — §1c says where each one runs).
 
 ---
 
@@ -66,6 +67,23 @@ PRE-FLIGHT → DEPENDENCY → AUTHORITY → EXTENSIBILITY → GAMEPLAY → NARRA
 
 Run them in order. Each gate below states **what it asks** and **what evidence closes it** —
 a gate with no evidence is an opinion.
+
+### 1c. The player-experience gates (D-067) — binding from Phase 19
+
+`docs/PLAYER_EXPERIENCE_STANDARD.md` is the single owner of the player-side rules (PX-1 … PX-9)
+and of five gates that cut across the chain above. They add no new chain; they say what the
+existing gates must ALSO answer, and when:
+
+| Standard gate | Runs with | What it adds to that gate |
+|---|---|---|
+| **A — Understand the experience** | §1 PRE-FLIGHT, before any design is fixed | the phase's Player Experience Contract (`ROADMAP.md`), the journey to success AND to cancel, and one sentence of in-world reason for every new person, creature, prop, exit, reward and panel |
+| **B — Ownership and contracts** | §3 AUTHORITY | for each new piece of state: refusal, cancel, repeat, teardown and stale-state behaviour, and which outcome signal triggers feedback |
+| **C — A complete vertical slice** | §5 GAMEPLAY → §7b PRESENTATION | context → action → authoritative result → feedback → tests → docs, all inside this phase |
+| **D — Validate the experience** | §8 REAL PLAYTEST, §9 VISUAL QA | the negative paths, the nearest older journeys, vi/en at two aspect ratios with the real frame size reported |
+| **E — Close without exporting debt** | §11 CLEANUP → §13 FINAL REVIEW | every known limitation written in the standard's §4 form in `docs/handoff/`; "polish later" is not an entry |
+
+A phase that cannot show the evidence for a standard gate has not passed the protocol gate it
+runs with.
 
 ### 1. PRE-FLIGHT — audit the repository before adding to it
 Read the design docs that own the scope, and the code you are about to touch, before writing
@@ -204,8 +222,9 @@ CURRENT / HISTORICAL / FUTURE rather than letting a status block rot (D-049, D-0
 ### 13. FINAL REVIEW — the pre-completion gates, reported
 Run the `08-ai-review-protocol.md` gates and **report each one by name with its result**,
 including what could not be verified. Then the phase's own exit criteria. Then the player-facing
-review (§3).
-**Evidence:** the gate-by-gate report.
+review (§3). Then the debt register: every limitation the phase knowingly leaves, in the five
+fields of `PLAYER_EXPERIENCE_STANDARD.md` §4 — or the sentence "this phase leaves none".
+**Evidence:** the gate-by-gate report and the register.
 
 ---
 

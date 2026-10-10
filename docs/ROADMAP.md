@@ -54,6 +54,9 @@
 > **Phase 16 (Pet) — DONE (D-064, `455dec9`).**
 > **Phase 17 (NPC / Shop) — DONE (D-065, `fbb6376`).**
 > **Phase 18 (Dialogue) — DONE (D-066, `ba9e63c`).**
+> **Post-Phase-18 audit (D-067, not a phase):** `PLAYER_EXPERIENCE_STANDARD.md` adopted, its
+> gates wired into the phase protocol, and the shipped game audited
+> (`docs/handoff/post-phase-18-audit.md`).
 > Phase 19+ (Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
@@ -576,6 +579,90 @@ authoritative-state seams. Domain rules remain transport-agnostic.
 ## Phase 34 — Multiplayer Gameplay
 *Only if 33 succeeds.* Extend networking across the authoritative systems incrementally.
 **Exit:** co-op/PvE slice runs authoritatively; offline remains fully playable.
+
+## Player Experience Contracts — Phase 19 onward (D-067)
+
+Each phase below starts from its contract (`PLAYER_EXPERIENCE_STANDARD.md` §6) and may refine
+it at its own Gate A — it may not drop a line. The phase ORDER above is unchanged. **Phase 19
+and every later phase are NOT STARTED.**
+
+**Phase 19 — Quest**
+- *Promise:* I always know what I am doing, for whom, and what it will earn.
+- *Journey:* a person offers → I accept or decline in the dialogue box → the objective is on
+  screen → the world's own events advance it → I return → the reward is paid once. Declining
+  and abandoning are complete paths.
+- *World rule:* a quest comes from someone with a reason to ask, about a place that exists.
+- *Authority:* a quest domain service owns quest state ONLY. Offers and turn-ins are dialogue
+  choices (a new `DialogueEffectData` kind dispatched to the quest service — D-066's closed
+  set grows, it is not bypassed). Rewards land in their owners: the bag, `ProgressionService`,
+  `RelationshipService`, the Knowledge Core. **Gate B must name the ONE reward ledger** that
+  quest rewards and later drops share (audit AUD-12).
+- *Feedback:* accepted / advanced / completed / refused in the existing announcement band; a
+  journal that states the WHY (`MAP_DUNGEON_DESIGN.md` §7).
+- *Evidence:* a real-input E2E from offer to reward including decline and a full bag; a
+  knowledge-gated alternate solution; vi/en at two aspect ratios.
+- *Non-goals:* story flags and chapters (20); loot tables (21); save files (23).
+
+**Phase 20 — Story**
+- *Promise:* what I did earlier changes what the world and its people do now, and I can tell why.
+- *Journey:* a chapter beat → a choice with its stakes stated first → a visible change → a
+  record I can re-read.
+- *World rule:* beats follow `NARRATIVE_MASTER_PLAN.md`; nothing is revealed early.
+- *Authority:* the story service is the ONLY owner of chapter, flags and the record of
+  choices, and the only writer of `CharacterState.story_flags`. Dialogue gains a `FLAG`
+  condition and a `SET_FLAG` effect THROUGH it (D-066); quests read flags, never keep copies.
+- *Feedback:* a chapter card; consequences announced where they land (closes AUD-09, AUD-13).
+- *Evidence:* a branch that diverges on a prior choice, driven by real input.
+- *Non-goals:* save files (23). It also DECIDES, by ADR, what defeat means (AUD-14).
+
+**Phase 21 — Dungeon**
+- *Promise:* a place with a beginning, a rising middle and an end worth reaching.
+- *Journey:* a marked entrance → rooms that teach before they test → a way out at any time →
+  a reward at the end.
+- *World rule:* the entrance is where the map's story puts it; encounters have territory and
+  space to fight; every reward has a source (PX-3).
+- *Authority:* instance state belongs to a dungeon runtime; rewards go through the Phase-19
+  reward ledger.
+- *Evidence:* enter, clear, leave mid-way, re-enter — real input.
+- *Non-goals:* boss phases (22).
+
+**Phase 22 — Boss**
+- *Promise:* a fight I can learn: every heavy blow is announced before it lands.
+- *Journey:* arena entry → telegraph → counterplay → phase change → victory, or defeat by the
+  Phase-20 rule.
+- *Authority:* combat stays `CombatService`; boss phases are data.
+- *Evidence:* each telegraph visible in a motion strip before its hit frame; a defeat and a
+  retry driven for real.
+- *Non-goals:* new combat rules outside the boss's data.
+
+**Phase 23 — Save / Load**
+- *Promise:* I can stop and come back to exactly where I was.
+- *Journey:* save → quit → Continue from the menu ("Tải game" enabled only when a save
+  exists) → the same world; a damaged save is refused with a reason.
+- *Authority:* `SaveService` orchestrates the owners' existing `to_dict` / `from_dict`. It
+  stores authoritative state only — never a view, never a derived value, never an open modal.
+- *Feedback:* leaving a session stops warning about unsaved progress once it is saved; the
+  defeat box offers Continue (closes AUD-14).
+- *Non-goals:* a second persistence path anywhere else.
+
+**Phase 24 — Localization** — a coverage SWEEP: every earlier phase already shipped vi and en.
+It may not be the first time a screen is translated or the first time a layout meets a longer
+language.
+
+**Phase 25 — UI Consolidation** — unifies patterns that already work (the modal box, the side
+panel, the announcement band, the prompt strip). It may not be the first time a system gets a
+usable screen.
+
+**Phase 26 — Audio / VFX** — every cue is triggered by an authoritative outcome signal that
+already exists; none decorates an action that has no outcome. Closes AUD-07 (a fallen pose).
+
+**Phase 27 — Vertical Slice** — one journey, prologue to save, played start to finish against
+this standard: world logic, clarity, pacing and recovery are acceptance criteria alongside
+"the scenes connect".
+
+**Phases 28–31** use the standard's rules as audit and release criteria.
+**Phases 32–34 (multiplayer)** stay conditional on the roadmap's readiness gates; nothing in
+this standard starts them.
 
 ## Continuous Visual Integration
 

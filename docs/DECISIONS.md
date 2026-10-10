@@ -4914,3 +4914,64 @@ yet); voiced or typed-out text; skipping; a log of past lines; NPC bodies that f
 simulation's schedule; file-level save. The runtime's `node_id` check on an answer is a second
 line of defence only — the service's own re-validation is what refuses a stale answer, and a
 mutation of the runtime check alone is not caught by a test.
+
+## D-067 — The Player Experience Standard, and the post-Phase-18 audit
+
+**Status:** ADOPTED. Not a phase: no gameplay system was added by this decision.
+
+### Why
+
+Eighteen phases each closed on their own exit criteria. The protocol already demanded real
+playtests and opened captures, and it still let four player-facing defects through, because
+every one of them sat BETWEEN systems, where no phase's checklist looked:
+
+- a defeated player: the Player entity marks the character dead, and no system owns what
+  happens next (audit AUD-01);
+- one Esc ends an unsaved session, even with a panel open (AUD-02): the map owns "leave", the
+  HUD owns "close", and nobody owned the order between them;
+- the shop keeps the keys while a wolf bites (AUD-03): "close the panels when a fight starts"
+  was implemented on a HUD plaque's transition instead of on the gameplay fact;
+- the companion stops on top of its owner (AUD-04): the brain's arrival band was not honoured
+  by the component that executes its intent.
+
+All four were found by playing a journey ACROSS systems (`docs/handoff/post-phase-18-audit.md`
+§4), not by reading a system.
+
+### Decision
+
+1. **`docs/PLAYER_EXPERIENCE_STANDARD.md` is the single owner of player-side rules** (PX-1 …
+   PX-9), of five gates (A understand · B ownership · C vertical slice · D validate · E close
+   without debt), of the no-anonymous-debt rule and of the per-phase Player Experience
+   Contract. It links to the documents that own the details (UI, motion, identity, maps,
+   content, economy, ownership) and restates none of them.
+2. **The gates run WITH the existing protocol gates** (`PHASE_EXECUTION_PROTOCOL.md` §1c), not
+   beside them: there is still one chain.
+3. **Every phase from 19 on starts from a seven-line contract** kept in `ROADMAP.md`.
+4. **Known limitations are written in five fields** (symptom and cost, why not now, owner and
+   phase, closure criterion, whether it makes later work harder) in `docs/handoff/`. The
+   audit's §6 is the first register.
+
+Rejected: a new "experience review" chain parallel to the protocol (two checklists drift);
+copying the rules into each design document (the same); a metadata / validation framework for
+map placement (two maps and four placed people do not justify one — the rule is a sentence of
+reason beside the content, checked by a real walk).
+
+### Placement record for the shipped maps (PX-2 / PX-3, closes AUD-06)
+
+| Where | What | Why it is there |
+|---|---|---|
+| Thôn Lạc Hà, plaza before the hall | player spawn | open ground at the village's centre; the hall, the stele, the spring, the yard and the south path are all in the first frame |
+| plaza, between the spring and the stele | Thẩm Bất Kỳ | an elder of the sect keeps the hall's forecourt; off the walking line from spawn to every exit; 62 px from the spring and 109 px from the stele, so no reach overlaps |
+| plaza | the Lạc Hà stele, the spring | the village's record and its (weak, even) vein — what the stele itself says |
+| hall steps | a blood-mending pill, a wind manual, a disciple's robe | the issue left out for a newly arrived outer disciple: the game's first supplies, at the door of the hall that issues them |
+| training yard | a blue-iron jian beside the post | a practice blade left at the post it is practised on |
+| yard fence | the stray Hoàng Khuyển | a village stray keeps to where people train and eat; outside every route |
+| Rừng Vỡ Mạch, by the lanterns at the road in | Kha Thản | a scout who sells to those entering the woods stands where the road enters them — 334 px from the nearest wolf den, twice a wolf's 170 px detection radius |
+| the two dens | Vụ Lang | off the road, each with 340 px of leash; the road from the hub exit is outside both detection radii (pinned by test since Phase 10) |
+| field | two linh thạch | spirit stone surfaces where the vein runs near the ground; both off the road, on walkable ground |
+
+### What the audit left for later, and to whom
+
+The register is `docs/handoff/post-phase-18-audit.md` §6. One entry constrains the next phase
+directly: **no system owns loot or drops** while Phase 21 is written as "map + combat + loot"
+(AUD-12). Phase 19's Gate B must name one reward ledger for quest rewards and drops alike.

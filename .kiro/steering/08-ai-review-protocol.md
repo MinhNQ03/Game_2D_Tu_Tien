@@ -6,7 +6,9 @@
 ## Finishing a PHASE: `docs/PHASE_EXECUTION_PROTOCOL.md` is binding
 
 This file governs **a change**. A whole PHASE has a second, larger contract, and it lives in
-**`docs/PHASE_EXECUTION_PROTOCOL.md`** — read it at the START of a phase, not at the end:
+**`docs/PHASE_EXECUTION_PROTOCOL.md`** — read it at the START of a phase, not at the end. From
+Phase 19 it also runs the player-experience gates A–E of
+**`docs/PLAYER_EXPERIENCE_STANDARD.md`** (D-067): the player-side definition of "finished".
 
 ```
 PRE-FLIGHT → DEPENDENCY → AUTHORITY → EXTENSIBILITY → GAMEPLAY → NARRATIVE

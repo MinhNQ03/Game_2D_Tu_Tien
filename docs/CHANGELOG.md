@@ -8,6 +8,18 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Post-Phase-18 audit (1/2): the Player Experience Standard (D-067)
+
+- **Added.** `docs/PLAYER_EXPERIENCE_STANDARD.md`: nine player-side rules, five gates, the
+  no-anonymous-debt rule, the per-phase contract. `PHASE_EXECUTION_PROTOCOL.md` §1c says which
+  protocol gate each standard gate runs with; `ROADMAP.md` carries a contract for Phases 19–27.
+- **Added.** `docs/handoff/post-phase-18-audit.md`: the verified baseline, nine journeys, the
+  issue ledger and the accepted-debt register.
+- **Found (by playing across systems; fixes follow in part 2).** A defeated player is a silent
+  dead end; one Esc ends an unsaved session even with a panel open; the shop keeps the keys
+  while a wolf bites; the companion stops on top of the player.
+- No code, content or test changed. Phase 19 is NOT started.
+
 ### 2026-10-10 — Phase 18 (2/2): dialogue runtime, NPC / shop integration, the dialogue box
 
 - **Added.** `DialogueRuntime` (15th session node, ended first): the open conversation's
