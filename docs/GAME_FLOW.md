@@ -573,3 +573,24 @@ MENU). What changed around it:
   near-white behind a light-only text palette), key prompts are solid chips, labels carry a
   dark outline, and the Sect panel opens INSIDE the screen when `T` is pressed (it was
   anchored off-screen, which read as "the key does nothing").
+
+## Phase 16 note (D-064) — the linh thú, one new in-map branch
+
+```
+hub map: walk within reach of the stray (PetEncounter, a WorldInteractable)
+   └─ HUD interact prompt: "Befriend"
+        └─ interact → MapBase.interactable_used(kind, id) → WorldRuntime routes by kind
+             └─ PetRuntime.befriend → PetService.acquire + activate → the pet appears beside
+                the player; the stray is hidden from then on
+
+anywhere in gameplay context: pet_summon (G)
+   ├─ pet away  → appears beside the player (first free spot) | refusal answered on the HUD
+   └─ pet out   → dismissed (body freed)
+
+while out: follows its owner (walks, never teleports) · attacks the nearest living hostile
+           near its owner through CombatService · earns its share of each defeat once
+map change: body freed before the old map goes, re-summoned beside the player on arrival
+pet falls:  withdraws, can be called again after recall_seconds
+owner falls / return to menu: body freed; PetRuntime is the first session ended
+```
+No new game phase, no new screen, no modal context.

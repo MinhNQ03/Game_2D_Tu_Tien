@@ -8,6 +8,26 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Phase 16: Pet / Linh Thú (D-064)
+
+- **Added.** `PetData` + `PetCatalogData` (validated content); `PetStore` (owned, XP, active —
+  plain-data `to_dict` / atomic `from_dict`) and `PetService` (the only writer); `PetRuntime`
+  session node (13th in `SESSION_START_ORDER`, ended first); the `Pet` entity (the shared
+  components — no pet-specific AI); `WorldInteractable` (the map's one interaction contract,
+  `KnowledgeSource` now extends it) and `PetEncounter`; `PetView` + one contextual HUD prompt;
+  semantic action `pet_summon` (G); the first pet **Hoàng Khuyển** (`pet_hoang_khuyen`), met as a
+  stray by the Lạc Hà training yard; its three sheets (5 292 B) from the wolf's generator with a
+  variant palette (wolf output byte-identical).
+- **Changed.** Combat has teams (`TEAM_PLAYER` / `TEAM_HOSTILE`): a swing skips its own side —
+  wolves no longer hurt each other. `AIComponent.arm_profile` + a moving home anchor;
+  `AiProfileData` gained `follow_radius`, `home_arrival_radius`, `return_speed_scale` (all inert
+  for enemies). `CombatRuntime` ticks allies in its one callback and chooses their targets on a
+  0.25 s cadence. `WorldRuntime` emits `active_map_leaving` / `active_map_ready`.
+- **Decided.** A pet's level is derived from XP on a `ProgressionCurveData`; `SAVE_FORMAT`
+  `pets.owned` is `{ pet_id, xp }`. A pet is not a `CharacterState`.
+- **CI.** Gate 11: the isolated pet E2E. 895 tests locally.
+- **Not built.** Pet skills in use, commands, a pet panel, file-level save.
+
 ### 2026-10-10 — D-063 regression: a resumed notice was recorded twice
 
 - **Root cause.** The HUD preserves an interrupted notice and resumes it with its ORIGINAL

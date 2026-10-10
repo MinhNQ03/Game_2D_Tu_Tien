@@ -19,10 +19,10 @@
 > Phase 12 (Cultivation + Knowledge Core) is **IMPLEMENTED** (D-058), Phase 13 (Item) is
 > **IMPLEMENTED** (D-059), Phase 14 (Equipment) is **IMPLEMENTED** (D-060) and Phase 15
 > (Skill/Technique) is **IMPLEMENTED** (D-061), on the D-057B visual foundation (gait, anchors,
-> causal strike, hit reaction, ambient motion). **Phase 16+ is NOT STARTED.**
+> causal strike, hit reaction, ambient motion). **Phase 16 (Pet) is IMPLEMENTED (D-064).**
 > The per-session runtimes under `Main/Systems` now start in this order (and end in reverse):
 > World → Relationship → Sect → Faction → WorldSimulation → Combat → Progression → Knowledge →
-> Cultivation → Inventory → Equipment → Skill (`main.gd` `SESSION_START_ORDER`). Still five
+> Cultivation → Inventory → Equipment → Skill → Pet (`main.gd` `SESSION_START_ORDER`). Still five
 > autoloads; no manager.
 > D-062 locked the visual identity: the live UI is the ORIGINAL ink-lacquer kit, and every
 > humanoid sheet, portrait, icon, world prop and map floor comes from ONE art pipeline

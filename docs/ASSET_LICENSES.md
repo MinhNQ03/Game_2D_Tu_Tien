@@ -49,6 +49,8 @@ though self-made art needs no external attribution.
 | P50 | `assets/sprites/characters/player_daobao_*.png` (idle/walk/attack/meditate) | character sheets | self-made — `tools/aetheria_art/cultivator.py` (`player_daobao` palette) | project-owned | the Thanh Vân robe's `body_visual` (Phase 14) | No |
 | P51 | `assets/sprites/characters/*_cast.png` (256×192 = 8 frames × 4 directions, ×5 sets) | character sheets | self-made — `tools/aetheria_art/cultivator.py` | project-owned | CAST action (Phase 15) | No |
 | P52 | `assets/sprites/items/skill_thanh_phong_chuong.png`, `skill_loi_chi.png` (16×16) | skill icons | self-made (`gen_skill_icons`) | project-owned | the skill dock (Phase 15) | No |
+| P53 | `assets/sprites/pets/hoang_khuyen_idle.png` (192×128), `hoang_khuyen_walk.png` (256×128), `hoang_khuyen_attack.png` (192×128): 4 directions, 32×32 cells; 1 225 + 2 036 + 2 031 = **5 292 B** | pet sheets (pixel art, indexed PNG via `pngout`) | self-made (`tools/gen_prototype_assets.py` `gen_hoang_khuyen`: `aetheria_art/beast.py` with `HOUND_PAL`, the skeleton and gaits of the wolf with folded ears, a raised wagging tail, a jade cord, no mist) | project-owned | **Hoàng Khuyển** (first linh thú, Phase 16), `hoang_khuyen_visual.tres` | No |
+| P54 | `data/characters/visual/anchors/hoang_khuyen_anchors.tres` | DATA generated with the art (per-frame jaw + core points) | self-made (same generator run) | project-owned | `CharacterVisualProfileData.anchors` of the hound | No |
 
 > **Prototype art note (Phase 03 reopen, D-022):** the maps and player now render REAL
 > self-made pixel-art PNG textures (P1/P2), not Polygon2D placeholders. The textures are

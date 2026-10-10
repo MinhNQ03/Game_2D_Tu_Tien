@@ -4464,3 +4464,104 @@ the deterministic output differs from it only where a tie used to be broken by c
 changes (alpha identical everywhere) — single-pixel tone flips inside the figures, invisible at
 6× (inspected). The regenerated, reproducible art is committed with the fix.
 
+## D-064 — Phase 16: Pet / Linh Thú
+
+**Status:** IMPLEMENTED on `d063/phase-a`; DONE once CI is green on the exact Phase-16 commit.
+
+### The ADR: a pet's level is DERIVED from its XP
+
+**Problem.** `SAVE_FORMAT` listed `pets.owned[] = { pet_id, level, xp, stats_current }` and
+`DATA_SCHEMA` said only "progression: … pets can level (ProgressionComponent)" — a component
+that does not exist. A stored level beside a stored XP is two authorities for one fact: every
+writer must keep them in step and a save can disagree with itself.
+
+**Decision.** XP is the ONLY stored truth about a pet's growth.
+- `PetData.progression_curve` is a `ProgressionCurveData` — the SAME resource type and the same
+  pure `level_for_xp` / `cumulative_for_level` / `is_ceiling` arithmetic the player's level
+  uses. No second formula; a pet may have its own curve resource (its own pace).
+- Level = `curve.level_for_xp(xp)`. Stats = `PetData.stats` + `PetData.growth` × (level − first
+  level), computed by `PetData.stats_at(level)` into a NEW `StatBlock`. Neither is stored.
+- `SAVE_FORMAT` `pets.owned[]` becomes `{ pet_id, xp }`; `stats_current` is dropped — a pet's
+  health is runtime (a fallen pet withdraws and returns whole after `recall_seconds`).
+- XP is capped at the curve ceiling's cumulative total, so a maxed pet stores no unbounded
+  number nothing reads.
+
+**Rejected.** (a) Store level + xp: two authorities. (b) Reuse `ProgressionService` /
+`CharacterState.xp`: a pet is not a human character (below), and that service's single-caller
+guard (`test_only_the_progression_runtime_calls_grant_xp`) is what makes "paid once" true for the
+player — the pet's writer is therefore named `PetService.earn_xp`, not a second `grant_xp`.
+(c) A `ProgressionComponent` node: growth is domain state, testable without a scene tree.
+
+### What a pet is
+
+- **NOT a `CharacterState`.** No sect, faction, rank, realm or relationship edge; it never enters
+  the `CharacterRegistry`. Persistent facts live in `PetStore` (owned ids in acquisition order,
+  XP per pet, the active id) — one owner, written only by `PetService`; everything else is
+  authored `PetData` listed in a validated `PetCatalogData`.
+- **A composed entity, like `Enemy`** (`pet.tscn`): the same Stats / Health / Movement / Attack /
+  Hurtbox / AI components and the same presentation nodes. No `PetAIComponent`.
+- **One runtime body**, owned by `PetRuntime` (a per-session node under `Main/Systems`, LAST in
+  `SESSION_START_ORDER`, so ended first). No autoload, no manager.
+
+### How it follows and fights — existing seams, three small extensions
+
+1. **Teams** (`CombatRuntime.TEAM_PLAYER` / `TEAM_HOSTILE` / none). `HurtboxComponent.team`;
+   `CombatHurtboxRegistry.targets(exclude_id, friendly_team)` skips the attacker's own side;
+   `AttackComponent.arm(…, team)`. The player and the pet are `TEAM_PLAYER`, spawned enemies
+   `TEAM_HOSTILE`, a training post has none. Side effect, intended: two wolves no longer hurt
+   each other with a shared arc.
+2. **A home that moves.** `AIComponent.arm_profile(...)` (the enemy `arm` now delegates to it)
+   and `set_home_anchor(node)`; `AiProfileData` gains `follow_radius` (0 = off, every enemy),
+   `home_arrival_radius`, `return_speed_scale`. `AiBrain` gains ONE transition: IDLE → RETURN
+   when `follow_radius > 0` and home is farther than it. A companion is the enemy brain whose
+   home is its owner. It walks — nothing ever sets its position after the spawn.
+3. **Ally ticking and target choice in `CombatRuntime`** — the one physics callback that ticks
+   enemies ticks allies; targets are re-chosen every `ALLY_RETARGET_SECONDS` (0.25 s), never per
+   frame: the nearest LIVING spawned enemy within the profile's `detect_radius` of the OWNER,
+   keeping a still-valid target (hysteresis), ties to the earlier spawn. Never the player,
+   another ally, a neutral post or a corpse. Brains draw from their own RNG stream
+   (`ally_ai`), so a pet being out cannot shift a crit or a wolf's patrol.
+
+Hits resolve through the session's `CombatService`; a death and its reward stay with combat and
+`ProgressionRuntime` (ledger, once per reward id). `PetRuntime` only LISTENS to
+`enemy_defeated` and pays the pet `floor(xp_reward × xp_share_percent / 100)`, once per reward
+id, only while it is out. The player's reward is not split or reduced.
+
+### Acquisition, input, HUD
+
+- **The first pet** is `pet_hoang_khuyen` (Hoàng Khuyển — an ordinary yellow village hound with
+  a frayed jade cord; canon: Hoang Vực is poor frontier, so the first companion is humble, not a
+  spirit beast). It is a `PetEncounter` by the training-yard fence in Lạc Hà, befriended with the
+  ordinary interact key. No quest or dialogue engine is involved or faked.
+- **`WorldInteractable`** is the one contract `MapBase` selects on (reach as a distance, prompt
+  verb, `interaction_kind` + `interaction_id`); `KnowledgeSource` now extends it. Among
+  overlapping reaches the NEAREST wins, exact ties by kind then id (never scene order). The map
+  reports `interactable_used(kind, id)`; `WorldRuntime` routes by kind; the owner decides.
+- **`pet_summon`** (default `G`) is a new semantic action read through `InputService` in the
+  gameplay context only. Summon and dismiss are idempotent; every refusal is a HUD answer.
+- **HUD.** One contextual prompt row carrying a verb (call / dismiss / resting). It yields to the
+  interact and cultivate verbs — the strip has room for one contextual verb and must stay in the
+  left half of the screen (measured by test at the longest language). The pet's name and level
+  are said by its notices.
+
+### Cleanup
+
+One despawn path (`PetRuntime._despawn`): ally removed, attacker disarmed, hurtbox unregistered,
+AI stopped, body freed. Taken on dismissal, on the pet's death, on `WorldRuntime.
+active_map_leaving` (new signal, emitted before the old scene is freed; the pet returns on
+`active_map_ready` if it was wanted out), when the owner falls, on a failed start and on session
+end. `from_dict` is atomic and sends a pet that was out away first.
+
+### Drift found and corrected
+
+- `SAVE_FORMAT` `pets.owned` stored `level` and `stats_current` (see the ADR).
+- `DATA_SCHEMA` `PetData.ai_profile` was a `StringName` "preset"; it is an `AiProfileData`
+  resource, as `EnemyData.ai_profile` already was in code.
+- `SYSTEM_DEPENDENCY_MATRIX` promised "taming/commands" intents and a "pet UI"; Phase 16 ships
+  befriending, summon/dismiss and one HUD row. Taming rules and a pet panel are not built.
+
+### Not built (deliberately)
+
+Pet skills beyond the validated `skills` id list (the first pet only bites), pet commands, a pet
+panel, pet equipment, more than one pet out, file-level save (Phase 23 calls `to_dict` /
+`from_dict`).

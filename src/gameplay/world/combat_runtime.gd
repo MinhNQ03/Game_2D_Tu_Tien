@@ -53,9 +53,32 @@ signal enemy_defeated(reward_id: StringName, xp_reward: int)
 ## per-creature scene, which is what makes a new creature a `.tres` (Phase 10 exit criterion).
 const EnemyScene := preload("res://src/gameplay/entities/enemy.tscn")
 
+## The two sides of a fight (Phase 16). An attack never lands on the attacker's own side
+## (`HurtboxComponent.team`). The player and every companion are `TEAM_PLAYER`; spawned
+## creatures are `TEAM_HOSTILE` (so a pack no longer bites itself); a training post has no side
+## and is hit by anyone. Two names, not a faction system: who is hostile to whom is a P17+
+## question the relationship graph will answer, and this is the smallest fact combat needs now.
+const TEAM_PLAYER := &"team_player"
+const TEAM_HOSTILE := &"team_hostile"
+
+## How often the allies' targets are re-chosen, in seconds. A CADENCE, not a per-frame scan:
+## choosing costs O(allies x enemies), and a committed choice is also what makes a companion
+## readable — it does not flicker between two wolves at similar distances.
+const ALLY_RETARGET_SECONDS := 0.25
+
 var _service: CombatService = null
 var _registry: CombatHurtboxRegistry = null
 var _session_active: bool = false
+
+## Allied actors the session ticks beside the enemies (Phase 16): each a companion's
+## `AIComponent`, in the order they were added (deterministic). The session does not OWN them —
+## `PetRuntime` spawns and frees its pet — it only gives them the same single tick the enemies
+## get and tells them what to fight.
+var _allies: Array[AIComponent] = []
+var _since_retarget: float = 0.0
+## Retarget passes run this session — a read-only counter so a budget test can assert the
+## cadence instead of trusting it.
+var _retargets: int = 0
 
 ## The session's RngService, kept so enemy brains can draw from the AI stream. Combat holds
 ## the seam rather than a second seed: one world identity, independent streams (D-051 §10).
@@ -127,6 +150,9 @@ func start_session(rng: RngService) -> bool:
 	_rng = rng
 	_armed = {}
 	_enemies = []
+	_allies = []
+	_since_retarget = 0.0
+	_retargets = 0
 	_hunt_target = null
 	_spawn_serial = 0
 	_reward_ids = {}
@@ -156,6 +182,10 @@ func end_session() -> void:
 	# Enemies first: stopping an AI drops its target and cancels its swing, so no brain can
 	# decide against a registry that is about to disappear.
 	despawn_enemies()
+	for ally in _allies:
+		if ally != null and is_instance_valid(ally):
+			ally.stop()
+	_allies.clear()
 	for key in _armed.keys():
 		var component: AttackComponent = _armed[key]
 		if component != null and is_instance_valid(component):
@@ -192,7 +222,7 @@ func get_registry() -> CombatHurtboxRegistry:
 ##
 ## Returns false (loud) outside a session or without a hurtbox — an entity that silently is
 ## not targetable is a target the player can hit forever with no effect.
-func register_target(entity: Node) -> bool:
+func register_target(entity: Node, team: StringName = &"") -> bool:
 	if not _session_active:
 		push_error("[combat-rt] register_target outside a session")
 		return false
@@ -201,6 +231,8 @@ func register_target(entity: Node) -> bool:
 		push_error("[combat-rt] '%s' has no HurtboxComponent, so it cannot be hit"
 			% (entity.name if entity != null else "<null>"))
 		return false
+	if team != &"":
+		hurtbox.team = team
 	hurtbox.setup(entity, _registry)
 	return true
 
@@ -210,7 +242,11 @@ func register_target(entity: Node) -> bool:
 ## One call for both sides on purpose: an attacker that is not itself a target is a one-way
 ## fight, and forgetting the second call is invisible until something tries to hit back.
 ## `attacker_id` is also what keeps the entity out of its own swing.
-func arm_attacker(entity: Node, attack: AttackData, attacker_id: StringName) -> bool:
+##
+## `team` (Phase 16) puts the entity on a side: its swings skip that side and that side's
+## swings skip it. Empty keeps whatever side its hurtbox already has (none, by default).
+func arm_attacker(entity: Node, attack: AttackData, attacker_id: StringName,
+		team: StringName = &"") -> bool:
 	if not _session_active:
 		push_error("[combat-rt] arm_attacker outside a session")
 		return false
@@ -219,12 +255,26 @@ func arm_attacker(entity: Node, attack: AttackData, attacker_id: StringName) -> 
 		push_error("[combat-rt] '%s' has no AttackComponent, so it cannot attack"
 			% (entity.name if entity != null else "<null>"))
 		return false
-	if not register_target(entity):
+	if not register_target(entity, team):
 		return false
-	if not component.arm(attack, _service, _registry, attacker_id):
+	if not component.arm(attack, _service, _registry, attacker_id, team):
 		return false
 	_armed[String(attacker_id)] = component
 	return true
+
+
+## Stop treating `attacker_id` as armed and drop its hurtbox (a dismissed companion). Cancels a
+## swing in flight first, so no hit window is left pending on a body about to be freed. Safe for
+## an id that was never armed.
+func disarm(entity: Node, attacker_id: StringName) -> void:
+	var component: AttackComponent = _armed.get(String(attacker_id))
+	if component != null and is_instance_valid(component):
+		component.cancel()
+	_armed.erase(String(attacker_id))
+	if _registry != null and entity != null and is_instance_valid(entity):
+		var hurtbox := _find_child_of_type(entity, "HurtboxComponent") as HurtboxComponent
+		if hurtbox != null:
+			_registry.unregister(hurtbox)
 
 
 ## How many attackers this session has armed. A read-only window for tests and the debug
@@ -273,8 +323,8 @@ func spawn_from_table(table: EnemySpawnTableData, host: Node) -> int:
 	for i in table.size():
 		if _spawn_one(table.enemies[i], table.positions[i], table.instance_id_for(i), host):
 			spawned += 1
-	# The tick only runs while there is something to tick, so an enemy-free map costs nothing.
-	set_physics_process(not _enemies.is_empty())
+	# The tick only runs while there is something to tick, so an empty map costs nothing.
+	_refresh_tick()
 	return spawned
 
 
@@ -292,11 +342,12 @@ func _spawn_one(
 	enemy.name = String(instance_id)
 	enemy.position = position
 	host.add_child(enemy)
-	if not register_target(enemy):
+	if not register_target(enemy, TEAM_HOSTILE):
 		enemy.queue_free()
 		return false
 	var component := _find_child_of_type(enemy, "AttackComponent") as AttackComponent
-	if component == null or not component.arm(data.attack, _service, _registry, instance_id):
+	if component == null or not component.arm(data.attack, _service, _registry, instance_id,
+			TEAM_HOSTILE):
 		push_error("[combat-rt] '%s' could not be armed to attack" % instance_id)
 		enemy.queue_free()
 		return false
@@ -365,7 +416,12 @@ func despawn_enemies() -> void:
 	# single death still cannot pay twice.
 	_reward_ids.clear()
 	_announced.clear()
-	set_physics_process(false)
+	# No enemy is left to fight: every ally drops its target NOW rather than at the next
+	# retarget, so nothing can swing at a body that was just queued for deletion.
+	for ally in _allies:
+		if ally != null and is_instance_valid(ally):
+			ally.set_target(null)
+	_refresh_tick()
 
 
 ## Live enemy count (including corpses that have not been cleaned up yet).
@@ -471,6 +527,7 @@ func _publish_target(enemy: Enemy) -> void:
 ## executing movement every tick — the separation Phase 10 requires (C6).
 func _physics_process(delta: float) -> void:
 	tick_enemies(delta)
+	tick_allies(delta)
 
 
 ## Advance every enemy's AI by `delta`.
@@ -500,10 +557,153 @@ func _on_enemy_died(enemy: Enemy) -> void:
 	_armed.erase(String(enemy.instance_id()))
 	_publish_target(enemy)
 	_announce_defeat(enemy)
+	# Whoever was fighting it stops NOW, not at the next retarget pass.
+	for ally in _allies:
+		if ally != null and is_instance_valid(ally) and ally.target() == enemy:
+			ally.set_target(null)
 	# Nothing left alive means nothing left to think: stop the tick entirely rather than
 	# iterating corpses every frame for the rest of the session.
-	if living_enemy_count() == 0:
-		set_physics_process(false)
+	_refresh_tick()
+
+
+# --- Allies (Phase 16) -------------------------------------------------------
+#
+# A companion fights through the SAME seams an enemy does — its own `AttackComponent`, this
+# session's `CombatService` and registry — so nothing about damage, death or reward is new. What
+# the session adds is the two things it already does for enemies: ONE tick for all of them, and
+# the answer to "what should you be fighting", which only the session can give because only it
+# knows who is hostile and alive.
+
+## The ally-AI stream id: every companion's brain draws from it, never from the enemies' or
+## the combat stream, so a pet being out cannot shift a crit or a wolf's patrol (L-005: named
+## here, with its consumer).
+const STREAM_ALLY_AI := &"ally_ai"
+
+
+## Arm `entity`'s `AIComponent` as an ALLY of `owner` and start ticking it: the brain gets the
+## session's ally stream, its home is the owner (a home that moves), and the session chooses its
+## targets. The entity must already be armed to attack (`arm_attacker` with its team). Returns
+## false (loud) when any part is missing — the caller frees the body rather than leaving an
+## inert companion standing in the world.
+func arm_ally(entity: Node, profile: AiProfileData, engage_distance: float, move_speed: float,
+		owner_body: Node2D) -> bool:
+	if not _session_active:
+		push_error("[combat-rt] arm_ally outside a session")
+		return false
+	var ai := _find_child_of_type(entity, "AIComponent") as AIComponent
+	var body := entity as Node2D
+	if ai == null or body == null:
+		push_error("[combat-rt] '%s' has no AIComponent, so it cannot follow or assist"
+			% (entity.name if entity != null else "<null>"))
+		return false
+	if owner_body == null or not is_instance_valid(owner_body):
+		push_error("[combat-rt] arm_ally needs a live owner to follow")
+		return false
+	var stream := _rng.stream(STREAM_ALLY_AI)
+	if stream == null or not ai.arm_profile(profile, engage_distance, move_speed, stream,
+			owner_body.global_position, String(entity.name)):
+		return false
+	ai.set_home_anchor(owner_body)
+	return add_ally(ai)
+
+
+## Tick `ally` with the session and choose its targets. Returns false (loud) outside a session
+## or for an unarmed component. Idempotent: adding the same ally twice keeps one entry.
+func add_ally(ally: AIComponent) -> bool:
+	if not _session_active:
+		push_error("[combat-rt] add_ally outside a session")
+		return false
+	if ally == null or not is_instance_valid(ally) or not ally.is_armed():
+		push_error("[combat-rt] refusing to add an ally whose AIComponent is not armed")
+		return false
+	if not _allies.has(ally):
+		_allies.append(ally)
+	_refresh_tick()
+	return true
+
+
+## Stop ticking `ally`. Safe for one that was never added.
+func remove_ally(ally: AIComponent) -> void:
+	_allies.erase(ally)
+	_refresh_tick()
+
+
+func ally_count() -> int:
+	return _allies.size()
+
+
+func retarget_passes() -> int:
+	return _retargets
+
+
+## Advance every ally by `delta`: re-choose targets on the cadence, then tick each. Public and
+## delta-driven for the same reason `tick_enemies` is (L-016).
+func tick_allies(delta: float) -> void:
+	if _allies.is_empty():
+		return
+	_since_retarget += delta
+	if _since_retarget >= ALLY_RETARGET_SECONDS:
+		_since_retarget = fmod(_since_retarget, ALLY_RETARGET_SECONDS)
+		_retarget_allies()
+	for ally in _allies:
+		if ally != null and is_instance_valid(ally):
+			ally.tick(delta)
+
+
+## Give every ally the hostile it should fight, or none.
+##
+## THE RULE: the nearest LIVING spawned enemy to the ally, among those within the ally's
+## `detect_radius` of its HOME (its owner). Measured from the owner, so a companion defends the
+## ground its owner stands on and never wanders off to a fight across the map; nearest to the
+## ally, so it commits to what is in front of it. An ally keeps a target that is still valid
+## (alive, still inside that radius) instead of re-choosing every pass — hysteresis, so two
+## wolves at similar distances do not make it dither.
+##
+## Candidates are ONLY this session's spawned enemies: never the player, never another ally,
+## never a neutral post, never a corpse or a freed node. Ties go to the earlier spawn (strict
+## `<` over the spawn-ordered array), so the choice is deterministic and needs no RNG.
+func _retarget_allies() -> void:
+	_retargets += 1
+	for ally in _allies:
+		if ally == null or not is_instance_valid(ally):
+			continue
+		var body := ally.get_parent() as Node2D
+		var profile := ally.profile()
+		if body == null or profile == null:
+			continue
+		ally.set_target(_choose_hostile(ally.target(), body.global_position, ally.home(),
+			profile.detect_radius))
+
+
+func _choose_hostile(current: Node2D, from: Vector2, home: Vector2, radius: float) -> Node2D:
+	if _is_live_hostile(current) and current.global_position.distance_to(home) <= radius:
+		return current
+	var best: Enemy = null
+	var best_distance := INF
+	for enemy in _enemies:
+		if not _is_live_hostile(enemy):
+			continue
+		if enemy.global_position.distance_to(home) > radius:
+			continue
+		var distance := enemy.global_position.distance_to(from)
+		if distance < best_distance:
+			best_distance = distance
+			best = enemy
+	return best
+
+
+func _is_live_hostile(node: Node2D) -> bool:
+	if node == null or not is_instance_valid(node):
+		return false
+	var enemy := node as Enemy
+	return enemy != null and _enemies.has(enemy) and not enemy.is_dead()
+
+
+## The tick runs only while something needs it: a living enemy, or any ally (a companion
+## follows its owner whether or not there is a fight).
+func _refresh_tick() -> void:
+	set_physics_process(_session_active
+		and (living_enemy_count() > 0 or not _allies.is_empty()))
 
 
 ## First direct child of `entity` whose class matches `type_name`.

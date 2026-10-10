@@ -85,7 +85,12 @@ func size() -> int:
 ## Every TARGETABLE hurtbox, sorted by entity id. Entries whose entity is gone or dead are
 ## skipped — and a stale entry (entity freed without its hurtbox leaving the tree) is dropped
 ## here rather than left to produce a hit on something that no longer exists.
-func targetable(exclude_id: StringName = &"") -> Array[HurtboxComponent]:
+##
+## `friendly_team` (Phase 16) drops every hurtbox on that team: an attacker passes its OWN team,
+## so allies are simply not targets. An empty team excludes nothing, and a hurtbox with no team
+## is never excluded by one.
+func targetable(exclude_id: StringName = &"",
+		friendly_team: StringName = &"") -> Array[HurtboxComponent]:
 	var out: Array[HurtboxComponent] = []
 	var keys: Array = _entries.keys()
 	keys.sort()
@@ -99,6 +104,8 @@ func targetable(exclude_id: StringName = &"") -> Array[HurtboxComponent]:
 			continue
 		if not hurtbox.is_targetable():
 			continue
+		if friendly_team != &"" and hurtbox.team == friendly_team:
+			continue
 		out.append(hurtbox)
 	for key in stale:
 		_entries.erase(key)
@@ -109,9 +116,9 @@ func targetable(exclude_id: StringName = &"") -> Array[HurtboxComponent]:
 ##
 ## `exclude_id` keeps an attacker out of its own swing. That is not a convenience: without it
 ## every attack would hit the attacker, because the attacker is always within its own reach.
-func targets(exclude_id: StringName = &"") -> Array:
+func targets(exclude_id: StringName = &"", friendly_team: StringName = &"") -> Array:
 	var out: Array = []
-	for hurtbox in targetable(exclude_id):
+	for hurtbox in targetable(exclude_id, friendly_team):
 		out.append(hurtbox.to_target())
 	return out
 

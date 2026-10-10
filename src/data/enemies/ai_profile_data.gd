@@ -70,6 +70,34 @@ class_name AiProfileData
 
 ## True when the tuning is self-consistent. Loud about WHICH field is wrong, because a content
 ## error that only says "invalid" sends the author through the whole file.
+# --- Home: a spawn point, or an OWNER (Phase 16) -------------------------------------
+#
+# The brain has always had a HOME it returns to. For an enemy that is where it spawned; for an
+# ally it is its owner, a home that MOVES. These three values are what make the one state
+# machine serve both, and their defaults are exactly the enemy behaviour that shipped — an
+# enemy profile that authors none of them is unchanged.
+
+## How far from home an IDLE creature tolerates before going back, in pixels. 0 = it never
+## follows (an enemy idles wherever its patrol left it). An ally sets this: it is the distance
+## at which a companion starts walking after its owner.
+@export var follow_radius: float = 0.0
+
+## How close to home counts as ARRIVED, in pixels. A tolerance, not a target: without one the
+## creature jitters around the point forever. An ally's is its standing distance from the
+## owner; with `follow_radius` above it, the two form the band that makes following stable
+## (walk when beyond the one, stop when inside the other).
+@export var home_arrival_radius: float = 8.0
+
+## Speed scale while RETURNING home. 0 = use `patrol_speed_scale` (an enemy ambles back). An
+## ally must be able to keep up with an owner who walks faster than it patrols.
+@export var return_speed_scale: float = 0.0
+
+
+## The speed scale a RETURN actually uses.
+func effective_return_speed_scale() -> float:
+	return return_speed_scale if return_speed_scale > 0.0 else patrol_speed_scale
+
+
 func is_valid() -> bool:
 	var problems: Array[String] = []
 	if id == &"":
@@ -96,6 +124,19 @@ func is_valid() -> bool:
 			problems.append("%s must be > 0 (got %.3f)" % [field, value])
 	if recover_distance <= 0.0:
 		problems.append("recover_distance must be > 0 (got %.1f)" % recover_distance)
+	if follow_radius < 0.0:
+		problems.append("follow_radius must be >= 0 (got %.1f)" % follow_radius)
+	if home_arrival_radius <= 0.0:
+		problems.append("home_arrival_radius must be > 0 (got %.1f)" % home_arrival_radius)
+	# The band is the point: at equal radii a follower arrives and leaves on the same pixel.
+	if follow_radius > 0.0 and follow_radius <= home_arrival_radius:
+		problems.append("follow_radius (%.1f) must EXCEED home_arrival_radius (%.1f)"
+			% [follow_radius, home_arrival_radius])
+	if follow_radius > 0.0 and follow_radius >= leash_radius:
+		problems.append("follow_radius (%.1f) must be inside leash_radius (%.1f)"
+			% [follow_radius, leash_radius])
+	if return_speed_scale < 0.0:
+		problems.append("return_speed_scale must be >= 0 (got %.2f)" % return_speed_scale)
 	if problems.is_empty():
 		return true
 	push_error("[ai-profile] '%s' is invalid: %s" % [id, "; ".join(problems)])

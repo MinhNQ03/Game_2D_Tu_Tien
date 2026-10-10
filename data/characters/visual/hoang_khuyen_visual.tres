@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/data/characters/character_visual_profile_data.gd" id="1_vis"]
+[ext_resource type="Texture2D" path="res://assets/sprites/pets/hoang_khuyen_idle.png" id="2_idle"]
+[ext_resource type="Texture2D" path="res://assets/sprites/pets/hoang_khuyen_walk.png" id="3_walk"]
+[ext_resource type="Texture2D" path="res://assets/sprites/pets/hoang_khuyen_attack.png" id="4_attack"]
+[ext_resource type="Resource" path="res://data/characters/visual/anchors/hoang_khuyen_anchors.tres" id="5_anchors"]
+
+[resource]
+script = ExtResource("1_vis")
+id = &"vis_hoang_khuyen"
+idle_sheet = ExtResource("2_idle")
+walk_sheet = ExtResource("3_walk")
+attack_sheet = ExtResource("4_attack")
+frame_size = Vector2i(32, 32)
+frame_duration = 0.2
+anchor_offset = Vector2(0, 0)
+stride_px = 72
+walk_rest_columns = PackedInt32Array()
+anchors = ExtResource("5_anchors")

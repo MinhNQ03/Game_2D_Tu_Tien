@@ -42,3 +42,8 @@ func set_prompt(key_label: String, action_text: String) -> void:
 		_build()
 	_badge.set_key_label(key_label)
 	_text.text = action_text
+
+
+## The action text currently shown (for tests and E2E evidence).
+func action_text() -> String:
+	return _text.text if _text != null else ""

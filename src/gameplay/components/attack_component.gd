@@ -39,6 +39,9 @@ var _fsm: AttackStateMachine = null
 ## The attacker's own id, so it is excluded from its own swing. Without this every attack
 ## would hit the attacker, which is always inside its own reach.
 var _attacker_id: StringName = &""
+## The attacker's team (Phase 16): hurtboxes on it are excluded from every swing. See
+## `HurtboxComponent.team`.
+var _team: StringName = &""
 
 ## Facing used for the arc test, pushed by the entity. Defaults to DOWN because that is the
 ## project's canonical rest facing (the character sheets' first row, `06-art-assets.md`), so
@@ -67,7 +70,8 @@ func arm(
 		attack: AttackData,
 		service: CombatService,
 		registry: CombatHurtboxRegistry,
-		attacker_id: StringName) -> bool:
+		attacker_id: StringName,
+		team: StringName = &"") -> bool:
 	if attack == null or not attack.is_valid():
 		push_error("[attack] cannot arm: the AttackData is missing or invalid")
 		return false
@@ -84,8 +88,14 @@ func arm(
 	_service = service
 	_registry = registry
 	_attacker_id = attacker_id
+	_team = team
 	_fsm = AttackStateMachine.new(attack)
 	return _fsm.is_armed()
+
+
+## The side this attacker is on (Phase 16); its swings never land on that side. Empty = none.
+func team() -> StringName:
+	return _team
 
 
 ## Swap the attack this component swings with (Phase 14: equipping a weapon brings its own
@@ -206,7 +216,8 @@ func advance(delta: float) -> void:
 func _resolve_hit_window() -> void:
 	var origin := _attacker_position()
 	var results := _service.resolve_hit(
-		origin, _facing, _attacker_attack(), _attack, _registry.targets(_attacker_id))
+		origin, _facing, _attacker_attack(), _attack,
+		_registry.targets(_attacker_id, _team))
 	for result in results:
 		var target_id: StringName = result["target_id"]
 		var hurtbox := _registry.get_hurtbox(target_id)

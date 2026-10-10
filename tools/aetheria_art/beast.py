@@ -29,6 +29,26 @@ PAL = {
     "mist_dim": (150, 200, 186, 70),
 }
 
+# Hoàng Khuyển, the frontier village's yellow hound (Phase 16): the SAME skeleton and gaits as
+# the wolf, told apart by silhouette and colour rather than by new drawing code — an ochre coat
+# with a cream chest, FOLDED ears, a tail carried up over the back, a jade cord at the neck (it
+# belongs to someone), and no mist at all: it is an ordinary animal, which is the point.
+HOUND_PAL = {
+    "coat": (206, 158, 92, 255),
+    "coat_hi": (236, 200, 138, 255),
+    "coat_dk": (150, 104, 58, 255),
+    "belly": (238, 220, 180, 255),
+    "far": (124, 86, 52, 255),
+    "nose": (44, 40, 44, 255),
+    "maw": (150, 72, 70, 255),
+    "fang": (240, 238, 226, 255),
+    "eye": (40, 32, 30, 255),
+    "mist": None,
+    "collar": (96, 190, 150, 255),
+    "ears": "fold",
+    "tail": "up",
+}
+
 
 def pose(body=0, reach=0, head=0, tail=0, jaw=0, legs=(0.0, 0.0, 0.0, 0.0), lift=(0, 0, 0, 0),
          crouch=0, mist=0):
@@ -108,8 +128,18 @@ ANIMATIONS = {
 }
 
 
+def _wag(p, pal):
+    """The tail sway. A tail carried UP wags every frame (the hound has no mist to keep its idle
+    alive, and a dog that is glad of company never holds its tail still)."""
+    if pal.get("tail") == "up":
+        return 1 if p["mist"] % 2 else -1
+    return p["tail"]
+
+
 def _mist(px, x, y, phase, pal):
     """Two drifting wisps. Translucent, so the outline pass never traces them."""
+    if pal.get("mist") is None:
+        return
     dx = (phase % 3) - 1
     raster.oval(px, x + dx, y, 1.8, 1.0, pal["mist"])
     raster.oval(px, x + dx + 2, y - 1 - (phase % 2), 1.3, 0.8, pal["mist_dim"])
@@ -141,9 +171,15 @@ def _side(p, pal):
     leg(shoulder_x + 2, trunk_y + 1, ff, lf[1], pal["far"], False)
     leg(hip_x + 1, trunk_y, fh, lf[3], pal["far"], True)
     # Tail: bushy, low, trailing.
-    t = p["tail"]
-    raster.limb(px, hip_x + 3, trunk_y - 2, hip_x + 8, trunk_y + 1 + t, 4.2, 2.6, pal["coat"])
-    raster.limb(px, hip_x + 3, trunk_y - 2, hip_x + 7, trunk_y - 1 + t, 1.6, 1.2, pal["coat_hi"])
+    t = _wag(p, pal)
+    if pal.get("tail") == "up":
+        raster.limb(px, hip_x + 3, trunk_y - 2, hip_x + 6, trunk_y - 7 + t, 3.0, 2.0, pal["coat"])
+        raster.limb(px, hip_x + 6, trunk_y - 7 + t, hip_x + 4, trunk_y - 9 + t, 2.0, 1.6,
+                    pal["coat_hi"])
+    else:
+        raster.limb(px, hip_x + 3, trunk_y - 2, hip_x + 8, trunk_y + 1 + t, 4.2, 2.6, pal["coat"])
+        raster.limb(px, hip_x + 3, trunk_y - 2, hip_x + 7, trunk_y - 1 + t, 1.6, 1.2,
+                    pal["coat_hi"])
     # Trunk: a deep chest, a tucked waist, the haunch.
     raster.oval(px, shoulder_x + 1, trunk_y - 1, 4.5, 4.2, pal["coat"])
     raster.oval(px, (shoulder_x + hip_x) / 2.0 + 1, trunk_y, 6, 3.0, pal["coat"])
@@ -163,13 +199,20 @@ def _side(p, pal):
         raster.put(px, hx - 4, hy + 1, pal["fang"])
     raster.put(px, hx - 6, hy + 1, pal["nose"])
     # Ears: pointed, upright, the dark coat tone so they read against the lit head.
-    raster.polygon(px, [(hx, hy - 1), (hx + 2, hy - 5), (hx + 3, hy - 1)], pal["coat_dk"])
-    raster.oval(px, hx + 1, hy - 1, 1.6, 1.0, pal["coat_hi"])
+    if pal.get("ears") == "fold":
+        raster.oval(px, hx + 1, hy - 1, 1.6, 1.0, pal["coat_hi"])
+        raster.polygon(px, [(hx + 1, hy - 3), (hx + 4, hy - 2), (hx + 4, hy + 2), (hx + 2, hy + 1)],
+                       pal["coat_dk"])
+    else:
+        raster.polygon(px, [(hx, hy - 1), (hx + 2, hy - 5), (hx + 3, hy - 1)], pal["coat_dk"])
+        raster.oval(px, hx + 1, hy - 1, 1.6, 1.0, pal["coat_hi"])
     # NEAR legs over the trunk.
     leg(shoulder_x, trunk_y + 1, nf, lf[0], pal["coat_dk"], False)
     leg(hip_x - 1, trunk_y, nh, lf[2], pal["coat_dk"], True)
     raster.outline(px, INK)
     raster.put(px, hx - 1, hy - 1, pal["eye"])
+    if pal.get("collar"):
+        raster.line(px, shoulder_x - 2, trunk_y - 5, shoulder_x - 1, trunk_y - 1, pal["collar"])
     _mist(px, hip_x + 9, trunk_y + t, p["mist"], pal)
     _mist(px, (shoulder_x + hip_x) // 2 + 3, trunk_y - 5, p["mist"] + 1, pal)
     return px, (hx - 5, hy + 2)
@@ -186,6 +229,8 @@ def _front(p, pal):
     # Hind legs, mostly hidden behind the chest.
     for (x, fwd, li) in ((11, nh, lf[2]), (21, fh, lf[3])):
         raster.limb(px, x, 18 + b, x, 28 - li - int(fwd) // 3, 2.6, 2.2, pal["far"])
+    if pal.get("tail") == "up":                                              # seen over the back
+        raster.limb(px, 20, 17 + b, 22 + 2 * _wag(p, pal), 11 + b, 2.4, 1.8, pal["coat_hi"])
     raster.oval(px, 16, 19 + b, 6.5, 4.5, pal["coat"])                       # body behind
     for (x, fwd, li) in ((13, nf, lf[0]), (19, ff, lf[1])):
         drop = int(-fwd) // 2 + r // 2
@@ -203,9 +248,14 @@ def _front(p, pal):
     raster.polygon(px, [(10, hy - 3), (22, hy - 3), (20, hy + 2), (18, hy + 6), (14, hy + 6),
                         (12, hy + 2)], pal["coat"])
     raster.rect(px, 12, hy - 3, 20, hy - 1, pal["coat_hi"])                   # lit brow
-    for (x0, x1, tip) in ((10, 14, 11), (18, 22, 21)):                        # tall ears
-        raster.polygon(px, [(x0, hy - 2), (tip, hy - 9), (x1, hy - 3)], pal["coat_dk"])
-        raster.put(px, tip, hy - 6, pal["maw"])                                # inner ear
+    if pal.get("ears") == "fold":
+        raster.polygon(px, [(10, hy - 3), (12, hy - 3), (11, hy + 3), (8, hy + 1)], pal["coat_dk"])
+        raster.polygon(px, [(22, hy - 3), (20, hy - 3), (21, hy + 3), (24, hy + 1)],
+                       pal["coat_dk"])
+    else:
+        for (x0, x1, tip) in ((10, 14, 11), (18, 22, 21)):                    # tall ears
+            raster.polygon(px, [(x0, hy - 2), (tip, hy - 9), (x1, hy - 3)], pal["coat_dk"])
+            raster.put(px, tip, hy - 6, pal["maw"])                            # inner ear
     raster.polygon(px, [(14, hy + 1), (18, hy + 1), (18, hy + 6), (16, hy + 7), (14, hy + 6)],
                    pal["coat_hi"])                                               # pale muzzle
     if p["jaw"]:
@@ -215,10 +265,18 @@ def _front(p, pal):
     raster.rect(px, 15, hy + 5, 18, hy + 7, pal["nose"])                      # nose at the tip
     raster.outline(px, INK)
     # Eyes set wide and slanted, either side of the muzzle's root.
-    raster.put(px, 13, hy, pal["eye"])
-    raster.put(px, 19, hy, pal["eye"])
-    raster.put(px, 12, hy - 1, pal["coat_dk"])
-    raster.put(px, 20, hy - 1, pal["coat_dk"])
+    if pal.get("ears") == "fold":
+        # Folded ears hang beside the face, so the eyes sit one pixel in or they sink into them.
+        raster.put(px, 14, hy, pal["eye"])
+        raster.put(px, 18, hy, pal["eye"])
+    else:
+        raster.put(px, 13, hy, pal["eye"])
+        raster.put(px, 19, hy, pal["eye"])
+        raster.put(px, 12, hy - 1, pal["coat_dk"])
+        raster.put(px, 20, hy - 1, pal["coat_dk"])
+    if pal.get("collar"):
+        raster.line(px, 12, hy + 8, 20, hy + 8, pal["collar"])
+        raster.put(px, 16, hy + 9, pal["collar"])
     _mist(px, 22, 18 + b, p["mist"] + 1, pal)
     return px, (16, hy + 7)
 
@@ -234,8 +292,13 @@ def _back(p, pal):
     hy = 10 + p["head"] - r // 2
     raster.limb(px, 16, 16 + b, 16, hy + 1, 5, 4, pal["coat"])               # the neck joins it
     raster.oval(px, 16, hy, 4, 3.4, pal["coat"])                             # head beyond
-    for x0 in (12, 17):
-        raster.polygon(px, [(x0, hy - 1), (x0 + 1, hy - 5), (x0 + 3, hy - 1)], pal["coat_dk"])
+    if pal.get("ears") == "fold":
+        raster.polygon(px, [(10, hy - 2), (13, hy - 3), (13, hy + 1), (10, hy + 3)], pal["coat_dk"])
+        raster.polygon(px, [(22, hy - 2), (19, hy - 3), (19, hy + 1), (22, hy + 3)], pal["coat_dk"])
+    else:
+        for x0 in (12, 17):
+            raster.polygon(px, [(x0, hy - 1), (x0 + 1, hy - 5), (x0 + 3, hy - 1)],
+                           pal["coat_dk"])
     for (x, fwd, li) in ((12, nf, lf[0]), (20, ff, lf[1])):
         raster.limb(px, x, 15 + b, x, 22 - li + int(fwd) // 3, 2.4, 2, pal["far"])
     raster.oval(px, 16, 17 + b, 5, 5, pal["coat"])                           # shoulders
@@ -244,12 +307,17 @@ def _back(p, pal):
     for (x, fwd, li) in ((11, nh, lf[2]), (21, fh, lf[3])):
         raster.limb(px, x, 23 + b, x, 29 - li - int(fwd) // 3, 3, 2.4, pal["coat_dk"])
         raster.rect(px, x - 1, 29 - li, x + 2, 30 - li, pal["coat_dk"])
-    t = p["tail"]
+    t = _wag(p, pal)
     # The brush: bushy, hanging, with a dark tip — the wolf's signature seen from behind.
-    raster.limb(px, 16, 24 + b, 17 + t, 30, 4, 2.6, pal["coat"])
-    raster.limb(px, 16, 24 + b, 17 + t, 29, 1.4, 1, pal["coat_hi"])
-    raster.rect(px, 16 + t, 29, 19 + t, 31, pal["coat_dk"])
+    if pal.get("tail") == "up":
+        raster.limb(px, 16, 24 + b, 16 + 2 * t, 18 + b, 2.6, 2.0, pal["coat_hi"])
+    else:
+        raster.limb(px, 16, 24 + b, 17 + t, 30, 4, 2.6, pal["coat"])
+        raster.limb(px, 16, 24 + b, 17 + t, 29, 1.4, 1, pal["coat_hi"])
+        raster.rect(px, 16 + t, 29, 19 + t, 31, pal["coat_dk"])
     raster.outline(px, INK)
+    if pal.get("collar"):
+        raster.line(px, 14, hy + 4, 18, hy + 4, pal["collar"])
     _mist(px, 15 + t, 30, p["mist"], pal)
     return px, (16, hy - 3)
 

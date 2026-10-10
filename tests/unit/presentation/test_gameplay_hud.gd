@@ -89,8 +89,8 @@ func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 	# sect, politics, menu) and interact is visible here, so all five carry a badge — the old
 	# ">= 2 (interact + menu)" was written when the strip had two rows and had stopped
 	# describing the HUD three prompts ago.
-	assert_eq(_key_badge_count(hud), 6,
-		("each of the six prompts (attack, interact, cultivate, sect, politics, menu) has a "
+	assert_eq(_key_badge_count(hud), 7,
+		("each of the seven prompts (attack, interact, cultivate, pet, sect, politics, menu) has a "
 			+ "graphic "
 			+ "key badge, got %d") % _key_badge_count(hud))
 	free_node(hud)
@@ -1019,7 +1019,7 @@ func test_only_the_attack_row_carries_the_attack_prompt() -> void:
 		free_node(hud)
 		return
 	var rows := _prompt_rows(strip)
-	assert_eq(rows.size(), 6, "all six prompts are present")
+	assert_eq(rows.size(), 7, "all seven prompts are present")
 
 	var attack_word := _localized("UI_HUD_ATTACK_ACTION")
 	var carriers: Array[String] = []
@@ -1207,8 +1207,68 @@ func test_the_reserved_bottom_strip_fits_the_prompts_it_reserves_for() -> void:
 
 	# And the strip really does carry all five prompts, or the measurement above is of a
 	# smaller thing than the player sees.
-	assert_eq(_prompt_rows(strip).size(), 6,
-		"all six prompts (attack, interact, cultivate, sect, politics, menu) were measured")
+	assert_eq(_prompt_rows(strip).size(), 7,
+		"all seven prompts (attack, interact, cultivate, pet, sect, politics, menu) were measured")
+
+	# The OTHER widest state (Phase 16): away from anything to interact with, the pet row takes
+	# the contextual place — measured with its longest verb, in the same language.
+	hud.call("set_interact_available", false)
+	hud.call("set_cultivation_view", CultivationView.make_empty())
+	var resting := _pet_out()
+	resting.out = false
+	resting.recovering = true
+	for pet_view: PetView in [_pet_out(), resting]:
+		hud.call("set_pet_view", pet_view)
+		await scene_tree.process_frame
+		assert_true(bool(hud.call("is_pet_prompt_visible")), "the pet prompt is shown")
+		var with_pet := strip.get_combined_minimum_size()
+		assert_true(with_pet.x < authored_width * 0.5,
+			"the strip with the pet prompt '%s' (%dpx) stays inside the left half (%d)"
+				% [String(hud.call("pet_prompt_text")), int(with_pet.x), int(authored_width)])
+		assert_true(float(UIPalette.PROMPT_STRIP_RESERVE) >= with_pet.y,
+			"and inside the reserved height")
+	free_node(hud)
+
+
+## A pet that is out, at the level whose number is widest (Phase 16).
+func _pet_out() -> PetView:
+	var view := PetView.make_empty()
+	view.available = true
+	view.name_key = &"PET_HOANG_KHUYEN_NAME"
+	view.level = 10
+	view.out = true
+	return view
+
+
+## The pet prompt is CONTEXTUAL: absent with no pet, and its verb names what the key does now.
+func test_the_pet_prompt_follows_the_pet_view() -> void:
+	var hud := _hud()
+	_use_language("en")
+	assert_false(bool(hud.call("is_pet_prompt_visible")), "no pet: no pet prompt")
+	hud.call("set_pet_view", PetView.make_empty())
+	assert_false(bool(hud.call("is_pet_prompt_visible")), "an empty view shows nothing")
+	var view := _pet_out()
+	view.out = false
+	hud.call("set_pet_view", view)
+	assert_true(bool(hud.call("is_pet_prompt_visible")), "an owned pet shows its prompt")
+	assert_eq(String(hud.call("pet_prompt_text")), "Call pet", "away: the key calls it")
+	hud.call("set_interact_available", true)
+	assert_false(bool(hud.call("is_pet_prompt_visible")),
+		"beside something to interact with, that verb takes the one contextual place")
+	hud.call("set_interact_available", false)
+	assert_true(bool(hud.call("is_pet_prompt_visible")), "and the pet prompt returns after")
+	view.recovering = true
+	hud.call("set_pet_view", view)
+	assert_eq(String(hud.call("pet_prompt_text")), "Pet resting",
+		"a fallen pet says why the key will not call it")
+	hud.call("set_pet_view", _pet_out())
+	assert_eq(String(hud.call("pet_prompt_text")), "Dismiss pet",
+		"out: the key sends it away")
+	_use_language("vi")
+	hud.call("set_pet_view", _pet_out())
+	assert_eq(String(hud.call("pet_prompt_text")), "Cho thú lui",
+		"the row re-resolves in Vietnamese")
+	_use_language("en")
 	free_node(hud)
 
 

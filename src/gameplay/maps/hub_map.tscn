@@ -1,4 +1,4 @@
-[gd_scene load_steps=51 format=3]
+[gd_scene load_steps=53 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -51,6 +51,8 @@
 [ext_resource type="Resource" path="res://data/world/props/prop_lantern_post.tres" id="pb_lantern"]
 [ext_resource type="Resource" path="res://data/world/props/prop_planter.tres" id="pb_planter"]
 [ext_resource type="Resource" path="res://data/world/props/prop_rock.tres" id="pb_rock"]
+[ext_resource type="Script" path="res://src/gameplay/pets/pet_encounter.gd" id="60_petenc"]
+[ext_resource type="Resource" path="res://data/pets/pet_hoang_khuyen.tres" id="61_hound"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
 shader_parameter/pivot_row = 11.0
@@ -677,3 +679,11 @@ pickup_id = &"pickup_hubrobe"
 
 [node name="Look" type="Node2D" parent="Pickups/HubRobe"]
 script = ExtResource("52_pickuplook")
+
+[node name="Interactables" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="StrayHound" type="Node2D" parent="Interactables"]
+position = Vector2(652, 452)
+script = ExtResource("60_petenc")
+pet = ExtResource("61_hound")

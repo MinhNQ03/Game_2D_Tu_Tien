@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="PetData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/data/pets/pet_data.gd" id="1_pet"]
+[ext_resource type="Resource" path="res://data/stats/hoang_khuyen_stats.tres" id="2_stats"]
+[ext_resource type="Resource" path="res://data/stats/hoang_khuyen_growth.tres" id="3_growth"]
+[ext_resource type="Resource" path="res://data/pets/pet_progression_curve_common.tres" id="4_curve"]
+[ext_resource type="Resource" path="res://data/pets/ai_pet_companion.tres" id="5_ai"]
+[ext_resource type="Resource" path="res://data/combat/attack_hoang_khuyen_bite.tres" id="6_attack"]
+[ext_resource type="Resource" path="res://data/characters/visual/hoang_khuyen_visual.tres" id="7_vis"]
+
+[resource]
+script = ExtResource("1_pet")
+id = &"pet_hoang_khuyen"
+name_key = &"PET_HOANG_KHUYEN_NAME"
+desc_key = &"PET_HOANG_KHUYEN_DESC"
+stats = ExtResource("2_stats")
+growth = ExtResource("3_growth")
+progression_curve = ExtResource("4_curve")
+xp_share_percent = 50
+skills = Array[StringName]([])
+ai_profile = ExtResource("5_ai")
+attack = ExtResource("6_attack")
+engage_distance = 20.0
+hurt_radius = 9.0
+visual_profile = ExtResource("7_vis")
+recall_seconds = 12.0

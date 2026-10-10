@@ -32,7 +32,7 @@ const MAIN_SOURCE_PATH := "res://src/bootstrap/main.gd"
 ## The frozen teardown order, written out as a literal rather than derived, so this file says
 ## what the contract IS instead of only saying "the reverse of whatever start happens to be".
 const EXPECTED_TEARDOWN := [
-	&"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime", &"CultivationRuntime",
+	&"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime", &"CultivationRuntime",
 	&"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
@@ -53,6 +53,7 @@ const SUBSYSTEM_SCRIPTS := {
 	"InventoryRuntime": "res://src/gameplay/world/inventory_runtime.gd",
 	"EquipmentRuntime": "res://src/gameplay/world/equipment_runtime.gd",
 	"SkillRuntime": "res://src/gameplay/world/skill_runtime.gd",
+	"PetRuntime": "res://src/gameplay/world/pet_runtime.gd",
 }
 
 ## How the bootstrap actually ends a session: the runtimes are duck-typed (`Node`-typed
@@ -66,7 +67,10 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 12, "twelve per-session subsystems (got %s)" % str(order))
+	assert_eq(order.size(), 13, "thirteen per-session subsystems (got %s)" % str(order))
+	assert_eq(order[12], &"PetRuntime",
+		"the linh thú is LAST: its body is parented into the world's map and armed through "
+		+ "combat, so it starts after both and is freed first (Phase 16)")
 	assert_eq(order[0], &"WorldRuntime",
 		"the world session is first: it owns the character registry everything else resolves "
 		+ "through, and the player's CharacterState")
@@ -85,7 +89,7 @@ func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	assert_eq(order[7], &"KnowledgeRuntime",
 		"the Knowledge Core follows progression: cultivation READS it (Phase 12, D-040)")
 	assert_eq(order[11], &"SkillRuntime",
-		"skills are LAST: a cast reads knowledge, cultivation, combat and the player (P15)")
+		"skills follow equipment: a cast reads knowledge, cultivation, combat and the player (P15)")
 	assert_eq(order[10], &"EquipmentRuntime",
 		"equipment is LAST: it moves items out of the inventory (Phase 14)")
 	assert_eq(order[9], &"InventoryRuntime",

@@ -33,6 +33,10 @@ signal knowledge_source_read(source_id: StringName, grants: Array[StringName])
 
 ## The player asked to use an item from the bag (Phase 13), forwarded from the HUD.
 signal item_use_requested(item_id: StringName, equipped: bool)
+
+## The player used an interactable that is not a knowledge source (Phase 16): `kind` routes it
+## to its owner, `id` is its authored identity. The map decides nothing about what it means.
+signal interactable_used(kind: StringName, id: StringName)
 ## Intent to leave the world back to the menu (same contract the sandbox/prologue used).
 signal return_to_menu_requested()
 
@@ -53,8 +57,12 @@ var _progression_view: ProgressionView = null  # cached read-only level/XP view 
 var _cultivation_view: CultivationView = null  # cached read-only cảnh giới view (Phase 12)
 var _inventory_view: InventoryView = null  # cached read-only bag view (Phase 13)
 var _skill_view: SkillView = null  # cached read-only skill dock view (Phase 15)
+var _pet_view: PetView = null  # cached read-only linh thú view (Phase 16)
 ## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
 var _active_source: KnowledgeSource = null
+## The interactable in reach (Phase 16): a stele, a stray animal, later a person. `_active_source`
+## is this one when it is a `KnowledgeSource`.
+var _active_interactable: WorldInteractable = null
 var _camera: Camera2D = null           # this map's camera; follows the player (D-036)
 var _follow_target: Node2D = null      # the player node the camera tracks (resolved lazily)
 
@@ -230,21 +238,38 @@ func _physics_process(_delta: float) -> void:
 	_track_knowledge_source(_follow_target.global_position)
 
 
-## Which knowledge source (a stele) the player can read from where it stands. A DISTANCE test,
-## not an `Area2D`: it works headless (L-016) and a map has a handful of sources. The HUD prompt
-## is refreshed only when the answer CHANGES, never per frame.
+## The hosts a map lists its interactables under. Order is irrelevant: selection is by
+## distance (`WorldInteractable.nearest_in_reach`).
+const INTERACTABLE_HOSTS: Array[String] = ["KnowledgeSources", "Interactables"]
+
+
+## Which interactable (a stele, a stray animal, later a person) the player means from where it
+## stands: the NEAREST available one in reach, deterministically (`WorldInteractable`). A
+## DISTANCE test, not an `Area2D`: it works headless (L-016) and a map has a handful of them.
+## The HUD prompt is refreshed only when the answer CHANGES, never per frame.
 func _track_knowledge_source(player_position: Vector2) -> void:
-	var found: KnowledgeSource = null
-	var host := get_node_or_null("KnowledgeSources")
-	if host != null:
-		for child in host.get_children():
-			var source := child as KnowledgeSource
-			if source != null and source.reaches(player_position):
-				found = source
-				break
-	if found != _active_source:
-		_active_source = found
+	var candidates: Array = []
+	for host_path in INTERACTABLE_HOSTS:
+		var host := get_node_or_null(host_path)
+		if host != null:
+			candidates.append_array(host.get_children())
+	var found := WorldInteractable.nearest_in_reach(candidates, player_position)
+	if found != _active_interactable:
+		_active_interactable = found
+		_active_source = found as KnowledgeSource
 		_refresh_hud()
+
+
+## The interactable the interact key would act on now, or null (for tests and the E2E).
+func active_interactable() -> WorldInteractable:
+	return _active_interactable
+
+
+## Re-evaluate what is in reach NOW (an owner calls this when availability changed without the
+## player moving — a stray was just befriended and is no longer offered).
+func refresh_interactables() -> void:
+	if _follow_target != null and is_instance_valid(_follow_target):
+		_track_knowledge_source(_follow_target.global_position)
 
 
 ## The knowledge source in reach, or null (for tests and the E2E).
@@ -277,6 +302,13 @@ func set_skill_view(view: SkillView) -> void:
 	_skill_view = view
 	if _hud != null:
 		_hud.set_skill_view(view)
+
+
+## Push the linh thú view (Phase 16).
+func set_pet_view(view: PetView) -> void:
+	_pet_view = view
+	if _hud != null:
+		_hud.set_pet_view(view)
 
 
 ## Push the bag's contents into this map's HUD (Phase 13).
@@ -481,6 +513,16 @@ func _unhandled_input(_event: InputEvent) -> void:
 		if vp2 != null:
 			vp2.set_input_as_handled()
 		knowledge_source_read.emit(_active_source.source_id, _active_source.grants)
+		return
+	# Any other interactable in reach (Phase 16): the map REPORTS which one; its owner decides
+	# what using it means.
+	if _active_interactable != null and is_instance_valid(_active_interactable) \
+			and _input.call("is_gameplay_action_just_pressed", INTERACT_ACTION):
+		var vp3 := get_viewport()
+		if vp3 != null:
+			vp3.set_input_as_handled()
+		interactable_used.emit(_active_interactable.interaction_kind(),
+			_active_interactable.interaction_id())
 
 
 func _on_exit_body_entered(body: Node, zone: MapExitZone) -> void:
@@ -540,8 +582,8 @@ func _refresh_hud() -> void:
 	# the prompt must name the action the key will actually take.
 	if _active_exit != null:
 		_hud.set_interact_available(true)
-	elif _active_source != null:
-		_hud.set_interact_available(true, _active_source.prompt_key)
+	elif _active_interactable != null and is_instance_valid(_active_interactable):
+		_hud.set_interact_available(true, _active_interactable.prompt_key)
 	else:
 		_hud.set_interact_available(false)
 	# Re-apply the cached sect view so a fresh HUD (new map) still shows the player's sect.
@@ -560,6 +602,8 @@ func _refresh_hud() -> void:
 		_hud.set_inventory_view(_inventory_view)
 	if _skill_view != null:
 		_hud.set_skill_view(_skill_view)
+	if _pet_view != null:
+		_hud.set_pet_view(_pet_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

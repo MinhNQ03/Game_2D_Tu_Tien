@@ -56,6 +56,12 @@ const PlayerScene := preload("res://src/gameplay/entities/player.tscn")
 ## Emitted when the player asks to leave the world back to the menu (bubbled up from the
 ## active map). Main connects to this (scene-agnostic first-scene return contract).
 signal return_to_menu_requested()
+## The active map is about to be replaced (its scene is still alive). Anything that parented a
+## runtime body into it (the linh thú, Phase 16) frees that body now, through its own path.
+signal active_map_leaving()
+## A map is active, the player is placed in it and combat is populated — also emitted when a
+## rejected transition put the previous map back.
+signal active_map_ready()
 
 var _router: Node = null
 var _game_state: Node = null
@@ -290,6 +296,7 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	if _player is Node2D:
 		prev_position = (_player as Node2D).global_position
 
+	active_map_leaving.emit()
 	# Park the player under WorldRuntime BEFORE the router frees the old map scene, so the
 	# persistent player is never freed with the content scene.
 	_detach_player()
@@ -301,6 +308,7 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 		push_error("[world] router rejected transition to %s; rolling back" % map_id)
 		_restore_player(prev_parent, prev_position)
 		# _active_map / GameState location unchanged (router didn't touch them on failure).
+		active_map_ready.emit()
 		return false
 
 	# --- success: bind new map, place player, wire -----------------------------
@@ -333,6 +341,7 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	_push_inventory_view_to_active_map()
 	_connect_skill_signals()
 	_push_skill_view_to_active_map()
+	_connect_pet_signals()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -347,6 +356,9 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# enemy needs the player already placed (it is the hunt target) and the HUD already built.
 	_repopulate_combat_for_active_map()
 	# The old scene was freed by the router's _free_current_scene(); nothing to do here.
+	# Last of all: the map is whole, so what follows the player into it (Phase 16) may appear.
+	active_map_ready.emit()
+	_push_pet_view_to_active_map()
 	return true
 
 
@@ -371,7 +383,7 @@ func _repopulate_combat_for_active_map() -> void:
 	# registered — but re-registering is idempotent and keeps "the active map is fully armed"
 	# true from one call rather than depending on what the previous map left behind.
 	if _player != null and is_instance_valid(_player):
-		combat.call("register_target", _player)
+		combat.call("register_target", _player, CombatRuntime.TEAM_PLAYER)
 	_register_active_map_targets(combat)
 	_populate_active_map_enemies(combat)
 
@@ -490,8 +502,8 @@ func arm_active_map_combat(combat_runtime: Node) -> bool:
 	var attack := _load_player_attack()
 	if attack == null:
 		return false
-	if not bool(combat_runtime.call(
-			"arm_attacker", _player, attack, WorldRuntime.PLAYER_INSTANCE_ID)):
+	if not bool(combat_runtime.call("arm_attacker", _player, attack,
+			WorldRuntime.PLAYER_INSTANCE_ID, CombatRuntime.TEAM_PLAYER)):
 		push_error("[world] the player could not be armed for combat")
 		return false
 	_register_active_map_targets(combat_runtime)
@@ -840,6 +852,78 @@ func _on_technique_learned(technique_id: StringName) -> void:
 			"key": StringName("skill_%d" % technique.slot)})
 
 
+# --- Linh thú (Phase 16) -----------------------------------------------------------
+
+func refresh_active_map_pet_view() -> void:
+	_connect_pet_signals()
+	_push_pet_view_to_active_map()
+
+
+func _push_pet_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_pet_view"):
+		return
+	var pets := _find_sibling_of(PetRuntime) as PetRuntime
+	if pets == null or not pets.is_session_active():
+		return
+	_active_map.call("set_pet_view", pets.build_view())
+
+
+func _connect_pet_signals() -> void:
+	var pets := _find_sibling_of(PetRuntime) as PetRuntime
+	if pets == null:
+		return
+	if not pets.view_changed.is_connected(_push_pet_view_to_active_map):
+		pets.view_changed.connect(_push_pet_view_to_active_map)
+	if not pets.pet_acquired.is_connected(_on_pet_acquired):
+		pets.pet_acquired.connect(_on_pet_acquired)
+	if not pets.pet_summoned.is_connected(_on_pet_summoned):
+		pets.pet_summoned.connect(_on_pet_summoned)
+	if not pets.pet_dismissed.is_connected(_on_pet_dismissed):
+		pets.pet_dismissed.connect(_on_pet_dismissed)
+	if not pets.pet_refused.is_connected(_on_pet_refused):
+		pets.pet_refused.connect(_on_pet_refused)
+	if not pets.pet_level_changed.is_connected(_on_pet_level_changed):
+		pets.pet_level_changed.connect(_on_pet_level_changed)
+
+
+## The map reported an interactable being used. This runtime only ROUTES by kind: what using
+## it means belongs to the kind's owner.
+func _on_interactable_used(kind: StringName, id: StringName) -> void:
+	if kind == PetEncounter.KIND:
+		var pets := _find_sibling_of(PetRuntime) as PetRuntime
+		if pets != null and pets.is_session_active():
+			pets.befriend(id)
+
+
+func _pet_name_key(pet_id: StringName) -> StringName:
+	var pets := _find_sibling_of(PetRuntime) as PetRuntime
+	var data := pets.get_service().catalog().entry(pet_id) \
+		if pets != null and pets.is_session_active() else null
+	return StringName(data.name_key) if data != null else &""
+
+
+func _on_pet_acquired(pet_id: StringName) -> void:
+	_notify(&"announce_result", &"UI_PET_BEFRIENDED", {"name": _pet_name_key(pet_id)})
+
+
+## Being called is the answer to the key; arriving with the player on a new map is not news.
+func _on_pet_summoned(_pet_id: StringName) -> void:
+	pass
+
+
+func _on_pet_dismissed(pet_id: StringName, reason: StringName) -> void:
+	if reason == PetRuntime.REASON_FELL:
+		_notify(&"announce", &"UI_PET_FELL", {"name": _pet_name_key(pet_id)})
+
+
+func _on_pet_refused(reason_key: StringName) -> void:
+	_notify(&"announce_answer", reason_key)
+
+
+func _on_pet_level_changed(pet_id: StringName, level: int) -> void:
+	_notify(&"announce", &"UI_PET_LEVEL_UP", {"name": _pet_name_key(pet_id), "level": level})
+
+
 ## Hand one notice to the active map's HUD, by KIND (D-063): `announce` (PASSIVE — what happened
 ## around the player), `announce_result` (what the player's action achieved) or `announce_answer`
 ## (why it did not happen). This runtime knows the CAUSE of every signal it routes, so it is the
@@ -951,6 +1035,9 @@ func _wire_active_map() -> void:
 	if _active_map.has_signal("knowledge_source_read") \
 			and not _active_map.is_connected("knowledge_source_read", _on_knowledge_source_read):
 		_active_map.connect("knowledge_source_read", _on_knowledge_source_read)
+	if _active_map.has_signal("interactable_used") \
+			and not _active_map.is_connected("interactable_used", _on_interactable_used):
+		_active_map.connect("interactable_used", _on_interactable_used)
 
 
 func _on_map_exit_requested(to_map_id: StringName, entry_point: StringName) -> void:

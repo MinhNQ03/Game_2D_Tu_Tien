@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ProgressionCurveData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/progression/progression_curve_data.gd" id="1_curve"]
+
+[resource]
+script = ExtResource("1_curve")
+id = &"curve_pet_common"
+min_level = 1
+xp_to_next = Array[int]([30, 60, 100, 150, 210, 280, 360, 450, 550])

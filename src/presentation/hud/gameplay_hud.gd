@@ -60,6 +60,7 @@ const SECT_PANEL_ACTION := &"sect_panel"
 const FACTION_PANEL_ACTION := &"faction_panel"
 const CULTIVATE_ACTION := &"cultivate"
 const INVENTORY_ACTION := &"inventory"
+const PET_SUMMON_ACTION := &"pet_summon"
 
 ## The player asked to use an item from the bag (Phase 13). The HUD decides nothing: MapBase
 ## forwards it to WorldRuntime → InventoryRuntime.
@@ -121,6 +122,9 @@ var _cultivation_meter: ProgressBar
 var _cultivation_view: CultivationView = null
 ## The contextual cultivate prompt: sit / rise / break through, by what the view allows.
 var _cultivate_row: UIPromptRow
+## The linh thú prompt (Phase 16): shown only once the player owns a pet.
+var _pet_row: UIPromptRow
+var _pet_view: PetView = null
 ## The verb the interact prompt shows: "Interact" at an exit, "Read" at a stele (Phase 12).
 var _interact_label_key: StringName = &"UI_HUD_INTERACT_ACTION"
 ## THE BOTTOM BAND (D-063): one slot for a transient line and the MACRO breakthrough banner.
@@ -633,6 +637,13 @@ func _build_ui() -> void:
 	_cultivate_row.name = "CultivatePrompt"
 	_cultivate_row.visible = false
 	prompt_box.add_child(_cultivate_row)
+
+	# CONTEXTUAL too (Phase 16): absent until there is a pet to call, and its verb says what
+	# the key will do NOW (call it, send it away) or why it will not (it is recovering).
+	_pet_row = PromptRowScript.new() as UIPromptRow
+	_pet_row.name = "PetPrompt"
+	_pet_row.visible = false
+	prompt_box.add_child(_pet_row)
 
 	# All five rows are NAMED. Two were already, because a test looks them up; the other three
 	# were anonymous, so a failure in the strip could only report Godot's generated node name
@@ -1402,6 +1413,41 @@ func set_skill_view(view: SkillView) -> void:
 		_skill_dock.set_view(view)
 
 
+## Push the linh thú view (Phase 16), event-driven from the pet runtime.
+func set_pet_view(view: PetView) -> void:
+	_pet_view = view
+	_refresh_pet_prompt()
+
+
+func is_pet_prompt_visible() -> bool:
+	return _pet_row != null and _pet_row.visible
+
+
+func pet_prompt_text() -> String:
+	return _pet_row.action_text() if is_pet_prompt_visible() else ""
+
+
+func _refresh_pet_prompt() -> void:
+	if _pet_row == null:
+		return
+	var view := _pet_view
+	# ONE contextual verb at a time (the cultivate row's rule): beside something to interact
+	# with, or at a vein, that verb is what the player is here for and the strip has room for
+	# one. The summon key itself is never disabled — only its advertisement gives way.
+	_pet_row.visible = view != null and view.available and not _interact_available \
+		and not (_cultivate_row != null and _cultivate_row.visible)
+	if not _pet_row.visible:
+		return
+	var verb := "UI_HUD_PET_SUMMON"
+	if view.out:
+		verb = "UI_HUD_PET_DISMISS"
+	elif view.recovering:
+		verb = "UI_HUD_PET_RECOVERING"
+	# A VERB only, like every other row: the strip must stay inside the left half of the screen
+	# (the banner is bottom-centre), and the pet's name and level are said by its notices.
+	_pet_row.set_prompt(_display_label(PET_SUMMON_ACTION), _text(verb))
+
+
 func skill_dock() -> SkillDock:
 	return _skill_dock
 
@@ -1534,6 +1580,7 @@ func _refresh_prompts() -> void:
 		var interact_key := _display_label(INTERACT_ACTION)
 		_interact_row.set_prompt(interact_key, _text(String(_interact_label_key)))
 	_refresh_cultivate_prompt()
+	_refresh_pet_prompt()
 	# Sect panel prompt: always available (the player can always inspect their sect, §19).
 	if _sect_row != null:
 		var sect_key := _display_label(SECT_PANEL_ACTION)

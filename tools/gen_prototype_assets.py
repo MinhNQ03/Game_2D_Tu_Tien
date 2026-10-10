@@ -23,6 +23,7 @@ reproducible and provably self-made (`.kiro/steering/06-art-assets.md`). Standar
 
 Outputs:
   assets/sprites/enemies/mist_wolf_<anim>.png
+  assets/sprites/pets/hoang_khuyen_<anim>.png
   data/characters/visual/anchors/*.tres              per-frame anchor points (palm, core, jaw)
   assets/sprites/props/*.png, assets/sprites/sects/*.png, the training post
 
@@ -46,7 +47,8 @@ def _save(rel, px):
     print("wrote %s (%dx%d)" % (rel, w, h))
 
 
-def gen_mist_wolf():
+def gen_beast(name, out_dir, pal):
+    """One pose-driven quadruped (`beast.py`) in palette/variant `pal`: three sheets + anchors."""
     anchors = {}
     for anim, (frames, loops, pose_fn) in beast.ANIMATIONS.items():
         cells, jaws, cores = [], [], []
@@ -54,21 +56,29 @@ def gen_mist_wolf():
             row, d_jaw, d_core = [], [], []
             for f in range(frames):
                 p = pose_fn(f)
-                px, jaw = beast.render_facing(direction, p)
+                px, jaw = beast.render_facing(direction, p, pal)
                 row.append(px)
                 d_jaw.append(jaw)
                 d_core.append(beast.core_point(direction, p))
             cells.append(row)
             jaws.append(d_jaw)
             cores.append(d_core)
-        sheet.verify_animates("mist_wolf/%s" % anim, cells, loops=loops)
-        _save("assets/sprites/enemies/mist_wolf_%s.png" % anim, sheet.assemble(cells))
+        sheet.verify_animates("%s/%s" % (name, anim), cells, loops=loops)
+        _save("%s/%s_%s.png" % (out_dir, name, anim), sheet.assemble(cells))
         anchors[anim] = {"palm": jaws, "core": cores}
-    # The wolf's striking point is its jaw. It is exported under the SAME name the cultivator
+    # A beast's striking point is its jaw. It is exported under the SAME name the cultivator
     # uses for its striking hand ("palm"), so a strike effect asks one question of any actor.
-    sheet.write_anchor_resource(os.path.join(ROOT, ANCHOR_DIR, "mist_wolf_anchors.tres"),
-                                "anchors_mist_wolf", (beast.W, beast.H), anchors)
-    print("wrote %s/mist_wolf_anchors.tres" % ANCHOR_DIR)
+    sheet.write_anchor_resource(os.path.join(ROOT, ANCHOR_DIR, "%s_anchors.tres" % name),
+                                "anchors_%s" % name, (beast.W, beast.H), anchors)
+    print("wrote %s/%s_anchors.tres" % (ANCHOR_DIR, name))
+
+
+def gen_mist_wolf():
+    gen_beast("mist_wolf", "assets/sprites/enemies", beast.PAL)
+
+
+def gen_hoang_khuyen():
+    gen_beast("hoang_khuyen", "assets/sprites/pets", beast.HOUND_PAL)
 
 
 def gen_props():
@@ -84,5 +94,6 @@ def gen_props():
 
 if __name__ == "__main__":
     gen_mist_wolf()
+    gen_hoang_khuyen()
     gen_props()
     print("done")

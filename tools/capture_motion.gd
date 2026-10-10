@@ -18,7 +18,8 @@ extends SceneTree
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
 ## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
-## techniques, golden, field_fight (second user argument runs one).
+## techniques, golden, field_fight, pet (second user argument runs one; a third picks the
+## language, `vi` or `en`, default the saved setting).
 ##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
 ## on top of the camera's own zoom) and `<out>/scene_<name>.png` full frames. Exit code 1 if any
@@ -36,6 +37,8 @@ const MAGNIFY := 2
 var _out_dir := "user://motion_captures"
 ## Optional: run only the scenario with this name (second user argument).
 var _only := ""
+## Optional: the language to capture in (third user argument); "" keeps the saved setting.
+var _language := ""
 var _written: Array[String] = []
 var _failed := false
 var _main: Node = null
@@ -47,6 +50,8 @@ func _initialize() -> void:
 		_out_dir = String(args[0])
 	if args.size() >= 2:
 		_only = String(args[1])
+	if args.size() >= 3:
+		_language = String(args[2])
 	_run.call_deferred()
 
 
@@ -60,6 +65,13 @@ func _run() -> void:
 		_fail("no main menu to start a game from")
 		_finish()
 		return
+	if _language != "":
+		var loc := root.get_node_or_null("Localization")
+		if loc == null or not bool(loc.call("set_language", _language)) \
+				or String(loc.call("get_language")) != _language:
+			_fail("could not switch to language '%s'" % _language)
+			_finish()
+			return
 	menu.emit_signal("new_game_pressed")
 	await _settle()
 	await _settle()
@@ -85,6 +97,9 @@ func _run() -> void:
 	if _only == "" or _only == "golden":
 		print("[capture_motion] scenario golden")
 		await _scenario_golden()
+	if _only == "pet":
+		print("[capture_motion] scenario pet")
+		await _scenario_pet()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -446,6 +461,70 @@ func _scenario_field_fight() -> void:
 	_save_strip("motion_strike_wolf", strike)
 	await _settle()
 	await _shot("scene_field_after")
+
+
+## The linh thú (Phase 16), by name only (it changes the session, so it is not part of the
+## default run): the stray by the yard and its prompt, befriending it, the hound following a
+## walking player, then the field — it closes on a wolf and bites.
+func _scenario_pet() -> void:
+	var player := _player()
+	var stray := _map_node("Interactables/StrayHound") as Node2D
+	var pets := _main.get_node_or_null("Systems/PetRuntime") as PetRuntime
+	if player == null or stray == null or pets == null:
+		_fail("pet: hub pieces missing")
+		return
+	player.global_position = stray.global_position + Vector2(-22, 2)
+	await _settle()
+	await _shot("scene_pet_stray")
+	var idle := await _strip(func() -> Vector2: return stray.global_position + Vector2(0, -8),
+		8, 6)
+	_save_strip("motion_pet_stray_idle", idle)
+	await _press(&"interact")
+	await _settle()
+	if not pets.is_out():
+		_fail("pet: interact did not befriend the stray")
+		return
+	await _shot("scene_pet_befriended")
+	var pet := pets.active_pet()
+	# Up into the open square: no canopy between the pair and the camera.
+	Input.action_press(&"move_up")
+	var follow := await _strip(func() -> Vector2:
+		return (pet.global_position + player.global_position) * 0.5 + Vector2(0, -12), 16, 4)
+	Input.action_release(&"move_up")
+	_save_strip("motion_pet_follow", follow)
+	await _settle()
+	await _settle()
+	await _shot("scene_pet_beside")
+	await _hold(&"pet_summon")
+	await _settle()
+	await _shot("scene_pet_dismissed")
+	await _hold(&"pet_summon")
+	await _settle()
+	if not await _travel_through_first_exit(player):
+		_fail("pet: the exit did not transition")
+		return
+	await _settle()
+	var wolf := _first_enemy()
+	pet = pets.active_pet()
+	if wolf == null or pet == null:
+		_fail("pet: no wolf, or the pet did not cross the map change")
+		return
+	player.global_position = wolf.global_position + Vector2(70, 6)
+	# The pet WALKS from the map entrance to its owner (it never teleports), so wait for it to
+	# reach the fight before the strip starts — bounded, and a pet that never arrives fails.
+	var arrived := false
+	for _i in 900:
+		await physics_frame
+		if pet.global_position.distance_to(wolf.global_position) < 40.0:
+			arrived = true
+			break
+	if not arrived:
+		_fail("pet: it never closed on the wolf")
+		return
+	var fight := await _strip(func() -> Vector2:
+		return (wolf.global_position + pet.global_position) * 0.5 + Vector2(0, -12), 32, 3)
+	_save_strip("motion_pet_fight", fight)
+	await _shot("scene_pet_fight")
 
 
 ## THE GOLDEN COMBAT SCENE (D-062 CP10): the benchmark frame. Thôn Lạc Hà, the protagonist at

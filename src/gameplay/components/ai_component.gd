@@ -39,6 +39,8 @@ var _body: CharacterBody2D = null
 ## Where it spawned. The anchor for the leash and for RETURN — captured at arm time rather than
 ## read from a node, so a creature cannot "forget home" if something reparents it.
 var _home := Vector2.ZERO
+## A home that MOVES (an ally's owner), or null for a fixed home. See `set_home_anchor`.
+var _home_anchor: Node2D = null
 
 ## Resolved each tick by the session, which knows who the targets are. The component never
 ## searches the tree for a player (that would be a presentation-layer dependency pointing the
@@ -74,6 +76,19 @@ func arm(data: EnemyData, rng: RngStream, home: Vector2) -> bool:
 	if data == null or not data.is_valid():
 		push_error("[ai] cannot arm: EnemyData is missing or invalid")
 		return false
+	return arm_profile(data.ai_profile, data.engage_distance,
+		data.stats.move_speed if data.stats != null else 60.0, rng, home, String(data.id))
+
+
+## Arm from the BEHAVIOUR facts alone — what any creature this component drives has in common:
+## a profile, how close it closes before swinging, how fast it moves, a seeded stream and a
+## home. `arm()` is this with an `EnemyData`'s values; a pet arms with its `PetData`'s (Phase
+## 16). One component, one brain: an ally is authored, not re-implemented.
+func arm_profile(profile: AiProfileData, engage_distance: float, move_speed: float,
+		rng: RngStream, home: Vector2, label: String) -> bool:
+	if profile == null or not profile.is_valid():
+		push_error("[ai] cannot arm '%s': the AiProfileData is missing or invalid" % label)
+		return false
 	var body := get_parent() as CharacterBody2D
 	if body == null:
 		push_error("[ai] cannot arm: an AIComponent must be a child of a CharacterBody2D")
@@ -83,16 +98,18 @@ func arm(data: EnemyData, rng: RngStream, home: Vector2) -> bool:
 	_attack = _sibling("AttackComponent") as AttackComponent
 	_visual = _sibling_of_class("CharacterVisualComponent") as CharacterVisualComponent
 	if _movement == null:
-		push_error("[ai] cannot arm '%s': no MovementComponent to move with" % data.id)
+		push_error("[ai] cannot arm '%s': no MovementComponent to move with" % label)
 		return false
-	_profile = data.ai_profile
-	_brain = AiBrain.new(data.ai_profile, rng)
-	if not _brain.is_armed():
-		push_error("[ai] cannot arm '%s': the brain refused its profile/stream" % data.id)
+	var brain := AiBrain.new(profile, rng)
+	if not brain.is_armed():
+		push_error("[ai] cannot arm '%s': the brain refused its profile/stream" % label)
 		return false
-	_brain.set_engage_distance(data.engage_distance)
+	_profile = profile
+	_brain = brain
+	_brain.set_engage_distance(engage_distance)
 	_home = home
-	_speed = data.stats.move_speed if data.stats != null else 60.0
+	_home_anchor = null
+	_speed = move_speed
 	return true
 
 
@@ -122,8 +139,28 @@ func decisions() -> int:
 	return _decisions
 
 
+## Where home is NOW: the anchor's position while one is set and alive, else the fixed point.
 func home() -> Vector2:
+	if _home_anchor != null and is_instance_valid(_home_anchor):
+		_home = _home_anchor.global_position
 	return _home
+
+
+## Make home a NODE that moves — an ally's owner (Phase 16). The leash, the follow distance
+## and RETURN are then all measured to where the owner is now. If the anchor goes away, home
+## stays at the last place it was seen (the creature does not bolt to a stale spawn point).
+## Null returns to a fixed home at the current one.
+func set_home_anchor(anchor: Node2D) -> void:
+	_home_anchor = anchor
+
+
+func home_anchor() -> Node2D:
+	return _home_anchor if _home_anchor != null and is_instance_valid(_home_anchor) else null
+
+
+## The behaviour profile it was armed with (null before `arm`).
+func profile() -> AiProfileData:
+	return _profile
 
 
 ## One AI tick: decide if the interval elapsed, then execute the current intent.
@@ -185,7 +222,7 @@ func _perceive() -> Dictionary:
 	return {
 		"has_target": has_target,
 		"target_distance": distance,
-		"home_distance": _body.global_position.distance_to(_home),
+		"home_distance": _body.global_position.distance_to(home()),
 		# The brain must not ask for a swing mid-swing: `AttackComponent` owns the commitment
 		# rule, and this is how the brain respects it instead of duplicating it.
 		"can_attack": _attack != null and _attack.can_attack(),
@@ -207,8 +244,8 @@ func _execute(intent: int, delta: float) -> void:
 		AiBrain.Intent.BACK_OFF:
 			direction = -_toward_target()
 		AiBrain.Intent.RETURN_HOME:
-			direction = _body.global_position.direction_to(_home)
-			speed_scale = _profile.patrol_speed_scale
+			direction = _body.global_position.direction_to(home())
+			speed_scale = _profile.effective_return_speed_scale()
 		AiBrain.Intent.SWING:
 			# Face the target, then swing. Facing FIRST matters: `CombatService` tests the arc
 			# against the attacker's facing, so a swing requested before turning would miss a
@@ -284,6 +321,7 @@ func stop() -> void:
 	if _brain != null:
 		_brain.reset()
 	_target = null
+	_home_anchor = null
 	_intent = AiBrain.Intent.HOLD
 	if _attack != null and is_instance_valid(_attack):
 		_attack.cancel()

@@ -57,6 +57,13 @@
 
 ---
 
+- **The companion has a budget (Phase 16)**: `tests/performance/test_pet_budget.gd`. The pet runs
+  NO frame callback of its own (ticked by the one combat-session callback); target choice runs on
+  a 0.25 s cadence, not per frame (measured: 119 passes and 149 brain decisions over 1800 frames,
+  expected ~120 / ~150); a retarget pass is one scan of the spawned enemies. Measured locally
+  (2026-10-10, headless): 1800 frames with one pet — 4 hostiles 10.07 ms, 40 hostiles 15.03 ms
+  (1.49× for 10× the hostiles; 8.3 µs per frame). No optimization was needed, so §4 has no entry.
+
 ## HISTORICAL NOTES (kept as written; each records the discipline of its phase)
 
 > These notes describe the state of the project AT THE TIME OF THAT PHASE. Where one of them

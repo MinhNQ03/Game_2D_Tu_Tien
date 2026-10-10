@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AiProfileData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemies/ai_profile_data.gd" id="1_ai"]
+
+[resource]
+script = ExtResource("1_ai")
+id = &"ai_pet_companion"
+detect_radius = 120.0
+lose_interest_radius = 170.0
+leash_radius = 210.0
+decision_interval = 0.2
+chase_speed_scale = 1.0
+patrol_speed_scale = 0.15
+alert_seconds = 0.15
+recover_seconds = 0.5
+idle_seconds = 2.4
+patrol_seconds = 0.6
+recover_distance = 30.0
+follow_radius = 40.0
+home_arrival_radius = 22.0
+return_speed_scale = 1.0

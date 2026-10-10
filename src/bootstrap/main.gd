@@ -70,6 +70,7 @@ const CULTIVATION_RUNTIME_SCRIPT := "res://src/gameplay/world/cultivation_runtim
 const INVENTORY_RUNTIME_SCRIPT := "res://src/gameplay/world/inventory_runtime.gd"
 const EQUIPMENT_RUNTIME_SCRIPT := "res://src/gameplay/world/equipment_runtime.gd"
 const SKILL_RUNTIME_SCRIPT := "res://src/gameplay/world/skill_runtime.gd"
+const PET_RUNTIME_SCRIPT := "res://src/gameplay/world/pet_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -114,7 +115,7 @@ const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
 	&"WorldSimulationRuntime", &"CombatRuntime", &"ProgressionRuntime",
 	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime", &"EquipmentRuntime",
-	&"SkillRuntime",
+	&"SkillRuntime", &"PetRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -152,6 +153,9 @@ var _inventory: Node = null
 var _equipment: Node = null
 # SkillRuntime (Phase 15): reads knowledge, cultivation, combat and the player; last of all.
 var _skills: Node = null
+# PetRuntime (Phase 16): parents a body into the world's map and arms it through combat, so it
+# starts after both — and ends first, freeing that body while both still exist.
+var _pets: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -239,6 +243,7 @@ func _boot() -> void:
 	_inventory = _create_runtime(INVENTORY_RUNTIME_SCRIPT, "InventoryRuntime")
 	_equipment = _create_runtime(EQUIPMENT_RUNTIME_SCRIPT, "EquipmentRuntime")
 	_skills = _create_runtime(SKILL_RUNTIME_SCRIPT, "SkillRuntime")
+	_pets = _create_runtime(PET_RUNTIME_SCRIPT, "PetRuntime")
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -599,6 +604,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _equipment
 		&"SkillRuntime":
 			return _skills
+		&"PetRuntime":
+			return _pets
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -908,6 +915,10 @@ func _start_cultivation_sessions() -> bool:
 		return false
 	if _world.has_method("refresh_active_map_skill_view"):
 		_world.call("refresh_active_map_skill_view")
+	if _pets == null or not bool(_pets.call("start_session", _world, _combat)):
+		return false
+	if _world.has_method("refresh_active_map_pet_view"):
+		_world.call("refresh_active_map_pet_view")
 	return true
 
 

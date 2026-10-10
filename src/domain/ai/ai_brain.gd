@@ -149,6 +149,12 @@ func decide(perception: Dictionary, delta: float) -> int:
 			if has_target and distance <= _profile.detect_radius:
 				_enter(State.ALERT)
 				return Intent.HOLD
+			# A FOLLOWER (Phase 16): home is an owner that moves. Once it has drifted past
+			# the follow distance the creature walks back to it; an enemy authors no follow
+			# distance and idles where it is.
+			if _profile.follow_radius > 0.0 and home > _profile.follow_radius:
+				_enter(State.RETURN)
+				return Intent.RETURN_HOME
 			if _elapsed >= _profile.idle_seconds:
 				_enter(State.PATROL)
 				_roll_patrol_angle()
@@ -213,7 +219,7 @@ func decide(perception: Dictionary, delta: float) -> int:
 					and home <= _profile.leash_radius:
 				_enter(State.ALERT)
 				return Intent.HOLD
-			if home <= HOME_ARRIVAL_PIXELS:
+			if home <= _profile.home_arrival_radius:
 				_enter(State.IDLE)
 				return Intent.HOLD
 			return Intent.RETURN_HOME
@@ -232,11 +238,6 @@ func set_engage_distance(distance: float) -> void:
 
 func _engage_distance() -> float:
 	return _engage
-
-
-## How close to home counts as arrived. A tolerance, not a target: without one the creature
-## jitters around its spawn point forever trying to land on it exactly.
-const HOME_ARRIVAL_PIXELS := 8.0
 
 
 func _enter(next_state: int) -> void:

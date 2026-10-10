@@ -18,10 +18,10 @@
 > session runtime, a performance budget), **Enemy AI** (Phase 10: the pure-domain brain, target
 > selection, leash, cadence, determinism, damage/attack feedback), **Level/XP Progression**
 > (Phase 11 — inventory in the per-phase list below), and the UI/theme asset contracts — plus
-> three dedicated
-> real-application E2E processes (app-flow, player-flow, world-flow).
+> four dedicated
+> real-application E2E processes (app-flow, player-flow, world-flow, pet-flow).
 >
-> **CI runs 10 gates** (see §5). That number is the COUNT OF CI GATES and is unrelated to the
+> **CI runs 11 gates** (see §5; the eleventh is the Phase-16 pet E2E). That number is the COUNT OF CI GATES and is unrelated to the
 > number of stages in `docs/PHASE_EXECUTION_PROTOCOL.md` — the phase protocol has more review
 > stages (pre-flight → … → final review) because most of them are human review steps that no
 > CI job can run. Do not "reconcile" the two numbers.
@@ -110,8 +110,8 @@ godot --headless --path . --quit-after 2
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-Then the three dedicated E2E processes (app / player sandbox / world-map), one gate each —
-10 gates in total.
+Then the four dedicated E2E processes (app / player sandbox / world-map / pet), one gate each —
+11 gates in total. The pet gate also fails on any `SCRIPT ERROR:` or leak line in its log.
 
 > **The headless-suite gate also fails on any `SCRIPT ERROR:`, even when the runner exits 0**
 > (D-038). GDScript has no try/catch (D-004), so a VM error (a bad typed-array assignment, a
@@ -350,7 +350,7 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push, and remains the authority. **Since L-031 the gates also run locally** (~3 minutes
-for lint + import + parse + boot + suite + all three E2E processes), so a change should be
+for lint + import + parse + boot + suite + all four E2E processes), so a change should be
 green before it is pushed rather than diagnosed through CI round-trips.
 
 **Known environmental caveat (D-054):** the two wall-clock performance budgets
@@ -1014,3 +1014,38 @@ INTANGIBLE_BY_DESIGN with a reason (and never has a body); a walk meets each kin
 directions and is never trapped (vacuity-guarded: at least the 4 kinds). The mass check covers
 every PropBody's data. Playtest 05g. Suite: 821 tests.
 
+### Phase 16 — pet / linh thú (D-064)
+- `tests/unit/pets/test_pet_domain.gd` (9) — the shipped catalog and first pet; every broken
+  `PetData` field rejected one at a time from a valid fixture; a non-following profile and an
+  unknown skill id rejected; catalog empty / null / duplicate; level and stats DERIVED from XP
+  (thresholds, ceiling, authored block never mutated); acquire / activate refusals with nothing
+  changed; XP once, capped at the ceiling; store round trip as plain data; ATOMIC hydration over
+  14 malformed payloads (incl. a stored `level`, an integral float — L-024).
+- `tests/unit/ai/test_ally_follow.gd` (4) — the three ally profile fields and the one brain
+  transition; the wolf's profile unchanged.
+- `tests/unit/combat/test_combat_teams.gd` (1) — a swing skips its own team and hits everyone
+  else; `disarm` is idempotent.
+- `tests/unit/gameplay/test_world_interactable.gd` (4) — reach as a distance, nearest wins,
+  exact ties by identity not scene order, hidden never offered, a stele is an interactable.
+- `tests/integration/test_pet_companion.gd` (14) — real `CombatRuntime` + real `Pet` scene:
+  no-pet refusal; befriend once (the stray hides); summon / dismiss idempotent (one body, one
+  ally, one attacker); gradual follow with a per-frame speed bound (no teleport) and a bounded
+  amble; only a living hostile near the owner is targeted; a real kill pays combat's reward once
+  and the pet's share once (duplicate id and pet-away cases); level-up applies derived stats;
+  fall + recall cooldown; map change frees and re-summons; owner falls; session end leaves
+  nothing; failed start; runtime `to_dict` / `from_dict` atomic; a SECOND pet from content only.
+- `tests/performance/test_pet_budget.gd` (3) — no own frame callback; retarget cadence counted;
+  linear in hostiles (figures in `PERFORMANCE.md`).
+- `tests/unit/presentation/test_gameplay_hud.gd` (+1, 2 updated) — the pet prompt follows the
+  view, yields to interact, and the strip is measured in BOTH widest states.
+- `tests/unit/bootstrap/test_session_lifecycle.gd` — 13 subsystems, `PetRuntime` last.
+- **E2E gate 11** `tests/e2e/run_pet_flow.gd` — isolated process, real app, semantic inputs:
+  no-pet answer → walk into reach → befriend → follow → dismiss / recall → map change → real
+  fight (player XP once, pet share once) → menu, `PetRuntime` torn down first.
+- Mutation-checked: removing the reward dedupe, the map-leaving despawn, or the team filter each
+  turns a test red.
+- Real app: `tools/capture_motion.gd -- <dir> pet <vi|en>` at 1280×720 (vi) and 1920×1200 (en);
+  captures opened (stray + prompt, follow strip, dismissed, fight strip with the wolf's hit
+  flash). `tools/playtest_flow.gd` 30/30.
+- Local tally at this checkpoint: 895 tests, 895 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak
+  lines; app / player / world / pet E2E PASS.

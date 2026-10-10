@@ -1,4 +1,4 @@
-extends Node2D
+extends WorldInteractable
 class_name KnowledgeSource
 ## KnowledgeSource — Aetheria gameplay (something in the world that can TEACH, Phase 12).
 ##
@@ -18,11 +18,13 @@ class_name KnowledgeSource
 ## What reading it teaches, in order.
 @export var grants: Array[StringName] = []
 
-## How close the player must stand to read it.
-@export var reach_px: float = 30.0
+## `reach_px` and `prompt_key` are the `WorldInteractable` contract (Phase 16); a source's verb
+## defaults to "Read" unless its scene authors another.
+const KIND := &"knowledge_source"
 
-## The verb the interact prompt shows ("Read the stele").
-@export var prompt_key: StringName = &"UI_HUD_READ_ACTION"
+
+func _init() -> void:
+	prompt_key = &"UI_HUD_READ_ACTION"
 
 
 func _ready() -> void:
@@ -31,5 +33,9 @@ func _ready() -> void:
 			% [name, source_id, grants.size()])
 
 
-func reaches(world_point: Vector2) -> bool:
-	return global_position.distance_to(world_point) <= reach_px
+func interaction_kind() -> StringName:
+	return KIND
+
+
+func interaction_id() -> StringName:
+	return source_id

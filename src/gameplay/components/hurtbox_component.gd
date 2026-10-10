@@ -40,6 +40,12 @@ signal damaged(amount: int, is_critical: bool, push_direction: Vector2)
 ## attacker can map a result to an entity without relying on array order.
 @export var entity_id: StringName = &""
 
+## Which SIDE this entity is on (Phase 16). An attack never lands on a hurtbox of the
+## attacker's own team, so a companion's bite cannot hurt its owner and the owner's blade cannot
+## hurt the companion. Empty = no side: anything may hit it (a training post) and it shields
+## nobody. Set by whoever arms the entity (`CombatRuntime`), never by the entity's art.
+@export var team: StringName = &""
+
 ## Damageable radius in pixels, ADDED to an attack's reach. Authored per entity because it
 ## describes the entity's size, not the attack's: the 32x48 character baseline
 ## (`06-art-assets.md`) is about 10px from centre to flank.

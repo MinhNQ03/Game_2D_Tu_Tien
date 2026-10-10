@@ -301,7 +301,7 @@ func _resolve_cone(skill: SkillData) -> int:
 		return 0
 	var origin := _player.global_position
 	var results := service.resolve_hit(origin, _facing, int(_player.call("get_attack_power")),
-		skill.as_attack(), registry.targets(PLAYER_ID))
+		skill.as_attack(), registry.targets(PLAYER_ID, CombatRuntime.TEAM_PLAYER))
 	var hits := 0
 	for result in results:
 		var hurtbox := registry.get_hurtbox(result["target_id"])
@@ -374,7 +374,7 @@ func _bolt_target(registry: CombatHurtboxRegistry, from: Vector2, to: Vector2,
 		return null
 	var best: HurtboxComponent = null
 	var best_t := INF
-	for target: Dictionary in registry.targets(PLAYER_ID):
+	for target: Dictionary in registry.targets(PLAYER_ID, CombatRuntime.TEAM_PLAYER):
 		if bool(target["is_dead"]):
 			continue
 		# The body's centre, lifted to where a bolt at hand height passes it.

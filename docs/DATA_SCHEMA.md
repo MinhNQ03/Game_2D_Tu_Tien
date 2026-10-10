@@ -163,14 +163,29 @@ story_flags_on_defeat: Array[StringName]
 chapter_gate: StringName          # chapter this defeat may advance
 ```
 
-### PetData — linh thú (`pet_*`)
+### PetData — linh thú (`pet_*`) — IMPLEMENTED (Phase 16, D-064)
 ```
-id, name_key, desc_key
-stats: StatBlock
-skills: Array[StringName]
-ai_profile: StringName            # ally behavior preset
-progression: ...                  # pets can level (ProgressionComponent)
+id: StringName                    # must start with "pet_"
+name_key, desc_key
+stats: StatBlock                  # at the curve's first level
+growth: StatBlock                 # added per level above the first (max_hp/attack/defense)
+progression_curve: ProgressionCurveData   # XP -> level; the same curve math as the player
+xp_share_percent: int             # 0..100: its share of a defeated enemy's xp_reward
+skills: Array[StringName]         # technique ids (validated against the technique catalog)
+ai_profile: AiProfileData         # an ALLY profile: follow_radius > 0
+attack: AttackData
+engage_distance: float            # <= attack.reach_pixels
+hurt_radius: float
+visual_profile: CharacterVisualProfileData
+recall_seconds: float             # before a fallen pet can be called again
 ```
+Level and stats are DERIVED (`level_for_xp`, `stats_at`) and never stored. A pet is not a
+`CharacterState`. Listed in `PetCatalogData` (`data/pets/pet_catalog.tres`: non-empty, no null,
+unique ids, every entry valid).
+
+`AiProfileData` (shared with enemies) gained three ally fields: `follow_radius` (0 = does not
+follow; must exceed `home_arrival_radius` and stay under `leash_radius`), `home_arrival_radius`,
+`return_speed_scale` (0 = use `patrol_speed_scale`).
 
 ### QuestData (`quest_*`)
 ```

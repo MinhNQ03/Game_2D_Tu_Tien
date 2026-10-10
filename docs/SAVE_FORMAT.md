@@ -57,8 +57,12 @@ SaveFile:
     equipped: Array[StringName]
     cooldowns: Dictionary                     # usually reset on load; stored if needed
   pets:
-    owned: Array[{ pet_id, level, xp, stats_current }]
-    active_pet: StringName
+    schema: 1
+    owned: Array[{ pet_id, xp }]             # level + stats are DERIVED from xp (D-064)
+    active_pet: StringName                   # "" or an owned pet_id
+    # `PetStore.to_dict()` / `from_dict()` (plain data, atomic hydration, strict TYPE_INT).
+    # Not saved: whether the pet is out, its health, its recall cooldown (runtime).
+    # No file is written before Phase 23.
   quests:
     log: Array[{ quest_id, state, objective_progress }]
   story:

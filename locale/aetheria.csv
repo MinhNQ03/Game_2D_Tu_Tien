@@ -220,3 +220,23 @@ UI_SKILL_BUSY,Not in the middle of another action.,Không thể thi triển gi�
 UI_SKILL_COOLDOWN,The technique has not recovered yet.,Công pháp chưa hồi phục.
 UI_SKILL_NO_QI,Not enough linh khí.,Không đủ linh khí.
 UI_SKILL_SEATED,Rise from cultivation first.,Hãy thu công trước.
+PET_HOANG_KHUYEN_NAME,Yellow Hound,Hoàng Khuyển
+PET_HOANG_KHUYEN_DESC,A lean village stray with a frayed jade cord at its neck. Not a spirit beast — only loyal.,Một con chó hoang gầy của thôn — cổ còn đeo sợi dây ngọc đã sờn. Chẳng phải linh thú gì — chỉ là trung thành.
+ATTACK_HOANG_KHUYEN_BITE_NAME,Snap,Đớp
+UI_HUD_PET_BEFRIEND,Befriend,Làm quen
+UI_HUD_PET_SUMMON,Call pet,Gọi thú
+UI_HUD_PET_DISMISS,Dismiss pet,Cho thú lui
+UI_HUD_PET_RECOVERING,Pet resting,Thú dưỡng sức
+UI_PET_BEFRIENDED,{name} follows you now.,{name} từ nay theo ngươi.
+UI_PET_FELL,{name} is hurt and has withdrawn.,{name} bị thương và đã lui đi.
+UI_PET_LEVEL_UP,{name} grows stronger — level {level}.,{name} mạnh lên — cấp {level}.
+UI_PET_NONE,No companion answers.,Không có bạn đồng hành nào đáp lại.
+UI_PET_RECOVERING,It is still nursing its wounds.,Nó vẫn đang dưỡng thương.
+UI_PET_NO_ROOM,There is no room for it to come to you here.,Ở đây không đủ chỗ để nó tới bên ngươi.
+UI_PET_UNAVAILABLE,It cannot come now.,Lúc này nó không thể tới.
+UI_PET_OWNER_DOWN,You cannot call it now.,Ngươi không thể gọi nó lúc này.
+UI_PET_UNKNOWN,That creature is unknown.,Không rõ sinh vật đó.
+UI_PET_ALREADY_OWNED,It already follows you.,Nó vốn đã theo ngươi.
+UI_PET_NOT_OWNED,It does not follow you.,Nó không theo ngươi.
+UI_PET_XP_INVALID,It cannot grow that way.,Nó không thể lớn lên theo cách đó.
+UI_PET_AT_CEILING,It has grown as far as it can.,Nó đã lớn hết mức.
