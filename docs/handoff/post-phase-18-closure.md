@@ -23,7 +23,7 @@ Commits of this task, in order (the final SHA and its exact-SHA CI run are recor
 | `22c3508` | `fix(dialogue)`: speaker validation + re-entrant close | Finding C; a reproduced crash (§3) |
 | `fb902c4` | `docs(closure)`: GAME_FLOW status, Phase-19 persistence boundary | Findings A and D |
 | `bef8a4b` | `fix(hud)`: prompt strip under shop / satchel | a PX-4 defect found in a capture (Finding B) |
-| the docs commit | D-069, L-047, TEST_PLAN, this file | closure |
+| `daaf260` | D-069, L-047, TEST_PLAN, this file | closure |
 
 ## 2. Evidence labels
 
@@ -151,7 +151,8 @@ What was looked for, and seen, in every combination:
   and the hound stand mid-screen.
 - **The announcement band** ("Learned: …", "Ko Than thinks better of you (affinity +40).")
   rides just above the box and never across it; the prompt strip is hidden while the box is up.
-- **Margins** are the same in all four (box x 212 → 1068, 18 px above the bottom edge).
+- **Margins**: the box sits at the same horizontal position and the same distance from the
+  bottom edge in all four (compared on stacked 1× strips of the four frames).
 - **Close / back:** the key line names both keys ("E Nói · Esc Rời đi"); Esc returning control
   is asserted by E2E dialogue step 6, not inferred from a frame.
 
