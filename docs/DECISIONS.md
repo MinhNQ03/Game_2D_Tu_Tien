@@ -5162,8 +5162,11 @@ are those of the files written (`docs/handoff/post-phase-18-closure.md`).
 
 ## D-070 — Phase 19: who owns a quest, the ONE reward ledger, and what a turn-in commits
 
-**Status:** DECIDED before any Phase-19 state-changing code (Gate A + Gate B). Implementation
-status, commits and the exact-SHA CI runs: `docs/handoff/phase-19-quest.md`.
+**Status:** DONE — decided in `735c394` before any Phase-19 state-changing code (Gates A and
+B); built in `8ece8f6`, `8d73028`, `6809a6e`, `19e49a2` on `feature/phase-19-quest`; all 14
+gates green in CI run 38069906502 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38069906502),
+`head_sha` = `19e49a2` (the runner's annotation: 1064 passed, 0 failed). `8d73028` was red
+in CI (run 38067690492) and is accounted for in `docs/handoff/phase-19-quest.md` §1.
 
 ### Gate A — the experience this phase builds
 

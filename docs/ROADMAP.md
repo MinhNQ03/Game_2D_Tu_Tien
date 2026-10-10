@@ -64,7 +64,12 @@
 > contract are reconciled, and the dialogue box is evidenced at vi/en × 1280×720 / 1280×800
 > (`docs/handoff/post-phase-18-closure.md`). Code and evidence at `03bf40a`, all 13 gates green in
 > CI run 38063275026 on that exact SHA (992 tests).
-> Phase 19+ (Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
+> **Phase 19 (Quest) — DONE (D-070, `19e49a2`):** two authored quests offered, declined,
+> taken, answered and given back in the existing conversation box; ONE reward ledger shared
+> with the XP-per-defeat guard (and, from Phase 21, drops); a line of purpose in the place
+> plaque and a non-modal journal; CI gate 14. All 14 gates green in CI run 38069906502 on
+> that exact SHA (1064 tests). `docs/handoff/phase-19-quest.md`.
+> Phase 20+ (Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
 > contract (`MOTION_DESIGN_CONTRACT.md`) and corrected the HUD's composition by measurement;
@@ -525,6 +530,19 @@ alternate solution works; tested.
 >   (`SYSTEM_DEPENDENCY_MATRIX.md`, Dialogue and Quest rows); a quest never advances from a
 >   key press, a UI signal or a presentation state.
 
+**Status: DONE (D-070)** — `19e49a2`, 14 gates green in CI run 38069906502 on that exact SHA
+(1064 tests). `QuestData` / `QuestObjectiveData` / `QuestCatalogData` + `RewardData`; the
+pure-domain `QuestService` (the only writer of `QuestState`; READY derived, never stored) and
+`RewardService` over the ONE `RewardLedger`; `QuestRuntime` and `RewardRuntime` (16th and 17th
+per-session nodes); `quest_unquiet_vein` (Thẩm Bất Kỳ — fight a Vụ Lang or learn it from the
+scout, the knowledge-gated alternate) and `quest_treeline_pills` (Kha Thản — the village's two
+pills), built from content that already existed; a `QUEST_PHASE` condition and three quest
+effects in the Dialogue seam; the plaque's purpose line and the non-modal journal on `Q`; the
+owners' in-memory `to_dict()` / `from_dict()` for quests and the ledger; isolated quest E2E as
+CI gate 14. Not built (by decision, D-070 / D-069): flags, loot tables and drops, any file,
+`SaveService`, a Continue button, an EventBus gameplay event, a quest popup, a tracker box.
+Carried debt: CLV-01, Q19-01 … Q19-05 (`docs/handoff/phase-19-quest.md` §9).
+
 ## Phase 20 — Story
 Story/flag engine; branches read character/sect/faction state + flags; chapter loop +
 world-state-change feedback (`docs/GAME_FLOW.md` §1b). **PRODUCES and READS knowledge** through
@@ -618,7 +636,7 @@ authoritative-state seams. Domain rules remain transport-agnostic.
 
 Each phase below starts from its contract (`PLAYER_EXPERIENCE_STANDARD.md` §6) and may refine
 it at its own Gate A — it may not drop a line. The phase ORDER above is unchanged. **Phase 19
-and every later phase are NOT STARTED.**
+is DONE (D-070); Phase 20 and every later phase are NOT STARTED.**
 
 **Phase 19 — Quest**
 - *Promise:* I always know what I am doing, for whom, and what it will earn.

@@ -26,7 +26,8 @@ the same commit; nothing was reset or rewritten.
 | 1 — quest domain + the one reward ledger | `8ece8f6` | run 38065933247 — `success` |
 | 2–3 — runtime, content, journal, E2E gate 14 | `8d73028` | run 38067690492 — **`failure`** (see below) |
 | 4 — the experience pass + the fix for that failure | `6809a6e` | run 38069262439 — `success` |
-| 5 — the layer fix, its guard, the closing record | recorded in `ROADMAP.md` by the closing commit | — |
+| 5 — the layer fix and its guard | `19e49a2` | run 38069906502 — `success`: 14 steps, the runner's annotation "ran 1064 test(s): 1064 passed, 0 failed" (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38069906502) |
+| 6 — this record (documentation only) | the commit that adds this row | verified after its push; see the final report |
 
 **The red run is this report's to own.** `8d73028` was pushed with the NPC E2E failing: that
 flow pinned "Dialogue, then NPC" as the first two sessions torn down, and `QuestRuntime` now
@@ -242,5 +243,6 @@ by this phase: **AUD-10**, **AUD-12**.
 
 ## 10. Status
 
-**Phase 19 is DONE only when the closing commit's exact-SHA CI is green; that is recorded in
-`ROADMAP.md`. Phase 20 and every later phase are NOT STARTED.**
+**Phase 19 is DONE** at `19e49a2` (CI run 38069906502, 14 gates green on that exact SHA). The
+commit recording this changes documentation only. **Phase 20 and every later phase are NOT
+STARTED.**
