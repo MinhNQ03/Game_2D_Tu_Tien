@@ -4569,7 +4569,8 @@ panel, pet equipment, more than one pet out, file-level save (Phase 23 calls `to
 
 ## D-065 — Phase 17: NPC, interaction and shops
 
-**Status:** IMPLEMENTED on `d063/phase-a`; DONE once CI is green on the exact Phase-17 commit.
+**Status:** DONE — implemented in `fbb6376` on `d063/phase-a`; all 12 gates green in
+CI run 38024661103 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38024661103), `head_sha` = `fbb6376`.
 
 ### An NPC is a character — nothing new is modelled
 

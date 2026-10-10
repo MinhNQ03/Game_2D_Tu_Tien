@@ -1085,4 +1085,4 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   captures opened (named prompt, talk strip, buy, sell, refusal, adjusted + base price).
   `tools/playtest_flow.gd` 30/30.
 - Local tally at this checkpoint: 929 tests, 929 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak
-  lines; app / player / world / pet / npc E2E PASS.
+  lines; app / player / world / pet / npc E2E PASS. CI: run 38024661103 green on `fbb6376`.

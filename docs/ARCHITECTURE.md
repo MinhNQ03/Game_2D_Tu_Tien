@@ -19,7 +19,7 @@
 > Phase 12 (Cultivation + Knowledge Core) is **IMPLEMENTED** (D-058), Phase 13 (Item) is
 > **IMPLEMENTED** (D-059), Phase 14 (Equipment) is **IMPLEMENTED** (D-060) and Phase 15
 > (Skill/Technique) is **IMPLEMENTED** (D-061), on the D-057B visual foundation (gait, anchors,
-> causal strike, hit reaction, ambient motion). **Phase 16 (Pet) is DONE (D-064); Phase 17 (NPC / Shop) is IMPLEMENTED (D-065).**
+> causal strike, hit reaction, ambient motion). **Phase 16 (Pet) is DONE (D-064); Phase 17 (NPC / Shop) is DONE (D-065).**
 > The per-session runtimes under `Main/Systems` now start in this order (and end in reverse):
 > World → Relationship → Sect → Faction → WorldSimulation → Combat → Progression → Knowledge →
 > Cultivation → Inventory → Equipment → Skill → Pet → Npc (`main.gd` `SESSION_START_ORDER`). Still five

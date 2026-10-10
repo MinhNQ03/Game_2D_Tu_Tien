@@ -52,7 +52,7 @@
 > **Phase 12 (Cultivation + Knowledge Core) — DONE (D-058).** **Phase 13 (Item) — DONE (D-059).**
 > **Phase 14 (Equipment) — DONE (D-060).** **Phase 15 (Skill/Technique) — DONE (D-061).**
 > **Phase 16 (Pet) — DONE (D-064, `455dec9`).**
-> **Phase 17 (NPC / Shop) — IMPLEMENTED (D-065).**
+> **Phase 17 (NPC / Shop) — DONE (D-065, `fbb6376`).**
 > Phase 18+ (Dialogue, Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
@@ -448,7 +448,7 @@ their content may **expose knowledge opportunities** (a record to read, someone 
 something) — exposing an opportunity, not owning knowledge state (D-040 / C-012).
 **Exit:** interact + trade; shop state serializes; standing uses the relationship graph.
 
-**Status: IMPLEMENTED (D-065)** — DONE once CI is green on the exact Phase-17 commit. `WorldNpc`
+**Status: DONE (D-065)** — `fbb6376`, 12 gates green in CI run 38024661103 on that exact SHA. `WorldNpc`
 bodies bound to registry `CharacterState`s by `NpcRuntime`; Kha Thản's shop at the edge of Rừng
 Vỡ Mạch; `ShopData` / `ShopState` / `ShopService` with atomic transactions through the bag's
 `exchange`; funds = the linh thạch in the bag; prices moved by the keeper's affinity; modal shop
