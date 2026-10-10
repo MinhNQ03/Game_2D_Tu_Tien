@@ -62,7 +62,8 @@
 > against the character registry, a re-entrant close no longer breaks the dialogue runtime,
 > the prompt strip stands down under every modal surface, `GAME_FLOW.md` and the Phase-19
 > contract are reconciled, and the dialogue box is evidenced at vi/en × 1280×720 / 1280×800
-> (`docs/handoff/post-phase-18-closure.md`).
+> (`docs/handoff/post-phase-18-closure.md`). Code and evidence at `03bf40a`, all 13 gates green in
+> CI run 38063275026 on that exact SHA (992 tests).
 > Phase 19+ (Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design

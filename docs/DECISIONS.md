@@ -5064,8 +5064,10 @@ the companion at heel.
 
 ## D-069 — Post-Phase-18 closure verification: four gaps between "green" and "evidenced"
 
-**Status:** see `docs/handoff/post-phase-18-closure.md` for the commits and the exact-SHA CI
-run. Not a phase; no roadmap advance. Phase 19 is NOT STARTED.
+**Status:** DONE — `22c3508`, `fb902c4`, `bef8a4b`, `daaf260`, `03bf40a` on `d063/phase-a`; all 13 gates
+green in CI run 38063275026 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38063275026), `head_sha` = `03bf40a`
+(the runner's annotation: 992 passed, 0 failed). Not a phase; no roadmap advance. Phase 19 is
+NOT STARTED.
 
 A second pass over the Phase-18 baseline (`f3fe408`, all 13 gates green) that asked one
 question of each claim: *what is the evidence, and was it produced on this tree?* It found

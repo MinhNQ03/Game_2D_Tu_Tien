@@ -15,8 +15,11 @@
 | Working branch | `d063/phase-a` (`main` untouched; no merge, no force-push) | `git status --short --branch` |
 | Working tree | clean except untracked, user-owned `CLAUDE.md` (never staged) | `git status` |
 
-Commits of this task, in order (the final SHA and its exact-SHA CI run are recorded in
-`ROADMAP.md`'s status block by the closing commit, as every phase closure does):
+Commits of this task, in order. The last one that changes code or evidence is `03bf40a`:
+CI run 38063275026 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38063275026), `head_sha`
+equal, 13 steps `success`, the runner's own annotation "ran 992 test(s): 992 passed, 0
+failed". The commit that records this line changes documentation only and is verified the
+same way after its push:
 
 | Commit | What | Why |
 |---|---|---|
