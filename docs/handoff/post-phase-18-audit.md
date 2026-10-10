@@ -3,6 +3,9 @@
 > Stage report for the targeted whole-game audit run between Phase 18 (Dialogue) and Phase 19
 > (Quest). It is the first application of `docs/PLAYER_EXPERIENCE_STANDARD.md` and the live
 > debt register that standard's §4 requires. **Phase 19 and later are NOT STARTED.**
+>
+> **Follow-up:** `post-phase-18-closure.md` (D-069) completes this audit's visual matrix (the
+> dialogue box at all four vi/en × 1280×720 / 1280×800 combinations) and adds debt CLV-01.
 
 ## 1. Verified baseline
 

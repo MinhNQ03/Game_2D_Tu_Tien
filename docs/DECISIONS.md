@@ -5059,3 +5059,99 @@ refused while hunted; a real defeat; the fallen do not walk; one key to the menu
 `tests/unit/presentation/test_session_prompt.gd`. Six mutations were applied; all six turn a
 test red. Real-app frames at vi 1280×720 and en 1280×800: the leave question, the defeat box,
 the companion at heel.
+
+---
+
+## D-069 — Post-Phase-18 closure verification: four gaps between "green" and "evidenced"
+
+**Status:** see `docs/handoff/post-phase-18-closure.md` for the commits and the exact-SHA CI
+run. Not a phase; no roadmap advance. Phase 19 is NOT STARTED.
+
+A second pass over the Phase-18 baseline (`f3fe408`, all 13 gates green) that asked one
+question of each claim: *what is the evidence, and was it produced on this tree?* It found
+one content hole, one crash reachable through a signal, one visible HUD contradiction and two
+documents that would have misdirected Phase 19. Each is decided here once.
+
+### 1. A dialogue speaker must be a REGISTERED character (fail closed at session start)
+
+*Before:* `DialogueService.content_errors` checked every knowledge id, dimension, threshold,
+shop and translation a conversation names — and not who speaks it. `DialogueRuntime.talk`
+finds a conversation BY the character addressed, so one whose `speaker_id` matched nobody was
+unreachable content that no gate would ever report. The only guard was a test over the
+SHIPPED catalog against the world-simulation catalog (a property of today's data, not a rule).
+*Decision:* `content_errors` takes a third optional seam, `resolve_character(instance_id) ->
+CharacterState` — the SAME registry resolver `SectService` / `FactionService` /
+`WorldSimulationService` take (`CharacterRegistry.resolver()`), so the domain stays node-free
+and learns nothing about `WorldNpc` or a scene. `DialogueRuntime.start_session` passes the
+world's registry and refuses to start when a speaker does not resolve; **a world with no
+registry is a refusal, not a skipped check.** The refusal happens before anything is
+committed: no active session, no service kept, no connection.
+*What is asked, exactly:* REGISTRATION in the session's `CharacterRegistry`, not a body in the
+current map. Valid speakers stand on other maps; whether someone can be addressed right now
+stays `NpcRuntime`'s (`engage` / `reach_refusal`), asked at the talk.
+*Consequence for content (accepted):* a speaker must be registered when the dialogue session
+starts — in practice, a member of the world-simulation cast, which the session registers
+before Dialogue. `NpcRuntime` also realizes a body's character lazily, when its map is first
+bound; someone who exists ONLY that way, on a map not yet entered, is not registered at
+session start and so may not be given a conversation. Both shipped speakers are cast members.
+If a later phase needs a talking person outside the cast, the fix is to register them at
+session start (one owner of "who exists"), not to weaken this check.
+*Rejected:* validating against the world-simulation catalog (a second answer to "who exists",
+next to the registry); validating against bodies in the loaded map (would reject every
+speaker on another map); a `WorldNpc` or scene lookup from the domain (layer break).
+*Same class, NOT changed:* `ShopData.keeper_id` is not checked against the registry either.
+It is recorded as debt CLV-01 in the handoff rather than fixed here: it is Phase-17 content
+validation, outside this task's bounded scope, and a shop whose keeper does not exist is
+already unreachable (every trade path asks for the keeper's body).
+
+### 2. A listener may end a conversation while hearing about it
+
+*Before:* `DialogueRuntime._follow` emitted `choice_made` and then dereferenced `_dialogue`;
+`talk` emitted `dialogue_opened` and then entered the first line. Any listener that closed the
+conversation in response — which is exactly what a surface yielding to a threat does
+(`WorldRuntime._yield_surfaces`, D-068) — left the runtime calling `.node()` on null: a
+`SCRIPT ERROR`, and a cursor still naming a line of a conversation that was closed.
+Reproduced in a test before the fix. No shipped listener does this today; the next system to
+listen to `choice_made` (Quest) plausibly will.
+*Decision:* the ORDER stays (announce first — listeners read the conversation the answer was
+given in; close before the shop opens). After each of the two emits the runtime checks that
+the conversation it was moving is still the open one and, if not, stops: it stays as the
+listener left it. No reordering, no deferred call, no queue.
+*Also pinned, unchanged:* a "Trade" whose keeper stops being addressable between the answer
+and the handoff closes the conversation, opens no shop, and is answered by `NpcRuntime` — the
+owner of that refusal — with its reason.
+
+### 3. The prompt strip stands down under every surface that holds the keys
+
+*Before:* the strip stood down for a conversation and for the session prompt (D-066, D-068)
+but not for the shop or the satchel. Under those two it kept advertising attack, the sect and
+politics panels and "Esc Menu" while the input context was UI_MODAL: none of those keys acted,
+and Esc closed the surface — whose own key line said so, one panel away. Found by opening a
+real-window capture of the shop handoff; no test measured it.
+*Decision:* PX-4 as written — "a prompt disappears the moment a modal takes the keys". The
+strip is hidden while ANY of the HUD's modal surfaces is up. The technique dock is NOT
+changed: it is a status display (cooldowns, linh khí cost) as well as a prompt, and its
+existing rule is untouched.
+
+### 4. Two documents said things the code does not do
+
+- `GAME_FLOW.md` §1 still tagged cảnh giới / tu luyện `[FUTURE, Phase 12]` and said "only the
+  first axis exists today" under a status block that (correctly) lists it as live; and its
+  diagram drew `LOAD GAME → resume at saved state` with no mark at all. Every box now carries
+  `[LIVE]` or `[FUTURE, Phase N]`, the load path is labelled as Phase 23 with the menu entry
+  disabled, and each design-only §3.x contract says so in its heading.
+- `ROADMAP.md` "Phase 19 — Quest" asks for "serialize mid-quest" while the Phase-19 Player
+  Experience Contract excludes save files. Both are right and neither said how: Phase 19
+  builds the quest owner's in-memory `to_dict()` / `from_dict()` round trip and NOTHING that
+  touches a file — no `SaveService`, no slot, no Continue, no second persistence path (all
+  Phase 23). The roadmap now says exactly that, once, where the phase is defined; the matrix
+  and `SAVE_FORMAT.md` point at it.
+
+### Evidence
+
+Seven mutations (no speaker check; resolver not passed; a missing registry skipped; no guard
+after `choice_made`; no guard after `dialogue_opened`; the strip rule reverted; no refresh
+when the shop closes) — each turns a test red. The re-entrancy test was written and run
+against the unfixed runtime first (two `SCRIPT ERROR`s and a failed assertion). Real-window
+frames of the conversation at `vi` and `en` × 1280×720 and 1280×800, opened and judged; sizes
+are those of the files written (`docs/handoff/post-phase-18-closure.md`).

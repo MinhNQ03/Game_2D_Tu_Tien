@@ -1174,3 +1174,24 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   (en), frames opened; `tools/playtest_flow.gd -- vi <dir>` 30/30 (its step 22 now asks, then
   confirms).
 - Local tally: 986 tests, 986 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak lines; six E2E PASS.
+
+### Post-Phase-18 closure verification (D-069)
+- `tests/unit/dialogue/test_dialogue_domain.gd` — `content_errors` with the registry resolver:
+  a registered speaker passes; an unregistered one is named; an answer that is not a
+  `CharacterState` resolves nobody; with no resolver the domain skips the check.
+- `tests/integration/test_dialogue_runtime.gd` — a structurally valid catalog whose speaker is
+  not registered stops the session (inactive, no service, no conversation, no connection to
+  the world) and the same content starts once the speaker is registered — with no body in the
+  map, where `NpcRuntime` refuses the talk; a world with no registry is refused and can then
+  start properly; a "Trade" whose keeper became unaddressable closes the conversation, opens
+  no shop and is answered by `NpcRuntime`; a listener that ends the conversation on
+  `choice_made` (continue-to-line, trade, leave) or on `dialogue_opened` leaves it ended, once,
+  with no cursor.
+- `tests/unit/presentation/test_session_prompt.gd` — the prompt strip is hidden under the
+  satchel and under the shop, returns when each closes, and stays down across a handover.
+- Mutation-checked: seven mutations, seven red (listed in D-069). The re-entrancy test failed
+  with two `SCRIPT ERROR`s against the unfixed runtime.
+- Real app: `tools/capture_motion.gd -- <dir> dialogue <vi|en>` and `… session <vi|en>` at
+  `--resolution 1280x720` and `1280x800` — the four language / size combinations, every frame
+  opened; `tools/playtest_flow.gd`. Sizes and findings: `docs/handoff/post-phase-18-closure.md`.
+

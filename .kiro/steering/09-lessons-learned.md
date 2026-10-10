@@ -1344,3 +1344,32 @@
     (`PLAYER_EXPERIENCE_STANDARD.md` Gate D).
 - **Guards:** `world_flow_case.gd` step 7; `npc_flow_case.gd` steps 9–11; `pet_flow_case.gd`
   (six cycles); `test_session_prompt.gd`; `test_enemy_encounter.gd` (`hostile_engaged`).
+
+## L-047 — An emit is a re-entry point, and "validated against its owners" must list every owner
+
+- **Context:** D-069, the closure pass over Phase 18 — a baseline with 13 green gates and a
+  mutation-checked suite.
+- **What happened:**
+  - *State read after a signal.* `_follow` emitted `choice_made`, then used `_dialogue`.
+    Nothing in the shipped game closed a conversation from that signal, so every test passed;
+    one listener that did (the documented behaviour of a surface under threat) produced a
+    null call. The bug was not in any listener — it was the assumption that an emit returns
+    to the same world it left.
+  - *A validator that named four owners and forgot the fifth.* Dialogue content was checked
+    against knowledge, relationships, shops and localization. The id every conversation is
+    LOOKED UP by — its speaker — was checked by nobody, because an unknown speaker does not
+    fail: it simply never opens.
+  - *A capture that had been written, not read.* The shop frame showing "Esc Menu" beside the
+    shop's own "Esc Leave" existed in earlier runs. It was found the first time someone
+    compared the two key lines on one frame.
+- **Rules:**
+  - After emitting a signal, treat every field a listener could reach as changed: capture
+    what you need before the emit, and re-check that you are still where you were after it.
+  - For a content validator, enumerate the ids the content NAMES and the ids it is FOUND BY.
+    An orphan found-by id is silent: it needs its own check.
+  - On a capture, read every key label on the frame and ask of each: does that key do that,
+    right now?
+- **Guards:** `test_dialogue_runtime.gd` (a listener that ends the conversation mid-answer; a
+  speaker nobody registered; a world with no registry; a handoff the shop refuses);
+  `test_dialogue_domain.gd` (a speaker must resolve); `test_session_prompt.gd` (the strip
+  under every modal surface).

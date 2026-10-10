@@ -58,6 +58,11 @@
 > gates wired into the phase protocol, the shipped game audited
 > (`docs/handoff/post-phase-18-audit.md`) and four defects in shipped systems repaired
 > (D-068, `0e26a6f`, CI run 38049053769).
+> **Post-Phase-18 closure verification (D-069, not a phase):** a dialogue speaker is validated
+> against the character registry, a re-entrant close no longer breaks the dialogue runtime,
+> the prompt strip stands down under every modal surface, `GAME_FLOW.md` and the Phase-19
+> contract are reconciled, and the dialogue box is evidenced at vi/en × 1280×720 / 1280×800
+> (`docs/handoff/post-phase-18-closure.md`).
 > Phase 19+ (Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
