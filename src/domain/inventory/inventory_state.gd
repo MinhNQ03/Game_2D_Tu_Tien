@@ -54,6 +54,32 @@ func remove(item_id: StringName, count: int) -> bool:
 	return true
 
 
+## Remove `take` and add `give` as ONE change, or change nothing (Phase 17: a purchase is coin
+## out and goods in; half of it must never happen). `take` is { item_id -> count }, `give` is
+## { ItemData -> count }. Staged on a copy of the stacks — removals first, so coin leaving the
+## bag can free the slot the goods need — and committed only when every removal was held and
+## every addition fitted. False (and no change) for a non-positive count, a null item, a
+## shortfall or a full bag.
+func exchange(take: Dictionary, give: Dictionary) -> bool:
+	var committed := _stacks
+	_stacks = _stacks.duplicate(true)
+	var ok := true
+	for item_id: Variant in take:
+		if typeof(take[item_id]) != TYPE_INT or not remove(item_id, int(take[item_id])):
+			ok = false
+			break
+	if ok:
+		for item: Variant in give:
+			var data := item as ItemData
+			if data == null or typeof(give[item]) != TYPE_INT or int(give[item]) <= 0 \
+					or add(data, int(give[item])) != int(give[item]):
+				ok = false
+				break
+	if not ok:
+		_stacks = committed
+	return ok
+
+
 func count_of(item_id: StringName) -> int:
 	var total := 0
 	for stack in _stacks:

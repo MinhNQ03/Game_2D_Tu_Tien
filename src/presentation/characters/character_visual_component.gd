@@ -77,6 +77,11 @@ const ACTION_CAST := &"cast"
 ## enemy or NPC is never left without a body for its swing.
 const ACTION_SLASH := &"slash"
 
+## A conversational gesture (Phase 17): NOT a strike — it has no attack lifecycle, hits nothing
+## and is clocked by whoever is being spoken to (`WorldNpc`), through the same
+## `play_action` / `drive_action` / `end_action` contract every other action uses.
+const ACTION_TALK := &"talk"
+
 
 ## True for the attack-family actions: the palm strike and the sword cut. Both are driven by
 ## an `AttackComponent` lifecycle and share the strike sync, cancel and finish paths — the
@@ -374,6 +379,8 @@ func _sheet_for_action(action: StringName) -> Texture2D:
 			return _profile.meditate_sheet
 		ACTION_CAST:
 			return _profile.cast_sheet
+		ACTION_TALK:
+			return _profile.talk_sheet
 		_:
 			return null
 

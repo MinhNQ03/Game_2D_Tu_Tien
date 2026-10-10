@@ -4566,3 +4566,130 @@ end. `from_dict` is atomic and sends a pet that was out away first.
 Pet skills beyond the validated `skills` id list (the first pet only bites), pet commands, a pet
 panel, pet equipment, more than one pet out, file-level save (Phase 23 calls `to_dict` /
 `from_dict`).
+
+## D-065 — Phase 17: NPC, interaction and shops
+
+**Status:** IMPLEMENTED on `d063/phase-a`; DONE once CI is green on the exact Phase-17 commit.
+
+### An NPC is a character — nothing new is modelled
+
+A person in the world is an ordinary `CharacterState` in the session's `CharacterRegistry`, built
+from a `CharacterTemplateData`, exactly like the player and every world-simulation actor. There
+is no `NpcCharacterState`, no NPC registry, no NPC id space.
+- `WorldNpc` (a `WorldInteractable`) is the BODY: where that character stands in a map, a small
+  solid circle at the feet, and a reach. It owns no persistent truth.
+- `NpcRuntime` (per-session node, 14th and last in `SESSION_START_ORDER`) binds every `WorldNpc`
+  on map arrival: it resolves `character_id` in the registry and REUSES the state that exists
+  (the world simulation has already realized its actors); only a character nobody has realized
+  is created from the body's template, by the same `create_from_template` + `registry.add` path
+  the simulation uses. An unresolvable body stays hidden.
+
+**Audit of the existing content.** `npc_scout_ko.tres`, `npc_disciple_lin.tres` and
+`npc_elder_shen.tres` are the three world-simulation actors (`actor_*`), already in the registry
+with sect, rank and faction. `merchant_visual.tres` is Kha Thản's look. The shop is therefore
+his: a frontier scout hired out of Hoang Vực, trait GREEDY, motivation "be paid what the risk
+is worth". His body stands at the hub-side edge of Rừng Vỡ Mạch — the simulation's
+`home_map_id` for him is `map_field`, so the body is where the simulation says he lives. Lâm
+Nguyệt and Thẩm Bất Kỳ get no body in this phase (nothing for them to offer before Phase 18);
+they are used as the second NPC and the second shopkeeper in tests.
+
+### Interaction
+
+`WorldInteractable` (Phase 16) gains `prompt_args()`, so a person's prompt NAMES them
+("Gặp Kha Thản" / "Talk to Ko Than"). Selection among overlapping interactables is the
+Phase-16 rule (nearest in reach, exact ties by kind then id). The map reports
+`interactable_used(&"npc", character_id)`; `NpcRuntime.interact` does NOT take its word: it
+re-checks that the body is bound, in the active map and within its reach of the player, and
+every trade re-checks it again. Someone who keeps no shop acknowledges the player (a HUD line);
+what people SAY is Phase 18.
+
+**The talk gesture** is `CharacterVisualComponent.ACTION_TALK`, a new arm of the SHARED action
+layer (`play_action` / `drive_action` / `end_action`), drawn from an optional
+`CharacterVisualProfileData.talk_sheet` and clocked by the `WorldNpc`. It is not a strike: an
+NPC body carries no `AttackComponent` or `HurtboxComponent`. A look without the sheet keeps its
+idle. Kha Thản's sheet (6 frames × 4 facings) comes from the Blender actor pipeline
+(`motion.talk`, opted into by `ko_than.yaml`); his five existing sheets are byte-identical.
+
+### The currency authority
+
+**Decision: the player's funds ARE the count of the currency item in the bag.**
+`ShopCatalogData.currency_item` names it — `item_linh_thach`, which the player already picks up,
+carries and absorbs (Phase 13). `InventoryState` (owned by `InventoryRuntime`) is the single
+authority; nothing else stores a balance.
+- Rejected: an `int` wallet beside the bag. Linh thạch is already a holdable, usable item; a
+  second number would be a second authority for "how many stones do I have".
+- Not on the NPC, the shop panel, `ShopState`, `InventoryView` or `SectState`: the panel shows
+  `ShopView.balance`, a number read from the bag at view-build time.
+- `SAVE_FORMAT` `inventory.currency` is REMOVED (it was never written); funds restore with
+  `inventory.items`.
+- Consequence, accepted: funds are bounded by bag space (99 per stack). A sale whose payment
+  has nowhere to go is refused whole.
+
+### Shops
+
+- `ShopData` (`shop_*`): `keeper_id` (a character instance id), `entries` of `ShopEntryData`
+  (item, positive `base_price`, `stock` = −1 unlimited or a finite count ≥ 0, `buys`), and the
+  pricing terms. `ShopCatalogData`: unique ids, one shop per keeper, no shop trades the
+  currency. Content only — a second shop is a second resource (tested).
+- `ShopState` is the ONLY thing that changes: the remaining count of each finite entry
+  (`to_dict` / atomic `from_dict`, SAVE_FORMAT `shops`). Unlimited entries are not stored.
+- `ShopService` (pure domain) is its only writer.
+
+**Pricing by standing.** A shop names ONE relationship dimension (`price_dimension`; Kha Thản:
+`affinity`, −100..100). `NpcRuntime.standing_for` reads the KEEPER's edge to the customer
+(directed keeper → customer, or the pair's symmetric edge) from the real graph. No edge =
+the dimension's neutral value = the base price. Above neutral the price falls linearly to
+`max_discount_percent` at the dimension's maximum; below, it rises linearly to
+`max_markup_percent` at its minimum; a value outside the range prices as the bound. Interpolated
+in basis points; the buying price rounds UP, never below 1. What the shop pays is `sell_percent`
+of base moved the opposite way, rounded DOWN, clamped to [1, the buying price]. `ShopData`
+validation rejects any terms under which a customer could sell for at least the buy-back price
+(`sell_percent × (100 + D) < 100 × (100 − D)`), and a test sweeps bases × standings to confirm
+no profit exists. Nothing in the game moves a keeper's affinity yet; tests and the capture
+write it through `RelationshipService`.
+
+**Atomic transactions.** `plan_buy` / `plan_sell` validate everything (shop, item, quantity in
+[1, 99], stock, funds or holdings) and mutate nothing. `transact(plan, exchange)`:
+re-checks the plan against the stock it was made from (stale → refused), calls the bag owner's
+`exchange(take, give)` — new on `InventoryState` / `InventoryRuntime`: staged on a copy of the
+stacks, removals first, committed only if every removal was held and every addition fitted —
+and only after the bag has changed writes the stock (which cannot fail). A plan transacts once.
+So: insufficient funds or stock, a full bag, a full purse, unknown ids, zero / negative /
+overflowing quantities and a repeated confirm all leave the bag AND the shop untouched.
+
+### The shop UI
+
+`ShopPanel` in the side-panel frame (UITheme / UIPalette), on the right — a left panel covered
+the keeper in the first capture. Title, keeper and terms, the two tabs with the funds on the
+same line, scrolling rows (icon, name, stock, price NOW, base price beside it whenever standing
+moved it), description, the last outcome or why the selected row cannot be bought, the keys.
+`UI_MODAL` while open (move keys choose rows and switch tabs, interact trades one); the VIEW is
+the authority on open/closed, so repeated views never stack contexts and one pop restores
+gameplay. Esc ASKS the owner to close the shop and never leaves the game; a fight or a map
+change closes it.
+
+### Defects found by evidence in this phase (and fixed)
+
+- **The key that opened the shop also traded.** `interact` on the keeper is still "just
+  pressed" for the rest of that frame, and the panel read it: with enough coin the first row
+  was bought on opening. Found in the first real-app capture (the status line said "bought"
+  before any choice). The panel now reads no key on its opening frame; the E2E opens the shop
+  with funds for the first row and asserts nothing traded (mutation-checked).
+- **The prompt strip overflowed** with a named prompt ("Nói chuyện với Kha Thản", 701 px > 640)
+  — the verb is "Gặp {name}"; measured in both languages by test.
+- **The strip advertised "Talk" for the trade key** while the shop was open — hidden while
+  modal.
+
+### Drift found and corrected
+
+- `SAVE_FORMAT` had `inventory.currency: int` (see above) and no `shops` section.
+- `SYSTEM_DEPENDENCY_MATRIX` named an `npc_interacted` EventBus event; no cross-system
+  consumer exists, so the signals are local to `NpcRuntime` (L-005: no event without a consumer).
+- `ROADMAP` Phase 17 mentions knowledge opportunities exposed by NPCs: not built (it needs
+  something an NPC can say — Phase 18).
+
+### Not built (deliberately)
+
+Dialogue, quests, NPC schedules that move a body between maps, buying more than one at a time
+from the UI (the service supports 1–99), haggling, anything that changes a keeper's regard,
+file-level save.

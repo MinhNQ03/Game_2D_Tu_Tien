@@ -49,6 +49,9 @@ materials:
   shoe:       {ramp: ["#17120e", "#221a14", "#30251c", "#403226"]}
   eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
 
+animations:
+  talk: {frames: 6, loops: false}          # the greeting a shopkeeper gives (Phase 17)
+
 outputs:
   sheet_prefix: merchant_proto
   anchors: merchant_anchors

@@ -30,6 +30,12 @@ func interaction_id() -> StringName:
 	return &""
 
 
+## Arguments for the prompt's text (a person's prompt names them). Values that are
+## `StringName`s are localization keys the HUD resolves.
+func prompt_args() -> Dictionary:
+	return {}
+
+
 ## Can it be used right now? A hidden interactable (a stray already befriended) is not offered.
 func is_available() -> bool:
 	return visible

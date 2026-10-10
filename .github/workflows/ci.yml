@@ -17,6 +17,7 @@ name: CI
 #   9. player sandbox E2E flow (dedicated isolated process — Phase 02)
 #  10. world/map E2E flow (dedicated isolated process — Phase 03)
 #  11. pet / linh thú E2E flow (dedicated isolated process — Phase 16)
+#  12. NPC / interaction / shop E2E flow (dedicated isolated process — Phase 17)
 #
 # NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
 # scripts were statically validated via the GDScript language server. The first real
@@ -274,5 +275,35 @@ jobs:
           if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
               _e2e_pet.log; then
             echo "::error::[e2e-pet] the run printed a script error or a leak line"
+            exit 1
+          fi
+
+      - name: NPC / Shop E2E flow (Phase 17)
+        run: |
+          set -uo pipefail
+          # Dedicated, ISOLATED process (D-019): boots the real app and drives the shop loop
+          # with semantic inputs — walk into reach of an NPC, interact, sell and buy, a refused
+          # purchase that changes nothing, Esc closes the shop and gameplay input returns.
+          # A `SCRIPT ERROR:` or a leak line fails the gate even when the runner exits 0: a VM
+          # error aborts the case mid-way, which an exit code cannot distinguish from a pass.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_npc_flow.gd 2>&1 \
+            | tee _e2e_npc.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### NPC / Shop E2E (rc=$rc)"
+            echo '```'
+            tail -n 60 _e2e_npc.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            grep -E 'FAIL|ERROR|RESULT' _e2e_npc.log | tail -n 40 \
+              | while IFS= read -r line; do echo "::error::[e2e-npc] ${line}"; done
+            exit "$rc"
+          fi
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
+              _e2e_npc.log; then
+            echo "::error::[e2e-npc] the run printed a script error or a leak line"
             exit 1
           fi

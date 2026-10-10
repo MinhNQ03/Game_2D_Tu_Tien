@@ -8,6 +8,24 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Phase 17: NPC / interaction / shop (D-065)
+
+- **Added.** `WorldNpc` (a character's body in a map) and `NpcRuntime` (14th session node, ended
+  first): NPCs are existing `CharacterState`s from the registry. `ShopData` / `ShopEntryData` /
+  `ShopCatalogData`, `ShopState` (remaining finite stock, atomic `from_dict`), `ShopService`
+  (pricing, planning, atomic commit), `ShopStanding`. `ShopView` + `ShopPanel` (modal, keyboard).
+  Kha Thản keeps "Túi hàng trinh sát" at the edge of Rừng Vỡ Mạch. `ACTION_TALK` on the shared
+  action layer + his talk sheet (2 615 B, Blender pipeline).
+- **Changed.** `InventoryState.exchange` / `InventoryRuntime.exchange`: an all-or-nothing
+  remove-and-add. `WorldInteractable.prompt_args()` and a HUD interact prompt that names its
+  target. The interact prompt hides while the shop holds the keys.
+- **Decided.** Funds are the count of `item_linh_thach` in the bag — no wallet number;
+  `SAVE_FORMAT` drops `inventory.currency` and gains `shops`.
+- **Fixed (found in a real-app capture).** The key press that opened the shop was also read as
+  "buy the first row".
+- **CI.** Gate 12: the isolated NPC/shop E2E. 929 tests locally.
+- **Not built.** Dialogue, quests, anything that changes a keeper's regard, file-level save.
+
 ### 2026-10-10 — Phase 16: Pet / Linh Thú (D-064)
 
 - **Added.** `PetData` + `PetCatalogData` (validated content); `PetStore` (owned, XP, active —

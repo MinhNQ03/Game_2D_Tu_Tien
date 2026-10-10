@@ -240,3 +240,31 @@ UI_PET_ALREADY_OWNED,It already follows you.,Nó vốn đã theo ngươi.
 UI_PET_NOT_OWNED,It does not follow you.,Nó không theo ngươi.
 UI_PET_XP_INVALID,It cannot grow that way.,Nó không thể lớn lên theo cách đó.
 UI_PET_AT_CEILING,It has grown as far as it can.,Nó đã lớn hết mức.
+SHOP_KO_THAN_PACKS_NAME,The Scout's Packs,Túi hàng trinh sát
+UI_HUD_TALK_ACTION,Talk to {name},Gặp {name}
+UI_NPC_GREETS,{name} gives you a nod.,{name} gật đầu với ngươi.
+UI_NPC_NOBODY,There is no one there to speak to.,Không có ai ở đó để nói chuyện.
+UI_NPC_TOO_FAR,You are too far away.,Ngươi đứng quá xa.
+UI_NPC_UNAVAILABLE,No one answers.,Không ai đáp lời.
+UI_SHOP_TAB_BUY,Buy,Mua
+UI_SHOP_TAB_SELL,Sell,Bán
+UI_SHOP_FUNDS,{currency}: {count},{currency}: {count}
+UI_SHOP_TERMS_BASE,plain prices,giá thường
+UI_SHOP_TERMS_DISCOUNT,likes you: −{percent}%,có giao tình: −{percent}%
+UI_SHOP_TERMS_MARKUP,dislikes you: +{percent}%,không ưa ngươi: +{percent}%
+UI_SHOP_EMPTY_BUY,Nothing left to sell.,Không còn gì để bán.
+UI_SHOP_EMPTY_SELL,You carry nothing they would buy.,Ngươi không mang thứ gì họ muốn mua.
+UI_SHOP_KEYS,{trade} Trade one · {left}/{right} Buy/Sell · {close} Leave,{trade} Giao dịch một · {left}/{right} Mua/Bán · {close} Rời đi
+UI_SHOP_BOUGHT,Bought {name} ×{count} for {total} {currency}.,Đã mua {name} ×{count} với {total} {currency}.
+UI_SHOP_SOLD,Sold {name} ×{count} for {total} {currency}.,Đã bán {name} ×{count} được {total} {currency}.
+UI_SHOP_UNKNOWN,That is not a shop.,Đó không phải cửa hàng.
+UI_SHOP_CLOSED,No shop is open.,Không có cửa hàng nào đang mở.
+UI_SHOP_NOT_TRADED,They do not trade in that.,Họ không buôn bán thứ đó.
+UI_SHOP_NOT_BOUGHT,They will not buy that.,Họ không mua thứ đó.
+UI_SHOP_BAD_QUANTITY,That is not an amount one can trade.,Số lượng đó không giao dịch được.
+UI_SHOP_OUT_OF_STOCK,None left.,Đã hết hàng.
+UI_SHOP_NO_FUNDS,You cannot afford it.,Ngươi không đủ linh thạch.
+UI_SHOP_NOT_HELD,You do not carry that.,Ngươi không mang thứ đó.
+UI_SHOP_NO_ROOM,Your satchel has no room for the trade.,Túi đồ không còn chỗ cho giao dịch này.
+UI_SHOP_STOCK_FULL,They cannot take any more of it.,Họ không thể nhận thêm thứ đó.
+UI_SHOP_STALE,The offer has changed; look again.,Giá chào đã đổi; hãy xem lại.

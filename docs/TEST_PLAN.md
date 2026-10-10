@@ -18,10 +18,11 @@
 > session runtime, a performance budget), **Enemy AI** (Phase 10: the pure-domain brain, target
 > selection, leash, cadence, determinism, damage/attack feedback), **Level/XP Progression**
 > (Phase 11 — inventory in the per-phase list below), and the UI/theme asset contracts — plus
-> four dedicated
-> real-application E2E processes (app-flow, player-flow, world-flow, pet-flow).
+> five dedicated
+> real-application E2E processes (app-flow, player-flow, world-flow, pet-flow, npc-flow).
 >
-> **CI runs 11 gates** (see §5; the eleventh is the Phase-16 pet E2E). That number is the COUNT OF CI GATES and is unrelated to the
+> **CI runs 12 gates** (see §5; the eleventh is the Phase-16 pet E2E, the twelfth the
+> Phase-17 NPC / shop E2E). That number is the COUNT OF CI GATES and is unrelated to the
 > number of stages in `docs/PHASE_EXECUTION_PROTOCOL.md` — the phase protocol has more review
 > stages (pre-flight → … → final review) because most of them are human review steps that no
 > CI job can run. Do not "reconcile" the two numbers.
@@ -110,8 +111,9 @@ godot --headless --path . --quit-after 2
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-Then the four dedicated E2E processes (app / player sandbox / world-map / pet), one gate each —
-11 gates in total. The pet gate also fails on any `SCRIPT ERROR:` or leak line in its log.
+Then the five dedicated E2E processes (app / player sandbox / world-map / pet / npc-shop), one
+gate each — 12 gates in total. The pet and npc gates also fail on any `SCRIPT ERROR:` or leak
+line in their logs.
 
 > **The headless-suite gate also fails on any `SCRIPT ERROR:`, even when the runner exits 0**
 > (D-038). GDScript has no try/catch (D-004), so a VM error (a bad typed-array assignment, a
@@ -350,7 +352,7 @@ smoke test `smoke/test_boot.gd`, and a nested-discovery proof `unit/framework/`.
 
 Gameplay/performance tests arrive with their phases. CI (D-012) runs the gates headless on
 every push, and remains the authority. **Since L-031 the gates also run locally** (~3 minutes
-for lint + import + parse + boot + suite + all four E2E processes), so a change should be
+for lint + import + parse + boot + suite + all five E2E processes), so a change should be
 green before it is pushed rather than diagnosed through CI round-trips.
 
 **Known environmental caveat (D-054):** the two wall-clock performance budgets
@@ -1049,3 +1051,38 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   flash). `tools/playtest_flow.gd` 30/30.
 - Local tally at this checkpoint: 895 tests, 895 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak
   lines; app / player / world / pet E2E PASS. CI: run 38023117165 green on `455dec9`.
+
+### Phase 17 — NPC / interaction / shop (D-065)
+- `tests/unit/shop/test_shop_domain.gd` (15) — the shipped catalog; every broken `ShopData`
+  field rejected one at a time (incl. arbitrage terms); catalog sets (no currency, duplicate id,
+  one keeper two shops, trading the currency); no edge = neutral = base price; linear pricing,
+  BOUNDED at and beyond both extremes, a non-negative dimension can only discount; a sweep of
+  bases × standings proving no buy-then-sell profit; buy and sell move coin, goods and stock
+  together; EVERY refusal (unknown shop / item, funds, stock, holdings, not bought, zero /
+  negative / overflow quantity) leaves bag and shop identical; a full bag and a full purse refuse
+  the whole trade; a plan transacts once and a stale plan is refused; the bag's `exchange` is
+  all-or-nothing; stock round-trips and hydration is atomic over 12 malformed payloads.
+- `tests/integration/test_npc_shop.gd` (13) — real `InventoryRuntime`, `RelationshipRuntime`,
+  `CharacterRegistry`, `WorldNpc`: an NPC body binds to a `CharacterState` (the same class as
+  the player), an existing actor is REUSED, an unresolvable body stays hidden; talk is
+  range-validated and opens the shop once; the talk gesture runs on the shared action layer and
+  is never a strike; someone with no shop only greets; trades go through the inventory owner
+  (one `inventory_changed`, no pickup notice); eight refusals change nothing; prices follow the
+  real graph (no edge, ±affinity, the wrong dimension, someone else's regard); a SECOND shop
+  from content only; map change / session end close the shop; bad dependencies and content
+  refuse the session; stock round-trips through the runtime.
+- `tests/unit/presentation/test_shop_panel.gd` (6) — modal follows the view (no stacked
+  contexts, HUD free never strands one); the shop closes the satchel; rows show price and base;
+  keyboard choices request and decide nothing; vi; the named prompt fits the strip in en and vi.
+- `tests/unit/bootstrap/test_session_lifecycle.gd` — 14 subsystems, `NpcRuntime` last.
+- **E2E gate 12** `tests/e2e/run_npc_flow.gd` — isolated process, real app, semantic inputs:
+  real pickups → walk into reach → the prompt names him → interact opens the shop WITHOUT
+  trading → UI_MODAL (move keys do not walk) → sell, buy → a refused purchase changes nothing →
+  Esc closes the shop, not the game → walk away → menu, `NpcRuntime` torn down first.
+- Mutation-checked: removing the range check, the exchange rollback, or the opening-frame key
+  guard each turns tests red.
+- Real app: `tools/capture_motion.gd -- <dir> shop <vi|en>` at 1280×720 (vi) and 1920×1200 (en);
+  captures opened (named prompt, talk strip, buy, sell, refusal, adjusted + base price).
+  `tools/playtest_flow.gd` 30/30.
+- Local tally at this checkpoint: 929 tests, 929 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak
+  lines; app / player / world / pet / npc E2E PASS.

@@ -342,6 +342,7 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	_connect_skill_signals()
 	_push_skill_view_to_active_map()
 	_connect_pet_signals()
+	_connect_npc_signals()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -893,6 +894,10 @@ func _on_interactable_used(kind: StringName, id: StringName) -> void:
 		var pets := _find_sibling_of(PetRuntime) as PetRuntime
 		if pets != null and pets.is_session_active():
 			pets.befriend(id)
+	elif kind == WorldNpc.KIND:
+		var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+		if npcs != null and npcs.is_session_active():
+			npcs.interact(id)
 
 
 func _pet_name_key(pet_id: StringName) -> StringName:
@@ -922,6 +927,87 @@ func _on_pet_refused(reason_key: StringName) -> void:
 
 func _on_pet_level_changed(pet_id: StringName, level: int) -> void:
 	_notify(&"announce", &"UI_PET_LEVEL_UP", {"name": _pet_name_key(pet_id), "level": level})
+
+
+# --- People and shops (Phase 17) ---------------------------------------------------
+
+func refresh_active_map_shop_view() -> void:
+	_connect_npc_signals()
+	_push_shop_view_to_active_map()
+
+
+func _push_shop_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_shop_view"):
+		return
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	if npcs == null or not npcs.is_session_active():
+		return
+	_active_map.call("set_shop_view", npcs.build_shop_view())
+
+
+func _connect_npc_signals() -> void:
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	if npcs == null:
+		return
+	if not npcs.view_changed.is_connected(_push_shop_view_to_active_map):
+		npcs.view_changed.connect(_push_shop_view_to_active_map)
+	if not npcs.npc_greeted.is_connected(_on_npc_greeted):
+		npcs.npc_greeted.connect(_on_npc_greeted)
+	if not npcs.interaction_refused.is_connected(_on_npc_interaction_refused):
+		npcs.interaction_refused.connect(_on_npc_interaction_refused)
+	if not npcs.trade_done.is_connected(_on_trade_done):
+		npcs.trade_done.connect(_on_trade_done)
+	if not npcs.trade_refused.is_connected(_on_trade_refused):
+		npcs.trade_refused.connect(_on_trade_refused)
+
+
+## Someone with nothing to trade was spoken to: they acknowledge the player. (What they SAY is
+## Phase 18's; this is only the answer to the key.)
+func _on_npc_greeted(character_id: StringName) -> void:
+	var character := _characters.get_character(character_id) if _characters != null else null
+	if character != null:
+		_notify(&"announce_result", &"UI_NPC_GREETS", {"name": character.name_key})
+
+
+func _on_npc_interaction_refused(reason_key: StringName) -> void:
+	_notify(&"announce_answer", reason_key)
+
+
+func _on_trade_done(kind: StringName, item_id: StringName, quantity: int, total: int) -> void:
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
+	if npcs == null or inventory == null:
+		return
+	var item := inventory.get_catalog().entry(item_id)
+	var currency := npcs.get_service().catalog().currency_item
+	if item == null or currency == null:
+		return
+	_notify(&"announce_result",
+		&"UI_SHOP_BOUGHT" if kind == ShopService.KIND_BUY else &"UI_SHOP_SOLD",
+		{"name": item.name_key, "count": quantity, "total": total,
+			"currency": currency.name_key, "key": ""})
+
+
+func _on_trade_refused(reason_key: StringName) -> void:
+	_notify(&"announce_answer", reason_key)
+
+
+func _on_shop_buy_requested(item_id: StringName) -> void:
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	if npcs != null and npcs.is_session_active():
+		npcs.buy(item_id, 1)
+
+
+func _on_shop_sell_requested(item_id: StringName) -> void:
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	if npcs != null and npcs.is_session_active():
+		npcs.sell(item_id, 1)
+
+
+func _on_shop_close_requested() -> void:
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	if npcs != null and npcs.is_session_active():
+		npcs.close_shop()
 
 
 ## Hand one notice to the active map's HUD, by KIND (D-063): `announce` (PASSIVE — what happened
@@ -1038,6 +1124,11 @@ func _wire_active_map() -> void:
 	if _active_map.has_signal("interactable_used") \
 			and not _active_map.is_connected("interactable_used", _on_interactable_used):
 		_active_map.connect("interactable_used", _on_interactable_used)
+	if _active_map.has_signal("shop_buy_requested") \
+			and not _active_map.is_connected("shop_buy_requested", _on_shop_buy_requested):
+		_active_map.connect("shop_buy_requested", _on_shop_buy_requested)
+		_active_map.connect("shop_sell_requested", _on_shop_sell_requested)
+		_active_map.connect("shop_close_requested", _on_shop_close_requested)
 
 
 func _on_map_exit_requested(to_map_id: StringName, entry_point: StringName) -> void:

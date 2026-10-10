@@ -226,8 +226,9 @@ func test_real_pet_flow() -> void:
 	assert_false(pets.is_session_active(), "the pet session ended")
 	assert_eq(_count_pets(), 0, "no pet body survives the session")
 	var trace: Array = main.call("get_last_teardown_order")
-	assert_true(not trace.is_empty() and trace[0] == &"PetRuntime",
-		"PetRuntime was torn down FIRST (%s)" % str(trace))
+	assert_true(trace.find(&"PetRuntime") >= 0
+			and trace.find(&"PetRuntime") < trace.find(&"SkillRuntime"),
+		"PetRuntime was torn down before everything it reads (%s)" % str(trace))
 
 	_teardown(main)
 	await scene_tree.process_frame

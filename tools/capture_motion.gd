@@ -18,7 +18,7 @@ extends SceneTree
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
 ## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
-## techniques, golden, field_fight, pet (second user argument runs one; a third picks the
+## techniques, golden, field_fight, pet, shop (second user argument runs one; a third picks the
 ## language, `vi` or `en`, default the saved setting).
 ##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
@@ -100,6 +100,9 @@ func _run() -> void:
 	if _only == "pet":
 		print("[capture_motion] scenario pet")
 		await _scenario_pet()
+	if _only == "shop":
+		print("[capture_motion] scenario shop")
+		await _scenario_shop()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -525,6 +528,79 @@ func _scenario_pet() -> void:
 		return (wolf.global_position + pet.global_position) * 0.5 + Vector2(0, -12), 32, 3)
 	_save_strip("motion_pet_fight", fight)
 	await _shot("scene_pet_fight")
+
+
+## The shop (Phase 17), by name only: Kha Thản at the field's edge — the prompt that names him,
+## his shop on the buying side, the selling side, a refusal, and the same shop once he has
+## taken against the player (the adjusted AND base price both showing).
+##
+## SETUP, stated plainly: the pills and stones are real pickups the player is stood on, and the
+## last frame's regard is written through the relationship service (nothing in the game moves
+## a keeper's affinity yet — Phase 18+). Every action after a placement is a real key.
+func _scenario_shop() -> void:
+	var player := _player()
+	var pill := _map_node("Pickups/HubPill1") as Node2D
+	var npcs := _main.get_node_or_null("Systems/NpcRuntime") as NpcRuntime
+	var relationship := _main.get_node_or_null("Systems/RelationshipRuntime") as RelationshipRuntime
+	if player == null or pill == null or npcs == null or relationship == null:
+		_fail("shop: pieces missing")
+		return
+	player.global_position = pill.global_position
+	await _settle()
+	if not await _travel_through_first_exit(player):
+		_fail("shop: the exit did not transition")
+		return
+	await _settle()
+	for stone_name: String in ["FieldStone1", "FieldStone2"]:
+		var stone := _map_node("Pickups/%s" % stone_name) as Node2D
+		if stone != null:
+			player.global_position = stone.global_position
+			await _settle()
+	var ko := _map_node("Interactables/KoThan") as Node2D
+	if ko == null:
+		_fail("shop: Kha Thản is not in the field")
+		return
+	player.global_position = ko.global_position + Vector2(60, 6)
+	await _settle()
+	Input.action_press(&"move_left")
+	for _i in 12:
+		await physics_frame
+	Input.action_release(&"move_left")
+	await _settle()
+	await _shot("scene_npc_prompt")
+	await _press(&"interact")
+	var talk := await _strip(func() -> Vector2: return ko.global_position + Vector2(8, -18), 8, 4)
+	_save_strip("motion_npc_talk", talk)
+	if not npcs.is_shop_open():
+		_fail("shop: interact did not open the shop")
+		return
+	await _settle()
+	await _shot("scene_shop_buy")
+	await _press(&"move_right")
+	await _settle()
+	await _shot("scene_shop_sell")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"move_left")
+	await _settle()
+	await _press(&"move_down")
+	await _settle()
+	await _press(&"move_down")
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_shop_refusal")
+	var service := relationship.get_service()
+	service.create_edge(&"edge_capture_ko_player",
+		RelationshipEndpoint.for_character(&"actor_scout_ko"),
+		RelationshipEndpoint.for_character(&"player"))
+	service.set_dimension(&"edge_capture_ko_player", &"affinity", -60, &"capture")
+	npcs.view_changed.emit()
+	await _settle()
+	await _shot("scene_shop_disliked")
+	await _press(&"open_menu")
+	await _settle()
+	await _shot("scene_shop_closed")
 
 
 ## THE GOLDEN COMBAT SCENE (D-062 CP10): the benchmark frame. Thôn Lạc Hà, the protagonist at

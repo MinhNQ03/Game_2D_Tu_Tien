@@ -1,4 +1,4 @@
-[gd_scene load_steps=37 format=3]
+[gd_scene load_steps=39 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -36,6 +36,8 @@
 [ext_resource type="Script" path="res://src/gameplay/world/props/prop_body.gd" id="pb_script"]
 [ext_resource type="Resource" path="res://data/world/props/prop_lantern_post.tres" id="pb_lantern"]
 [ext_resource type="Resource" path="res://data/world/props/prop_rock.tres" id="pb_rock"]
+[ext_resource type="Script" path="res://src/gameplay/npcs/world_npc.gd" id="60_npc"]
+[ext_resource type="Resource" path="res://data/characters/npc_scout_ko.tres" id="61_ko"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
 shader_parameter/pivot_row = 11.0
@@ -600,3 +602,12 @@ script = ExtResource("52_pickuplook")
 
 [node name="Look" type="Node2D" parent="Pickups/FieldManualLoi"]
 script = ExtResource("52_pickuplook")
+
+[node name="Interactables" type="Node2D" parent="."]
+y_sort_enabled = true
+
+[node name="KoThan" type="Node2D" parent="Interactables"]
+position = Vector2(170, 262)
+script = ExtResource("60_npc")
+character_id = &"actor_scout_ko"
+character_template = ExtResource("61_ko")

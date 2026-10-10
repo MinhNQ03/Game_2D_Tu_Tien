@@ -37,6 +37,10 @@ signal item_use_requested(item_id: StringName, equipped: bool)
 ## The player used an interactable that is not a knowledge source (Phase 16): `kind` routes it
 ## to its owner, `id` is its authored identity. The map decides nothing about what it means.
 signal interactable_used(kind: StringName, id: StringName)
+## Shop intents from the HUD's shop panel (Phase 17); `NpcRuntime` decides.
+signal shop_buy_requested(item_id: StringName)
+signal shop_sell_requested(item_id: StringName)
+signal shop_close_requested()
 ## Intent to leave the world back to the menu (same contract the sandbox/prologue used).
 signal return_to_menu_requested()
 
@@ -58,6 +62,7 @@ var _cultivation_view: CultivationView = null  # cached read-only cảnh giới 
 var _inventory_view: InventoryView = null  # cached read-only bag view (Phase 13)
 var _skill_view: SkillView = null  # cached read-only skill dock view (Phase 15)
 var _pet_view: PetView = null  # cached read-only linh thú view (Phase 16)
+var _shop_view: ShopView = null  # cached read-only shop view (Phase 17)
 ## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
 var _active_source: KnowledgeSource = null
 ## The interactable in reach (Phase 16): a stele, a stray animal, later a person. `_active_source`
@@ -302,6 +307,13 @@ func set_skill_view(view: SkillView) -> void:
 	_skill_view = view
 	if _hud != null:
 		_hud.set_skill_view(view)
+
+
+## Push the shop view (Phase 17): an open view opens the panel, a closed one closes it.
+func set_shop_view(view: ShopView) -> void:
+	_shop_view = view
+	if _hud != null:
+		_hud.set_shop_view(view)
 
 
 ## Push the linh thú view (Phase 16).
@@ -568,6 +580,11 @@ func _setup_hud() -> void:
 	add_child(_hud)
 	_hud.inventory_use_requested.connect(func(item_id: StringName, equipped: bool) -> void:
 		item_use_requested.emit(item_id, equipped))
+	_hud.shop_buy_requested.connect(func(item_id: StringName) -> void:
+		shop_buy_requested.emit(item_id))
+	_hud.shop_sell_requested.connect(func(item_id: StringName) -> void:
+		shop_sell_requested.emit(item_id))
+	_hud.shop_close_requested.connect(func() -> void: shop_close_requested.emit())
 
 
 func _refresh_hud() -> void:
@@ -583,7 +600,8 @@ func _refresh_hud() -> void:
 	if _active_exit != null:
 		_hud.set_interact_available(true)
 	elif _active_interactable != null and is_instance_valid(_active_interactable):
-		_hud.set_interact_available(true, _active_interactable.prompt_key)
+		_hud.set_interact_available(true, _active_interactable.prompt_key,
+			_active_interactable.prompt_args())
 	else:
 		_hud.set_interact_available(false)
 	# Re-apply the cached sect view so a fresh HUD (new map) still shows the player's sect.
@@ -604,6 +622,8 @@ func _refresh_hud() -> void:
 		_hud.set_skill_view(_skill_view)
 	if _pet_view != null:
 		_hud.set_pet_view(_pet_view)
+	if _shop_view != null:
+		_hud.set_shop_view(_shop_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

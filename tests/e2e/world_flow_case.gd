@@ -49,7 +49,7 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
+	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
 	&"CultivationRuntime",
 	&"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",

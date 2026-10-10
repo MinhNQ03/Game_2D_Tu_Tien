@@ -132,6 +132,26 @@ func take(item_id: StringName, count: int) -> bool:
 	return true
 
 
+## Remove `take` and add `give` ({ item_id -> count } each) as ONE all-or-nothing change of the
+## bag (a trade: coin out and goods in, or neither). False — and nothing changed, nothing
+## emitted — for an unknown id, a shortfall or a full bag. A trade is not a pickup: the party
+## that asked reports it, so only `inventory_changed` is emitted here.
+func exchange(take: Dictionary, give: Dictionary) -> bool:
+	if not _session_active:
+		return false
+	var resolved: Dictionary = {}
+	for item_id: Variant in give:
+		var item := _catalog.entry(item_id)
+		if item == null:
+			push_error("[inventory-rt] refusing an exchange giving unknown item '%s'" % item_id)
+			return false
+		resolved[item] = give[item_id]
+	if not _bag.exchange(take, resolved):
+		return false
+	inventory_changed.emit()
+	return true
+
+
 ## Use one `item_id`. Returns &"" on success, else the refusal's localization key (also emitted).
 func use(item_id: StringName) -> StringName:
 	if not _session_active:

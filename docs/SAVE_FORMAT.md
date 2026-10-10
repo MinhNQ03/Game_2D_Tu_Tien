@@ -50,7 +50,7 @@ SaveFile:
     unlocked_techniques: Array[StringName]
   inventory:
     items: Array[{ item_id, count }]
-    currency: int
+    # (no `currency` field: funds ARE the count of the currency item in `items` — D-065)
   equipment:
     slots: Dictionary { slot -> equip_id }
   skills:
@@ -63,6 +63,11 @@ SaveFile:
     # `PetStore.to_dict()` / `from_dict()` (plain data, atomic hydration, strict TYPE_INT).
     # Not saved: whether the pet is out, its health, its recall cooldown (runtime).
     # No file is written before Phase 23.
+  shops:                                      # Phase 17 (D-065)
+    schema: 1
+    stock: Dictionary { shop_id -> { item_id -> int } }   # FINITE entries only
+    # `ShopState.to_dict()` / `from_dict()`: must name exactly the finite entries the catalog
+    # authors; atomic; strict TYPE_INT. Not saved: which shop is open (runtime).
   quests:
     log: Array[{ quest_id, state, objective_progress }]
   story:

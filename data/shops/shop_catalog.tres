@@ -1,0 +1,62 @@
+[gd_resource type="Resource" script_class="ShopCatalogData" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://src/data/shops/shop_catalog_data.gd" id="1_cat"]
+[ext_resource type="Script" path="res://src/data/shops/shop_data.gd" id="2_shop"]
+[ext_resource type="Script" path="res://src/data/shops/shop_entry_data.gd" id="3_entry"]
+[ext_resource type="Resource" path="res://data/items/item_linh_thach.tres" id="4_coin"]
+[ext_resource type="Resource" path="res://data/items/item_bo_huyet_dan.tres" id="10_pill"]
+[ext_resource type="Resource" path="res://data/items/item_manual_loi.tres" id="11_loi"]
+[ext_resource type="Resource" path="res://data/items/item_manual_phong.tres" id="12_phong"]
+[ext_resource type="Resource" path="res://data/items/item_kiem_thanh_thiet.tres" id="13_kiem"]
+[ext_resource type="Resource" path="res://data/items/item_dao_bao_thanh_van.tres" id="14_bao"]
+
+[sub_resource type="Resource" id="entry_pill"]
+script = ExtResource("3_entry")
+item = ExtResource("10_pill")
+base_price = 3
+stock = -1
+buys = true
+
+[sub_resource type="Resource" id="entry_loi"]
+script = ExtResource("3_entry")
+item = ExtResource("11_loi")
+base_price = 9
+stock = 1
+buys = true
+
+[sub_resource type="Resource" id="entry_phong"]
+script = ExtResource("3_entry")
+item = ExtResource("12_phong")
+base_price = 9
+stock = 0
+buys = true
+
+[sub_resource type="Resource" id="entry_kiem"]
+script = ExtResource("3_entry")
+item = ExtResource("13_kiem")
+base_price = 14
+stock = 1
+buys = true
+
+[sub_resource type="Resource" id="entry_bao"]
+script = ExtResource("3_entry")
+item = ExtResource("14_bao")
+base_price = 10
+stock = 0
+buys = true
+
+[sub_resource type="Resource" id="shop_ko_than"]
+script = ExtResource("2_shop")
+id = &"shop_ko_than_packs"
+name_key = &"SHOP_KO_THAN_PACKS_NAME"
+keeper_id = &"actor_scout_ko"
+entries = Array[ExtResource("3_entry")]([SubResource("entry_pill"), SubResource("entry_loi"), SubResource("entry_phong"), SubResource("entry_kiem"), SubResource("entry_bao")])
+price_dimension = &"affinity"
+max_discount_percent = 20
+max_markup_percent = 30
+sell_percent = 40
+
+[resource]
+script = ExtResource("1_cat")
+currency_item = ExtResource("4_coin")
+entries = Array[ExtResource("2_shop")]([SubResource("shop_ko_than")])

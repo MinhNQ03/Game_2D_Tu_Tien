@@ -187,6 +187,25 @@ unique ids, every entry valid).
 follow; must exceed `home_arrival_radius` and stay under `leash_radius`), `home_arrival_radius`,
 `return_speed_scale` (0 = use `patrol_speed_scale`).
 
+### ShopData (`shop_*`) — IMPLEMENTED (Phase 17, D-065)
+```
+id: StringName                    # must start with "shop_"
+name_key
+keeper_id: StringName             # a character instance_id in the CharacterRegistry
+entries: Array[ShopEntryData]     # { item: ItemData, base_price: int > 0,
+                                  #   stock: int (-1 unlimited | >= 0), buys: bool }
+price_dimension: StringName       # ONE relationship dimension ("" = prices never move)
+max_discount_percent: int         # 0..90, at the dimension's maximum
+max_markup_percent: int           # 0..200, at the dimension's minimum
+sell_percent: int                 # 1..100: what the shop pays, as a share of base
+```
+`ShopCatalogData` (`data/shops/shop_catalog.tres`): `currency_item: ItemData` + the shops
+(unique ids, one shop per keeper, no shop trades the currency, no arbitrage at any standing).
+Remaining stock is NOT here — it is `ShopState` (SAVE_FORMAT `shops`).
+
+An NPC needs no schema of its own: it is a `CharacterTemplateData` realized as a
+`CharacterState`. `CharacterVisualProfileData` gained the optional `talk_sheet`.
+
 ### QuestData (`quest_*`)
 ```
 id, title_key, desc_key

@@ -65,6 +65,10 @@ const PET_SUMMON_ACTION := &"pet_summon"
 ## The player asked to use an item from the bag (Phase 13). The HUD decides nothing: MapBase
 ## forwards it to WorldRuntime → InventoryRuntime.
 signal inventory_use_requested(item_id: StringName, equipped: bool)
+## Shop intents (Phase 17). The HUD forwards what the panel asked for; `NpcRuntime` decides.
+signal shop_buy_requested(item_id: StringName)
+signal shop_sell_requested(item_id: StringName)
+signal shop_close_requested()
 
 ## Side of the small sect emblem chip in the identity panel. HUD-local: nothing else in the
 ## UI draws a chip this size, so it stays here rather than widening the shared palette.
@@ -183,6 +187,11 @@ var _faction_panel: FactionPanel
 # input context so the move keys choose a row instead of walking the player.
 var _inventory_panel: InventoryPanel
 var _inventory_modal: bool = false
+## The shop (Phase 17): shown while a `ShopView` says a shop is open; holds a UI_MODAL context.
+var _shop_panel: ShopPanel
+var _shop_modal: bool = false
+## Arguments of the interact prompt's text (a person's prompt names them).
+var _interact_label_args: Dictionary = {}
 # The skill dock (Phase 15): bottom-centre (D-062), hidden until a technique is learned.
 var _skill_dock: SkillDock
 var _politics_view: SectPoliticsView = null  # read-only politics view; may be null
@@ -204,6 +213,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	close_inventory()
+	_hide_shop()
 	# Stop the level-up celebration before the HUD leaves the tree. A map transition or a
 	# return to the menu can land mid-effect, and an effect still decaying toward a colour on
 	# a node that is being freed is writing `modulate` on a dangling target.
@@ -685,6 +695,20 @@ func _build_ui() -> void:
 		inventory_use_requested.emit(item_id, equipped))
 	root.add_child(_inventory_panel)
 
+	# The shop (Phase 17): one reading surface at a time, in the side-panel frame. On the RIGHT:
+	# the keeper stands beside the player, and a camera clamped at a map edge puts them left
+	# of centre as often as not — the right column is the one that never covers the two people
+	# who are talking (seen in the first capture, where a left panel hid the keeper).
+	_shop_panel = ShopPanel.new()
+	_shop_panel.name = "ShopPanel"
+	_bound_side_panel(_shop_panel, false)
+	_shop_panel.visible = false
+	_shop_panel.buy_requested.connect(func(item_id: StringName) -> void:
+		shop_buy_requested.emit(item_id))
+	_shop_panel.sell_requested.connect(func(item_id: StringName) -> void:
+		shop_sell_requested.emit(item_id))
+	root.add_child(_shop_panel)
+
 	# The technique dock sits BOTTOM-CENTRE (D-062): the composition every action game reads —
 	# the player's hands are under the player. It is below the playfield's clear zone and
 	# below the announcement band, so it never covers the fight or a notice.
@@ -1009,11 +1033,13 @@ func set_map_name(name_key: StringName) -> void:
 
 ## Whether the player can currently interact with an exit (drives the interact prompt).
 func set_interact_available(available: bool,
-		label_key: StringName = &"UI_HUD_INTERACT_ACTION") -> void:
-	if _interact_available == available and _interact_label_key == label_key:
+		label_key: StringName = &"UI_HUD_INTERACT_ACTION", label_args: Dictionary = {}) -> void:
+	if _interact_available == available and _interact_label_key == label_key \
+			and _interact_label_args == label_args:
 		return
 	_interact_available = available
 	_interact_label_key = label_key
+	_interact_label_args = label_args.duplicate()
 	_refresh()
 
 
@@ -1340,6 +1366,15 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _input == null:
 		return
 	var handled := false
+	# The shop owns the keys while it is open: Esc ASKS to close it (never leaves the game),
+	# and nothing else here reacts until the shop's owner has closed it.
+	if _shop_modal:
+		if _input.call("is_system_action_just_pressed", &"open_menu"):
+			shop_close_requested.emit()
+			var shop_vp := get_viewport()
+			if shop_vp != null:
+				shop_vp.set_input_as_handled()
+		return
 	# The bag toggles in BOTH contexts: opened from the world (gameplay), closed from itself
 	# (modal) — or with Esc, which must close the panel rather than leave the game.
 	if _inventory_modal and (_input.call("is_modal_action_just_pressed", INVENTORY_ACTION)
@@ -1371,6 +1406,9 @@ func _close_side_panels() -> void:
 	if _faction_panel != null:
 		_faction_panel.visible = false
 	close_inventory()
+	# A fight ends a conversation: ask the shop's owner to close it.
+	if _shop_modal:
+		shop_close_requested.emit()
 
 
 ## Open the bag: one reading surface at a time (the other side panels close), and the input
@@ -1411,6 +1449,49 @@ func inventory_panel() -> InventoryPanel:
 func set_skill_view(view: SkillView) -> void:
 	if _skill_dock != null:
 		_skill_dock.set_view(view)
+
+
+## Push the shop view (Phase 17). The view is the authority on whether a shop is open: an open
+## view shows the panel and takes a UI_MODAL context (the move keys choose rows instead of
+## walking); a closed one hides it and gives the context back. Idempotent both ways.
+func set_shop_view(view: ShopView) -> void:
+	if _shop_panel == null:
+		return
+	_shop_panel.set_view(view)
+	if view != null and view.open:
+		_show_shop()
+	else:
+		_hide_shop()
+
+
+func _show_shop() -> void:
+	if _shop_panel.visible:
+		return
+	_close_side_panels()
+	_shop_panel.visible = true
+	_shop_panel.set_process(true)
+	if _input != null and not _shop_modal:
+		_input.call("push_modal_context")
+		_shop_modal = true
+	_refresh_prompts()
+
+
+func _hide_shop() -> void:
+	if _shop_panel != null:
+		_shop_panel.visible = false
+		_shop_panel.set_process(false)
+	if _input != null and _shop_modal:
+		_input.call("pop_context")
+		_shop_modal = false
+		_refresh_prompts()
+
+
+func is_shop_open() -> bool:
+	return _shop_panel != null and _shop_panel.visible
+
+
+func shop_panel() -> ShopPanel:
+	return _shop_panel
 
 
 ## Push the linh thú view (Phase 16), event-driven from the pet runtime.
@@ -1575,10 +1656,11 @@ func _refresh_prompts() -> void:
 	if _attack_row != null:
 		var attack_key := _display_label(ATTACK_ACTION)
 		_attack_row.set_prompt(attack_key, _text("UI_HUD_ATTACK_ACTION"))
-	_interact_row.visible = _interact_available
-	if _interact_available:
+	# Not while the shop holds the keys: `interact` trades there, and the panel says so itself.
+	_interact_row.visible = _interact_available and not _shop_modal
+	if _interact_row.visible:
 		var interact_key := _display_label(INTERACT_ACTION)
-		_interact_row.set_prompt(interact_key, _text(String(_interact_label_key)))
+		_interact_row.set_prompt(interact_key, _interact_text())
 	_refresh_cultivate_prompt()
 	_refresh_pet_prompt()
 	# Sect panel prompt: always available (the player can always inspect their sect, §19).
@@ -1590,6 +1672,22 @@ func _refresh_prompts() -> void:
 	if _faction_row != null:
 		var faction_key := _display_label(FACTION_PANEL_ACTION)
 		_faction_row.set_prompt(faction_key, _text("UI_FACTION_PANEL_TOGGLE"))
+
+
+## The interact prompt's text: the verb, naming its target when the interactable gives one
+## ("Talk to Kha Thản"). A `StringName` argument is a localization key, resolved here.
+func _interact_text() -> String:
+	if _interact_label_args.is_empty():
+		return _text(String(_interact_label_key))
+	var args := _interact_label_args.duplicate()
+	for k: Variant in args:
+		if typeof(args[k]) == TYPE_STRING_NAME:
+			args[k] = _resolve(args[k])
+	return _text_args(String(_interact_label_key), args)
+
+
+func interact_prompt_text() -> String:
+	return _interact_text() if _interact_available else ""
 
 
 ## The cultivate prompt's verb is what the key will do NOW: sit down at a vein, break through on

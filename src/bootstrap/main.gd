@@ -71,6 +71,7 @@ const INVENTORY_RUNTIME_SCRIPT := "res://src/gameplay/world/inventory_runtime.gd
 const EQUIPMENT_RUNTIME_SCRIPT := "res://src/gameplay/world/equipment_runtime.gd"
 const SKILL_RUNTIME_SCRIPT := "res://src/gameplay/world/skill_runtime.gd"
 const PET_RUNTIME_SCRIPT := "res://src/gameplay/world/pet_runtime.gd"
+const NPC_RUNTIME_SCRIPT := "res://src/gameplay/world/npc_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -115,7 +116,7 @@ const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
 	&"WorldSimulationRuntime", &"CombatRuntime", &"ProgressionRuntime",
 	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime", &"EquipmentRuntime",
-	&"SkillRuntime", &"PetRuntime",
+	&"SkillRuntime", &"PetRuntime", &"NpcRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -156,6 +157,9 @@ var _skills: Node = null
 # PetRuntime (Phase 16): parents a body into the world's map and arms it through combat, so it
 # starts after both — and ends first, freeing that body while both still exist.
 var _pets: Node = null
+# NpcRuntime (Phase 17): binds people in the world's map to the registry's characters and
+# trades through the inventory, priced by the relationship graph — after all three.
+var _npcs: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -244,6 +248,7 @@ func _boot() -> void:
 	_equipment = _create_runtime(EQUIPMENT_RUNTIME_SCRIPT, "EquipmentRuntime")
 	_skills = _create_runtime(SKILL_RUNTIME_SCRIPT, "SkillRuntime")
 	_pets = _create_runtime(PET_RUNTIME_SCRIPT, "PetRuntime")
+	_npcs = _create_runtime(NPC_RUNTIME_SCRIPT, "NpcRuntime")
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -606,6 +611,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _skills
 		&"PetRuntime":
 			return _pets
+		&"NpcRuntime":
+			return _npcs
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -919,6 +926,11 @@ func _start_cultivation_sessions() -> bool:
 		return false
 	if _world.has_method("refresh_active_map_pet_view"):
 		_world.call("refresh_active_map_pet_view")
+	if _npcs == null or not bool(_npcs.call("start_session", _world, _inventory,
+			_relationship)):
+		return false
+	if _world.has_method("refresh_active_map_shop_view"):
+		_world.call("refresh_active_map_shop_view")
 	return true
 
 

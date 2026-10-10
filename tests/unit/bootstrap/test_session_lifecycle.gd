@@ -32,7 +32,8 @@ const MAIN_SOURCE_PATH := "res://src/bootstrap/main.gd"
 ## The frozen teardown order, written out as a literal rather than derived, so this file says
 ## what the contract IS instead of only saying "the reverse of whatever start happens to be".
 const EXPECTED_TEARDOWN := [
-	&"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime", &"CultivationRuntime",
+	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
+	&"CultivationRuntime",
 	&"KnowledgeRuntime",
 	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
@@ -54,6 +55,7 @@ const SUBSYSTEM_SCRIPTS := {
 	"EquipmentRuntime": "res://src/gameplay/world/equipment_runtime.gd",
 	"SkillRuntime": "res://src/gameplay/world/skill_runtime.gd",
 	"PetRuntime": "res://src/gameplay/world/pet_runtime.gd",
+	"NpcRuntime": "res://src/gameplay/world/npc_runtime.gd",
 }
 
 ## How the bootstrap actually ends a session: the runtimes are duck-typed (`Node`-typed
@@ -67,9 +69,13 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 13, "thirteen per-session subsystems (got %s)" % str(order))
+	assert_eq(order.size(), 14, "fourteen per-session subsystems (got %s)" % str(order))
+	assert_eq(order[13], &"NpcRuntime",
+		"people and shops are LAST: they bind bodies in the world's map to the registry's "
+		+ "characters, trade through the inventory and price by the relationship graph "
+		+ "(Phase 17)")
 	assert_eq(order[12], &"PetRuntime",
-		"the linh thú is LAST: its body is parented into the world's map and armed through "
+		"the linh thú follows skills: its body is parented into the world's map and armed through "
 		+ "combat, so it starts after both and is freed first (Phase 16)")
 	assert_eq(order[0], &"WorldRuntime",
 		"the world session is first: it owns the character registry everything else resolves "

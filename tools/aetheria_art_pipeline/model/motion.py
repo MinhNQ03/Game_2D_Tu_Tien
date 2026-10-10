@@ -322,7 +322,37 @@ def meditate(spec, f):
     return p
 
 
+# --- TALK: a greeting — the hand lifts, opens toward the other person, and comes down ----------
+# A conversational gesture, NOT a strike: no step, no twist, no reach past the body. The weight
+# stays where the idle has it; only the near arm, a small nod and the breath move. One-shot,
+# clocked by whoever is being spoken to (Phase 17).
+
+_TALK = (
+    # R(swing, elbow, wrist, out), head nod, chest lean, hair back
+    ((-10.0, -30.0, 0.0, 2.0), 0.0, 0.5, 0.0),
+    ((-34.0, -84.0, -18.0, 8.0), 2.0, 1.5, 1.0),
+    ((-46.0, -104.0, -30.0, 14.0), 5.0, 2.5, 2.0),
+    ((-44.0, -98.0, -10.0, 20.0), 7.0, 3.0, 2.5),
+    ((-30.0, -72.0, -8.0, 10.0), 3.0, 1.5, 1.0),
+    ((-8.0, -22.0, 0.0, 3.0), 0.0, 0.5, 0.0),
+)
+
+
+def talk(spec, f):
+    p = _pose()
+    r, nod, lean, hair = _TALK[f]
+    p["lift"] = 0.3 * lean
+    _legs(spec, p, (0.6, 0.0), (-0.6, 0.0))
+    _arm(p, "R", swing=r[0], elbow=r[1], wrist=r[2], out=r[3])
+    _arm(p, "L", swing=-4.0, elbow=-4.0)
+    _set(p, "chest", rx(lean))
+    _set(p, "head", rx(nod))
+    _hair(p, hair, 0.0)
+    return p
+
+
 ANIMATIONS = {
+    "talk": talk,
     "idle": idle,
     "walk": walk,
     "attack": attack,

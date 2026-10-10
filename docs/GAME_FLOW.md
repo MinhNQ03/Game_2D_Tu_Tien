@@ -594,3 +594,22 @@ pet falls:  withdraws, can be called again after recall_seconds
 owner falls / return to menu: body freed; PetRuntime is the first session ended
 ```
 No new game phase, no new screen, no modal context.
+
+## Phase 17 note (D-065) — people and shops, one modal branch
+
+```
+field map: walk within reach of Kha Thản (WorldNpc, bound to his CharacterState)
+   └─ HUD interact prompt names him: "Gặp Kha Thản"
+        └─ interact → MapBase.interactable_used(&"npc", id) → WorldRuntime → NpcRuntime.interact
+             ├─ range re-validated; he turns and gestures (ACTION_TALK)
+             ├─ keeps no shop → a HUD line; nothing else
+             └─ keeps a shop  → ShopView(open) → HUD shows ShopPanel, input context UI_MODAL
+                    ├─ move_up / move_down: choose a row    move_left / move_right: Buy / Sell
+                    ├─ interact: request ONE → NpcRuntime.buy / sell
+                    │     plan (no mutation) → InventoryRuntime.exchange (all-or-nothing)
+                    │     → stock committed → new view + HUD result  |  refusal: reason, no change
+                    └─ Esc: request close → NpcRuntime.close_shop → ShopView(closed)
+                          → panel hidden, context popped, gameplay input restored
+a fight starting or a map change closes the shop the same way
+```
+No new game phase. Esc with a shop open never returns to the menu.

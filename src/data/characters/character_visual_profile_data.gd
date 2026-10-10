@@ -40,6 +40,7 @@ const ANIM_CAST := &"cast"
 ## The sword cut (D-063 A3): the same attack lifecycle as `ANIM_ATTACK`, a different body —
 ## coil → cut → follow-through → guard, drawn only for sword-wielding looks.
 const ANIM_SLASH := &"slash"
+const ANIM_TALK := &"talk"
 
 ## The shared anchor vocabulary (`CharacterAnchorData`): the striking point, the core, and
 ## the sword tip (D-063 A3).
@@ -83,6 +84,11 @@ const POINT_BLADE := &"blade"
 ## gathered at the chest, raised and held, the arm driven out, the settle. The cast presentation
 ## maps PREPARE / CHANNEL / RELEASE / RECOVER onto its quarters, whatever each phase's duration.
 @export var cast_sheet: Texture2D = null
+
+## The TALK sheet (OPTIONAL, Phase 17): a short conversational gesture — a hand lifted in
+## greeting and lowered — played as a one-shot `talk` action when the character is spoken to.
+## Same grid as every other sheet. A look without it keeps its idle when spoken to.
+@export var talk_sheet: Texture2D = null
 
 ## The SWORD-CUT sheet (OPTIONAL, D-063 A3): the same GRID layout as the attack sheet — one
 ## row per direction, N animation columns — played as the one-shot body of a `slash`
@@ -160,6 +166,8 @@ func validation_errors() -> Array[String]:
 		errors.append_array(_sheet_errors("cast_sheet", cast_sheet))
 	if slash_sheet != null:
 		errors.append_array(_sheet_errors("slash_sheet", slash_sheet))
+	if talk_sheet != null:
+		errors.append_array(_sheet_errors("talk_sheet", talk_sheet))
 	if stride_px < 0.0:
 		errors.append("stride_px must be >= 0 (got %f)" % stride_px)
 	var walk_frames := frame_count_of(walk_sheet)
@@ -212,6 +220,8 @@ func sheet_for_anim(anim: StringName) -> Texture2D:
 			return cast_sheet
 		ANIM_SLASH:
 			return slash_sheet
+		ANIM_TALK:
+			return talk_sheet
 		_:
 			return null
 
