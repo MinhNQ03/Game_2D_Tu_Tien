@@ -5157,3 +5157,193 @@ when the shop closes) — each turns a test red. The re-entrancy test was writte
 against the unfixed runtime first (two `SCRIPT ERROR`s and a failed assertion). Real-window
 frames of the conversation at `vi` and `en` × 1280×720 and 1280×800, opened and judged; sizes
 are those of the files written (`docs/handoff/post-phase-18-closure.md`).
+
+---
+
+## D-070 — Phase 19: who owns a quest, the ONE reward ledger, and what a turn-in commits
+
+**Status:** DECIDED before any Phase-19 state-changing code (Gate A + Gate B). Implementation
+status, commits and the exact-SHA CI runs: `docs/handoff/phase-19-quest.md`.
+
+### Gate A — the experience this phase builds
+
+**The player's situation.** New Game puts a nobody on the plaza of Thôn Lạc Hà with a stele, a
+spring, an elder and a road east. Until now nothing on screen said what to do (audit AUD-10).
+After this phase the place plaque carries one line of purpose, and the two people who already
+stand in the world each have something they need.
+
+**Canon position.** These are prologue beats 5–6 (`NARRATIVE_MASTER_PLAN.md` §5): "a local,
+mundane, solvable task" and "choose who to help". Reveal-ladder layer 0 — nothing is wrong
+yet that anyone can name. Nothing here mentions Đêm Vỡ Mạch, a cause, an actor or a survey;
+the vein is "unquiet", which is what the stele has said since Phase 12. No new person, creature,
+prop, map, item, knowledge id, realm or faction is authored.
+
+**Quest 1 — `quest_unquiet_vein`, "Mạch rừng không yên" (Mystery; exploration + combat, or
+exploration + investigation).**
+- *Source and motive:* Thẩm Bất Kỳ keeps the Terrace's first precept — nobody unopened sits
+  over a restless vein — and the stele's warning about the woods is old. Vụ Lang have been seen
+  at the vein's edge. He must know whether they have SETTLED on it before he lets the
+  village's people cross, and an elder does not leave the forecourt he keeps.
+- *Why this player:* they read the stele and could say what it records (the existing gate on
+  his respect). He offers nothing to someone who has not read.
+- *Objective (one of two ways):* put a Vụ Lang down at the vein and see for yourself — or
+  learn it from the man who watches them (`know_vu_lang_hunting_ground`, which Kha Thản
+  already teaches). The knowledge route spares the fight: that is the knowledge-gated
+  alternate, and it is the Knowledge Core that answers, never a flag.
+- *Return:* tell the elder. *Reward:* two Bổ Huyết Đan from the hall's store (the hall issues
+  them — the same pills that lie on its steps), 10 XP, and his respect (+10).
+- *Consequence:* his regard is the relationship graph's; the pills are what quest 2 needs.
+
+**Quest 2 — `quest_treeline_pills`, "Thuốc cho người gác bìa rừng" (Relationship; exploration
++ resource management).**
+- *Source and motive:* Kha Thản stands where the road enters the woods and cannot leave the
+  crossing. What he sells is his wage; the pills the village owes its treeline watch have not
+  come.
+- *Why this player:* "from Lạc Hà" — his first words to them — and walking back anyway.
+- *Objective:* bring two Bổ Huyết Đan. They are the same pills that heal the player: carrying
+  them through wolf country instead of swallowing them is the decision.
+- *Return:* hand them over (they leave the bag). *Reward:* three Linh Thạch — he is "paid what
+  the risk is worth" and pays the same way — and his affinity (+15), which the shop already
+  prices on.
+- No arbitrage: two pills cost 6 from his own stock at base price; the quest pays 3, once.
+
+**Journeys.** Discover (plaque line → the person) → hear the ask → accept, or decline and
+leave it offered → the plaque and the journal state the objective → act in the world →
+progress and readiness are announced → return → an explicit turn-in choice → reward, or a
+refusal that says why and keeps everything → the quest is closed. Abandon: ask the giver,
+confirm, progress is discarded, the offer stands again. Interruption (Esc, a wolf, a map
+change, the session ending) closes surfaces and loses nothing.
+
+**Placement.** No placement changes. Every required thing already has its recorded reason
+(D-067 placement record): the elder, the stele, the hall steps' pills, the scout at the road
+in, the dens off the road. The plaque line is orientation ("where, when, toward what") and
+lives in the place plaque; it is not a tracker widget (`XIANXIA_IDENTITY_CONTRACT.md` R-13)
+and the game gains no marker over anyone's head.
+
+**Must not regress:** movement and exits, combat and defeat, knowledge, relationship, the
+existing conversations and the shop, the satchel, the companion, Esc / leave, teardown.
+
+### Gate B — owners
+
+| State | Owner | Tier |
+|---|---|---|
+| which quests are active / owed a reward / completed; per-objective progress | `QuestState`, mutated only by `QuestService` | persistent |
+| which rewards have been paid | `RewardLedger`, mutated only by `RewardService` | persistent |
+| authored requirements and rewards | `QuestData` / `RewardData` resources | content |
+| session wiring, announcements of readiness | `QuestRuntime`, `RewardRuntime` | runtime |
+| the journal and the plaque line | `QuestJournalView` built from the owner | presentation |
+
+Not stored anywhere else: no story flag, no `CharacterState.story_flags`, no dialogue flag,
+no HUD boolean. "Ready to turn in" is DERIVED from the owners every time it is asked (the
+Knowledge Core, the bag, the quest's own defeat count) — the bag can lose a pill, so a stored
+"ready" would lie.
+
+**Lifecycle.**
+
+```
+            accept                 objectives met (derived)            turn_in
+AVAILABLE ─────────► ACTIVE ─────────────────────────────► READY ─────────────► COMPLETED
+    ▲                  │  ▲                                  │   reward refused: stays READY
+    └──── abandon ─────┘  └──── an objective un-met again ───┘   (nothing was paid or taken)
+                                                             │
+                                             a part failed AFTER the bag moved
+                                                             ▼
+                                                      REWARD_OWED ──turn_in──► COMPLETED
+```
+
+AVAILABLE is the absence of a record. A quest completes once per session-world; it is never
+offered again. Abandon is legal only while ACTIVE or READY, discards progress, and returns
+the quest to AVAILABLE. Declining mutates nothing.
+
+**Objective kinds (closed):** `KNOW` (the Knowledge Core holds an id — state, so knowledge
+gained BEFORE accepting counts), `HOLD_ITEM` (the bag holds N — state; taken at turn-in when
+the objective says so), `DEFEAT` (N creatures of an authored kind — events, counted only
+while the quest is active, each per-spawn id once). A quest completes on ALL of its
+objectives or on ANY one of them, as authored. Nothing else exists until content needs it.
+
+### The reward ledger — one owner
+
+**Owner:** `RewardLedger` (domain, node-free), one per session, held by `RewardRuntime`. It is
+the ONLY record of "this has been paid". `ProgressionRuntime._granted` is deleted: the
+XP-per-defeat guard claims the per-spawn reward id in the same ledger.
+
+**Ids.** Stable, non-empty, minted by the source:
+- a defeat: the per-spawn id `CombatRuntime` already mints (`enemy_mist_wolf_1#3`). A
+  re-cleared map mints new ids and pays again — unchanged;
+- a quest: `quest:<quest_id>`. A quest pays once, ever;
+- (Phase 21) a drop or a container: `<source kind>:<instance id>` — the seam is the id and a
+  `RewardData`; no quest code is involved.
+An empty id is refused loudly and touches nothing (D-055's rule, kept).
+
+**Delivery (`RewardService.deliver`).** A reward is at most three PARTS, each paid by its
+owner: the bag (`InventoryRuntime.exchange` — items in, and anything the turn-in takes out, as
+ONE all-or-nothing change), XP (`ProgressionService.grant_xp`), regard
+(`RelationshipService.apply_delta`). The honest contract:
+
+1. The bag part goes FIRST. It is the only part an owner can legitimately refuse (a full
+   bag, a pill no longer held). Refused → nothing is recorded, nothing was paid, nothing was
+   taken; the quest stays READY and the refusal says why.
+2. Each part that its owner accepts is recorded in the ledger as `<id>/<part>` at once.
+3. When every part is recorded the id itself is recorded, and the caller may mark the source
+   complete.
+4. If a later part fails after the bag moved (not reachable with validated content; reachable
+   in a test), the quest becomes REWARD_OWED: the taken items are not asked for again, and a
+   repeated turn-in pays ONLY the unrecorded parts.
+
+This is not a rollback and does not claim to be: it is ordered, idempotent, resumable
+delivery. A part is never recorded before its owner accepted it, and never paid twice.
+Re-entrancy (a listener submitting the same turn-in while it is being paid) is refused by an
+in-flight guard.
+
+**The defeat path keeps its own, older rule on the same ledger:** the id is claimed BEFORE
+the XP grant, and a refused grant is not retried (a creature killed at the level ceiling must
+not be re-attempted forever — D-054). That is a single-owner reward with no retry; it is
+documented as such, not unified by force.
+
+### What "serialize mid-quest" builds (resolves D-069 §4 in code)
+
+`QuestState.to_dict()/from_dict()` and `RewardLedger.to_dict()/from_dict()`: plain data, a
+`schema` number, strict types, validated against the catalog, atomic. A test round-trips a
+quest that is active with partial progress and proves a completed quest cannot be paid again
+after the round trip. `SAVE_FORMAT.md` gains the two blocks as the shapes Phase 23 will write.
+**No file, no `SaveService`, no slot, no Continue.** Not persisted: the open conversation, the
+open journal, which readiness was already announced.
+
+### Dialogue stays the one conversation surface (D-066's closed set grows by kind)
+
+- Condition `QUEST_PHASE` (quest id + AVAILABLE / ACTIVE / READY / COMPLETED), answered by
+  `QuestService`.
+- Effects `QUEST_ACCEPT`, `QUEST_TURN_IN`, `QUEST_ABANDON` (payload: a quest id), carried out
+  by `QuestRuntime` through the Callable `DialogueService.choose` is given — exactly how a
+  knowledge grant already reaches `KnowledgeRuntime`. One effect per choice stands.
+- A refused quest operation refuses the CHOICE with the quest's own reason: the conversation
+  does not move, no success is announced.
+- Content is checked at session start: the quest exists; accept and abandon are spoken by its
+  giver, turn-in by its receiver; a `QUEST_TURN_IN` choice is conditioned on READY.
+- Declining is a choice with no effect. Abandoning is a second, explicit choice after a line
+  that says what will be lost.
+
+### Session order
+
+`RewardRuntime` starts before `ProgressionRuntime` (which claims in its ledger) and needs
+nothing. `QuestRuntime` starts after everything it pays through or listens to (knowledge,
+inventory, combat, progression, relationship, rewards, people) and BEFORE `DialogueRuntime`,
+which dispatches into it. Teardown is the reverse: Dialogue first, then Quest.
+
+### CLV-01
+
+Phase 19 adds no shop, no keeper and does not change `NpcRuntime.start_session`'s content
+checks. CLV-01 stays open with its owner and its no-later-than-Phase-21 criterion
+(`docs/handoff/post-phase-18-closure.md` §6).
+
+### Rejected
+
+- *Quest completion as a story flag* — Phase 20 owns flags; a flag would be a second answer.
+- *A stored READY state* — the bag can change under it.
+- *A `QuestPopup`, or accept from the journal* — a second conversation surface, and a fifth
+  hand-copied modal (AUD-15).
+- *A persistent tracker box / "!" markers* — `XIANXIA_IDENTITY_CONTRACT.md` R-13, P19 row.
+- *Keeping `_granted` beside a quest ledger* — two authorities with different keys (AUD-12).
+- *Claiming rollback across owners* — no such mechanism exists; ordered idempotent parts do.
+- *New content to make the quests easier to build* (a clue prop, a third NPC, a quest item):
+  the world already holds everything both tasks are about.

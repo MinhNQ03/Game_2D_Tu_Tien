@@ -636,6 +636,12 @@ and every later phase are NOT STARTED.**
 - *Evidence:* a real-input E2E from offer to reward including decline and a full bag; a
   knowledge-gated alternate solution; vi/en at two aspect ratios.
 - *Non-goals:* story flags and chapters (20); loot tables (21); save files (23).
+- *Refined at Gate A (D-070, no line dropped):* the two shipped journeys are
+  `quest_unquiet_vein` (Thẩm Bất Kỳ: have the Vụ Lang settled on the woods' vein? — fight one
+  or learn it from the scout) and `quest_treeline_pills` (Kha Thản: the village's two pills).
+  The reward ledger is `RewardLedger` (one per session, `RewardRuntime`), shared with the
+  XP-per-defeat guard today and with drops in Phase 21. The purpose line lives in the place
+  plaque; the journal is a non-modal side panel on `quest_journal`.
 
 **Phase 20 — Story**
 - *Promise:* what I did earlier changes what the world and its people do now, and I can tell why.
