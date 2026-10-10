@@ -53,8 +53,8 @@ const EXPECTED_TEARDOWN_ORDER := [
 	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
 	&"CultivationRuntime",
 	&"KnowledgeRuntime",
-	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
-	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
+	&"ProgressionRuntime", &"RewardRuntime", &"CombatRuntime", &"WorldSimulationRuntime",
+	&"FactionRuntime", &"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
 
 

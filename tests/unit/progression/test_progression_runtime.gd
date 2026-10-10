@@ -48,6 +48,8 @@ func _ceiling_xp() -> int:
 var _runtime: Node = null
 var _combat: Node = null
 var _character: CharacterState = null
+## The session's one reward ledger (D-070), as `RewardRuntime` would hand it over.
+var _ledger: RewardLedger = null
 
 ## Signal captures.
 var _xp_events: Array = []
@@ -64,6 +66,7 @@ func before_each() -> void:
 	_runtime.name = "ProgressionRuntime"
 	_runtime.set_script(RuntimeScript)
 	_character = _build_character()
+	_ledger = RewardLedger.new()
 
 
 func after_each() -> void:
@@ -92,7 +95,7 @@ func _build_character() -> CharacterState:
 
 
 func _start() -> bool:
-	return bool(_runtime.call("start_session", _character, _combat))
+	return bool(_runtime.call("start_session", _character, _combat, _ledger))
 
 
 func _listen() -> void:
@@ -119,7 +122,7 @@ func test_a_valid_start_becomes_observable_all_at_once() -> void:
 
 
 func test_a_start_without_a_character_leaves_nothing_observable() -> void:
-	assert_false(bool(_runtime.call("start_session", null, _combat)),
+	assert_false(bool(_runtime.call("start_session", null, _combat, _ledger)),
 		"a start with no progression subject is refused")
 	assert_false(bool(_runtime.call("is_session_active")), "no session is active")
 	assert_null(_runtime.call("get_service"), "no service was committed")
@@ -130,7 +133,7 @@ func test_a_start_without_a_character_leaves_nothing_observable() -> void:
 
 
 func test_a_start_without_a_combat_publisher_is_refused() -> void:
-	assert_false(bool(_runtime.call("start_session", _character, null)),
+	assert_false(bool(_runtime.call("start_session", _character, null, _ledger)),
 		"with no publisher, no defeat could ever fund XP, so the session is refused")
 	assert_false(bool(_runtime.call("is_session_active")), "nothing observable")
 
@@ -139,7 +142,7 @@ func test_a_publisher_without_the_defeat_signal_is_refused() -> void:
 	# A plain Node has no `enemy_defeated`. Connecting optimistically and discovering the gap
 	# at the first kill would look like a balance problem rather than a wiring failure.
 	var wrong := Node.new()
-	assert_false(bool(_runtime.call("start_session", _character, wrong)),
+	assert_false(bool(_runtime.call("start_session", _character, wrong, _ledger)),
 		"a publisher missing the signal is refused at start")
 	assert_false(bool(_runtime.call("is_session_active")), "nothing observable")
 	free_node(wrong)
@@ -395,3 +398,47 @@ func test_a_negative_reward_mutates_nothing_but_is_still_settled() -> void:
 	assert_eq(_xp_events.size(), 0, "and publishes nothing")
 	assert_eq(int(_runtime.call("granted_count")), 1,
 		"but the defeat is recorded as settled, so a replayed delivery does not re-attempt it")
+
+
+# --- The shared reward ledger (Phase 19, D-070) ---------------------------------------
+
+func test_the_defeat_guard_is_the_shared_ledger_and_nothing_else() -> void:
+	assert_true(_start(), "session")
+	_listen()
+	# An id some OTHER source already recorded in the ledger is paid by nobody again.
+	assert_true(_ledger.claim(&"enemy_wolf_1#1"), "recorded elsewhere first")
+	_runtime.call("grant_for_defeat", &"enemy_wolf_1#1", 5)
+	assert_eq(_character.xp, 0, "the runtime asked the ledger, and paid nothing")
+	assert_eq(_xp_events.size(), 0, "and announced nothing")
+	_runtime.call("grant_for_defeat", &"enemy_wolf_1#2", 5)
+	assert_eq(_character.xp, 5, "a new id pays")
+	assert_true(_ledger.has(&"enemy_wolf_1#2"), "and is recorded in the SHARED ledger")
+	assert_eq(_ledger.count(), 2, "which holds exactly the two ids")
+	assert_false(_runtime.get_script().get_script_property_list().any(
+		func(property: Dictionary) -> bool: return property["name"] == "_granted"),
+		"the runtime keeps no private ledger of its own any more")
+
+
+func test_no_ledger_refuses_the_session() -> void:
+	assert_false(bool(_runtime.call("start_session", _character, _combat)),
+		"a progression session with no ledger is refused, not given a private one")
+	assert_false(bool(_runtime.call("is_session_active")), "no half-session")
+	assert_false(_combat.is_connected("enemy_defeated", Callable(_runtime, "grant_for_defeat")),
+		"and nothing was connected")
+
+
+func test_a_reward_from_another_source_is_paid_without_touching_the_ledger() -> void:
+	assert_false(bool(_runtime.call("grant_reward", 7, &"quest:quest_x")),
+		"no session: not handled")
+	assert_true(_start(), "session")
+	_listen()
+	assert_true(bool(_runtime.call("grant_reward", 7, &"quest:quest_x")), "handled")
+	assert_eq(_character.xp, 7, "the XP is the character's")
+	assert_eq(_xp_events, [{"amount": 7, "id": &"quest:quest_x"}],
+		"announced with the source that paid it")
+	assert_eq(_ledger.count(), 0, "recording that part is RewardService's, not this runtime's")
+	assert_eq(int(_runtime.call("granted_count")), 0, "and it is not a defeat")
+	assert_false(bool(_runtime.call("grant_reward", 0, &"quest:quest_x")), "nothing to pay")
+	assert_false(bool(_runtime.call("grant_reward", 7, &"")), "an unnamed source is refused")
+	assert_eq(_character.xp, 7, "neither changed anything")
+

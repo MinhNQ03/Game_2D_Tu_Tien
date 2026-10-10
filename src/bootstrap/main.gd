@@ -64,6 +64,7 @@ const FACTION_RUNTIME_SCRIPT := "res://src/gameplay/world/faction_runtime.gd"
 ## relationship graph. It is therefore ended FIRST on every teardown.
 const WORLD_SIM_RUNTIME_SCRIPT := "res://src/gameplay/world/world_sim_runtime.gd"
 const COMBAT_RUNTIME_SCRIPT := "res://src/gameplay/world/combat_runtime.gd"
+const REWARD_RUNTIME_SCRIPT := "res://src/gameplay/world/reward_runtime.gd"
 const PROGRESSION_RUNTIME_SCRIPT := "res://src/gameplay/world/progression_runtime.gd"
 const KNOWLEDGE_RUNTIME_SCRIPT := "res://src/gameplay/world/knowledge_runtime.gd"
 const CULTIVATION_RUNTIME_SCRIPT := "res://src/gameplay/world/cultivation_runtime.gd"
@@ -113,9 +114,12 @@ const REQUIRED_AUTOLOADS := [
 ## session) and LISTENS to `CombatRuntime.enemy_defeated`. Starting last means ending FIRST,
 ## so it disconnects from the signal before its emitter is torn down and stops being able to
 ## grant XP into a `CharacterState` the world session is in the middle of freeing.
+## RewardRuntime (Phase 19, D-070) holds the session's ONE reward ledger. It needs nothing,
+## and it sits immediately before the first runtime that pays — ProgressionRuntime, which
+## claims each defeat in that ledger — so it ends after every runtime that records a payment.
 const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
-	&"WorldSimulationRuntime", &"CombatRuntime", &"ProgressionRuntime",
+	&"WorldSimulationRuntime", &"CombatRuntime", &"RewardRuntime", &"ProgressionRuntime",
 	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime", &"EquipmentRuntime",
 	&"SkillRuntime", &"PetRuntime", &"NpcRuntime", &"DialogueRuntime",
 ]
@@ -140,6 +144,8 @@ var _world_sim: Node = null
 # (Phase 09).
 var _combat: Node = null
 
+# RewardRuntime (Phase 19): the session's one reward ledger. ProgressionRuntime claims in it.
+var _rewards: Node = null
 # ProgressionRuntime (per-session level/XP seam: the authored curve + the one service that
 # mutates XP), under Systems (Phase 11).
 var _progression: Node = null
@@ -243,6 +249,7 @@ func _boot() -> void:
 	# And the WorldSimulationRuntime (Phase 08), now the last link in the dependency chain.
 	_create_world_sim_runtime()
 	_create_combat_runtime()
+	_rewards = _create_runtime(REWARD_RUNTIME_SCRIPT, "RewardRuntime")
 	# And the ProgressionRuntime (Phase 11), which reads the world's player and listens to
 	# combat — so it is created last and started last.
 	_create_progression_runtime()
@@ -603,6 +610,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _world_sim
 		&"CombatRuntime":
 			return _combat
+		&"RewardRuntime":
+			return _rewards
 		&"ProgressionRuntime":
 			return _progression
 		&"KnowledgeRuntime":
@@ -878,7 +887,13 @@ func _start_progression_session() -> bool:
 		push_error("[main] cannot start progression: WorldRuntime has no player "
 			+ "CharacterState to own progression for")
 		return false
-	if not bool(_progression.call("start_session", player_character, _combat)):
+	# The one reward ledger first (D-070): progression claims each defeat in it.
+	if _rewards == null or not is_instance_valid(_rewards) \
+			or not bool(_rewards.call("start_session")):
+		push_error("[main] cannot start progression: the reward ledger did not start")
+		return false
+	if not bool(_progression.call("start_session", player_character, _combat,
+			_rewards.call("get_ledger"))):
 		return false
 	# The hub map's HUD was built during the WORLD session, before this runtime existed, so
 	# it is still showing no progression row. Push the now-available view — the same

@@ -62,7 +62,9 @@ var _character: CharacterState = null
 var _combat: Node = null
 var _session_active: bool = false
 
-## Reward ids already paid, so one defeat cannot pay twice however the event arrives.
+## The session's ONE reward ledger (D-070), borrowed from `RewardRuntime`. A defeat's
+## per-spawn reward id is claimed in it, so one defeat cannot pay twice however the event
+## arrives.
 ##
 ## THIS IS THE AUTHORITY'S GUARD, and it is the one §9 is about: duplicate protection belongs
 ## with the single owner of the mutation, not scattered across consumers. `CombatRuntime` also
@@ -70,10 +72,14 @@ var _session_active: bool = false
 ## GRANT whatever the delivery path was (a signal connected twice, a replayed event, a future
 ## server message arriving again).
 ##
-## Keyed by the per-SPAWN reward id, so clearing a map and re-fighting it pays again — the ids
-## are new. It grows by one entry per kill for the life of the session, which is bounded by
-## how much the player actually kills and is dropped entirely on `end_session()`.
-var _granted: Dictionary = {}
+## Until Phase 19 this runtime kept its own dictionary. It was a second answer to "has this
+## been paid" the moment quests paid rewards too (audit AUD-12), so it is gone: the ids live
+## in the same `RewardLedger` a quest's reward — and from Phase 21 a drop — is recorded in.
+## The per-SPAWN id still means clearing a map and re-fighting it pays again: the ids are new.
+var _ledger: RewardLedger = null
+## How many defeats THIS session paid. A statistic for tests and the debug overlay, not an
+## authority — the ledger is.
+var _defeats_paid: int = 0
 
 
 ## Start the progression session.
@@ -87,7 +93,8 @@ var _granted: Dictionary = {}
 ## progression subject that exists, and a resolver would be generality with no second caller
 ## (L-005). The day NPCs level, this takes the registry — the service already works on any
 ## `CharacterState` and would not change.
-func start_session(character: CharacterState, combat: Node) -> bool:
+func start_session(character: CharacterState, combat: Node,
+		ledger: RewardLedger = null) -> bool:
 	if _session_active:
 		push_error("[progression-rt] start_session called while a session is already active")
 		return false
@@ -97,6 +104,9 @@ func start_session(character: CharacterState, combat: Node) -> bool:
 		return _fail_start("no CombatRuntime was supplied, so no defeat could ever fund XP")
 	if not combat.has_signal("enemy_defeated"):
 		return _fail_start("the supplied CombatRuntime has no 'enemy_defeated' signal")
+	if ledger == null:
+		# No private fallback: a ledger made here would be a second authority (D-070).
+		return _fail_start("no RewardLedger was supplied, so nothing could record a payment")
 	if not ResourceLoader.exists(CURVE_PATH):
 		return _fail_start("the authored progression curve is missing: %s" % CURVE_PATH)
 	var curve := load(CURVE_PATH) as ProgressionCurveData
@@ -114,7 +124,8 @@ func start_session(character: CharacterState, combat: Node) -> bool:
 	_service = service
 	_character = character
 	_combat = combat
-	_granted = {}
+	_ledger = ledger
+	_defeats_paid = 0
 	_session_active = true
 	combat.connect("enemy_defeated", grant_for_defeat)
 	return true
@@ -142,7 +153,8 @@ func end_session() -> void:
 	_combat = null
 	_service = null
 	_character = null
-	_granted.clear()
+	_ledger = null
+	_defeats_paid = 0
 	_session_active = false
 
 
@@ -163,7 +175,7 @@ func get_character() -> CharacterState:
 ## How many distinct defeats have been paid this session. A read-only window for tests and the
 ## debug overlay, the same shape as `CombatRuntime.armed_count()`.
 func granted_count() -> int:
-	return _granted.size()
+	return _defeats_paid
 
 
 ## A read-only snapshot for the HUD. Always a valid object; `available` is false outside a
@@ -208,18 +220,34 @@ func grant_for_defeat(reward_id: StringName, xp_reward: int) -> void:
 		push_error("[progression-rt] a defeat arrived with an EMPTY reward id; rejected "
 			+ "(xp_reward=%d). Nothing was granted and the ledger was not touched." % xp_reward)
 		return
-	if _granted.has(key):
-		# Not an error: the whole point of the ledger is that this is survivable. Silent,
-		# because a duplicate that is correctly ignored is not a problem to report.
+	# Claimed BEFORE the grant, so a re-entrant delivery during the grant cannot slip past.
+	# A duplicate is not an error: the whole point of the ledger is that this is survivable.
+	# Silent, because a duplicate that is correctly ignored is not a problem to report.
+	if not _ledger.claim(reward_id):
 		return
-	# Recorded BEFORE the grant, so a re-entrant delivery during the grant cannot slip past.
-	_granted[key] = true
-	var result := _service.grant_xp(_character, xp_reward)
+	_defeats_paid += 1
+	# A rejected grant is still "handled" — it must not be retried, or a creature killed at
+	# the level ceiling would re-attempt on every subsequent delivery.
+	_pay(xp_reward, reward_id)
+
+
+## Pay the XP part of a reward some OTHER source owns (a quest, D-070). No ledger entry is
+## made here: `RewardService` records the part once this returns true. True means the owner
+## HANDLED it — XP wasted at the level ceiling is handled; only "no session" is not.
+func grant_reward(amount: int, source_id: StringName) -> bool:
+	if not _session_active or amount <= 0 or source_id == &"":
+		return false
+	_pay(amount, source_id)
+	return true
+
+
+## THE one call to `ProgressionService.grant_xp` in the project, and the events that follow
+## an accepted grant.
+func _pay(amount: int, source_id: StringName) -> void:
+	var result := _service.grant_xp(_character, amount)
 	if not result.accepted:
-		# A rejected grant is still "handled" — it must not be retried, or a creature killed
-		# at the level ceiling would re-attempt on every subsequent delivery.
 		return
 	if result.xp_applied > 0:
-		xp_gained.emit(result.xp_applied, reward_id)
+		xp_gained.emit(result.xp_applied, source_id)
 	if result.leveled():
 		level_changed.emit(result.level_before, result.level_after)

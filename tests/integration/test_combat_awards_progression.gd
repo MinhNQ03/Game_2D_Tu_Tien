@@ -44,7 +44,7 @@ func before_each() -> void:
 	_progression.name = "ProgressionRuntime"
 	_progression.set_script(ProgressionRuntimeScript)
 	add_to_tree(_progression)
-	_progression.call("start_session", _character, _combat)
+	_progression.call("start_session", _character, _combat, RewardLedger.new())
 	_progression.connect("xp_gained", func(amount: int, reward_id: StringName) -> void:
 		_xp_events.append({"amount": amount, "id": reward_id}))
 	_progression.connect("level_changed", func(previous: int, current: int) -> void:

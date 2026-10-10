@@ -36,7 +36,8 @@ const EXPECTED_TEARDOWN := [
 	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
 	&"CultivationRuntime",
 	&"KnowledgeRuntime",
-	&"ProgressionRuntime", &"CombatRuntime", &"WorldSimulationRuntime", &"FactionRuntime",
+	&"ProgressionRuntime", &"RewardRuntime", &"CombatRuntime", &"WorldSimulationRuntime",
+	&"FactionRuntime",
 	&"SectRuntime", &"RelationshipRuntime", &"WorldRuntime", &"GameState",
 ]
 
@@ -49,6 +50,7 @@ const SUBSYSTEM_SCRIPTS := {
 	"FactionRuntime": "res://src/gameplay/world/faction_runtime.gd",
 	"WorldSimulationRuntime": "res://src/gameplay/world/world_sim_runtime.gd",
 	"CombatRuntime": "res://src/gameplay/world/combat_runtime.gd",
+	"RewardRuntime": "res://src/gameplay/world/reward_runtime.gd",
 	"ProgressionRuntime": "res://src/gameplay/world/progression_runtime.gd",
 	"KnowledgeRuntime": "res://src/gameplay/world/knowledge_runtime.gd",
 	"CultivationRuntime": "res://src/gameplay/world/cultivation_runtime.gd",
@@ -71,16 +73,16 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 15, "fifteen per-session subsystems (got %s)" % str(order))
-	assert_eq(order[14], &"DialogueRuntime",
+	assert_eq(order.size(), 16, "sixteen per-session subsystems (got %s)" % str(order))
+	assert_eq(order[15], &"DialogueRuntime",
 		"conversations are LAST: they ask NpcRuntime who is in reach, move the relationship "
 		+ "graph and grant through the Knowledge Core, so an open conversation is closed "
 		+ "before any of the three is torn down (Phase 18)")
-	assert_eq(order[13], &"NpcRuntime",
+	assert_eq(order[14], &"NpcRuntime",
 		"people and shops follow: they bind bodies in the world's map to the registry's "
 		+ "characters, trade through the inventory and price by the relationship graph "
 		+ "(Phase 17)")
-	assert_eq(order[12], &"PetRuntime",
+	assert_eq(order[13], &"PetRuntime",
 		"the linh thú follows skills: its body is parented into the world's map and armed through "
 		+ "combat, so it starts after both and is freed first (Phase 16)")
 	assert_eq(order[0], &"WorldRuntime",
@@ -98,24 +100,28 @@ func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	assert_eq(order[5], &"CombatRuntime",
 		"combat is sixth: it borrows the simulation's seeded RngService for the combat stream "
 		+ "and points at entities the world realized, so it must start after both (Phase 09)")
-	assert_eq(order[7], &"KnowledgeRuntime",
+	assert_eq(order[8], &"KnowledgeRuntime",
 		"the Knowledge Core follows progression: cultivation READS it (Phase 12, D-040)")
-	assert_eq(order[11], &"SkillRuntime",
+	assert_eq(order[12], &"SkillRuntime",
 		"skills follow equipment: a cast reads knowledge, cultivation, combat and the player (P15)")
-	assert_eq(order[10], &"EquipmentRuntime",
+	assert_eq(order[11], &"EquipmentRuntime",
 		"equipment is LAST: it moves items out of the inventory (Phase 14)")
-	assert_eq(order[9], &"InventoryRuntime",
+	assert_eq(order[10], &"InventoryRuntime",
 		"the inventory is LAST: using an item acts THROUGH cultivation, knowledge and the "
 		+ "player's body, so it starts after them and ends first (Phase 13)")
-	assert_eq(order[8], &"CultivationRuntime",
+	assert_eq(order[9], &"CultivationRuntime",
 		"cultivation follows knowledge: it reads the player's CharacterState, the Knowledge "
 		+ "Core and the "
 		+ "world's active map, so it starts after all of them and ends FIRST (Phase 12)")
-	assert_eq(order[6], &"ProgressionRuntime",
+	assert_eq(order[7], &"ProgressionRuntime",
 		"progression follows combat: it READS the player's CharacterState (the world session) and "
 		+ "LISTENS to CombatRuntime.enemy_defeated, so it must start after both — and "
 		+ "therefore end FIRST, disconnecting before its emitter is torn down and before the "
 		+ "CharacterState it grants XP into is freed (Phase 11)")
+	assert_eq(order[6], &"RewardRuntime",
+		"the reward ledger sits immediately before progression, the first runtime that pays: "
+		+ "it needs nothing, and it must outlive every runtime that records a payment in it "
+		+ "(Phase 19, D-070)")
 	assert_eq(MainScript.SESSION_OWNER_STEP, &"GameState",
 		"the lifecycle owner is ended after every subsystem, never before")
 

@@ -506,12 +506,24 @@ func _announce_defeat(enemy: Enemy) -> void:
 	var reward_id: StringName = _reward_ids[key]
 	if _announced.has(String(reward_id)):
 		return
-	_announced[String(reward_id)] = true
 	var data := enemy.data()
+	# The value is the creature's KIND, so a listener can ask what fell (`defeated_kind`).
+	_announced[String(reward_id)] = data.id if data != null else &""
 	var reward := 0
 	if data != null:
 		reward = data.xp_reward
 	enemy_defeated.emit(reward_id, reward)
+
+
+## The kind (`EnemyData.id`) of the creature whose defeat was announced as `reward_id`, or an
+## empty name. A QUERY for whoever hears `enemy_defeated` and needs to know WHAT fell (a quest
+## counting Vụ Lang, Phase 19) — the signal itself stays the two facts progression pays on.
+## Answerable while the map that spawned the creature is still the active one.
+func defeated_kind(reward_id: StringName) -> StringName:
+	var key := String(reward_id)
+	if not _announced.has(key):
+		return &""
+	return _announced[key]
 
 
 ## The reward id minted for a spawned creature, or an empty name. For tests and the debug

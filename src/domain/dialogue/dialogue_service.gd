@@ -26,9 +26,9 @@ const REFUSE_EFFECT_FAILED := &"UI_DIALOGUE_EFFECT_FAILED"
 
 const ACTION_OPEN_SHOP := &"open_shop"
 
-## The type of an edge a conversation creates: the two have now spoken.
-const EDGE_TYPE := &"ACQUAINTED"
-const EDGE_ID_FORMAT := "rel_regard__%s__%s"
+## The edge a conversation creates is `RegardRules`': the two have now dealt.
+const EDGE_TYPE := RegardRules.EDGE_TYPE
+const EDGE_ID_FORMAT := RegardRules.EDGE_ID_FORMAT
 
 var _catalog: DialogueCatalogData = null
 var _knowledge: KnowledgeService = null
@@ -139,13 +139,9 @@ func _effect_errors(where: String, dialogue: DialogueData, effect: DialogueEffec
 ## How `speaker_id` regards `listener_id` on `dimension`, read from the graph: the speaker's
 ## directed edge to them, or the pair's symmetric one. No edge is the dimension's default.
 func regard(speaker_id: StringName, listener_id: StringName, dimension: StringName) -> int:
-	if not is_ready() or not _config.has_dimension(dimension):
+	if not is_ready():
 		return 0
-	var edge := _regard_edge(speaker_id, listener_id)
-	if edge == null:
-		return _config.get_default(dimension)
-	return _relationship.read_dimension_as(edge.id,
-		RelationshipEndpoint.for_character(speaker_id), dimension)
+	return RegardRules.read(_relationship, _config, speaker_id, listener_id, dimension)
 
 
 func condition_met(condition: DialogueConditionData, speaker_id: StringName,
@@ -244,31 +240,17 @@ func _moved(dialogue_id: StringName, node_id: StringName, choice_id: StringName,
 	return outcome
 
 
-## Move the speaker's regard through `RelationshipService`. The edge is found, or — only when
-## the delta would actually change something — created through the service. False (nothing
-## changed, nothing created) when the edge cannot be made.
+## Move the speaker's regard through `RelationshipService` (`RegardRules` says which edge,
+## and makes one only when the delta would actually change something). False — nothing
+## changed, nothing created — when the edge cannot be made.
 func _apply_regard(outcome: DialogueOutcome, dialogue: DialogueData,
 		effect: DialogueEffectData, listener_id: StringName) -> bool:
-	if not _config.has_dimension(effect.dimension):
-		return false
-	var speaker_id := dialogue.speaker_id
-	var before := regard(speaker_id, listener_id, effect.dimension)
+	var moved := RegardRules.move(_relationship, _config, dialogue.speaker_id, listener_id,
+		effect.dimension, effect.delta, dialogue.id)
 	outcome.dimension = effect.dimension
-	outcome.old_value = before
-	outcome.new_value = before
-	var edge := _regard_edge(speaker_id, listener_id)
-	if edge == null:
-		if _config.clamp_value(effect.dimension, before + effect.delta) == before:
-			return true  # already at the bound: no edge is made for a move that moves nothing
-		var edge_id := StringName(EDGE_ID_FORMAT % [speaker_id, listener_id])
-		edge = _relationship.create_edge(edge_id,
-			RelationshipEndpoint.for_character(speaker_id),
-			RelationshipEndpoint.for_character(listener_id), EDGE_TYPE, false, true)
-		if edge == null:
-			return false
-	_relationship.apply_delta(edge.id, effect.dimension, effect.delta, dialogue.id)
-	outcome.new_value = regard(speaker_id, listener_id, effect.dimension)
-	return true
+	outcome.old_value = int(moved["old_value"])
+	outcome.new_value = int(moved["new_value"])
+	return bool(moved["ok"])
 
 
 func _apply_grant(outcome: DialogueOutcome, dialogue: DialogueData,
@@ -279,11 +261,3 @@ func _apply_grant(outcome: DialogueOutcome, dialogue: DialogueData,
 	outcome.knowledge_result = grant.call(effect.knowledge_id, dialogue.id)
 	return outcome.knowledge_result == KnowledgeService.GRANTED \
 		or outcome.knowledge_result == KnowledgeService.ALREADY_KNOWN
-
-
-func _regard_edge(speaker_id: StringName, listener_id: StringName) -> RelationshipEdge:
-	var store := _relationship.get_store()
-	if store == null or speaker_id == &"" or listener_id == &"" or speaker_id == listener_id:
-		return null
-	return store.find_between(RelationshipEndpoint.for_character(speaker_id),
-		RelationshipEndpoint.for_character(listener_id), true)
