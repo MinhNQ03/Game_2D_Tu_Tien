@@ -820,7 +820,7 @@ func _scenario_quest() -> void:
 	await _shot("scene_quest_03_elder_offer")
 	await _press(&"interact")
 	await _settle()
-	if quests.get_service().phase_of(&"quest_unquiet_vein") != QuestService.Phase.ACTIVE:
+	if quests.get_service().phase_of(&"quest_unquiet_vein") != QuestData.Phase.ACTIVE:
 		_fail("quest: the elder's task was not accepted")
 		return
 	await _shot("scene_quest_04_accepted")
@@ -907,7 +907,7 @@ func _scenario_quest() -> void:
 	await _choose(&"shen_task_report_word")
 	await _press(&"interact")
 	await _settle()
-	if quests.get_service().phase_of(&"quest_unquiet_vein") != QuestService.Phase.COMPLETED:
+	if quests.get_service().phase_of(&"quest_unquiet_vein") != QuestData.Phase.COMPLETED:
 		_fail("quest: the elder's task was not completed")
 		return
 	await _shot("scene_quest_13_reward_paid")
@@ -933,7 +933,7 @@ func _scenario_quest() -> void:
 	await _choose(&"ko_pills_give")
 	await _press(&"interact")
 	await _settle()
-	if quests.get_service().phase_of(&"quest_treeline_pills") != QuestService.Phase.COMPLETED:
+	if quests.get_service().phase_of(&"quest_treeline_pills") != QuestData.Phase.COMPLETED:
 		_fail("quest: the scout's errand was not completed")
 		return
 	await _shot("scene_quest_16_ko_done")

@@ -23,12 +23,12 @@ class_name QuestJournalPanel
 ## Instead nothing is ever below the fold: the journal's OWN key steps the focus to the next
 ## quest, and closes the journal after the last.
 
-## Reading order by `QuestService.Phase`: READY, ACTIVE, AVAILABLE, COMPLETED.
+## Reading order by `QuestData.Phase`: READY, ACTIVE, AVAILABLE, COMPLETED.
 const PHASE_ORDER := {
-	QuestService.Phase.READY: 0,
-	QuestService.Phase.ACTIVE: 1,
-	QuestService.Phase.AVAILABLE: 2,
-	QuestService.Phase.COMPLETED: 3,
+	QuestData.Phase.READY: 0,
+	QuestData.Phase.ACTIVE: 1,
+	QuestData.Phase.AVAILABLE: 2,
+	QuestData.Phase.COMPLETED: 3,
 }
 
 var _loc: Node = null
@@ -193,7 +193,7 @@ func _ordered() -> Array[Dictionary]:
 func _focusable(entries: Array[Dictionary]) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for entry in entries:
-		if int(entry["phase"]) != QuestService.Phase.COMPLETED:
+		if int(entry["phase"]) != QuestData.Phase.COMPLETED:
 			out.append(entry["quest_id"])
 	return out
 
@@ -209,7 +209,7 @@ func _block(entry: Dictionary, opened: bool) -> VBoxContainer:
 	block.add_theme_constant_override("separation", UIPalette.ROW_GAP)
 	block.set_meta("quest_id", entry["quest_id"])
 	var phase := int(entry["phase"])
-	var done := phase == QuestService.Phase.COMPLETED
+	var done := phase == QuestData.Phase.COMPLETED
 	# LEVEL 2: the quest's name — and its state as a WORD beside it, never colour alone.
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", UIPalette.SPACE_SM)
@@ -235,7 +235,7 @@ func _block(entry: Dictionary, opened: bool) -> VBoxContainer:
 		return block
 	# LEVEL 5: why it matters, once it is the player's business — it names who asked. (On
 	# offer, the ask itself is the giver's to say; the line above already says where to go.)
-	if phase != QuestService.Phase.AVAILABLE:
+	if phase != QuestData.Phase.AVAILABLE:
 		var why := _wrapped(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 		why.text = _t(String(entry["summary_key"]))
 		block.add_child(why)
@@ -256,7 +256,7 @@ func _block(entry: Dictionary, opened: bool) -> VBoxContainer:
 ## return, and the line above says to whom — listing what was done would only push the reward
 ## off the page.) Ways that are alternatives are joined by "or", in words.
 func _add_objectives(block: VBoxContainer, entry: Dictionary) -> void:
-	if int(entry["phase"]) != QuestService.Phase.ACTIVE:
+	if int(entry["phase"]) != QuestData.Phase.ACTIVE:
 		return
 	var objectives: Array = entry["objectives"]
 	for i in objectives.size():
@@ -295,20 +295,20 @@ func _phase_key(phase: int, owed: bool) -> String:
 	if owed:
 		return "UI_QUEST_PHASE_OWED"
 	match phase:
-		QuestService.Phase.ACTIVE:
+		QuestData.Phase.ACTIVE:
 			return "UI_QUEST_PHASE_ACTIVE"
-		QuestService.Phase.READY:
+		QuestData.Phase.READY:
 			return "UI_QUEST_PHASE_READY"
-		QuestService.Phase.COMPLETED:
+		QuestData.Phase.COMPLETED:
 			return "UI_QUEST_PHASE_COMPLETED"
 	return "UI_QUEST_PHASE_AVAILABLE"
 
 
 func _phase_color(phase: int) -> Color:
 	match phase:
-		QuestService.Phase.READY:
+		QuestData.Phase.READY:
 			return UIPalette.COLOR_ACCENT
-		QuestService.Phase.ACTIVE:
+		QuestData.Phase.ACTIVE:
 			return UIPalette.COLOR_TEXT
 	return UIPalette.COLOR_TEXT_MUTED
 

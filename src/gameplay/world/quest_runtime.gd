@@ -237,11 +237,11 @@ func _refresh(silent: bool = false) -> void:
 		var phase := _service.phase_of(quest.id)
 		parts.append("%s=%d%s" % [quest.id, phase, "!" if _service.is_reward_owed(quest.id)
 			else ""])
-		if phase != QuestService.Phase.ACTIVE and phase != QuestService.Phase.READY:
+		if phase != QuestData.Phase.ACTIVE and phase != QuestData.Phase.READY:
 			_seen.erase(String(quest.id))
 			continue
 		var before: Dictionary = _seen.get(String(quest.id), {"ready": false, "values": {}})
-		var ready := phase == QuestService.Phase.READY
+		var ready := phase == QuestData.Phase.READY
 		var values: Dictionary = {}
 		for entry in quest.objectives:
 			var value := _service.objective_value(quest.id, entry)
@@ -274,14 +274,14 @@ func build_view() -> QuestJournalView:
 	for quest in _service.catalog().entries:
 		var phase := _service.phase_of(quest.id)
 		var hint := quest.lead_key
-		if phase == QuestService.Phase.ACTIVE:
+		if phase == QuestData.Phase.ACTIVE:
 			hint = quest.goal_key
-		elif phase == QuestService.Phase.READY:
+		elif phase == QuestData.Phase.READY:
 			hint = quest.return_key
-		elif phase == QuestService.Phase.COMPLETED:
+		elif phase == QuestData.Phase.COMPLETED:
 			hint = &""
 		# READY outranks ACTIVE outranks AVAILABLE; within a rank the first authored wins.
-		var rank := -1 if phase == QuestService.Phase.COMPLETED else int(phase)
+		var rank := -1 if phase == QuestData.Phase.COMPLETED else int(phase)
 		if rank > purpose_rank:
 			purpose_rank = rank
 			view.purpose_key = hint

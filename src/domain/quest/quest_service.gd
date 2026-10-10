@@ -13,15 +13,10 @@ class_name QuestService
 ##   * A reward is paid by `RewardService` through its owners' seams; "paid" is the reward
 ##     ledger's. This class marks a quest COMPLETED only after the ledger says so.
 ##
-## A PHASE is what the player (and a dialogue condition) sees:
-##   AVAILABLE  no record — it can be accepted
-##   ACTIVE     accepted, objectives not met
-##   READY      objectives met — or turned in with part of the reward still owed
-##   COMPLETED  paid in full; it is never offered again
+## A PHASE (`QuestData.Phase` — the vocabulary is content's, so a conversation can be authored
+## against it) is what the player and a dialogue condition see; `phase_of` decides it.
 ##
 ## Every refusal returns a reason key and changes nothing.
-
-enum Phase { AVAILABLE, ACTIVE, READY, COMPLETED }
 
 const REFUSE_NOT_READY := &"UI_QUEST_UNAVAILABLE"
 const REFUSE_UNKNOWN := &"UI_QUEST_UNKNOWN"
@@ -155,16 +150,16 @@ func _reward_errors(quest: QuestData, has_item: Callable, resolve_character: Cal
 
 # --- Reading -------------------------------------------------------------------
 
-func phase_of(quest_id: StringName) -> Phase:
+func phase_of(quest_id: StringName) -> QuestData.Phase:
 	var quest := _catalog.entry(quest_id) if is_ready() else null
 	if quest == null or not _state.has(quest_id):
-		return Phase.AVAILABLE
+		return QuestData.Phase.AVAILABLE
 	match _state.status_of(quest_id):
 		QuestState.Status.COMPLETED:
-			return Phase.COMPLETED
+			return QuestData.Phase.COMPLETED
 		QuestState.Status.REWARD_OWED:
-			return Phase.READY
-	return Phase.READY if objectives_met(quest) else Phase.ACTIVE
+			return QuestData.Phase.READY
+	return QuestData.Phase.READY if objectives_met(quest) else QuestData.Phase.ACTIVE
 
 
 ## Turned in, with part of its reward still to be paid.

@@ -314,37 +314,37 @@ func test_what_other_owners_cannot_supply_is_reported_by_the_service() -> void:
 
 func test_a_quest_is_available_until_its_giver_is_asked() -> void:
 	var service := _service()
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.AVAILABLE, "on offer")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE, "on offer")
 	assert_eq(service.accept(VEIN, SCOUT).reason, QuestService.REFUSE_WRONG_PERSON,
 		"only its giver offers it")
 	assert_eq(service.accept(&"quest_nothing", ELDER).reason, QuestService.REFUSE_UNKNOWN,
 		"an unknown quest")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.AVAILABLE, "refusals changed nothing")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE, "refusals changed nothing")
 	assert_eq(_state.to_dict()["quests"], {}, "and no record exists")
 	var taken := service.accept(VEIN, ELDER)
 	assert_true(taken.ok, "accepted")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.ACTIVE, "active")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.ACTIVE, "active")
 	assert_eq(service.accept(VEIN, ELDER).reason, QuestService.REFUSE_ALREADY_TAKEN,
 		"it cannot be taken twice")
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.AVAILABLE, "another quest is untouched")
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.AVAILABLE, "another quest is untouched")
 
 
 func test_knowledge_already_held_counts_the_moment_the_quest_is_taken() -> void:
 	var service := _service()
 	_knowledge.grant(SCOUTS_WORD, &"test")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.AVAILABLE,
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE,
 		"knowing the answer does not take the quest for the player")
 	service.accept(VEIN, ELDER)
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.READY,
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.READY,
 		"but once taken it is ready at once: nobody is sent to learn what they know")
 
 
 func test_the_knowledge_route_and_the_fight_route_both_finish_an_any_quest() -> void:
 	var by_word := _service()
 	by_word.accept(VEIN, ELDER)
-	assert_eq(by_word.phase_of(VEIN), QuestService.Phase.ACTIVE, "nothing done yet")
+	assert_eq(by_word.phase_of(VEIN), QuestData.Phase.ACTIVE, "nothing done yet")
 	_knowledge.grant(SCOUTS_WORD, &"test")
-	assert_eq(by_word.phase_of(VEIN), QuestService.Phase.READY, "the scout's word is enough")
+	assert_eq(by_word.phase_of(VEIN), QuestData.Phase.READY, "the scout's word is enough")
 	assert_eq(_state.progress_of(VEIN, &"fight"), 0, "with no wolf harmed")
 
 	before_each()
@@ -353,7 +353,7 @@ func test_the_knowledge_route_and_the_fight_route_both_finish_an_any_quest() -> 
 	var advanced := by_blade.record_defeat(WOLF, &"enemy_mist_wolf_1#1")
 	assert_eq(advanced, [[VEIN, &"fight", 1, 1]] as Array[Array], "the defeat is counted")
 	assert_false(_knowledge.knows(SCOUTS_WORD), "without ever asking")
-	assert_eq(by_blade.phase_of(VEIN), QuestService.Phase.READY, "and that is enough too")
+	assert_eq(by_blade.phase_of(VEIN), QuestData.Phase.READY, "and that is enough too")
 
 
 func test_an_all_quest_needs_every_objective() -> void:
@@ -361,9 +361,9 @@ func test_an_all_quest_needs_every_objective() -> void:
 	service.accept(HUNT, SCOUT)
 	service.record_defeat(WOLF, &"enemy_mist_wolf_1#1")
 	service.record_defeat(WOLF, &"enemy_mist_wolf_2#2")
-	assert_eq(service.phase_of(HUNT), QuestService.Phase.ACTIVE, "two wolves are not enough")
+	assert_eq(service.phase_of(HUNT), QuestData.Phase.ACTIVE, "two wolves are not enough")
 	_knowledge.grant(SCOUTS_WORD, &"test")
-	assert_eq(service.phase_of(HUNT), QuestService.Phase.READY, "with the word too, it is")
+	assert_eq(service.phase_of(HUNT), QuestData.Phase.READY, "with the word too, it is")
 
 
 func test_defeats_count_once_each_only_while_active_and_never_past_the_need() -> void:
@@ -404,7 +404,7 @@ func test_turning_in_too_early_or_to_the_wrong_person_changes_nothing() -> void:
 		QuestService.REFUSE_UNKNOWN, "an unknown quest")
 	assert_eq([_pill_count(), _xp, _regard(ELDER, &"respect"), _ledger.count()], [0, 0, 0, 0],
 		"no refusal paid anything")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.READY, "and it is still ready")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.READY, "and it is still ready")
 
 
 func test_a_turn_in_pays_every_owner_once_and_closes_the_quest() -> void:
@@ -416,7 +416,7 @@ func test_a_turn_in_pays_every_owner_once_and_closes_the_quest() -> void:
 	assert_eq(done.paid_now, [&"bag", &"xp", &"regard"] as Array[StringName], "every part")
 	assert_eq([_pill_count(), _xp, _regard(ELDER, &"respect")], [2, 10, 10],
 		"two pills in the bag, 10 XP, the elder's respect in the graph")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.COMPLETED, "completed")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.COMPLETED, "completed")
 	assert_true(_ledger.has(&"quest:quest_test_vein"), "and recorded as paid")
 	# Asked again, by any path: nothing.
 	var again := service.turn_in(VEIN, ELDER, _payers())
@@ -436,7 +436,7 @@ func test_a_full_bag_refuses_the_turn_in_and_keeps_the_reward_claimable() -> voi
 	var refused := service.turn_in(VEIN, ELDER, _payers())
 	assert_false(refused.ok, "refused")
 	assert_eq(refused.reason, QuestService.REFUSE_NO_ROOM, "because the bag has no room")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.READY, "the quest is still ready")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.READY, "the quest is still ready")
 	assert_false(service.is_reward_owed(VEIN), "nothing is 'owed': nothing was paid at all")
 	assert_eq([_pill_count(), _xp, _regard(ELDER, &"respect"), _ledger.count()], [0, 0, 0, 0],
 		"no XP and no regard slipped out ahead of the pills")
@@ -450,11 +450,11 @@ func test_items_asked_for_are_handed_over_in_the_same_exchange_as_the_reward() -
 	service.accept(PILLS, SCOUT)
 	assert_eq(service.objective_value(PILLS, _pills().objectives[0]), 0, "none held")
 	_bag.add(_items[&"item_bo_huyet_dan"], 1)
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.ACTIVE, "one pill is not two")
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.ACTIVE, "one pill is not two")
 	_bag.add(_items[&"item_bo_huyet_dan"], 2)
 	assert_eq(service.objective_value(PILLS, _pills().objectives[0]), 2,
 		"the journal never shows more than was asked for")
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.READY, "ready with three in the bag")
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.READY, "ready with three in the bag")
 	var done := service.turn_in(PILLS, SCOUT, _payers())
 	assert_true(done.ok, "handed over")
 	assert_eq(done.taken, {&"item_bo_huyet_dan": 2}, "exactly two change hands")
@@ -467,9 +467,9 @@ func test_readiness_is_asked_of_the_bag_every_time_never_remembered() -> void:
 	var service := _service()
 	service.accept(PILLS, SCOUT)
 	_bag.add(_items[&"item_bo_huyet_dan"], 2)
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.READY, "ready")
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.READY, "ready")
 	_bag.remove(&"item_bo_huyet_dan", 1)  # the player swallowed one on the road
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.ACTIVE,
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.ACTIVE,
 		"a pill used on the way makes it not ready again, truthfully")
 	assert_eq(service.turn_in(PILLS, SCOUT, _payers()).reason, QuestService.REFUSE_OBJECTIVES,
 		"and the turn-in is refused")
@@ -487,7 +487,7 @@ func test_a_reward_part_that_fails_after_the_bag_moved_is_owed_and_then_paid() -
 	assert_eq([_pill_count(), _bag.count_of(&"item_linh_thach")], [0, 3],
 		"the pills were taken and the stones paid")
 	assert_true(service.is_reward_owed(PILLS), "the quest says it is owed")
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.READY,
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.READY,
 		"and stays answerable although the pills are gone")
 	assert_eq(service.abandon(PILLS, SCOUT).reason, QuestService.REFUSE_REWARD_OWED,
 		"it cannot be abandoned: that would give up what is owed")
@@ -502,7 +502,7 @@ func test_a_reward_part_that_fails_after_the_bag_moved_is_owed_and_then_paid() -
 	var third := service.turn_in(PILLS, SCOUT, _payers())
 	assert_true(third.ok, "the owed part is paid")
 	assert_eq(third.paid_now, [&"regard"] as Array[StringName], "only that part")
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.COMPLETED, "and the quest closes")
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.COMPLETED, "and the quest closes")
 	assert_eq([_bag.count_of(&"item_linh_thach"), _regard(SCOUT, &"affinity"), _pill_count()],
 		[3, 15, 2], "once")
 
@@ -517,7 +517,7 @@ func test_abandoning_discards_progress_and_offers_the_quest_again() -> void:
 		"it is given back to whoever gave it")
 	assert_eq(_state.progress_of(HUNT, &"cull"), 1, "a refused abandon keeps the progress")
 	assert_true(service.abandon(HUNT, SCOUT).ok, "abandoned")
-	assert_eq(service.phase_of(HUNT), QuestService.Phase.AVAILABLE, "on offer again")
+	assert_eq(service.phase_of(HUNT), QuestData.Phase.AVAILABLE, "on offer again")
 	assert_eq(_state.to_dict()["quests"], {}, "with no record left")
 	assert_eq(_ledger.count(), 0, "and nothing was paid for it")
 	service.accept(HUNT, SCOUT)
@@ -539,7 +539,7 @@ func test_a_service_that_is_not_ready_refuses_everything() -> void:
 	assert_eq(service.turn_in(VEIN, ELDER, _payers()).reason, QuestService.REFUSE_NOT_READY,
 		"turn in")
 	assert_eq(service.record_defeat(WOLF, &"x#1"), [] as Array[Array], "count")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.AVAILABLE, "and reads as nothing taken")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE, "and reads as nothing taken")
 	assert_false(QuestService.new(_catalog(), _state, _knowledge, _rewards).is_ready(),
 		"no way to ask the bag: not ready")
 	assert_false(QuestService.new(_catalog(), _state, _knowledge, RewardService.new(null),
@@ -570,12 +570,12 @@ func test_a_quest_in_progress_round_trips_and_cannot_be_paid_twice_afterwards() 
 	assert_true(ledger.from_dict(ledger_saved), "the ledger is accepted")
 	var restored := QuestService.new(_catalog(), state, _knowledge, RewardService.new(ledger),
 		_held)
-	assert_eq(restored.phase_of(HUNT), QuestService.Phase.ACTIVE, "the hunt is still under way")
+	assert_eq(restored.phase_of(HUNT), QuestData.Phase.ACTIVE, "the hunt is still under way")
 	assert_eq(restored.record_defeat(WOLF, &"enemy_mist_wolf_1#1"), [] as Array[Array],
 		"the wolf already counted is not counted again")
 	assert_eq(restored.record_defeat(WOLF, &"enemy_mist_wolf_2#2"), [[HUNT, &"cull", 2, 2]]
 		as Array[Array], "and the count resumes where it was")
-	assert_eq(restored.phase_of(VEIN), QuestService.Phase.COMPLETED, "the done quest is done")
+	assert_eq(restored.phase_of(VEIN), QuestData.Phase.COMPLETED, "the done quest is done")
 	assert_eq(restored.turn_in(VEIN, ELDER, _payers()).reason, QuestService.REFUSE_ALREADY_DONE,
 		"it cannot be answered again")
 	assert_eq([_pill_count(), _xp, _regard(ELDER, &"respect")], [2, 10, 10],

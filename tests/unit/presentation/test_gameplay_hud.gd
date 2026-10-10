@@ -524,7 +524,7 @@ func _populate_plaques(hud: Node) -> void:
 	var quests := QuestJournalView.new()
 	quests.available = true
 	quests.purpose_key = &"QUEST_UNQUIET_VEIN_LEAD"
-	quests.purpose_phase = QuestService.Phase.AVAILABLE
+	quests.purpose_phase = QuestData.Phase.AVAILABLE
 	hud.call("set_quest_view", quests)
 	# A visible combat target too. It is CENTRE-anchored so it does not affect the reserve,
 	# but populating it here keeps the fixture honest about what a live HUD contains — the

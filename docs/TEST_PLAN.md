@@ -1254,8 +1254,12 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   knowledge route; a real kill counted through real combat and a threat closing the journal;
   a full satchel refusing the reward (reason in the band, talk unmoved, nothing paid); the
   same answer paying once; the pills carried to the scout; teardown order.
-- Mutation-checked: 12 (reward / quest domain) + 11 (seam / runtime) + 6 (journal / purpose
-  line), each red. The world E2E's raw-id check was scoped to the sect panel it guards (the
+- `tests/unit/core/test_layer_direction.gd` (2) — reads the SOURCE of `src/data` and
+  `src/domain`: no code line may name a class a layer above declares (comments and strings
+  excluded; the one pre-existing exception is listed and must still exist). Added after a
+  data resource was typed on a domain enum and nothing else noticed.
+- Mutation-checked: 12 (reward / quest domain) + 11 (seam / runtime) + 7 (journal / purpose
+  line) + 1 (layer direction), each red. The world E2E's raw-id check was scoped to the sect panel it guards (the
   journal's English prose contains the word "pills"), stated in the test.
 - Real app: `tools/capture_motion.gd -- <dir> quest <vi|en>` at `--resolution 1280x720` and
   `1280x800` (18 frames each); findings in `docs/handoff/phase-19-quest.md`.

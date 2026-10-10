@@ -144,7 +144,7 @@ func _quest_effect_errors(where: String, dialogue: DialogueData,
 		if dialogue.speaker_id != quest.receiver_id:
 			errors.append("%s: '%s' is answered to '%s', not to '%s'" % [where, quest.id,
 				quest.receiver_id, dialogue.speaker_id])
-		if not _requires_phase(option, quest.id, QuestService.Phase.READY):
+		if not _requires_phase(option, quest.id, QuestData.Phase.READY):
 			errors.append(("%s: a turn-in of '%s' must require QUEST_PHASE READY, or it is "
 				+ "offered before it can succeed") % [where, quest.id])
 	elif dialogue.speaker_id != quest.giver_id:
@@ -154,7 +154,7 @@ func _quest_effect_errors(where: String, dialogue: DialogueData,
 
 
 func _requires_phase(option: DialogueChoiceData, quest_id: StringName,
-		phase: QuestService.Phase) -> bool:
+		phase: QuestData.Phase) -> bool:
 	for condition in option.conditions:
 		if condition.kind == DialogueConditionData.Kind.QUEST_PHASE and not condition.negate \
 				and condition.quest_id == quest_id and condition.quest_phase == phase:

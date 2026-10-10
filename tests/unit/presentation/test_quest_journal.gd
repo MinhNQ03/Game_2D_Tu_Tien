@@ -27,12 +27,12 @@ func _t(key: String) -> String:
 	return String(scene_tree.root.get_node("Localization").call("t", key))
 
 
-func _entry(quest_id: StringName, phase: QuestService.Phase, prefix: String,
+func _entry(quest_id: StringName, phase: QuestData.Phase, prefix: String,
 		objectives: Array, any: bool, owed: bool = false) -> Dictionary:
 	var hint := "%s_LEAD" % prefix
-	if phase == QuestService.Phase.ACTIVE:
+	if phase == QuestData.Phase.ACTIVE:
 		hint = "%s_GOAL" % prefix
-	elif phase == QuestService.Phase.READY:
+	elif phase == QuestData.Phase.READY:
 		hint = "%s_RETURN" % prefix
 	var typed: Array[Dictionary] = []
 	for objective: Dictionary in objectives:
@@ -54,14 +54,14 @@ func _view() -> QuestJournalView:
 	var view := QuestJournalView.new()
 	view.available = true
 	view.purpose_key = &"QUEST_TREELINE_PILLS_RETURN"
-	view.purpose_phase = QuestService.Phase.READY
+	view.purpose_phase = QuestData.Phase.READY
 	var entries: Array[Dictionary] = [
-		_entry(VEIN, QuestService.Phase.ACTIVE, "QUEST_UNQUIET_VEIN", [
+		_entry(VEIN, QuestData.Phase.ACTIVE, "QUEST_UNQUIET_VEIN", [
 			{"text_key": &"QUEST_UNQUIET_VEIN_OBJ_FIGHT", "value": 0, "required": 1,
 				"met": false},
 			{"text_key": &"QUEST_UNQUIET_VEIN_OBJ_ASK", "value": 0, "required": 1,
 				"met": false}], true),
-		_entry(PILLS, QuestService.Phase.READY, "QUEST_TREELINE_PILLS", [
+		_entry(PILLS, QuestData.Phase.READY, "QUEST_TREELINE_PILLS", [
 			{"text_key": &"QUEST_TREELINE_PILLS_OBJ_CARRY", "value": 2, "required": 2,
 				"met": true}], false),
 	]
@@ -83,7 +83,7 @@ func test_the_plaque_says_what_the_player_is_about_or_nothing() -> void:
 	assert_eq(label.get_theme_color("font_color"), UIPalette.COLOR_ACCENT,
 		"in the accent — and the words say it too, so colour is not the only signal")
 	view.purpose_key = &"QUEST_UNQUIET_VEIN_GOAL"
-	view.purpose_phase = QuestService.Phase.ACTIVE
+	view.purpose_phase = QuestData.Phase.ACTIVE
 	hud.set_quest_view(view)
 	assert_eq(hud.purpose_text(), "Xem Vụ Lang có bám mạch rừng", "a quest under way: what to do")
 	assert_eq(label.get_theme_color("font_color"), UIPalette.COLOR_TEXT, "in body text")
@@ -205,7 +205,7 @@ func test_objectives_show_their_count_and_say_met_in_words() -> void:
 	var view := QuestJournalView.new()
 	view.available = true
 	# A quest needing BOTH: two pills carried (done) and the scout's word (not yet).
-	var entries: Array[Dictionary] = [_entry(PILLS, QuestService.Phase.ACTIVE,
+	var entries: Array[Dictionary] = [_entry(PILLS, QuestData.Phase.ACTIVE,
 		"QUEST_TREELINE_PILLS", [
 			{"text_key": &"QUEST_TREELINE_PILLS_OBJ_CARRY", "value": 2, "required": 2,
 				"met": true},
@@ -238,7 +238,7 @@ func test_the_reader_stays_on_their_quest_when_the_world_moves() -> void:
 	hud.set_quest_view(_view())  # a pickup somewhere pushes a fresh view
 	assert_eq(journal.focused_quest_id(), VEIN, "a view change does not throw the reader off it")
 	var done := _view()
-	done.entries[0] = _entry(VEIN, QuestService.Phase.COMPLETED, "QUEST_UNQUIET_VEIN", [], true)
+	done.entries[0] = _entry(VEIN, QuestData.Phase.COMPLETED, "QUEST_UNQUIET_VEIN", [], true)
 	hud.set_quest_view(done)
 	assert_eq(journal.focused_quest_id(), PILLS,
 		"a quest that is done cannot hold the focus: it falls to what is left")
@@ -253,8 +253,8 @@ func test_offered_owed_done_and_empty_each_read_differently() -> void:
 	var view := QuestJournalView.new()
 	view.available = true
 	var entries: Array[Dictionary] = [
-		_entry(VEIN, QuestService.Phase.COMPLETED, "QUEST_UNQUIET_VEIN", [], true),
-		_entry(PILLS, QuestService.Phase.AVAILABLE, "QUEST_TREELINE_PILLS", [], false),
+		_entry(VEIN, QuestData.Phase.COMPLETED, "QUEST_UNQUIET_VEIN", [], true),
+		_entry(PILLS, QuestData.Phase.AVAILABLE, "QUEST_TREELINE_PILLS", [], false),
 	]
 	view.entries = entries
 	hud.set_quest_view(view)
@@ -268,12 +268,12 @@ func test_offered_owed_done_and_empty_each_read_differently() -> void:
 		"but not the whole ask: that is his to say")
 	var done := journal.block_text(VEIN)
 	assert_eq(done, "Mạch rừng không yên\nđã xong", "a finished quest is one quiet line")
-	entries[1] = _entry(PILLS, QuestService.Phase.READY, "QUEST_TREELINE_PILLS", [], false, true)
+	entries[1] = _entry(PILLS, QuestData.Phase.READY, "QUEST_TREELINE_PILLS", [], false, true)
 	view.entries = entries
 	hud.set_quest_view(view)
 	assert_true(journal.block_text(PILLS).contains("còn nợ thưởng"),
 		"a reward still owed says so instead of 'done'")
-	var elsewhere := _entry(PILLS, QuestService.Phase.ACTIVE, "QUEST_TREELINE_PILLS", [], false)
+	var elsewhere := _entry(PILLS, QuestData.Phase.ACTIVE, "QUEST_TREELINE_PILLS", [], false)
 	elsewhere["receiver_name_key"] = &"CHARACTER_SCOUT_KO_NAME"
 	entries[1] = elsewhere
 	view.entries = entries
@@ -330,8 +330,8 @@ func test_the_shipped_journal_never_hides_a_quest_below_the_fold() -> void:
 	assert_eq(screen, Vector2(1280, 720), "measured at the smallest authored size")
 	assert_eq(int(journal.size.y), 720 - 2 * UIPalette.HUD_MARGIN - UIPalette.TOP_PLAQUE_RESERVE
 		- UIPalette.PROMPT_STRIP_RESERVE, "in the bounded side-panel box")
-	var phases := [QuestService.Phase.AVAILABLE, QuestService.Phase.ACTIVE,
-		QuestService.Phase.READY, QuestService.Phase.COMPLETED]
+	var phases := [QuestData.Phase.AVAILABLE, QuestData.Phase.ACTIVE,
+		QuestData.Phase.READY, QuestData.Phase.COMPLETED]
 	var checked := 0
 	var tightest := -INF
 	for code: String in ["vi", "en"]:
@@ -386,7 +386,7 @@ func _settle_layout(journal: QuestJournalPanel) -> void:
 
 ## One shipped quest as the runtime would describe it in `phase`, at its LONGEST: every
 ## objective unmet with its count showing (the widest text an objective line can have).
-func _shipped(quest: QuestData, phase: QuestService.Phase) -> Dictionary:
+func _shipped(quest: QuestData, phase: QuestData.Phase) -> Dictionary:
 	var objectives: Array[Dictionary] = []
 	for entry in quest.objectives:
 		objectives.append({"text_key": entry.text_key, "value": maxi(entry.count - 1, 0),
@@ -395,9 +395,9 @@ func _shipped(quest: QuestData, phase: QuestService.Phase) -> Dictionary:
 	for row in quest.reward.items:
 		reward_items.append({"name_key": row.item.name_key, "count": row.count})
 	var hint := quest.lead_key
-	if phase == QuestService.Phase.ACTIVE:
+	if phase == QuestData.Phase.ACTIVE:
 		hint = quest.goal_key
-	elif phase == QuestService.Phase.READY:
+	elif phase == QuestData.Phase.READY:
 		hint = quest.return_key
 	return {"quest_id": quest.id, "phase": phase, "owed": false, "title_key": quest.title_key,
 		"summary_key": quest.summary_key, "hint_key": hint,
@@ -419,7 +419,7 @@ func test_a_full_journal_stays_inside_its_box() -> void:
 	var view := _view()
 	for i in 6:
 		view.entries.append(_entry(StringName("quest_extra_%d" % i),
-			QuestService.Phase.ACTIVE, "QUEST_UNQUIET_VEIN", [
+			QuestData.Phase.ACTIVE, "QUEST_UNQUIET_VEIN", [
 				{"text_key": &"QUEST_UNQUIET_VEIN_OBJ_FIGHT", "value": 0, "required": 1,
 					"met": false}], false))
 	hud.set_quest_view(view)

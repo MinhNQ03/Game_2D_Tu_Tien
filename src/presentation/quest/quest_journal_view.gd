@@ -14,7 +14,7 @@ var available: bool = false
 ## The ONE line of purpose for the place plaque, or empty when nothing is on offer or under
 ## way: the first quest ready to answer, else the first under way, else the first on offer.
 var purpose_key: StringName = &""
-## A `QuestService.Phase` of the quest the purpose line speaks of.
+## A `QuestData.Phase` of the quest the purpose line speaks of.
 var purpose_phase: int = 0
 
 ## Every quest worth reading about, in authored order — on offer, under way, ready, done:

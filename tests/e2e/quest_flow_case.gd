@@ -97,7 +97,7 @@ func test_real_quest_flow() -> void:
 	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_LEAD"),
 		"at spawn the place plaque says where to go ('%s')" % hud.purpose_text())
 	assert_eq([service.phase_of(VEIN), service.phase_of(PILLS)],
-		[QuestService.Phase.AVAILABLE, QuestService.Phase.AVAILABLE],
+		[QuestData.Phase.AVAILABLE, QuestData.Phase.AVAILABLE],
 		"and nothing was taken on the player's behalf")
 	assert_true(bool(input.call("is_gameplay_active")), "no modal greeted the player")
 	assert_false(hud.is_quest_journal_open() or hud.is_dialogue_open(), "nothing is open")
@@ -134,12 +134,12 @@ func test_real_quest_flow() -> void:
 	await _advance_to(&"shen_task_offer")
 	for _i in 4:
 		await scene_tree.process_frame
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.AVAILABLE,
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE,
 		"hearing the ask — and the press that reached it — accepted nothing")
 	assert_eq(_panel.choice_ids(), [&"shen_task_accept", &"shen_task_decline"]
 		as Array[StringName], "the ask is an explicit choice")
 	await _say(&"shen_task_decline", &"shen_hub")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.AVAILABLE, "declined: still on offer")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE, "declined: still on offer")
 	assert_eq(quests.to_dict()["quests"], {}, "with no record anywhere")
 	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_LEAD"), "the lead still stands")
 	_step("3. the ask was heard and DECLINED with real keys; nothing changed")
@@ -149,7 +149,7 @@ func test_real_quest_flow() -> void:
 	await _advance_to(&"shen_task_offer")
 	assert_eq(_panel.selected_choice_id(), &"shen_task_accept", "accepting is under the cursor")
 	await _say(&"shen_task_accept", &"shen_task_taken")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.ACTIVE, "a REAL key accepted the task")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.ACTIVE, "a REAL key accepted the task")
 	assert_true(_t(loc, "QUEST_UNQUIET_VEIN_TITLE") in hud.notice_text(),
 		"the band says what was taken on ('%s')" % hud.notice_text())
 	assert_true("Q " in hud.notice_text(), "and names the journal's key there")
@@ -202,7 +202,7 @@ func test_real_quest_flow() -> void:
 	await _press_until(OPEN_MENU,
 		func() -> bool: return hud.session_prompt_kind() == GameplayHUD.PROMPT_NONE)
 	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "Esc again only ASKED; Esc once more stayed")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.ACTIVE, "and no progress was lost")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.ACTIVE, "and no progress was lost")
 	_step("5. the journal: its key opens, steps, closes; not modal; Esc steps back one level")
 
 	# --- 6. give the task back, by a second explicit answer; then take it again ---------------
@@ -215,12 +215,12 @@ func test_real_quest_flow() -> void:
 	await _say(&"shen_task_giveup", &"shen_task_confirm")
 	for _i in 4:
 		await scene_tree.process_frame
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.ACTIVE,
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.ACTIVE,
 		"asking to be released — and the press that asked — gave nothing up")
 	assert_eq(_panel.selected_choice_id(), &"shen_task_stay",
 		"the answer under the cursor KEEPS the task")
 	await _say(&"shen_task_abandon", &"shen_task_released")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.AVAILABLE, "given back with real keys")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE, "given back with real keys")
 	assert_true(_t(loc, "QUEST_UNQUIET_VEIN_TITLE") in hud.notice_text(), "and said so")
 	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_LEAD"), "the plaque is a lead again")
 	await _press_until(INTERACT, func() -> bool: return not _dialogue.is_open())
@@ -229,7 +229,7 @@ func test_real_quest_flow() -> void:
 	await _say(&"shen_task_ask", &"shen_task_why")
 	await _advance_to(&"shen_task_offer")
 	await _say(&"shen_task_accept", &"shen_task_taken")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.ACTIVE, "and taken again")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.ACTIVE, "and taken again")
 	await _press_until(INTERACT, func() -> bool: return not _dialogue.is_open())
 	_step("6. the task was given back (default: keep it) and taken again")
 
@@ -241,14 +241,14 @@ func test_real_quest_flow() -> void:
 	_panel = hud.dialogue_panel()
 	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_GOAL"),
 		"the new map's HUD shows the purpose at once: a map change lost nothing")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.ACTIVE, "the task is still under way")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.ACTIVE, "the task is still under way")
 	var ko := field.get_node_or_null("Interactables/KoThan") as WorldNpc
 	await _talk_to(player, field, ko, Vector2(78, 4))
 	await _advance_to(&"ko_hub")
 	assert_eq(_panel.choice_ids().size(), 5, "his four answers and the errand he has")
 	await _say(&"ko_pills_ask", &"ko_pills_offer")
 	await _say(&"ko_pills_accept", &"ko_pills_taken")
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.ACTIVE, "the scout's errand is taken")
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.ACTIVE, "the scout's errand is taken")
 	assert_true(_t(loc, "DLG_KO_PILLS_TAKEN") == _panel.line_text(),
 		"and he says where the hall leaves its pills")
 	_step("7. in the field the scout's errand was taken; two quests are under way")
@@ -259,7 +259,7 @@ func test_real_quest_flow() -> void:
 	await _advance_to(&"ko_hub")
 	await _say(&"ko_ask_woods", &"ko_woods")
 	assert_true(knowledge.get_service().knows(WORD), "the Knowledge Core holds the scout's word")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.READY,
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.READY,
 		"which makes the elder's task READY — with no wolf fought")
 	assert_eq(service.state().progress_of(VEIN, &"fight"), 0, "no defeat was counted")
 	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_RETURN"),
@@ -327,7 +327,7 @@ func test_real_quest_flow() -> void:
 		"the band says WHY: no room in the satchel ('%s')" % hud.notice_text())
 	assert_eq(_dialogue.current_node_id(), &"shen_hub",
 		"the conversation did not move on as though it had worked")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.READY, "the task is still ready")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.READY, "the task is still ready")
 	assert_eq([inventory.count_of(PILL), character.xp, _respect(graph, config, character)],
 		[0, xp_after_kill, 0], "no pill, no XP and no respect were paid")
 	assert_eq(ledger.count(), 1, "and nothing was recorded as paid")
@@ -339,7 +339,7 @@ func test_real_quest_flow() -> void:
 	await _talk_to(player, hub, shen, Vector2(70, 6))
 	await _advance_to(&"shen_hub")
 	await _say(&"shen_task_report_word", &"shen_task_done_word")
-	assert_eq(service.phase_of(VEIN), QuestService.Phase.COMPLETED, "completed")
+	assert_eq(service.phase_of(VEIN), QuestData.Phase.COMPLETED, "completed")
 	assert_eq(inventory.count_of(PILL), 2, "two pills from the hall's store are in the satchel")
 	assert_eq(character.xp, xp_after_kill + 10, "10 XP through the progression owner")
 	assert_eq(_respect(graph, config, character), 10, "his respect, in the relationship graph")
@@ -348,7 +348,7 @@ func test_real_quest_flow() -> void:
 		return _t(loc, "ITEM_BO_HUYET_DAN_NAME") in hud.notice_text(), 900)
 	assert_true(_t(loc, "ITEM_BO_HUYET_DAN_NAME") in hud.notice_text(),
 		"the band names what was received ('%s')" % hud.notice_text())
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.READY,
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.READY,
 		"and those very pills are what the scout is owed: his errand is READY")
 	assert_eq(hud.purpose_text(), _t(loc, "QUEST_TREELINE_PILLS_RETURN"),
 		"the plaque moves on to it ('%s')" % hud.purpose_text())
@@ -375,7 +375,7 @@ func test_real_quest_flow() -> void:
 	await _advance_to(&"ko_hub")
 	assert_true(_panel.choice_ids().has(&"ko_pills_give"), "handing over is offered")
 	await _say(&"ko_pills_give", &"ko_pills_done")
-	assert_eq(service.phase_of(PILLS), QuestService.Phase.COMPLETED, "the errand is done")
+	assert_eq(service.phase_of(PILLS), QuestData.Phase.COMPLETED, "the errand is done")
 	assert_eq([inventory.count_of(PILL), inventory.count_of(STONE)], [0, stones + 3],
 		"two pills left the satchel and three stones came in, as one exchange")
 	assert_eq(RegardRules.read(graph, config, KO, character.instance_id, &"affinity"),

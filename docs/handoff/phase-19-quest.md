@@ -25,7 +25,8 @@ the same commit; nothing was reset or rewritten.
 | 0 — contract and ADR (D-070) | `735c394` | run 38065063429 — `success` |
 | 1 — quest domain + the one reward ledger | `8ece8f6` | run 38065933247 — `success` |
 | 2–3 — runtime, content, journal, E2E gate 14 | `8d73028` | run 38067690492 — **`failure`** (see below) |
-| 4 — the experience pass + the fix for that failure | recorded in `ROADMAP.md` by the closing commit | — |
+| 4 — the experience pass + the fix for that failure | `6809a6e` | run 38069262439 — `success` |
+| 5 — the layer fix, its guard, the closing record | recorded in `ROADMAP.md` by the closing commit | — |
 
 **The red run is this report's to own.** `8d73028` was pushed with the NPC E2E failing: that
 flow pinned "Dialogue, then NPC" as the first two sessions torn down, and `QuestRuntime` now
@@ -119,13 +120,19 @@ the talk stays put; the reward is named part by part.
 
 ## 5. Gates run on the final source tree (local)
 
-Recorded by the closing commit from the gate script's verdict line; see `ROADMAP.md`.
-At the time of writing: lint + self-test PASS (311 files), import, parse PASS, boot smoke,
-**1062 tests passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak lines**, and seven isolated E2E
-flows (app, player, world, pet, npc, dialogue, quest).
+The gate script's verdict on the final source tree: `ALL 13 LOCAL GATES PASS` — lint
+self-test, lint (312 files), import, parse, boot smoke, **1064 tests passed, 0 failed, 0
+`SCRIPT ERROR:`, 0 leak lines**, and seven isolated E2E flows (app, player, world, pet, npc,
+dialogue, quest), each with 0 script errors and 0 leak lines. CI adds the checkout as its
+fourteenth gate.
 
-Mutations: 30 applied across the phase (12 reward / quest domain, 11 seam / runtime, 7
-journal / purpose line), 30 red. One of them exposed a test that HUNG instead of failing; it
+Real window (`tools/playtest_flow.gd`, the older journeys): `en` 1280×800 — 30 / 30;
+`vi` 1280×720 — **three runs: 29 / 30, 30 / 30, 30 / 30**. The one failed step (19, the
+unassisted encounter) is debt Q19-04 below, with its frame: not a quest defect, and not
+hidden behind the two runs that passed.
+
+Mutations: 31 applied across the phase (12 reward / quest domain, 11 seam / runtime, 7
+journal / purpose line, 1 layer direction), 31 red. One of them exposed a test that HUNG instead of failing; it
 is now bounded (L-048).
 
 Performance (headless, 2026-10-10): `QuestService.phase_of` 3.98 µs per call;
@@ -216,7 +223,7 @@ plaque, the dialogue box and the journal stacked across the four for the rest):
 `DECISIONS.md` (D-070 + as built) · `ROADMAP.md` · `GAME_FLOW.md` (status, diagram, §3.5,
 the Phase 19 note) · `SYSTEM_DEPENDENCY_MATRIX.md` (Quest, Reward ledger, Dialogue rows) ·
 `DATA_SCHEMA.md` · `SAVE_FORMAT.md` (`quests`, `rewards`) · `TEST_PLAN.md` (14 gates) ·
-`PERFORMANCE.md` · `UI_UX_BIBLE.md` · `CHANGELOG.md` · `09-lessons-learned.md` (L-048) ·
+`PERFORMANCE.md` · `UI_UX_BIBLE.md` · `CHANGELOG.md` · `09-lessons-learned.md` (L-048, L-049) ·
 `post-phase-18-audit.md` (AUD-10, AUD-12 closed) · this file.
 
 ## 9. Debt (the register `PLAYER_EXPERIENCE_STANDARD.md` §4 requires)
@@ -229,6 +236,8 @@ by this phase: **AUD-10**, **AUD-12**.
 | CLV-01 | none today — `ShopData.keeper_id` is not validated against the character registry | Phase 19 added no shop and did not touch `NpcRuntime.start_session`'s content checks (decided at Gate A, D-070) | `NpcRuntime`; with the first phase that adds a shop, no later than Phase 21 | `NpcRuntime.start_session` refuses a shop whose keeper does not resolve, with a test that fails without the check | no |
 | Q19-01 | a quest can be given back only by walking to its giver; the journal cannot do it | the journal is deliberately not modal (AUD-15: no fifth hand-copied modal), and a consequence needs a second, explicit step | Phase 25 (UI Consolidation), on the unified modal-surface seam | the journal offers "give back" behind a confirmation, through the same `QuestRuntime.abandon`, with a real-key E2E | no — the rule (`QuestService.abandon`) is already separate from where it is asked |
 | Q19-02 | the journal opens ONE quest out at a time; with many quests the key steps through all of them | two quests fit; categories and paging need content that does not exist yet | Phase 25, or the first phase that ships a fifth concurrent quest | with N ≥ 5 concurrent quests the journal groups by category and any quest is reachable in ≤ 3 presses, measured by a test | no |
+| Q19-04 | a Vụ Lang chasing in a straight line stops against a tree trunk that stands between it and the player and never goes around: 45 s with neither able to reach the other, gap 29 px, the player at 100 / 100 (seen once in three `vi` 1280×720 playtest runs, step 19; frame `…/reg/playtest_vi_1280x720/vi_1280x720_19_natural_encounter.png`; cause inferred from the frame, not traced). In play it favours the player, who can simply walk round | enemy movement has no obstacle avoidance at all (Phase 10: straight-line pursuit); adding it is an AI change outside a quest phase, and the stall harms nobody | Enemy AI (Phase 10 owner); no later than Phase 21, whose rooms put props between every creature and the player | a creature separated from its target by a solid prop reaches it, or gives up and returns home, within its `recover_seconds` budget — an integration test with a prop on the line, and 10 consecutive green runs of playtest step 19 | **yes** — a dungeon is corridors and props |
+| Q19-05 | none for the player — `src/data/worldsim/world_sim_catalog.gd` names the domain class `WorldClock` (`MIN_UNIT`): a data resource depending upward | a Phase-08 file outside this phase; moving the constant is small but touches a different subsystem's validation | World Simulation (Phase 08 owner); with the next change to that catalog | the constant lives in the data layer and the entry is removed from `KNOWN_EXCEPTIONS` in `test_layer_direction.gd` (which then fails if it is not) | no |
 | Q19-03 | once both quests are done the plaque's purpose line is empty: nothing states a next objective | there is no further content; inventing a line would promise something the game lacks | Phase 20 (Story: the chapter gives the standing objective) | a new session that has finished every available quest still names a next purpose from the story service | no |
 
 ## 10. Status

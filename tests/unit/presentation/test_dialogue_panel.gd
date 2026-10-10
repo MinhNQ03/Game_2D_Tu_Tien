@@ -257,7 +257,7 @@ func _largest_offer(line: DialogueNodeData) -> Array[DialogueChoiceData]:
 			elif condition.kind == DialogueConditionData.Kind.KNOWS \
 					and not facts.has(condition.knowledge_id):
 				facts.append(condition.knowledge_id)
-	var phases := QuestService.Phase.size()
+	var phases := QuestData.Phase.size()
 	var states := int(pow(phases, quests.size())) * int(pow(2, facts.size()))
 	var best: Array[DialogueChoiceData] = []
 	for state in states:

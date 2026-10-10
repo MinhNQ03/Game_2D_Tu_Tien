@@ -1847,7 +1847,7 @@ func _refresh_purpose() -> void:
 		return
 	_purpose_label.text = _resolve(_quest_view.purpose_key)
 	_purpose_label.add_theme_color_override("font_color", UIPalette.COLOR_ACCENT
-		if _quest_view.purpose_phase == QuestService.Phase.READY else UIPalette.COLOR_TEXT)
+		if _quest_view.purpose_phase == QuestData.Phase.READY else UIPalette.COLOR_TEXT)
 
 
 func is_sect_panel_open() -> bool:

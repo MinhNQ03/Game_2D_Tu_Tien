@@ -5382,6 +5382,14 @@ checks. CLV-01 stays open with its owner and its no-later-than-Phase-21 criterio
   authors seven answers of which five can ever show at once — measured: it fits). The world
   E2E's "no raw resource id in the HUD" check is scoped to the sect panel it guards: the id
   `pills` is an ordinary English word in the journal's prose.
+- **The phase vocabulary is DATA's (`QuestData.Phase`).** It was first declared on
+  `QuestService`, which made `DialogueConditionData` — a data resource — name a domain class:
+  the arrow pointed the wrong way, compiled, and passed every test. Found by reading the diff.
+  The enum now lives beside the content authored against it; `QuestService.phase_of` decides
+  which phase a quest is in. `tests/unit/core/test_layer_direction.gd` reads the source of
+  `src/data` and `src/domain` and fails on any code line naming a class a layer above
+  declares. It found one older case (`world_sim_catalog.gd` → `WorldClock`, Phase 08), which
+  is recorded as debt Q19-05 and listed in the test, so the list can only get shorter.
 - **The elder draws a different conclusion from each route.** Reporting the scout's word:
   "there are hours to cross". Reporting a fight: "no one crosses unarmed". Same reward; the
   difference is what the player actually found out, said back to them.

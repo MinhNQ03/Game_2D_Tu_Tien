@@ -1404,3 +1404,26 @@
 - **Guards:** `test_quest_journal.gd` (`…never_hides_a_quest_below_the_fold`, bounded);
   `world_flow_case.gd` (the raw-id check, on the sect panel).
 
+## L-049 — A gate list has to end in one verdict, and a layer rule needs a reader
+
+- **Context:** Phase 19 (D-070), the checkpoint that wired quests into the game.
+- **What happened:**
+  - *A red gate was pushed.* The local run printed thirteen lines; two were failures; one was
+    seen. The NPC flow — which pinned "Dialogue, then NPC" as the first sessions torn down —
+    went to CI red (`8d73028`). Nothing was wrong with the gate; the reading of it was a count
+    done by eye.
+  - *A data resource named a domain class.* `DialogueConditionData` was typed on
+    `QuestService.Phase`. GDScript resolves `class_name` globally (L-036): it compiled, ran,
+    and passed 1 062 tests and seven E2E flows. It was found by reading the diff for layers.
+- **Rules:**
+  - A script that runs several gates ends with ONE line: all passed, or the list of what did
+    not. Never count lines.
+  - When a session node is inserted into the start order, grep every test and tool for the
+    names of its two neighbours: an order pinned by position is pinned in more places than
+    the one test that owns it.
+  - A layering rule that only a human can check will be broken by the first person in a
+    hurry. Give it a test that reads the source, and a recorded list of the exceptions that
+    already exist.
+- **Guards:** the gate script's verdict line (local); `test_layer_direction.gd`;
+  `npc_flow_case.gd` / `quest_flow_case.gd` / `world_flow_case.gd` (the teardown trace).
+

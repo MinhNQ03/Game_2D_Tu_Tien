@@ -58,7 +58,7 @@ func test_asking_where_a_quest_stands_costs_microseconds() -> void:
 	var started := Time.get_ticks_usec()
 	for i in EVALUATIONS:
 		if service.phase_of(&"quest_unquiet_vein" if i % 2 == 0 else &"quest_treeline_pills") \
-				== QuestService.Phase.READY:
+				== QuestData.Phase.READY:
 			ready += 1
 	var per_call := float(Time.get_ticks_usec() - started) / float(EVALUATIONS)
 	print("[quest-budget] phase_of: %.2f usec per call over %d calls" % [per_call, EVALUATIONS])

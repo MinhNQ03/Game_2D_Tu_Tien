@@ -243,7 +243,7 @@ func _say(rig: Rig, choice_id: StringName) -> DialogueOutcome:
 	return rig.dialogue.choose(rig.dialogue.current_node_id(), choice_id)
 
 
-func _phase(rig: Rig, quest_id: StringName) -> QuestService.Phase:
+func _phase(rig: Rig, quest_id: StringName) -> QuestData.Phase:
 	return rig.quests.get_service().phase_of(quest_id)
 
 
@@ -295,7 +295,7 @@ func test_the_session_starts_on_the_shipped_content_and_owns_no_process() -> voi
 	assert_eq(catalog.entries.size(), 2, "two authored quests")
 	assert_eq(catalog.validation_errors(), [] as Array[String], "structurally valid")
 	assert_eq([_phase(rig, VEIN), _phase(rig, PILLS)],
-		[QuestService.Phase.AVAILABLE, QuestService.Phase.AVAILABLE], "both on offer, none taken")
+		[QuestData.Phase.AVAILABLE, QuestData.Phase.AVAILABLE], "both on offer, none taken")
 	assert_eq(rig.quests.to_dict(), {"schema": 1, "quests": {}}, "and nothing recorded")
 	assert_eq(rig.rewards.to_dict(), {"schema": 1, "claimed": []}, "nothing paid")
 	_free(rig)
@@ -375,7 +375,7 @@ func test_ending_the_session_stops_listening_and_a_restart_listens_once() -> voi
 	assert_false(rig.quests.build_view().available, "its view is empty")
 	rig.quests.end_session()  # idempotent
 	assert_true(_start_quests(rig), "it starts again over the same world")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.AVAILABLE,
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.AVAILABLE,
 		"a new session knows nothing of the old one's quests")
 	assert_eq(_connections(rig.combat.enemy_defeated, rig.quests), 1, "connected once, not twice")
 	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
@@ -391,7 +391,7 @@ func test_the_elder_offers_only_to_one_who_has_read_and_declining_changes_nothin
 	assert_eq(_choice_ids(rig), [&"shen_leave"] as Array[StringName],
 		"to someone who has not read the stele he offers nothing")
 	assert_false(_say(rig, &"shen_task_ask").ok, "and asking anyway is refused")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.AVAILABLE, "nothing was taken")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.AVAILABLE, "nothing was taken")
 	rig.knowledge.grant(STELE, &"source_lac_ha_stele")
 	_open_hub(rig, rig.shen)
 	assert_true(_choice_ids(rig).has(&"shen_task_ask"), "a reader may ask what weighs on him")
@@ -400,11 +400,11 @@ func test_the_elder_offers_only_to_one_who_has_read_and_declining_changes_nothin
 	rig.dialogue.advance()
 	assert_eq(_choice_ids(rig), [&"shen_task_accept", &"shen_task_decline"] as Array[StringName],
 		"and the ask is an explicit choice: take it, or not now")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.AVAILABLE, "hearing the ask takes nothing")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.AVAILABLE, "hearing the ask takes nothing")
 	var declined := _say(rig, &"shen_task_decline")
 	assert_true(declined.ok, "declining is a complete path")
 	assert_eq(rig.dialogue.current_node_id(), &"shen_hub", "back to what he offers")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.AVAILABLE, "still on offer")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.AVAILABLE, "still on offer")
 	assert_eq(rig.quests.to_dict()["quests"], {}, "with no record of a refusal anywhere")
 	assert_eq(rig.log, [] as Array[String], "and nothing announced")
 	assert_true(_choice_ids(rig).has(&"shen_task_ask"), "he can be asked again")
@@ -414,7 +414,7 @@ func test_the_elder_offers_only_to_one_who_has_read_and_declining_changes_nothin
 func test_accepting_is_announced_once_and_changes_what_he_says() -> void:
 	var rig := _rig()
 	_take_vein(rig)
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.ACTIVE, "taken")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.ACTIVE, "taken")
 	assert_eq(rig.log, ["accepted quest_unquiet_vein"] as Array[String], "announced once")
 	assert_eq(rig.dialogue.current_node_id(), &"shen_task_taken", "he sends the player off")
 	_open_hub(rig, rig.shen)
@@ -440,16 +440,16 @@ func test_abandoning_needs_a_second_explicit_choice_and_offers_the_quest_again()
 	_say(rig, &"shen_task_giveup")
 	assert_eq(rig.dialogue.current_node_id(), &"shen_task_confirm",
 		"asking to be released only raises the question")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.ACTIVE, "nothing is given up yet")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.ACTIVE, "nothing is given up yet")
 	assert_eq(_choice_ids(rig)[0], &"shen_task_stay",
 		"the answer under the cursor is the one that keeps the quest")
 	_say(rig, &"shen_task_stay")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.ACTIVE, "staying keeps it")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.ACTIVE, "staying keeps it")
 	_say(rig, &"shen_task_about")
 	_say(rig, &"shen_task_giveup")
 	rig.log.clear()
 	assert_true(_say(rig, &"shen_task_abandon").ok, "confirmed")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.AVAILABLE, "given back")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.AVAILABLE, "given back")
 	assert_eq(rig.log, ["abandoned quest_unquiet_vein"] as Array[String], "announced once")
 	assert_eq(rig.rewards.to_dict()["claimed"], [], "nothing was paid for it")
 	_open_hub(rig, rig.shen)
@@ -468,7 +468,7 @@ func test_the_scouts_word_answers_the_elder_without_a_fight() -> void:
 	assert_true(rig.knowledge.get_service().knows(WORD), "the Knowledge Core holds his word")
 	assert_eq(rig.log, ["ready quest_unquiet_vein"] as Array[String],
 		"and the quest says it is ready — once, with no separate 'progress' line before it")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.READY, "ready")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.READY, "ready")
 	_open_hub(rig, rig.shen)
 	var ids := _choice_ids(rig)
 	assert_true(ids.has(&"shen_task_report_word"), "he can be told what the scout says")
@@ -478,7 +478,7 @@ func test_the_scouts_word_answers_the_elder_without_a_fight() -> void:
 	assert_true(told.ok, "told")
 	assert_eq(rig.dialogue.current_node_id(), &"shen_task_done_word",
 		"and he answers what the scout's word means")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.COMPLETED, "completed")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.COMPLETED, "completed")
 	assert_eq(rig.log, ["completed quest_unquiet_vein"] as Array[String], "announced once")
 	assert_eq(rig.inventory.count_of(PILL), 2, "two pills from the hall's store are in the bag")
 	assert_eq(rig.progression.xp, 10, "10 XP reached progression")
@@ -491,7 +491,7 @@ func test_a_fight_answers_the_elder_without_the_scout() -> void:
 	var rig := _rig()
 	rig.combat.fell(WOLF, &"enemy_mist_wolf_1#1")
 	_take_vein(rig)
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.ACTIVE,
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.ACTIVE,
 		"a wolf killed BEFORE the task was taken answers nothing")
 	rig.log.clear()
 	rig.combat.fell(&"enemy_other_thing", &"enemy_other_thing_1#2")
@@ -515,7 +515,7 @@ func test_a_fight_answers_the_elder_without_the_scout() -> void:
 func test_what_was_already_known_counts_the_moment_the_task_is_taken() -> void:
 	var rig := _rig()
 	rig.knowledge.grant(WORD, &"test")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.AVAILABLE,
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.AVAILABLE,
 		"knowing the answer does not take the task for the player")
 	_take_vein(rig)
 	assert_eq(rig.log, ["accepted quest_unquiet_vein", "ready quest_unquiet_vein"]
@@ -539,7 +539,7 @@ func test_the_scouts_pills_are_counted_from_the_bag_and_change_hands_once() -> v
 	assert_eq(rig.log.size(), 2, "and that was said once, though three are held")
 	# The same pills heal the player: using them is a real choice.
 	rig.inventory.take(PILL, 2)
-	assert_eq(_phase(rig, PILLS), QuestService.Phase.ACTIVE, "swallowed on the road: not ready")
+	assert_eq(_phase(rig, PILLS), QuestData.Phase.ACTIVE, "swallowed on the road: not ready")
 	_open_hub(rig, rig.ko)
 	assert_false(_choice_ids(rig).has(&"ko_pills_give"), "so handing over is not offered")
 	assert_false(_say(rig, &"ko_pills_give").ok, "and saying it anyway is refused")
@@ -586,7 +586,7 @@ func test_a_full_bag_refuses_the_reward_keeps_the_talk_where_it_was_and_loses_no
 	assert_eq(rig.dialogue.current_node_id(), &"shen_hub",
 		"the conversation did not move on as if it had worked")
 	assert_true(_choice_ids(rig).has(&"shen_task_report_word"), "the report is still offered")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.READY, "the quest is still ready")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.READY, "the quest is still ready")
 	assert_eq([rig.inventory.count_of(PILL), rig.progression.xp, _regard(rig, SHEN, &"respect")],
 		[0, 0, 0], "no XP and no regard were paid ahead of the pills")
 	assert_eq(rig.rewards.to_dict()["claimed"], [], "nothing is recorded as paid")
@@ -653,7 +653,7 @@ func test_answers_are_only_taken_by_the_right_person_in_reach() -> void:
 	var far := _say(rig, &"shen_task_report_word")
 	assert_false(far.ok, "an answer shouted from across the map is refused")
 	assert_eq(rig.refused, [NpcRuntime.REFUSE_TOO_FAR] as Array[StringName], "for range")
-	assert_eq(_phase(rig, VEIN), QuestService.Phase.READY, "and nothing was paid")
+	assert_eq(_phase(rig, VEIN), QuestData.Phase.READY, "and nothing was paid")
 	assert_eq(rig.inventory.count_of(PILL), 0, "no pills crossed the map")
 	_free(rig)
 
@@ -666,7 +666,7 @@ func test_progress_survives_a_map_change_and_readiness_is_said_once() -> void:
 	rig.inventory.give(PILL, 1)
 	rig.world.active_map_leaving.emit()
 	rig.world.active_map_ready.emit()
-	assert_eq(_phase(rig, PILLS), QuestService.Phase.ACTIVE, "still under way after a map change")
+	assert_eq(_phase(rig, PILLS), QuestData.Phase.ACTIVE, "still under way after a map change")
 	rig.log.clear()
 	rig.inventory.give(PILL, 1)
 	rig.inventory.give(STONE, 5)  # the bag changing again changes nothing about the quest
@@ -701,17 +701,17 @@ func test_the_journal_view_says_what_to_do_next_for_whom_and_for_what() -> void:
 	assert_true(idle.available, "a session has a view")
 	assert_eq(idle.entries.size(), 2, "both quests are listed while on offer")
 	assert_eq([idle.purpose_key, idle.purpose_phase],
-		[&"QUEST_UNQUIET_VEIN_LEAD", QuestService.Phase.AVAILABLE],
+		[&"QUEST_UNQUIET_VEIN_LEAD", QuestData.Phase.AVAILABLE],
 		"with nothing taken, the purpose line is the first lead: where to go")
 	_take_pills(rig)
 	var taken := rig.quests.build_view()
 	assert_eq([taken.purpose_key, taken.purpose_phase],
-		[&"QUEST_TREELINE_PILLS_GOAL", QuestService.Phase.ACTIVE],
+		[&"QUEST_TREELINE_PILLS_GOAL", QuestData.Phase.ACTIVE],
 		"a quest under way outranks a lead: what to do")
 	var pills := _entry(taken, PILLS)
 	assert_eq([pills["title_key"], pills["summary_key"], pills["phase"], pills["owed"]],
 		[&"QUEST_TREELINE_PILLS_TITLE", &"QUEST_TREELINE_PILLS_SUMMARY",
-			QuestService.Phase.ACTIVE, false], "its title, its why, its state")
+			QuestData.Phase.ACTIVE, false], "its title, its why, its state")
 	assert_eq(pills["giver_name_key"], rig.world.registry.get_character(KO).name_key,
 		"who asked, by the name in his CharacterState")
 	assert_eq(pills["objectives"], [{"text_key": &"QUEST_TREELINE_PILLS_OBJ_CARRY", "value": 0,
@@ -723,7 +723,7 @@ func test_the_journal_view_says_what_to_do_next_for_whom_and_for_what() -> void:
 	rig.inventory.give(PILL, 2)
 	var ready := rig.quests.build_view()
 	assert_eq([ready.purpose_key, ready.purpose_phase],
-		[&"QUEST_TREELINE_PILLS_RETURN", QuestService.Phase.READY],
+		[&"QUEST_TREELINE_PILLS_RETURN", QuestData.Phase.READY],
 		"ready outranks everything: who to return to")
 	assert_eq(_entry(ready, PILLS)["objectives"][0]["value"], 2, "2 of 2")
 	var vein := _entry(ready, VEIN)
@@ -732,7 +732,7 @@ func test_the_journal_view_says_what_to_do_next_for_whom_and_for_what() -> void:
 	_open_hub(rig, rig.ko)
 	_say(rig, &"ko_pills_give")
 	var done := rig.quests.build_view()
-	assert_eq(_entry(done, PILLS)["phase"], QuestService.Phase.COMPLETED, "done is shown as done")
+	assert_eq(_entry(done, PILLS)["phase"], QuestData.Phase.COMPLETED, "done is shown as done")
 	assert_eq(done.purpose_key, &"QUEST_UNQUIET_VEIN_LEAD",
 		"and the purpose line moves on to what is still on offer")
 	_free(rig)

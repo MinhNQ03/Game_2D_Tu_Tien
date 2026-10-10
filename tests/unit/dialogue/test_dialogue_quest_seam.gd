@@ -71,7 +71,7 @@ func _quest_catalog(receiver: StringName = GIVER) -> QuestCatalogData:
 	return catalog
 
 
-func _phase(phase: QuestService.Phase, negate: bool = false) -> DialogueConditionData:
+func _phase(phase: QuestData.Phase, negate: bool = false) -> DialogueConditionData:
 	var condition := DialogueConditionData.new()
 	condition.kind = DialogueConditionData.Kind.QUEST_PHASE
 	condition.quest_id = QUEST
@@ -107,11 +107,11 @@ func _dialogue(speaker: StringName = GIVER) -> DialogueData:
 	hub.id = &"hub"
 	hub.text_key = &"DLG_TEST_HUB"
 	var options: Array[DialogueChoiceData] = [
-		_choice(&"take", &"after", [_phase(QuestService.Phase.AVAILABLE)],
+		_choice(&"take", &"after", [_phase(QuestData.Phase.AVAILABLE)],
 			_effect(DialogueEffectData.Kind.QUEST_ACCEPT)),
-		_choice(&"answer", &"after", [_phase(QuestService.Phase.READY)],
+		_choice(&"answer", &"after", [_phase(QuestData.Phase.READY)],
 			_effect(DialogueEffectData.Kind.QUEST_TURN_IN)),
-		_choice(&"back", &"after", [_phase(QuestService.Phase.ACTIVE)],
+		_choice(&"back", &"after", [_phase(QuestData.Phase.ACTIVE)],
 			_effect(DialogueEffectData.Kind.QUEST_ABANDON)),
 		_choice(&"leave", &""),
 	]
@@ -177,13 +177,13 @@ func _has_error(errors: Array[String], fragment: String) -> bool:
 func test_the_new_kinds_reject_payloads_they_do_not_use() -> void:
 	assert_eq(_dialogue().validation_errors(), [] as Array[String], "the good graph is valid")
 	assert_eq(_service().content_errors(), [] as Array[String], "and names nothing unknown")
-	var unnamed := _phase(QuestService.Phase.READY)
+	var unnamed := _phase(QuestData.Phase.READY)
 	unnamed.quest_id = &""
 	assert_true(_has_error(unnamed.validation_errors(), "names no quest_id"), "no quest")
-	var out_of_range := _phase(QuestService.Phase.READY)
-	out_of_range.quest_phase = 9 as QuestService.Phase
+	var out_of_range := _phase(QuestData.Phase.READY)
+	out_of_range.quest_phase = 9 as QuestData.Phase
 	assert_true(_has_error(out_of_range.validation_errors(), "unknown phase"), "a bad phase")
-	var mixed := _phase(QuestService.Phase.READY)
+	var mixed := _phase(QuestData.Phase.READY)
 	mixed.knowledge_id = WORD
 	assert_true(_has_error(mixed.validation_errors(), "payload it does not use"),
 		"a quest condition carrying knowledge")
@@ -255,9 +255,9 @@ func test_a_quest_condition_follows_the_quest_owner() -> void:
 	_knowledge.grant(WORD, &"test")
 	assert_eq(_offered(service), [&"answer", &"leave"] as Array[StringName],
 		"ready (the Knowledge Core says so): it can be answered")
-	var negated := _phase(QuestService.Phase.AVAILABLE, true)
+	var negated := _phase(QuestData.Phase.AVAILABLE, true)
 	assert_true(service.condition_met(negated, GIVER, PLAYER), "'not on offer' is now true")
-	assert_false(_service(null, null, false).condition_met(_phase(QuestService.Phase.AVAILABLE),
+	assert_false(_service(null, null, false).condition_met(_phase(QuestData.Phase.AVAILABLE),
 		GIVER, PLAYER), "with nobody to ask, a quest condition is never met")
 	assert_false(_service(null, null, false).condition_met(negated, GIVER, PLAYER),
 		"negated or not")
@@ -273,13 +273,13 @@ func test_a_quest_effect_is_carried_out_by_the_owner_with_who_said_it() -> void:
 		"the owner was asked once, and told which speaker asked")
 	assert_eq([taken.quest_id, taken.effect_kind, taken.next_node_id],
 		[QUEST, DialogueEffectData.Kind.QUEST_ACCEPT, &"after"], "and the talk moves on")
-	assert_eq(_quests.phase_of(QUEST), QuestService.Phase.ACTIVE, "the quest IS taken")
+	assert_eq(_quests.phase_of(QUEST), QuestData.Phase.ACTIVE, "the quest IS taken")
 	var stale := _choose(service, &"take")
 	assert_eq(stale.reason, DialogueService.REFUSE_CHOICE_GONE,
 		"the same answer again is no longer offered")
 	assert_eq(_ops.size(), 1, "and the owner is not asked a second time")
 	assert_true(_choose(service, &"back").ok, "given back")
-	assert_eq(_quests.phase_of(QUEST), QuestService.Phase.AVAILABLE, "on offer again")
+	assert_eq(_quests.phase_of(QUEST), QuestData.Phase.AVAILABLE, "on offer again")
 
 
 func test_the_owners_refusal_refuses_the_answer_with_the_owners_reason() -> void:
@@ -291,7 +291,7 @@ func test_the_owners_refusal_refuses_the_answer_with_the_owners_reason() -> void
 		"with the owner's own reason, not a generic one")
 	assert_eq(refused.next_node_id, &"hub", "and the conversation stays where it was")
 	assert_eq(refused.quest_id, &"", "no quest is reported as acted on")
-	assert_eq(_quests.phase_of(QUEST), QuestService.Phase.AVAILABLE, "nothing was taken")
+	assert_eq(_quests.phase_of(QUEST), QuestData.Phase.AVAILABLE, "nothing was taken")
 
 
 func test_a_quest_effect_with_nobody_to_carry_it_out_is_refused() -> void:
@@ -299,4 +299,4 @@ func test_a_quest_effect_with_nobody_to_carry_it_out_is_refused() -> void:
 	var nobody := service.choose(DLG, &"hub", &"take", PLAYER, _knowledge.grant)
 	assert_false(nobody.ok, "no quest owner was handed over")
 	assert_eq(nobody.reason, DialogueService.REFUSE_EFFECT_FAILED, "so the effect fails")
-	assert_eq(_quests.phase_of(QUEST), QuestService.Phase.AVAILABLE, "and nothing changed")
+	assert_eq(_quests.phase_of(QUEST), QuestData.Phase.AVAILABLE, "and nothing changed")

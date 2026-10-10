@@ -8,6 +8,15 @@ class_name QuestData
 ## resource in the `QuestCatalogData` plus the lines its people say — never a branch in a
 ## service. It holds nothing that changes: progress is `QuestState`'s.
 
+## Where a quest stands, as the player and a conversation see it. The VOCABULARY is content's
+## (a conversation choice is authored against it); which phase a quest is IN is decided by
+## `QuestService`, by asking the owners — it is never stored.
+##   AVAILABLE  not taken — it can be accepted
+##   ACTIVE     taken, objectives not met
+##   READY      objectives met — or turned in with part of the reward still owed
+##   COMPLETED  paid in full; never offered again
+enum Phase { AVAILABLE, ACTIVE, READY, COMPLETED }
+
 ## How the objectives combine.
 enum Completion {
 	## Every objective must be met.

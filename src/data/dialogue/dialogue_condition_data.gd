@@ -15,7 +15,7 @@ enum Kind {
 	KNOWS,
 	## The speaker's regard for the player on `dimension` is >= `value`.
 	RELATIONSHIP_AT_LEAST,
-	## Quest `quest_id` is in phase `quest_phase` (a `QuestService.Phase`), as `QuestService`
+	## Quest `quest_id` is in phase `quest_phase` (a `QuestData.Phase`), as `QuestService`
 	## says right now.
 	QUEST_PHASE,
 }
@@ -28,7 +28,7 @@ enum Kind {
 @export var value: int = 0
 ## QUEST_PHASE only: a quest in the quest catalog, and the phase it must be in.
 @export var quest_id: StringName = &""
-@export var quest_phase: QuestService.Phase = QuestService.Phase.AVAILABLE
+@export var quest_phase: QuestData.Phase = QuestData.Phase.AVAILABLE
 @export var negate: bool = false
 
 
@@ -58,7 +58,7 @@ func validation_errors() -> Array[String]:
 		Kind.QUEST_PHASE:
 			if quest_id == &"":
 				errors.append("a QUEST_PHASE condition names no quest_id")
-			if quest_phase < 0 or quest_phase >= QuestService.Phase.size():
+			if quest_phase < 0 or quest_phase >= QuestData.Phase.size():
 				errors.append("a QUEST_PHASE condition names unknown phase %d" % quest_phase)
 			if knowledge_id != &"" or dimension != &"" or value != 0:
 				errors.append("a QUEST_PHASE condition carries a payload it does not use")
