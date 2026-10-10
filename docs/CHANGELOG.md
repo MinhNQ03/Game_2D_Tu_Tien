@@ -8,6 +8,24 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Phase 19: quests, the one reward ledger, the journal (D-070)
+
+- **Added.** `QuestData` / `QuestObjectiveData` / `QuestCatalogData`, `QuestState`,
+  `QuestService` (pure domain) and `QuestRuntime` (17th session node): a closed set of
+  objective kinds (`KNOW`, `HOLD_ITEM`, `DEFEAT`), ALL / ANY completion, READY derived from the
+  owners. `RewardData`, `RewardLedger`, `RewardService`, `RewardRuntime`: one record of what
+  has been paid, shared by quest rewards and the XP-per-defeat guard, reusable by drops.
+- **Added.** Two quests from existing content: `quest_unquiet_vein` (Thẩm Bất Kỳ; fight a Vụ
+  Lang or learn it from the scout) and `quest_treeline_pills` (Kha Thản; the village's pills).
+  Offered, declined, taken, answered and given back in the existing conversation box.
+- **Added.** A line of purpose in the place plaque; a non-modal quest journal on `Q`
+  (`quest_journal`); quest announcements in the existing band. CI gate 14: the quest E2E.
+- **Changed.** `ProgressionRuntime` claims each defeat in the shared ledger instead of a
+  private dictionary. `DialogueConditionData` gains `QUEST_PHASE`; `DialogueEffectData` gains
+  `QUEST_ACCEPT` / `QUEST_TURN_IN` / `QUEST_ABANDON`. `RegardRules` states once how a
+  character's regard for the player is found and moved.
+- No story flag, loot table, save file or new autoload. Phase 20 is NOT started.
+
 ### 2026-10-10 — Post-Phase-18 audit (2/2): four repairs in shipped systems (D-068)
 
 - **Fixed (P1).** A defeated player was a silent dead end: the body kept walking and the

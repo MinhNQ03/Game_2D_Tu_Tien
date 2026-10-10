@@ -239,13 +239,13 @@ measurements.
 |---|---|
 | Main Menu | **exists**; title, subtitle, New Game / Load / Settings / Quit |
 | Settings | **exists**; language now, categories later |
-| HUD | **exists**; identity, map, sect chip, semantic prompts. Grows: health/resource (P-09), realm (P-12) |
+| HUD | **exists**; identity, map, sect chip, semantic prompts. Grows: health/resource (P-09), realm (P-12). Since P-19 the place plaque carries ONE line of purpose under the place and the date (where to go / what to do / who to return to) — a line, not a tracker box (`XIANXIA_IDENTITY_CONTRACT.md` R-13); hidden when there is nothing to be about |
 | Character | identity, stats, origin, realm, path, sect — one screen that answers "what am I?" |
 | Cultivation | the realm ladder as a *ladder*; current layer, what the next one grants (not just a bar) |
 | Technique | known công pháp + the **compatibility graph** — the build screen |
 | Skill | loadout, costs, cooldowns, technique gates |
 | Equipment / Inventory | slots + stats; inventory grid with source/sink clarity |
-| Quest Journal | active/available/done, by category, with the *why* |
+| Quest Journal | **exists** (P-19, D-070): a non-modal side panel on `quest_journal`. Most urgent first (ready → under way → on offer → done); every quest shows its name, its state in words and its next step; ONE quest at a time is opened out (the why, objectives with counts, the reward) and the journal's own key steps to the next, then closes — so nothing is ever below a fold a keyboard cannot reach. Categories arrive when there are enough quests to need them |
 | Dialogue | portrait + text + choices; choices show what they are about, never a morality icon |
 | Relationship | per-character the six dimensions, legibly — **not** one bar |
 | Sect | **exists** (panel); grows into roster, rank, contribution, politics |
@@ -294,7 +294,7 @@ Each entry is the **first usable** treatment, in that feature's own phase.
 | 16 Pet | pet panel (where exposed) |
 | 17 NPC / Shop | interaction + trade |
 | 18 Dialogue | dialogue + choice presentation |
-| 19 Quest | journal |
+| 19 Quest | journal — **done** (D-070): the purpose line, the journal panel |
 | 20 Story | chronicle / chapter surface |
 | 21 Dungeon | run UI |
 | 22 Boss | boss presentation (name, phases, escalation) |

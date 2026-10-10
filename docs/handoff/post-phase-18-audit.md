@@ -140,6 +140,13 @@ AUD-07 · AUD-09 · AUD-10 · AUD-12 · AUD-13 · AUD-14 — see §6.
 | AUD-15 | none today — but the HUD now owns four modal surfaces (satchel, shop, conversation, session prompt), each with its own flag and its own push / pop of the input context, in a 1 957-line file | unifying them is a refactor of working code with no player-facing gain today | Phase 25 (UI Consolidation); **constraint on Phase 19 now:** the quest journal is a reading panel (non-modal, closed by `close_reading_panels`), or it registers through the same three calls the others use — it may not invent a fifth pattern | one modal-surface seam in the HUD: adding a surface is one registration, and the threat / Esc / teardown rules apply to it without new code | **yes** — every new surface copies the pattern by hand |
 | AUD-14 | after a defeat the run ends: there is no revival, no checkpoint, no penalty design | what defeat MEANS is a design decision, and "continue" needs a save | Phase 23 (Save / Load: continue from the last save) with the rule decided at Phase 20 Gate A | the defeat box offers "continue" from a real save and the consequence of defeat is an ADR | no |
 
+**Closed since (Phase 19, D-070 — `docs/handoff/phase-19-quest.md`):** **AUD-10** — the place
+plaque states a purpose from the first frame (quest E2E step 1). **AUD-12** — one reward
+ledger (`RewardLedger`) owns "has this been paid" for defeats and quests alike; Phase 21 feeds
+it a source id and a `RewardData`. **AUD-15's constraint on Phase 19 was honoured** — the
+journal is a reading panel closed by `close_reading_panels`, not a fifth modal; the entry
+itself stays open for Phase 25.
+
 ## 7. What the repairs changed for the player (Checkpoint 2)
 
 | | Before | After | Evidence |

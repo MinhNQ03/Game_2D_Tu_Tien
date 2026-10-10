@@ -157,26 +157,92 @@ func test_the_journal_lists_the_most_urgent_first_and_says_each_state_in_words()
 	hud.set_quest_view(_view())
 	assert_eq(journal.shown_quest_ids(), [PILLS, VEIN] as Array[StringName],
 		"what is ready to answer comes before what is under way, whatever the authored order")
+	assert_eq(journal.focused_quest_id(), PILLS, "and the most urgent is the one opened out")
 	var pills := journal.block_text(PILLS)
-	assert_true(pills.contains("Thuốc cho người gác bìa rừng"), "its name")
-	assert_true(pills.contains("xong, chờ thưa lại"), "its state, as a word")
+	assert_true(pills.contains("Thuốc cho người gác"), "its name")
+	assert_true(pills.contains("chờ thưa lại"), "its state, as a word")
 	assert_true(pills.contains("Trao thuốc cho Kha Thản"), "the next thing to do")
-	assert_true(pills.contains("Kha Thản không rời được lối băng rừng"), "why it matters")
-	assert_true(pills.contains("Mang Bổ Huyết Đan tới cho Kha Thản (2/2) — xong"),
-		"the objective, its count, and that it is met — in words")
-	assert_true(pills.contains("Người nhờ: Thẩm Bất Kỳ"), "who asked")
+	assert_true(pills.contains("Kha Thản không rời được bìa rừng"), "why it matters")
+	assert_false(pills.contains("Mang Bổ Huyết Đan"),
+		"a quest that is READY lists no objectives: all that is left is to return")
 	assert_true(pills.contains("Thưởng: Bổ Huyết Đan ×2 · 10 KN · kính trọng của Thẩm Bất Kỳ"),
 		"and what it pays, part by part")
+	# The quest NOT in focus is two lines: its name and state, and what to do about it.
+	assert_eq(journal.block_text(VEIN),
+		"Mạch rừng không yên\nđang làm\nXem Vụ Lang có bám mạch rừng",
+		"the other quest shows its name, its state and its next step — nothing below a fold")
+	var keys := journal.find_child("Keys", true, false) as Label
+	assert_eq(keys.text, "Q Việc kế · Esc Đóng", "the keys line says what the key does next")
+	# The journal's own key steps to the next quest.
+	assert_true(journal.advance_focus(), "there is a next quest to open out")
+	assert_eq(journal.focused_quest_id(), VEIN, "now the elder's task is opened out")
 	var vein := journal.block_text(VEIN)
 	assert_true(vein.contains("đang làm"), "under way, as a word")
-	assert_true(vein.contains("Chỉ cần một trong các cách:"), "two ways are marked as either-or")
-	assert_true(vein.contains("· Hạ một con Vụ Lang trong Rừng Vỡ Mạch")
-		and vein.contains("· Hỏi Kha Thản về bãi săn của Vụ Lang"), "and both are listed")
+	assert_true(vein.contains("· Hạ một con Vụ Lang trong rừng"), "one way")
+	assert_true(vein.contains("hoặc: Hỏi Kha Thản bãi săn của Vụ Lang"),
+		"and the other, joined by 'or' in words: either will do")
 	assert_false(vein.contains("(0/1)"), "a count of one is not printed as a fraction")
+	assert_eq(journal.block_text(PILLS),
+		"Thuốc cho người gác\nchờ thưa lại\nTrao thuốc cho Kha Thản",
+		"and the first one folded back to its two lines")
+	assert_eq(keys.text, "Q Đóng", "on the last quest the key closes")
+	assert_false(journal.advance_focus(), "after the last there is nowhere to step: close")
+	journal.reset_focus()
+	assert_eq(journal.focused_quest_id(), PILLS, "reopening starts from the most urgent again")
 	_use_language("en")
 	assert_true(journal.block_text(PILLS).contains("ready to answer"), "English follows")
-	assert_true(journal.block_text(VEIN).contains("Any one of these:"), "in every line")
+	journal.advance_focus()
+	assert_true(journal.block_text(VEIN).contains("or: Ask Ko Than where the wolves hunt"),
+		"in every line")
 	_use_language("vi")
+	free_node(hud)
+
+
+func test_objectives_show_their_count_and_say_met_in_words() -> void:
+	_use_language("vi")
+	var hud := _hud()
+	var journal := hud.quest_journal_panel()
+	var view := QuestJournalView.new()
+	view.available = true
+	# A quest needing BOTH: two pills carried (done) and the scout's word (not yet).
+	var entries: Array[Dictionary] = [_entry(PILLS, QuestService.Phase.ACTIVE,
+		"QUEST_TREELINE_PILLS", [
+			{"text_key": &"QUEST_TREELINE_PILLS_OBJ_CARRY", "value": 2, "required": 2,
+				"met": true},
+			{"text_key": &"QUEST_UNQUIET_VEIN_OBJ_ASK", "value": 0, "required": 1,
+				"met": false}], false)]
+	view.entries = entries
+	hud.set_quest_view(view)
+	var text := journal.block_text(PILLS)
+	assert_true(text.contains("· Mang Bổ Huyết Đan cho Kha Thản (2/2) — xong"),
+		"a counted objective shows its count, and that it is met — in words, not colour alone")
+	assert_true(text.contains("· Hỏi Kha Thản bãi săn của Vụ Lang"), "the unmet one is plain")
+	assert_false(text.contains("hoặc:"), "objectives that are ALL needed are not joined by 'or'")
+	assert_false(text.contains("(0/1)"), "and a count of one is not printed as a fraction")
+	entries[0]["objectives"][0]["value"] = 1
+	entries[0]["objectives"][0]["met"] = false
+	hud.set_quest_view(view)
+	assert_true(journal.block_text(PILLS).contains("· Mang Bổ Huyết Đan cho Kha Thản (1/2)"),
+		"part-way reads as part-way")
+	free_node(hud)
+
+
+func test_the_reader_stays_on_their_quest_when_the_world_moves() -> void:
+	_use_language("vi")
+	var hud := _hud()
+	var journal := hud.quest_journal_panel()
+	var view := _view()
+	hud.set_quest_view(view)
+	journal.advance_focus()
+	assert_eq(journal.focused_quest_id(), VEIN, "reading the elder's task")
+	hud.set_quest_view(_view())  # a pickup somewhere pushes a fresh view
+	assert_eq(journal.focused_quest_id(), VEIN, "a view change does not throw the reader off it")
+	var done := _view()
+	done.entries[0] = _entry(VEIN, QuestService.Phase.COMPLETED, "QUEST_UNQUIET_VEIN", [], true)
+	hud.set_quest_view(done)
+	assert_eq(journal.focused_quest_id(), PILLS,
+		"a quest that is done cannot hold the focus: it falls to what is left")
+	assert_false(journal.advance_focus(), "and a finished quest is never a stop on the way")
 	free_node(hud)
 
 
@@ -195,7 +261,7 @@ func test_offered_owed_done_and_empty_each_read_differently() -> void:
 	assert_eq(journal.shown_quest_ids(), [PILLS, VEIN] as Array[StringName],
 		"what is on offer comes before what is done")
 	var offered := journal.block_text(PILLS)
-	assert_true(offered.contains("chờ người nhận"), "on offer, as a word")
+	assert_true(offered.contains("chưa nhận"), "on offer, as a word")
 	assert_true(offered.contains("Kha Thản chờ thuốc của làng"), "with where to go")
 	assert_true(offered.contains("Thưởng:"), "and what it pays, BEFORE it is taken")
 	assert_false(offered.contains("Kha Thản không rời được"),
@@ -205,12 +271,20 @@ func test_offered_owed_done_and_empty_each_read_differently() -> void:
 	entries[1] = _entry(PILLS, QuestService.Phase.READY, "QUEST_TREELINE_PILLS", [], false, true)
 	view.entries = entries
 	hud.set_quest_view(view)
-	assert_true(journal.block_text(PILLS).contains("còn thiếu thưởng"),
+	assert_true(journal.block_text(PILLS).contains("còn nợ thưởng"),
 		"a reward still owed says so instead of 'done'")
+	var elsewhere := _entry(PILLS, QuestService.Phase.ACTIVE, "QUEST_TREELINE_PILLS", [], false)
+	elsewhere["receiver_name_key"] = &"CHARACTER_SCOUT_KO_NAME"
+	entries[1] = elsewhere
+	view.entries = entries
+	hud.set_quest_view(view)
+	assert_true(journal.block_text(PILLS).contains("Thưa lại với: Kha Thản"),
+		"an answer owed to someone other than the giver names them")
 	var none := QuestJournalView.new()
 	none.available = true
 	hud.set_quest_view(none)
 	assert_eq(journal.shown_quest_ids(), [] as Array[StringName], "no entries")
+	assert_eq(journal.focused_quest_id(), &"", "nothing to open out")
 	var said_empty := false
 	for label: Label in journal.find_children("*", "Label", true, false):
 		if label.visible and label.text == "Chưa ai nhờ ngươi việc gì.":
@@ -235,6 +309,105 @@ func test_no_journal_line_shows_a_raw_key_in_either_language() -> void:
 	assert_true(keys.text.begins_with("Q "), "the keys line names the journal's own key")
 	_use_language("vi")
 	free_node(hud)
+
+
+## THE GUARD FOR WHAT THE FIRST CAPTURE SHOWED: at the smallest authored screen, with the
+## SHIPPED quests in every combination of states, whichever quest is opened out — nothing is
+## below the fold. A reading panel has no keys to scroll with.
+func test_the_shipped_journal_never_hides_a_quest_below_the_fold() -> void:
+	var catalog := load(QUESTS) as QuestCatalogData
+	# A viewport of the smallest AUTHORED size, so the box is the box a player gets — the
+	# runner's own window is whatever the machine gave it.
+	var screen_host := SubViewport.new()
+	screen_host.size = Vector2i(1280, 720)
+	add_to_tree(screen_host)
+	var hud: GameplayHUD = HUDScript.new()
+	screen_host.add_child(hud)
+	var journal := hud.quest_journal_panel()
+	journal.visible = true
+	await scene_tree.process_frame
+	var screen := journal.get_viewport_rect().size
+	assert_eq(screen, Vector2(1280, 720), "measured at the smallest authored size")
+	assert_eq(int(journal.size.y), 720 - 2 * UIPalette.HUD_MARGIN - UIPalette.TOP_PLAQUE_RESERVE
+		- UIPalette.PROMPT_STRIP_RESERVE, "in the bounded side-panel box")
+	var phases := [QuestService.Phase.AVAILABLE, QuestService.Phase.ACTIVE,
+		QuestService.Phase.READY, QuestService.Phase.COMPLETED]
+	var checked := 0
+	var tightest := -INF
+	for code: String in ["vi", "en"]:
+		_use_language(code)
+		for first: int in phases:
+			for second: int in phases:
+				var view := QuestJournalView.new()
+				view.available = true
+				var entries: Array[Dictionary] = [_shipped(catalog.entries[0], first),
+					_shipped(catalog.entries[1], second)]
+				view.entries = entries
+				hud.set_quest_view(view)
+				journal.reset_focus()
+				# Bounded: a journal whose key never reaches "the last quest" must FAIL
+				# this test, not hang it (a mutation of the focus rule did exactly that).
+				var reached_the_end := false
+				for _stop in entries.size() + 1:
+					await _settle_layout(journal)
+					assert_true(journal.fits_without_scrolling(),
+						("[%s] phases %d/%d, '%s' opened out: everything is inside the box "
+							+ "(%.0f px over)") % [code, first, second,
+							journal.focused_quest_id(), journal.overflow_px()])
+					checked += 1
+					tightest = maxf(tightest, journal.overflow_px())
+					if not journal.advance_focus():
+						reached_the_end = true
+						break
+				assert_true(reached_the_end,
+					"[%s] phases %d/%d: the journal's key reaches the last quest and stops"
+						% [code, first, second])
+	assert_true(checked >= 32, "every state pair was measured in both languages (%d)" % checked)
+	print("[journal-fit] tightest layout of %d: %.0f px to spare" % [checked, -tightest])
+	_use_language("vi")
+	free_node(screen_host)
+
+
+## Wait until the journal's layout has stopped moving. A wrapped label inside a scroll body
+## takes several passes to reach its final height, and measuring after a fixed two frames
+## read a box that had not finished growing: the guard passed while a real frame showed a
+## clipped line. Bounded; the last reading is used either way.
+func _settle_layout(journal: QuestJournalPanel) -> void:
+	var last := INF
+	var steady := 0
+	for _i in 24:
+		await scene_tree.process_frame
+		var now := journal.overflow_px()
+		steady = steady + 1 if is_equal_approx(now, last) else 0
+		last = now
+		if steady >= 3:
+			return
+
+
+## One shipped quest as the runtime would describe it in `phase`, at its LONGEST: every
+## objective unmet with its count showing (the widest text an objective line can have).
+func _shipped(quest: QuestData, phase: QuestService.Phase) -> Dictionary:
+	var objectives: Array[Dictionary] = []
+	for entry in quest.objectives:
+		objectives.append({"text_key": entry.text_key, "value": maxi(entry.count - 1, 0),
+			"required": entry.count, "met": false})
+	var reward_items: Array[Dictionary] = []
+	for row in quest.reward.items:
+		reward_items.append({"name_key": row.item.name_key, "count": row.count})
+	var hint := quest.lead_key
+	if phase == QuestService.Phase.ACTIVE:
+		hint = quest.goal_key
+	elif phase == QuestService.Phase.READY:
+		hint = quest.return_key
+	return {"quest_id": quest.id, "phase": phase, "owed": false, "title_key": quest.title_key,
+		"summary_key": quest.summary_key, "hint_key": hint,
+		"giver_name_key": &"CHARACTER_ELDER_SHEN_NAME",
+		"receiver_name_key": &"CHARACTER_ELDER_SHEN_NAME",
+		"any": quest.completion == QuestData.Completion.ANY, "objectives": objectives,
+		"reward_items": reward_items, "reward_xp": quest.reward.xp,
+		"reward_regard_name_key": &"CHARACTER_ELDER_SHEN_NAME",
+		"reward_regard_dimension": quest.reward.regard_dimension,
+		"reward_regard_delta": quest.reward.regard_delta}
 
 
 ## The journal's box is the shared bounded side panel: its content scrolls inside it and can

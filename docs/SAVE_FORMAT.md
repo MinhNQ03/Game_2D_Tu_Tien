@@ -68,9 +68,25 @@ SaveFile:
     stock: Dictionary { shop_id -> { item_id -> int } }   # FINITE entries only
     # `ShopState.to_dict()` / `from_dict()`: must name exactly the finite entries the catalog
     # authors; atomic; strict TYPE_INT. Not saved: which shop is open (runtime).
-  quests:                                     # sketch. Phase 19 builds the owner's to_dict()/
-    log: Array[{ quest_id, state, objective_progress }]   # from_dict() ONLY; no file before
-                                              # Phase 23 (ROADMAP Phase 19, D-069)
+  quests:                                     # Phase 19 (D-070): `QuestState.to_dict()` /
+    schema: 1                                 # `from_dict()` — IMPLEMENTED as an in-memory
+    quests: Dictionary { quest_id -> {        # boundary; NO FILE is written before Phase 23.
+      status: "active" | "reward_owed" | "completed",
+      progress: Dictionary { objective_id -> int },       # DEFEAT objectives only, 1..count
+      counted:  Dictionary { objective_id -> Array[String] }   # the per-spawn ids counted
+    } }
+    # A quest with no entry is AVAILABLE. READY is not stored: it is derived from `knowledge`
+    # and `inventory` on load. Strict and atomic: an unknown quest / objective, a count the
+    # quest does not keep or over what it asks, sources that do not match the count, or any
+    # wrong type rejects the whole block. Not saved: the open journal, which readiness was
+    # already announced.
+  rewards:                                    # Phase 19 (D-070): `RewardLedger.to_dict()`.
+    schema: 1                                 # THE one record of what has been paid.
+    claimed: Array[String]                    # sorted; a defeat's per-spawn id, "quest:<id>"
+                                              # and its parts "quest:<id>/bag|xp|regard".
+    # Phase 23 MUST load `rewards` with `quests`: a completed quest whose ledger entry was
+    # lost could not be re-paid anyway (the quest is `completed`), and a ledger entry with no
+    # quest record closes that quest without paying — tested both ways.
   # (no `dialogue` block: Dialogue owns no persistent state — D-066. What a choice changed is
   #  already in `relationships` / `knowledge` / `shops`; an open conversation is runtime.)
   story:                                      # Phase 20 owns ALL of this, including `flags`

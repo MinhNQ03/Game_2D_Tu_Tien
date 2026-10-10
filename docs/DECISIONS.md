@@ -5347,3 +5347,42 @@ checks. CLV-01 stays open with its owner and its no-later-than-Phase-21 criterio
 - *Claiming rollback across owners* — no such mechanism exists; ordered idempotent parts do.
 - *New content to make the quests easier to build* (a clue prop, a third NPC, a quest item):
   the world already holds everything both tasks are about.
+
+### As built (what the implementation settled, and what changed from the plan above)
+
+- **Seventeen session nodes.** `… CombatRuntime, RewardRuntime, ProgressionRuntime, …,
+  NpcRuntime, QuestRuntime, DialogueRuntime`. The order is pinned by value in
+  `test_session_lifecycle.gd` and by the world E2E's teardown trace.
+- **No EventBus event was added.** The matrix had pencilled in an EventBus `dialogue_chosen`
+  "with its first consumer, Quest". Quest did not need one: Dialogue DISPATCHES into the quest
+  owner (a Callable, exactly as a knowledge grant reaches `KnowledgeRuntime`), and the quest
+  owner LISTENS to the owners' own signals. A global event would have been a second path to
+  the same fact.
+- **Combat's announcement is unchanged.** A quest needs to know WHAT fell; rather than widen
+  `enemy_defeated(reward_id, xp_reward)` — which progression pays on — `CombatRuntime` answers
+  `defeated_kind(reward_id)`. The per-spawn id is also what makes one defeat count once.
+- **`RegardRules`.** "How X regards the player, and how that is moved" was `DialogueService`'s
+  private rule. A reward's regard part needs the same rule, so it is stated once, statically,
+  and both call it. No behaviour changed (the Phase-18 suite is the proof).
+- **REWARD_OWED is reported as READY** to a conversation and to the plaque (the player's next
+  action is the same: go back and ask), and as "reward owed" in the journal.
+- **The journal key is taught where a quest is taken on**, not in the prompt strip. An eighth
+  prompt measured 704–738 px, past the strip's half of the screen; the satchel's key is
+  already taught the same way (where an item is gained). The plaque line needs no key.
+- **One quest is opened out at a time.** The first real-window capture of the journal showed
+  one quest and hid the other below a fold: the box is bounded by the screen, and a reading
+  panel has no keys to scroll with. So nothing is ever below the fold — the focused quest is
+  opened out, the others are two lines (name + state, next step), and the journal's own key
+  steps the focus and closes after the last. Pinned by a test that lays the SHIPPED quests
+  out at 1280×720 in all sixteen state pairs, in both languages.
+- **A quest that is READY lists no objectives.** All that is left is to return, and the line
+  above says to whom; listing what was done pushed the reward off the page.
+- **Two test measurements were corrected, with the reason written in the test.** The dialogue
+  box is measured at the LARGEST set of answers that can be offered together (the scout's hub
+  authors seven answers of which five can ever show at once — measured: it fits). The world
+  E2E's "no raw resource id in the HUD" check is scoped to the sect panel it guards: the id
+  `pills` is an ordinary English word in the journal's prose.
+- **The elder draws a different conclusion from each route.** Reporting the scout's word:
+  "there are hours to cross". Reporting a fight: "no one crosses unarmed". Same reward; the
+  difference is what the player actually found out, said back to them.
+

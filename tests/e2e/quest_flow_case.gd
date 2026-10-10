@@ -178,11 +178,20 @@ func test_real_quest_flow() -> void:
 	for _i in 6:
 		await scene_tree.process_frame
 	assert_true(hud.is_quest_journal_open(), "and it stays open while they do")
+	assert_eq(journal.focused_quest_id(), VEIN, "the quest under way is the one opened out")
+	assert_true(journal.fits_without_scrolling(), "and nothing is below the fold")
+	# Its own key steps to the NEXT quest first — so every quest can be read with the keys —
+	# and closes the journal after the last.
+	await _press_until(JOURNAL, func() -> bool: return journal.focused_quest_id() == PILLS)
+	assert_true(hud.is_quest_journal_open(), "one press stepped to the scout's errand, still open")
+	assert_true(journal.block_text(PILLS).contains(_t(loc, "UI_QUEST_PHASE_AVAILABLE")),
+		"which reads as on offer")
+	assert_true(journal.fits_without_scrolling(), "still with nothing below the fold")
 	await _press_until(JOURNAL, func() -> bool: return not hud.is_quest_journal_open())
 	for _i in 6:
 		await scene_tree.process_frame
 	assert_false(hud.is_quest_journal_open(),
-		"its key closes it, and the same press does not reopen it")
+		"after the last quest its key closes it, and the same press does not reopen it")
 	await _press_until(JOURNAL, func() -> bool: return hud.is_quest_journal_open())
 	await _press_until(OPEN_MENU, func() -> bool: return not hud.is_quest_journal_open())
 	assert_eq(hud.session_prompt_kind(), GameplayHUD.PROMPT_NONE,
@@ -194,7 +203,7 @@ func test_real_quest_flow() -> void:
 		func() -> bool: return hud.session_prompt_kind() == GameplayHUD.PROMPT_NONE)
 	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "Esc again only ASKED; Esc once more stayed")
 	assert_eq(service.phase_of(VEIN), QuestService.Phase.ACTIVE, "and no progress was lost")
-	_step("5. the journal opens and closes on its key, is not modal, and Esc steps back one level")
+	_step("5. the journal: its key opens, steps, closes; not modal; Esc steps back one level")
 
 	# --- 6. give the task back, by a second explicit answer; then take it again ---------------
 	await _talk_to(player, hub, shen, Vector2(70, 6))

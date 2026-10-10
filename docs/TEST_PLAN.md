@@ -18,12 +18,13 @@
 > session runtime, a performance budget), **Enemy AI** (Phase 10: the pure-domain brain, target
 > selection, leash, cadence, determinism, damage/attack feedback), **Level/XP Progression**
 > (Phase 11 — inventory in the per-phase list below), and the UI/theme asset contracts — plus
-> six dedicated
+> seven dedicated
 > real-application E2E processes (app-flow, player-flow, world-flow, pet-flow, npc-flow,
-> dialogue-flow).
+> dialogue-flow, quest-flow).
 >
-> **CI runs 13 gates** (see §5; the eleventh is the Phase-16 pet E2E, the twelfth the
-> Phase-17 NPC / shop E2E, the thirteenth the Phase-18 dialogue E2E). That number is the COUNT OF CI GATES and is unrelated to the
+> **CI runs 14 gates** (see §5; the eleventh is the Phase-16 pet E2E, the twelfth the
+> Phase-17 NPC / shop E2E, the thirteenth the Phase-18 dialogue E2E, the fourteenth the
+> Phase-19 quest E2E). That number is the COUNT OF CI GATES and is unrelated to the
 > number of stages in `docs/PHASE_EXECUTION_PROTOCOL.md` — the phase protocol has more review
 > stages (pre-flight → … → final review) because most of them are human review steps that no
 > CI job can run. Do not "reconcile" the two numbers.
@@ -112,9 +113,9 @@ godot --headless --path . --quit-after 2
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-Then the six dedicated E2E processes (app / player sandbox / world-map / pet / npc-shop /
-dialogue), one gate each — 13 gates in total. The pet, npc and dialogue gates also fail on any
-`SCRIPT ERROR:` or leak line in their logs.
+Then the seven dedicated E2E processes (app / player sandbox / world-map / pet / npc-shop /
+dialogue / quest), one gate each — 14 gates in total. The pet, npc, dialogue and quest gates
+also fail on any `SCRIPT ERROR:` or leak line in their logs.
 
 > **The headless-suite gate also fails on any `SCRIPT ERROR:`, even when the runner exits 0**
 > (D-038). GDScript has no try/catch (D-004), so a VM error (a bad typed-array assignment, a
@@ -1194,4 +1195,68 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
 - Real app: `tools/capture_motion.gd -- <dir> dialogue <vi|en>` and `… session <vi|en>` at
   `--resolution 1280x720` and `1280x800` — the four language / size combinations, every frame
   opened; `tools/playtest_flow.gd`. Sizes and findings: `docs/handoff/post-phase-18-closure.md`.
+
+### Phase 19 — Quest (D-070)
+- `tests/unit/reward/test_reward_domain.gd` (11) — `RewardData` validated part by part; the
+  ledger records an id once, refuses an empty one, round-trips and rejects a bad payload whole;
+  `RewardService.deliver` with a REAL `InventoryState` and relationship graph: the bag is paid
+  first and each part recorded; paying again pays nothing; a full bag refuses the WHOLE reward
+  and a retry pays it once; what the source takes and gives is one exchange; a part that fails
+  after the bag leaves the rest owed and a retry pays only that; a reward that cannot start is
+  refused, not owed; re-entrant payment is refused.
+- `tests/unit/quest/test_quest_domain.gd` (19) — every structural defect named; objective
+  payloads a kind does not use; cross-owner content errors; the lifecycle (available → active
+  → ready → completed; abandon; refusals); knowledge held before acceptance counts at once; the
+  knowledge route AND the fight route finish an ANY quest; ALL needs every objective; defeats
+  count once each, only while active, never past the need; readiness is asked of the bag every
+  time; a full bag keeps the reward claimable; items change hands in the reward's exchange; an
+  owed reward is paid without re-taking; a round trip mid-quest that cannot be paid twice
+  afterwards, even from a state that forgot the completion; fifteen bad payloads rejected whole.
+- `tests/unit/dialogue/test_dialogue_quest_seam.gd` (6) — the new condition and effects reject
+  foreign payloads; content naming a quest is checked against the quest owner (unknown quest,
+  wrong speaker, a turn-in without READY, a quest nobody offers / answers / takes back); a
+  quest condition follows the owner; an effect is carried out with WHO said it; the owner's
+  refusal refuses the answer with the owner's reason; no owner, no effect.
+- `tests/unit/progression/test_progression_runtime.gd` (+3) — the defeat guard IS the shared
+  ledger (an id recorded elsewhere pays nothing; the runtime keeps no `_granted`); no ledger
+  refuses the session; a reward from another source is paid without touching the ledger.
+- `tests/integration/test_quest_runtime.gd` (18) — real `DialogueRuntime`, `NpcRuntime`,
+  `KnowledgeRuntime`, `InventoryRuntime`, `RelationshipRuntime`, `RewardRuntime`, real bodies,
+  the SHIPPED catalogs. Session start fails closed on seven kinds of bad content and four
+  missing dependencies and connects nothing; teardown drops every connection and a restart
+  listens once; the elder offers only to a reader and declining changes nothing; accepting is
+  announced once; abandoning needs a second answer whose default keeps the quest; the scout's
+  word answers the elder without a fight; a fight answers him without the scout (and he draws
+  the other conclusion); what is already known counts at acceptance; the scout's pills are
+  counted from the bag and change hands once; a full bag refuses, keeps the talk where it was
+  and loses nothing; a finished quest cannot be answered again; re-entrant turn-in is refused;
+  wrong person / out of reach refuse; progress survives a map change and "ready" is said once;
+  the view changes only when something shown does; the journal view; a round trip through the
+  runtime.
+- `tests/unit/presentation/test_quest_journal.gd` (10) — the purpose line (hidden / lead /
+  goal / return, colour AND words, relabelled on a language change); every shipped purpose
+  line fits ONE row in vi and en; the journal is a reading panel (no input context, closes on
+  a threat and on defeat); most urgent first, states in words; objectives with counts, "met"
+  in words; the reader stays on their quest when a fresh view arrives; no raw key in either
+  language; **at 1280×720, with the shipped quests in all 16 state pairs and whichever quest
+  is opened out, nothing is below the fold**; a full journal stays inside its box.
+- `tests/performance/test_quest_budget.gd` (2) — no quest, reward or journal node processes;
+  `phase_of` is microseconds.
+- `tests/unit/presentation/test_dialogue_panel.gd` — the box is now measured at the LARGEST
+  set of answers that can be offered together (answers on different phases of one quest are
+  mutually exclusive): five on the scout's hub, measured, still under the clear zone.
+- `tests/unit/presentation/test_gameplay_hud.gd` — the plaques are populated WITH the purpose
+  line, so the 15 % area budget and the top-plaque reserve are measured as a player sees them.
+- **E2E gate 14** `tests/e2e/run_quest_flow.gd` — isolated process, real app, real keys, 13
+  steps: the lead at spawn with nothing accepted; no offer to a non-reader; the ask DECLINED;
+  ACCEPTED by a press of its own; the journal (opens, steps, closes on its key; not modal; Esc
+  one level); a quest given back (default: keep) and retaken; the scout's errand; the
+  knowledge route; a real kill counted through real combat and a threat closing the journal;
+  a full satchel refusing the reward (reason in the band, talk unmoved, nothing paid); the
+  same answer paying once; the pills carried to the scout; teardown order.
+- Mutation-checked: 12 (reward / quest domain) + 11 (seam / runtime) + 6 (journal / purpose
+  line), each red. The world E2E's raw-id check was scoped to the sect panel it guards (the
+  journal's English prose contains the word "pills"), stated in the test.
+- Real app: `tools/capture_motion.gd -- <dir> quest <vi|en>` at `--resolution 1280x720` and
+  `1280x800` (18 frames each); findings in `docs/handoff/phase-19-quest.md`.
 

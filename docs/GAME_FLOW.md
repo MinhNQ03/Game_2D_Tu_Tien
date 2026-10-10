@@ -4,7 +4,7 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> **Status: through Phase 18 (Dialogue, D-066).** Phase state is owned by `docs/ROADMAP.md`;
+> **Status: through Phase 19 (Quest, D-070).** Phase state is owned by `docs/ROADMAP.md`;
 > this block only says what the FLOW is today.
 > Split three ways on purpose — the old block mixed them, which is how it came to say
 > "combat exists only in the Phase-02 sandbox" three phases after combat went live. (It then
@@ -55,13 +55,22 @@
 >   depends on what the player knows and how the speaker regards them; an answer may move that
 >   regard (through `RelationshipService`), teach something (through the Knowledge Core) or
 >   hand over to the speaker's shop. Dialogue owns no state of its own.
+> - **PEOPLE ASK THINGS OF THE PLAYER** (Phase 19, D-070) — two authored quests, built only
+>   from what the world already held. Thẩm Bất Kỳ asks whether the Vụ Lang have settled on the
+>   woods' vein (fight one, or learn it from the scout — the knowledge route); Kha Thản is owed
+>   the village's two pills. A quest is offered, taken, declined, answered and given back IN
+>   the existing conversation box; its reward is paid once, through the ONE reward ledger, by
+>   the systems that own what it changes. The place plaque carries one line of purpose and
+>   `quest_journal` (`Q`) opens a non-modal journal.
 > - A failure of ANY per-session runtime ABORTS New Game and unwinds back to the menu
 >   (D-037/D-047/D-054) rather than entering a half-wired world.
 >
 > **② FUTURE — design target, NOT implemented.**
-> - **Quests (19), the story / chapter / flag engine (20), dungeons (21), bosses (22) and
->   file-level save (23) do not exist.** Nothing sets or reads a story flag: a conversation
->   branches on knowledge and regard only, and remembers nothing itself (D-066).
+> - **The story / chapter / flag engine (20), dungeons (21), bosses (22) and file-level save
+>   (23) do not exist.** Nothing sets or reads a story flag: a conversation branches on
+>   knowledge, regard and a quest's phase only, and remembers nothing itself (D-066, D-070).
+>   Quest progress is per session — it has an in-memory `to_dict()` / `from_dict()` boundary
+>   and no file. There are no loot tables or drops: a wolf still pays XP only.
 > - The branching-story / quest flow below is the design target for those phases. The
 >   "PROLOGUE" box in §1 is a future story scene, **not** the current first gameplay scene — it
 >   is specified beat-by-beat in `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039).
@@ -108,7 +117,7 @@ PROLOGUE                                                            [FUTURE, sto
   ↓        (today New Game opens straight into the hub map)
 VILLAGE  ◄──────────────┐                                           [LIVE — the hub map]
   ↓                     │
-QUEST                   │                                           [FUTURE, Phase 19]
+QUEST                   │                                           [LIVE, Phase 19]
   ↓                     │
 FOREST (map)            │                                           [LIVE — the field map]
   ↓                     │
@@ -281,17 +290,20 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   domain (quest/inventory rules), data (map, NPC, dialogue, quest resources).
 - **Events:** `map_entered(map_id)`, `npc_interacted(npc_id)`, `quest_offered(quest_id)`.
 
-### 3.5 QUEST  *(design target — Phase 19, NOT implemented)*
-- **Implementation status:** no quest code or data exists. The Phase-19 contract — including
-  what "serializable" means there (the owner's in-memory `to_dict()` / `from_dict()`, NOT a
-  save file) — is owned by `docs/ROADMAP.md` ("Phase 19 — Quest" and its Player Experience
-  Contract). Objectives must advance from AUTHORITATIVE world events. The event names listed
-  below are design sketches: none of them is emitted today — `EventBus` carries only boot,
-  scene-transition and language signals, and the live gameplay surface is the owners' own
-  outcome signals (§3.7's table, `KnowledgeRuntime.knowledge_gained`,
-  `DialogueRuntime.choice_made`, …). `SYSTEM_DEPENDENCY_MATRIX.md` records the plan: an
-  EventBus gameplay event arrives with its first consumer (Quest) and is emitted by the owner
-  AFTER its authoritative result; the exact surface is fixed at Phase-19 Gate B.
+### 3.5 QUEST  *(IMPLEMENTED — Phase 19, D-070)*
+- **Implementation status:** live. `QuestService` (pure domain) is the only writer of
+  `QuestState`; `QuestRuntime` (a per-session node) wires it to the world. The LIVE contract,
+  which supersedes the design sketch in the bullets below wherever they differ:
+
+  | What | How it actually works |
+  |---|---|
+  | States | no record = AVAILABLE → `ACTIVE` → (`REWARD_OWED`) → `COMPLETED`. **READY is derived**, never stored: the Knowledge Core and the bag are asked each time. There is no `FAILED` and no `TURNED_IN` |
+  | Objectives | a closed set: `KNOW` (state), `HOLD_ITEM` (state), `DEFEAT` (events, counted while active, each per-spawn id once); a quest completes on ALL or on ANY |
+  | Progress source | the OWNERS' own signals, not `EventBus`: `CombatRuntime.enemy_defeated` (+ the `defeated_kind` query), `KnowledgeRuntime.knowledge_gained`, `InventoryRuntime.inventory_changed`. **No EventBus gameplay event was added** — none was needed |
+  | Offer / accept / turn-in / abandon | choices in the existing conversation (`DialogueEffectData` kinds dispatched to `QuestRuntime`); a `QUEST_PHASE` condition decides what is offered |
+  | Rewards | `RewardService` pays the bag, then XP, then regard, each through its owner, each recorded in the ONE `RewardLedger`. Not flags: a quest writes none |
+  | Emits | `QuestRuntime.quest_accepted / quest_abandoned / quest_advanced / quest_ready / quest_completed / view_changed` (local signals) |
+  | Serialization | `QuestState.to_dict()/from_dict()` and `RewardLedger.to_dict()/from_dict()`, in memory. **No file until Phase 23** |
 - **Input:** `quest_offered` / accept; world events that satisfy objectives.
 - **State:** quest log — each quest has a state machine
   (`AVAILABLE → ACTIVE → COMPLETED → TURNED_IN`, plus `FAILED` where relevant) and
@@ -723,3 +735,42 @@ player health reaches 0 → Player.died → WorldRuntime
 ```
 Defeat ends the run until a save exists to continue from (Phase 23) and the story has decided
 what defeat means (Phase 20) — audit debt AUD-14.
+
+## Phase 19 note (D-070) — quests, no new surface
+
+```
+spawn → the place plaque's third line says where to go ("Gặp Trưởng lão Thẩm")
+   (QuestRuntime.build_view → WorldRuntime → MapBase → GameplayHUD; hidden when there is
+    nothing on offer and nothing under way)
+
+talk to the person (the Phase-18 path, unchanged) → their lines now include, by the quest's
+PHASE as QuestService reports it:
+   AVAILABLE → "ask what he needs" → the ask → [ take it | not now ]
+                  take it  → DialogueService.choose → quest_op → QuestRuntime.accept
+                  not now  → back to his other answers; nothing changed anywhere
+   ACTIVE    → "speak of it" → [ it is in hand | ask to be released ]
+                  ask to be released → a question → [ no, see it through (default) | yes ]
+                                                        yes → QuestRuntime.abandon
+   READY     → the report → QuestRuntime.turn_in → RewardService.deliver
+                  bag refuses (full) → the ANSWER is refused with the reason; the talk stays
+                                       where it was; nothing was paid or taken
+                  paid               → the bag (items in, items the quest takes out, as ONE
+                                       exchange) → XP → regard; each part recorded in the
+                                       one RewardLedger; then COMPLETED
+   COMPLETED → he does not bring it up again
+
+the world moving, with a quest under way:
+   CombatRuntime.enemy_defeated → QuestRuntime asks combat what fell → counted once per spawn
+   KnowledgeRuntime.knowledge_gained / InventoryRuntime.inventory_changed → re-read only
+   → quest_advanced (an objective moved) | quest_ready (once per time it becomes true)
+   → the announcement band; the plaque line; the journal
+
+quest_journal (Q): opens the journal (a reading panel — the player keeps walking)
+   Q again → the next quest is opened out … after the last → closes
+   Esc → closes it (then, with nothing open, asks about leaving)
+   a hostile turning on the player → closes it with every other reading surface
+```
+No new game phase, no new modal, no new conversation surface. Session order: `RewardRuntime`
+before `ProgressionRuntime`; `QuestRuntime` after everything it pays through or listens to and
+before `DialogueRuntime`. Teardown is the reverse.
+

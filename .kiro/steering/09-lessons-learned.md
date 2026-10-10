@@ -1373,3 +1373,34 @@
   speaker nobody registered; a world with no registry; a handoff the shop refuses);
   `test_dialogue_domain.gd` (a speaker must resolve); `test_session_prompt.gd` (the strip
   under every modal surface).
+
+## L-048 — "It scrolls" is not "it can be read", and a guard that loops on a defect is a hang
+
+- **Context:** Phase 19 (D-070), the quest journal — with 1057 tests green, a mutation-checked
+  domain and a passing real-input E2E.
+- **What happened:**
+  - *A panel that passed every layout test hid half its content.* The journal is a bounded
+    side panel whose body scrolls (the shared factory; four other panels use it). The generic
+    tests said: bounded, scrolls, inside the screen. The first real-window frame showed one
+    quest; the second was below the fold. A reading panel takes no keys, so "scrolls" meant
+    "mouse wheel only" — unreachable for anyone playing on the keys the game teaches.
+  - *The fix needed a measurement, and the measurement needed a real size.* The runner's
+    window is not 1280×720. The guard lays the SHIPPED content out in a `SubViewport` of the
+    smallest authored size and walks every state pair in both languages; it found 73 px of
+    overflow the eye had not, and drove three rounds of shortening.
+  - *A substring check started reporting on English.* "No raw id `pills` in the HUD" was true
+    until the HUD contained prose in which pills is a word.
+  - *A regression guard hung instead of failing.* The guard stepped the focus "until it
+    stops"; a mutation that broke the stepping made it never stop.
+- **Rules:**
+  - For any surface that scrolls, ask HOW the player scrolls it with the input it has. If the
+    answer is "they cannot", the content must fit — and a test must lay the shipped content
+    out at the smallest authored size and say so.
+  - Measure layout in a viewport of a NAMED size, not in the runner's window.
+  - A check for a leaked id belongs on the surface that could leak it, and an id that is also
+    a word needs a boundary, not a substring.
+  - Every loop in a test is bounded by the size of what it walks; "it ends when the code is
+    right" is not a bound.
+- **Guards:** `test_quest_journal.gd` (`…never_hides_a_quest_below_the_fold`, bounded);
+  `world_flow_case.gd` (the raw-id check, on the sect panel).
+

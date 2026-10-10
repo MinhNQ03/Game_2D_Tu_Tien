@@ -274,8 +274,10 @@ func test_real_npc_shop_flow() -> void:
 		"with no modal context left behind")
 	assert_false(npcs.is_session_active(), "the NPC session ended")
 	var trace: Array = main.call("get_last_teardown_order")
-	assert_true(trace.size() > 2 and trace[0] == &"DialogueRuntime" and trace[1] == &"NpcRuntime",
-		"DialogueRuntime then NpcRuntime were torn down first (%s)" % str(trace))
+	# Since Phase 19 the quest session sits between them: it is dispatched to by a
+	# conversation (so it ends after Dialogue) and names people (so it ends before them).
+	assert_eq(trace.slice(0, 3), [&"DialogueRuntime", &"QuestRuntime", &"NpcRuntime"],
+		"conversations, then quests, then people were torn down first (%s)" % str(trace))
 
 	_teardown(main)
 	await scene_tree.process_frame

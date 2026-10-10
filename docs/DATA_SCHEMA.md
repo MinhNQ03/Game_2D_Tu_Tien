@@ -23,8 +23,9 @@
 >   sections below headed IMPLEMENTED were re-verified against those scripts; an unmarked
 >   sketch (ItemData, EquipmentData, SkillData, TechniqueData, RealmData, EnemyData) is the
 >   ORIGINAL design shape and where it differs from the script, the script wins.
-> - **DESIGN ONLY** (no script exists yet; these are intended shapes): quests, story/chapters,
->   dungeons and bosses. (Dialogue is IMPLEMENTED — Phase 18, D-066.) Field
+> - **DESIGN ONLY** (no script exists yet; these are intended shapes): story/chapters,
+>   dungeons and bosses. (Dialogue is IMPLEMENTED — Phase 18, D-066; quests and rewards are
+>   IMPLEMENTED — Phase 19, D-070.) Field
 >   names are the proposed contract — pin changes in `docs/DECISIONS.md`.
 
 ## 0. Conventions
@@ -214,13 +215,46 @@ An NPC needs no schema of its own: it is a `CharacterTemplateData` realized as a
 `CharacterTemplateData.portrait_ref` (a path, "" = none) is read since Phase 18: the medallion
 the dialogue box shows for that speaker.
 
-### QuestData (`quest_*`)
+### QuestData (`quest_*`) — IMPLEMENTED (Phase 19, D-070)
+Scripts: `src/data/quest/`, `src/data/reward/`. Content: `data/quests/quest_catalog.tres`.
 ```
-id, title_key, desc_key
-objectives: Array[ObjectiveData]  # { kind, target_id, count }
-rewards: { xp, items: Array[LootEntry], flags: Array[StringName] }
-prerequisites: Array[StringName]  # flags/quests required to offer
+QuestCatalogData
+  entries: Array[QuestData]               # unique ids; authored order = reading order
+
+QuestData
+  id: StringName                          # quest_*
+  title_key, summary_key                  # the name, and WHY it matters (the journal)
+  lead_key, goal_key, return_key          # the plaque's one line: on offer / taken / ready
+  giver_id, receiver_id: StringName       # CharacterRegistry instance ids
+  completion: enum { ALL, ANY }           # every objective, or any one of them
+  objectives: Array[QuestObjectiveData]
+  reward: RewardData
+
+QuestObjectiveData
+  id: StringName                          # unique within the quest
+  kind: enum { KNOW, HOLD_ITEM, DEFEAT }  # CLOSED set
+  target_id: StringName                   # a knowledge id / an item id / an EnemyData id
+  count: int                              # 1 for KNOW; 1..99 otherwise
+  consumed: bool                          # HOLD_ITEM only: handed over at turn-in
+  text_key: StringName
+
+RewardData                                # paid by its owners, in this order
+  items: Array[RewardItemData{ item: ItemData, count: 1..99 }]   # the bag
+  xp: int                                 # 0..1000, through ProgressionService
+  regard_character_id, regard_dimension, regard_delta   # all three or none; |delta| <= 50
 ```
+`KNOW` and `HOLD_ITEM` are STATE (asked of the Knowledge Core / the bag every time, so what
+is already true when the quest is taken counts at once); `DEFEAT` is EVENTS (counted only
+while the quest is active). There are no flags, no prerequisites and no quest-id branches:
+what gates an offer is a condition on the conversation choice that offers it.
+
+**Validated structurally:** ids and the `quest_` prefix, every text key, giver and receiver,
+a non-empty objective list with unique ids, a payload each kind uses and no other, a known
+completion mode, a reward that pays something inside its bounds.
+**Validated against the owners** (`QuestService.content_errors`, at session start): every
+text has a translation in every language; giver, receiver and whoever's regard moves resolve
+in the character registry; knowledge ids are in the knowledge catalog; items are in the item
+catalog; a `DEFEAT` target is a creature some map spawns; a regard dimension exists.
 
 ### DialogueData (`dlg_*`) — IMPLEMENTED (Phase 18, D-066)
 Scripts: `src/data/dialogue/`. Content: `data/dialogue/dialogue_catalog.tres`.
@@ -277,6 +311,13 @@ on a map that has not been entered is not registered yet and may not be given a 
 every knowledge id is in the knowledge catalog; every dimension is one the relationship config defines and every
 threshold is inside its range; an `OPEN_SHOP` speaker keeps a shop; every `text_key` has a
 non-empty value in every supported language (`Localization.is_translated`).
+
+**Phase 19 (D-070) added, to the same closed sets:** a condition `QUEST_PHASE` (`quest_id` +
+`quest_phase`: AVAILABLE / ACTIVE / READY / COMPLETED, answered by `QuestService`) and the
+effects `QUEST_ACCEPT`, `QUEST_TURN_IN`, `QUEST_ABANDON` (payload: `quest_id`, carried out by
+`QuestRuntime`). Checked at session start: the quest exists; accept and abandon are said by
+its giver and turn-in by its receiver; a turn-in choice requires `QUEST_PHASE READY`; and
+every quest in the catalog is offered, answered and taken back by SOME conversation.
 
 No `set_flags` and no flag condition: Dialogue owns no flag (D-066). Nothing here is saved.
 

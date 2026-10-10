@@ -148,6 +148,16 @@
 
 ## 2. Budgets (targets; refined once we can measure)
 
+- **Quests cost nothing per frame (Phase 19)**: `tests/performance/test_quest_budget.gd`.
+  `QuestRuntime`, `RewardRuntime` and the journal panel have no `_process` /
+  `_physics_process` and no timer (the test reads the SOURCE as well as the node). A quest's
+  phase is DERIVED from its owners each time it is asked — on a world event that could change
+  it (a defeat, knowledge gained, the bag changing), never per frame; the integration suite
+  counts view pushes (an unrelated pickup: 0; progress: 1; ready: 1). Measured locally
+  (2026-10-10, headless): `QuestService.phase_of` on the shipped catalog with both quests
+  under way, **4.06 µs per call**; with the quest owner attached, `eligible_choices` on the
+  two most-conditioned conversation nodes is **19.50 µs per call** (was 12.81 µs before a
+  quest condition was a real question). No optimization was needed, so §4 has no entry.
 - Target 60 FPS on the desktop dev machine with a representative combat scene.
 - No sustained per-frame heap growth during combat (allocation budget ≈ flat).
 - Map transition: no leaked nodes/signals (verified by tests, not just eyeballing).

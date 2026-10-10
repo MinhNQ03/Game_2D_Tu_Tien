@@ -829,7 +829,10 @@ func _scenario_quest() -> void:
 	await _press(&"quest_journal")
 	await _settle()
 	await _shot("scene_quest_05_journal_active")
-	await _press(&"quest_journal")
+	await _press(&"quest_journal")  # its own key steps to the next quest
+	await _settle()
+	await _shot("scene_quest_05b_journal_next")
+	await _press(&"open_menu")  # Esc closes the journal (and asks nothing about leaving)
 	await _settle()
 	if not await _open_talk(player, shen):
 		return
@@ -880,7 +883,7 @@ func _scenario_quest() -> void:
 	await _press(&"quest_journal")
 	await _settle()
 	await _shot("scene_quest_11_journal_ready_and_active")
-	await _press(&"quest_journal")
+	await _press(&"open_menu")
 	await _settle()
 	if not await _travel_through_first_exit(player):
 		_fail("quest: the way back did not transition")
@@ -918,7 +921,7 @@ func _scenario_quest() -> void:
 	await _press(&"quest_journal")
 	await _settle()
 	await _shot("scene_quest_15_journal_done_and_ready")
-	await _press(&"quest_journal")
+	await _press(&"open_menu")
 	await _settle()
 	if not await _travel_through_first_exit(player):
 		_fail("quest: the road to the scout did not transition")

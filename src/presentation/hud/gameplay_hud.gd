@@ -1508,11 +1508,17 @@ func _unhandled_input(_event: InputEvent) -> void:
 		if _sect_panel.visible and _quest_panel != null:
 			_quest_panel.visible = false  # one reading surface on the right
 		handled = true
+	# The journal's key opens it, then steps to the next quest, and closes it after the last:
+	# nothing in a non-modal panel is ever out of the keyboard's reach.
 	if _quest_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", QUEST_JOURNAL_ACTION):
-		_quest_panel.visible = not _quest_panel.visible
-		if _quest_panel.visible and _sect_panel != null:
-			_sect_panel.visible = false
+		if not _quest_panel.visible:
+			_quest_panel.reset_focus()
+			_quest_panel.visible = true
+			if _sect_panel != null:
+				_sect_panel.visible = false  # one reading surface on the right
+		elif not _quest_panel.advance_focus():
+			_quest_panel.visible = false
 		handled = true
 	if _faction_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", FACTION_PANEL_ACTION):
