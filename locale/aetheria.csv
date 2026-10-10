@@ -268,3 +268,45 @@ UI_SHOP_NOT_HELD,You do not carry that.,Ngươi không mang thứ đó.
 UI_SHOP_NO_ROOM,Your satchel has no room for the trade.,Túi đồ không còn chỗ cho giao dịch này.
 UI_SHOP_STOCK_FULL,They cannot take any more of it.,Họ không thể nhận thêm thứ đó.
 UI_SHOP_STALE,The offer has changed; look again.,Giá chào đã đổi; hãy xem lại.
+KNOW_VU_LANG_HUNTING_GROUND_NAME,Where Mist Wolves Hunt,Bãi săn của Vụ Lang
+KNOW_VU_LANG_HUNTING_GROUND_DESC,"Ko Than's word: mist wolves keep to where the woods' vein surges, and scatter when its beat falls away.","Lời Kha Thản: Vụ Lang bám chỗ mạch rừng dâng, và tản đi khi nhịp mạch hụt xuống."
+KNOW_THANH_DAI_PRECEPT_NAME,The Terrace's First Precept,Giới điều Thanh Đài
+KNOW_THANH_DAI_PRECEPT_DESC,"Until the body is opened, do not sit over a restless vein.","Thân chưa khai mở, chớ ngồi trên mạch động."
+DLG_CHOICE_LEAVE,Take your leave,Cáo từ
+DLG_CHOICE_LEAVE_ELDER,Bow and withdraw,Vái chào rồi lui
+DLG_KO_GREET,"Hold there. …Ah, from Lạc Hà. Past this treeline you look after yourself.","Đứng yên đó. …À, người Lạc Hà. Qua bìa rừng này thì tự lo lấy thân."
+DLG_KO_HUB,I carry goods and I carry word. Which do you need?,"Hàng thì có, tin cũng có. Ngươi cần thứ nào?"
+DLG_KO_CHOICE_TRADE,Trade,Mua bán
+DLG_KO_CHOICE_WOODS,Ask about the woods,Hỏi về khu rừng
+DLG_KO_CHOICE_PRICE,Talk about his prices,Bàn chuyện giá cả
+DLG_KO_WOODS,The mist wolves keep to where the vein surges. When its beat falls away they scatter — that is when I cross.,"Vụ Lang bám chỗ mạch dâng. Khi nhịp mạch hụt xuống, chúng tản đi — ta chỉ băng rừng vào lúc ấy."
+DLG_KO_PRICE,My price is what the risk costs me. Have you anything worth as much?,Giá của ta là giá của rủi ro. Ngươi có gì đáng đổi lại không?
+DLG_KO_CHOICE_SHARE_STELE,Tell him what the stele records,Kể điều bia Lạc Hà ghi
+DLG_KO_CHOICE_PRESS,Press him to lower his prices,Ép hắn hạ giá
+DLG_KO_CHOICE_PRICE_BACK,Let it go,"Thôi, bỏ qua"
+DLG_KO_PLEASED,The stele says that? Then the old cutters knew this vein. That is worth coin to a scout. You pay a friend's price.,Bia ghi vậy thật sao? Vậy người xưa đã biết mạch này. Tin ấy đáng tiền với kẻ đi rừng. Từ nay ngươi trả giá người quen.
+DLG_KO_BRISTLE,You haggle with a man who trades his neck for these? Then you pay for the insult too.,Ép giá kẻ đem mạng đổi hàng sao? Vậy ngươi trả thêm cả phần xúc phạm.
+DLG_SHEN_GREET,The Azure Terrace does not teach those who will not read. The stele in the village — have you looked at it?,"Thanh Đài không dạy kẻ chẳng chịu tự đọc. Tấm bia trong làng, ngươi đã xem chưa?"
+DLG_SHEN_HUB,Speak.,Nói đi.
+DLG_SHEN_CHOICE_REPORT,Recount what the stele records,Thưa lại điều bia ghi
+DLG_SHEN_CHOICE_ASK,Ask for his instruction,Xin trưởng lão chỉ điểm
+DLG_SHEN_APPROVE,"The village vein weak but even; the woods' vein unquiet. You read, and you kept it. Good.","Mạch làng yếu mà đều, mạch rừng chảy không yên. Ngươi đọc, và ngươi nhớ. Được."
+DLG_SHEN_TEACH,"Then keep the Terrace's first precept: until the body is opened, do not sit over a restless vein. The stele warns once.","Vậy hãy giữ giới điều đầu tiên của Thanh Đài: thân chưa khai mở, chớ ngồi trên mạch động. Bia đá chỉ nhắc một lần."
+UI_DIALOGUE_UNAVAILABLE,They have nothing to say right now.,Lúc này họ không có gì để nói.
+UI_DIALOGUE_CHOICE_GONE,That is no longer something you can say.,Ngươi không còn nói được điều đó.
+UI_DIALOGUE_EFFECT_FAILED,Your words change nothing.,Lời ngươi không thay đổi được gì.
+UI_DIALOGUE_KEYS_CHOOSE,{confirm} Say it · {close} Walk away,{confirm} Nói · {close} Rời đi
+UI_DIALOGUE_KEYS_CONTINUE,{confirm} Continue · {close} Walk away,{confirm} Nghe tiếp · {close} Rời đi
+UI_DIALOGUE_KEYS_END,{confirm} End the talk,{confirm} Kết thúc
+UI_DIALOGUE_MOOD_CALM,calm,điềm tĩnh
+UI_DIALOGUE_MOOD_WARM,warm,cởi mở
+UI_DIALOGUE_MOOD_STERN,stern,nghiêm nghị
+UI_DIALOGUE_MOOD_WARY,wary,dè chừng
+UI_DIALOGUE_REGARD_UP,{name} thinks better of you ({dimension} +{amount}).,{name} nhìn ngươi khác đi ({dimension} +{amount}).
+UI_DIALOGUE_REGARD_DOWN,{name} thinks less of you ({dimension} −{amount}).,{name} bớt coi trọng ngươi ({dimension} −{amount}).
+UI_REL_DIM_AFFINITY,affinity,thiện cảm
+UI_REL_DIM_TRUST,trust,tin cậy
+UI_REL_DIM_RESPECT,respect,kính trọng
+UI_REL_DIM_FEAR,fear,e sợ
+UI_REL_DIM_RIVALRY,rivalry,ganh đua
+UI_REL_DIM_DEBT,debt,ân nợ

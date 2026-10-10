@@ -8,6 +8,20 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Phase 18 (1/2): dialogue data and domain (D-066)
+
+- **Added.** Six resources under `src/data/dialogue/` (catalog, dialogue, node, choice,
+  condition, effect) and the pure-domain `DialogueService` + `DialogueOutcome`: which answers a
+  line offers, and what submitting one comes to. Conditions ask the Knowledge Core and the
+  relationship graph; the one effect of a choice is applied by its owner
+  (`RelationshipService`, the Core's grant path, or an `open_shop` action returned to the
+  gameplay layer). A choice is re-validated on submit.
+- **Added (content).** `data/dialogue/dialogue_catalog.tres`: Kha Thản (`dlg_scout_ko`) and
+  Thẩm Bất Kỳ (`dlg_elder_shen`), in `vi` and `en`. Two knowledge entries a person can teach:
+  `know_vu_lang_hunting_ground`, `know_thanh_dai_precept`.
+- **Added.** `Localization.is_translated(key)`: a value in EVERY supported language.
+- Not yet reachable in the game: the runtime, the panel and the NPC wiring are part 2.
+
 ### 2026-10-10 — Docs: current-state reconciliation + dialogue ownership (D-066)
 
 - **Corrected (stale status).** `GAME_FLOW` still read "through Phase 11" and called

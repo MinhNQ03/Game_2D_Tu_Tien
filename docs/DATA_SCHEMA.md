@@ -23,8 +23,8 @@
 >   sections below headed IMPLEMENTED were re-verified against those scripts; an unmarked
 >   sketch (ItemData, EquipmentData, SkillData, TechniqueData, RealmData, EnemyData) is the
 >   ORIGINAL design shape and where it differs from the script, the script wins.
-> - **DESIGN ONLY** (no script exists yet; these are intended shapes): **dialogue** (Phase 18 —
->   the shape below is the D-066 contract), quests, story/chapters, dungeons and bosses. Field
+> - **DESIGN ONLY** (no script exists yet; these are intended shapes): quests, story/chapters,
+>   dungeons and bosses. (Dialogue is IMPLEMENTED — Phase 18, D-066.) Field
 >   names are the proposed contract — pin changes in `docs/DECISIONS.md`.
 
 ## 0. Conventions
@@ -220,23 +220,58 @@ rewards: { xp, items: Array[LootEntry], flags: Array[StringName] }
 prerequisites: Array[StringName]  # flags/quests required to offer
 ```
 
-### DialogueData (`dlg_*`) — PLANNED (Phase 18; contract decided in D-066)
+### DialogueData (`dlg_*`) — IMPLEMENTED (Phase 18, D-066)
+Scripts: `src/data/dialogue/`. Content: `data/dialogue/dialogue_catalog.tres`.
 ```
-DialogueCatalogData:  entries: Array[DialogueData]      # one dialogue per speaker
-DialogueData:         id, speaker_id (a CharacterRegistry instance id), start_node_id,
-                      nodes: Array[DialogueNodeData]
-DialogueNodeData:     id, text_key, mood, gesture, choices: Array[DialogueChoiceData],
-                      next_node_id            # a line without choices continues here, or ends
-DialogueChoiceData:   id, text_key, conditions: Array[DialogueConditionData],
-                      effect: DialogueEffectData (one, optional), next_node_id ("" = end)
-DialogueConditionData: kind (KNOWS | RELATIONSHIP_AT_LEAST), knowledge_id | dimension + value,
-                      negate
-DialogueEffectData:   kind (RELATIONSHIP_DELTA | GRANT_KNOWLEDGE | OPEN_SHOP),
-                      dimension + delta | knowledge_id
+DialogueCatalogData
+  entries: Array[DialogueData]            # unique ids; ONE dialogue per speaker
+
+DialogueData
+  id: StringName                          # dlg_ prefix
+  speaker_id: StringName                  # a CharacterRegistry instance id (as ShopData.keeper_id)
+  start_node_id: StringName
+  nodes: Array[DialogueNodeData]
+
+DialogueNodeData                          # one thing the speaker says
+  id: StringName                          # unique within the dialogue
+  text_key: StringName
+  mood: Mood                              # CALM | WARM | STERN | WARY   (presentation only)
+  gesture: StringName                     # "" | "talk"  — a CharacterVisualComponent action
+  choices: Array[DialogueChoiceData]
+  next_node_id: StringName                # choice-less nodes only: "continue" target, "" = end
+
+DialogueChoiceData                        # one thing the player may answer
+  id: StringName                          # unique within the dialogue
+  text_key: StringName
+  conditions: Array[DialogueConditionData]  # ALL must pass; asked again on submit
+  effect: DialogueEffectData              # ONE, or null
+  next_node_id: StringName                # "" = the conversation ends
+
+DialogueConditionData
+  kind: Kind                              # KNOWS | RELATIONSHIP_AT_LEAST
+  knowledge_id: StringName                # KNOWS
+  dimension: StringName, value: int       # RELATIONSHIP_AT_LEAST (the speaker's regard for the player)
+  negate: bool
+
+DialogueEffectData
+  kind: Kind                              # RELATIONSHIP_DELTA | GRANT_KNOWLEDGE | OPEN_SHOP
+  dimension: StringName, delta: int       # RELATIONSHIP_DELTA (1..50 in magnitude)
+  knowledge_id: StringName                # GRANT_KNOWLEDGE
 ```
-No `set_flags` and no flag condition: Dialogue owns no flag (D-066). The earlier sketch
-(`set_flags`, `requires` as free-form) is superseded. Field names become the shipped contract
-when the scripts land; this block is then re-verified and marked IMPLEMENTED.
+**Validated structurally** (`validation_errors`, no other system needed): empty / duplicate
+ids, the `dlg_` prefix, a missing or unknown start node, dangling `next_node_id`s, a node with
+both choices and a continue target, a node whose choices are ALL conditional, a chain of
+choice-less lines that never ends, a node unreachable from the start, an unknown kind / mood /
+gesture, a payload a kind does not use, an `OPEN_SHOP` choice that claims to continue, and a
+`RELATIONSHIP_DELTA` choice with no condition on its own dimension that the delta eventually
+makes false (raise only while below a value; lower only while at or above one).
+
+**Validated against the owners** (`DialogueService.content_errors`): every knowledge id is in
+the knowledge catalog; every dimension is one the relationship config defines and every
+threshold is inside its range; an `OPEN_SHOP` speaker keeps a shop; every `text_key` has a
+non-empty value in every supported language (`Localization.is_translated`).
+
+No `set_flags` and no flag condition: Dialogue owns no flag (D-066). Nothing here is saved.
 
 ### MapData (`map_*`)  — IMPLEMENTED (`src/data/maps/map_data.gd`, D-021 + D-022)
 ```

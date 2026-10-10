@@ -1,0 +1,236 @@
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=41 format=3]
+
+[ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
+[ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
+[ext_resource type="Script" path="res://src/data/dialogue/dialogue_choice_data.gd" id="3_choice"]
+[ext_resource type="Script" path="res://src/data/dialogue/dialogue_node_data.gd" id="4_node"]
+[ext_resource type="Script" path="res://src/data/dialogue/dialogue_data.gd" id="5_dlg"]
+[ext_resource type="Script" path="res://src/data/dialogue/dialogue_catalog_data.gd" id="6_cat"]
+
+[sub_resource type="Resource" id="N_ko_greet"]
+script = ExtResource("4_node")
+id = &"ko_greet"
+text_key = &"DLG_KO_GREET"
+mood = 3
+gesture = &"talk"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="E_ko_trade"]
+script = ExtResource("2_effect")
+kind = 2
+
+[sub_resource type="Resource" id="H_ko_trade"]
+script = ExtResource("3_choice")
+id = &"ko_trade"
+text_key = &"DLG_KO_CHOICE_TRADE"
+effect = SubResource("E_ko_trade")
+
+[sub_resource type="Resource" id="E_ko_ask_woods"]
+script = ExtResource("2_effect")
+kind = 1
+knowledge_id = &"know_vu_lang_hunting_ground"
+
+[sub_resource type="Resource" id="H_ko_ask_woods"]
+script = ExtResource("3_choice")
+id = &"ko_ask_woods"
+text_key = &"DLG_KO_CHOICE_WOODS"
+effect = SubResource("E_ko_ask_woods")
+next_node_id = &"ko_woods"
+
+[sub_resource type="Resource" id="H_ko_talk_price"]
+script = ExtResource("3_choice")
+id = &"ko_talk_price"
+text_key = &"DLG_KO_CHOICE_PRICE"
+next_node_id = &"ko_price"
+
+[sub_resource type="Resource" id="H_ko_leave"]
+script = ExtResource("3_choice")
+id = &"ko_leave"
+text_key = &"DLG_CHOICE_LEAVE"
+
+[sub_resource type="Resource" id="N_ko_hub"]
+script = ExtResource("4_node")
+id = &"ko_hub"
+text_key = &"DLG_KO_HUB"
+mood = 0
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_trade"), SubResource("H_ko_ask_woods"), SubResource("H_ko_talk_price"), SubResource("H_ko_leave")])
+
+[sub_resource type="Resource" id="N_ko_woods"]
+script = ExtResource("4_node")
+id = &"ko_woods"
+text_key = &"DLG_KO_WOODS"
+mood = 0
+gesture = &"talk"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="C_ko_share_stele_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_lac_ha_stele_record"
+
+[sub_resource type="Resource" id="C_ko_share_stele_1"]
+script = ExtResource("1_cond")
+kind = 1
+dimension = &"affinity"
+value = 40
+negate = true
+
+[sub_resource type="Resource" id="E_ko_share_stele"]
+script = ExtResource("2_effect")
+kind = 0
+dimension = &"affinity"
+delta = 40
+
+[sub_resource type="Resource" id="H_ko_share_stele"]
+script = ExtResource("3_choice")
+id = &"ko_share_stele"
+text_key = &"DLG_KO_CHOICE_SHARE_STELE"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_share_stele_0"), SubResource("C_ko_share_stele_1")])
+effect = SubResource("E_ko_share_stele")
+next_node_id = &"ko_pleased"
+
+[sub_resource type="Resource" id="C_ko_press_0"]
+script = ExtResource("1_cond")
+kind = 1
+dimension = &"affinity"
+value = -20
+
+[sub_resource type="Resource" id="E_ko_press"]
+script = ExtResource("2_effect")
+kind = 0
+dimension = &"affinity"
+delta = -30
+
+[sub_resource type="Resource" id="H_ko_press"]
+script = ExtResource("3_choice")
+id = &"ko_press"
+text_key = &"DLG_KO_CHOICE_PRESS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_press_0")])
+effect = SubResource("E_ko_press")
+next_node_id = &"ko_bristle"
+
+[sub_resource type="Resource" id="H_ko_price_back"]
+script = ExtResource("3_choice")
+id = &"ko_price_back"
+text_key = &"DLG_KO_CHOICE_PRICE_BACK"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="N_ko_price"]
+script = ExtResource("4_node")
+id = &"ko_price"
+text_key = &"DLG_KO_PRICE"
+mood = 3
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_share_stele"), SubResource("H_ko_press"), SubResource("H_ko_price_back")])
+
+[sub_resource type="Resource" id="N_ko_pleased"]
+script = ExtResource("4_node")
+id = &"ko_pleased"
+text_key = &"DLG_KO_PLEASED"
+mood = 1
+gesture = &"talk"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="N_ko_bristle"]
+script = ExtResource("4_node")
+id = &"ko_bristle"
+text_key = &"DLG_KO_BRISTLE"
+mood = 2
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="D_dlg_scout_ko"]
+script = ExtResource("5_dlg")
+id = &"dlg_scout_ko"
+speaker_id = &"actor_scout_ko"
+start_node_id = &"ko_greet"
+nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle")])
+
+[sub_resource type="Resource" id="N_shen_greet"]
+script = ExtResource("4_node")
+id = &"shen_greet"
+text_key = &"DLG_SHEN_GREET"
+mood = 2
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="C_shen_report_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_lac_ha_stele_record"
+
+[sub_resource type="Resource" id="C_shen_report_1"]
+script = ExtResource("1_cond")
+kind = 1
+dimension = &"respect"
+value = 15
+negate = true
+
+[sub_resource type="Resource" id="E_shen_report"]
+script = ExtResource("2_effect")
+kind = 0
+dimension = &"respect"
+delta = 15
+
+[sub_resource type="Resource" id="H_shen_report"]
+script = ExtResource("3_choice")
+id = &"shen_report"
+text_key = &"DLG_SHEN_CHOICE_REPORT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_report_0"), SubResource("C_shen_report_1")])
+effect = SubResource("E_shen_report")
+next_node_id = &"shen_approve"
+
+[sub_resource type="Resource" id="C_shen_ask_0"]
+script = ExtResource("1_cond")
+kind = 1
+dimension = &"respect"
+value = 15
+
+[sub_resource type="Resource" id="E_shen_ask"]
+script = ExtResource("2_effect")
+kind = 1
+knowledge_id = &"know_thanh_dai_precept"
+
+[sub_resource type="Resource" id="H_shen_ask"]
+script = ExtResource("3_choice")
+id = &"shen_ask"
+text_key = &"DLG_SHEN_CHOICE_ASK"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_ask_0")])
+effect = SubResource("E_shen_ask")
+next_node_id = &"shen_teach"
+
+[sub_resource type="Resource" id="H_shen_leave"]
+script = ExtResource("3_choice")
+id = &"shen_leave"
+text_key = &"DLG_CHOICE_LEAVE_ELDER"
+
+[sub_resource type="Resource" id="N_shen_hub"]
+script = ExtResource("4_node")
+id = &"shen_hub"
+text_key = &"DLG_SHEN_HUB"
+mood = 0
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_report"), SubResource("H_shen_ask"), SubResource("H_shen_leave")])
+
+[sub_resource type="Resource" id="N_shen_approve"]
+script = ExtResource("4_node")
+id = &"shen_approve"
+text_key = &"DLG_SHEN_APPROVE"
+mood = 1
+gesture = &"talk"
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="N_shen_teach"]
+script = ExtResource("4_node")
+id = &"shen_teach"
+text_key = &"DLG_SHEN_TEACH"
+mood = 0
+gesture = &"talk"
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="D_dlg_elder_shen"]
+script = ExtResource("5_dlg")
+id = &"dlg_elder_shen"
+speaker_id = &"actor_elder_shen"
+start_node_id = &"shen_greet"
+nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach")])
+
+[resource]
+script = ExtResource("6_cat")
+entries = Array[ExtResource("5_dlg")]([SubResource("D_dlg_scout_ko"), SubResource("D_dlg_elder_shen")])

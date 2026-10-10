@@ -105,6 +105,21 @@ func has_key(key: String) -> bool:
 	return _table.has(key)
 
 
+## True only when `key` has a non-empty value in EVERY supported language. `has_key` says a
+## row exists; a row with one language blank still renders the fallback language (or the raw
+## key) to the other player. Content boundaries that must not ship a half-translated line ask
+## this (first consumer: the dialogue catalog, Phase 18).
+func is_translated(key: String) -> bool:
+	_ensure_loaded()
+	if not _table.has(key):
+		return false
+	var entry: Dictionary = _table[key]
+	for language: String in SUPPORTED_LANGUAGES:
+		if String(entry.get(language, "")) == "":
+			return false
+	return true
+
+
 ## Resolve a key to the current language. Falls back to the default language, then to the
 ## key itself (with a dev warning). Never crashes.
 func t(key: String) -> String:
