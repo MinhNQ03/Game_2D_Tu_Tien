@@ -343,6 +343,7 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	_push_skill_view_to_active_map()
 	_connect_pet_signals()
 	_connect_npc_signals()
+	_connect_dialogue_signals()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -895,8 +896,13 @@ func _on_interactable_used(kind: StringName, id: StringName) -> void:
 		if pets != null and pets.is_session_active():
 			pets.befriend(id)
 	elif kind == WorldNpc.KIND:
+		# A person: the conversation runtime takes it (and hands those with nothing authored
+		# to `NpcRuntime`). With no dialogue session, `NpcRuntime`'s own behaviour stands.
+		var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
 		var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
-		if npcs != null and npcs.is_session_active():
+		if dialogue != null and dialogue.is_session_active():
+			dialogue.talk(id)
+		elif npcs != null and npcs.is_session_active():
 			npcs.interact(id)
 
 
@@ -1008,6 +1014,90 @@ func _on_shop_close_requested() -> void:
 	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
 	if npcs != null and npcs.is_session_active():
 		npcs.close_shop()
+
+
+# --- Conversations (Phase 18) ---------------------------------------------------------
+
+func refresh_active_map_dialogue_view() -> void:
+	_connect_dialogue_signals()
+	_push_dialogue_view_to_active_map()
+
+
+func _push_dialogue_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_dialogue_view"):
+		return
+	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if dialogue == null or not dialogue.is_session_active():
+		return
+	_active_map.call("set_dialogue_view", dialogue.build_view())
+
+
+func _connect_dialogue_signals() -> void:
+	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if dialogue == null:
+		return
+	if not dialogue.view_changed.is_connected(_push_dialogue_view_to_active_map):
+		dialogue.view_changed.connect(_push_dialogue_view_to_active_map)
+	if not dialogue.choice_made.is_connected(_on_dialogue_choice_made):
+		dialogue.choice_made.connect(_on_dialogue_choice_made)
+	if not dialogue.choice_refused.is_connected(_on_dialogue_choice_refused):
+		dialogue.choice_refused.connect(_on_dialogue_choice_refused)
+	if not dialogue.dialogue_opened.is_connected(_on_dialogue_opened):
+		dialogue.dialogue_opened.connect(_on_dialogue_opened)
+
+
+## DIALOGUE FOCUS: the player turns to whoever they are speaking with (the speaker has already
+## turned to them, in `NpcRuntime.engage`). Presentation only.
+func _on_dialogue_opened(_dialogue_id: StringName, speaker_id: StringName) -> void:
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	if npcs == null or _player == null or not is_instance_valid(_player):
+		return
+	var at := npcs.position_of(speaker_id)
+	if at.is_finite() and _player.has_method("face_toward"):
+		_player.call("face_toward", at)
+
+
+## An answer changed how someone regards the player: say so, by name, in the band. (Knowledge
+## a line taught is announced by the Knowledge Core's own `knowledge_gained`, like any other.)
+func _on_dialogue_choice_made(outcome: DialogueOutcome) -> void:
+	if outcome.effect_kind != DialogueEffectData.Kind.RELATIONSHIP_DELTA \
+			or outcome.new_value == outcome.old_value:
+		return
+	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	var data := dialogue.get_service().catalog().entry(outcome.dialogue_id) \
+		if dialogue != null and dialogue.is_session_active() else null
+	var speaker := _characters.get_character(data.speaker_id) \
+		if data != null and _characters != null else null
+	if speaker == null:
+		return
+	var raised := outcome.new_value > outcome.old_value
+	_notify(&"announce_result",
+		&"UI_DIALOGUE_REGARD_UP" if raised else &"UI_DIALOGUE_REGARD_DOWN",
+		{"name": speaker.name_key,
+			"dimension": StringName("UI_REL_DIM_%s" % String(outcome.dimension).to_upper()),
+			"amount": absi(outcome.new_value - outcome.old_value)})
+
+
+func _on_dialogue_choice_refused(reason_key: StringName) -> void:
+	_notify(&"announce_answer", reason_key)
+
+
+func _on_dialogue_choice_requested(node_id: StringName, choice_id: StringName) -> void:
+	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if dialogue != null and dialogue.is_session_active():
+		dialogue.choose(node_id, choice_id)
+
+
+func _on_dialogue_advance_requested() -> void:
+	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if dialogue != null and dialogue.is_session_active():
+		dialogue.advance()
+
+
+func _on_dialogue_close_requested() -> void:
+	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if dialogue != null and dialogue.is_session_active():
+		dialogue.leave()
 
 
 ## Hand one notice to the active map's HUD, by KIND (D-063): `announce` (PASSIVE — what happened
@@ -1129,6 +1219,11 @@ func _wire_active_map() -> void:
 		_active_map.connect("shop_buy_requested", _on_shop_buy_requested)
 		_active_map.connect("shop_sell_requested", _on_shop_sell_requested)
 		_active_map.connect("shop_close_requested", _on_shop_close_requested)
+	if _active_map.has_signal("dialogue_choice_requested") and not _active_map.is_connected(
+			"dialogue_choice_requested", _on_dialogue_choice_requested):
+		_active_map.connect("dialogue_choice_requested", _on_dialogue_choice_requested)
+		_active_map.connect("dialogue_advance_requested", _on_dialogue_advance_requested)
+		_active_map.connect("dialogue_close_requested", _on_dialogue_close_requested)
 
 
 func _on_map_exit_requested(to_map_id: StringName, entry_point: StringName) -> void:

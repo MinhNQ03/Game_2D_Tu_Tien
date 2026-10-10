@@ -1,4 +1,4 @@
-[gd_scene load_steps=53 format=3]
+[gd_scene load_steps=55 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -52,6 +52,8 @@
 [ext_resource type="Resource" path="res://data/world/props/prop_planter.tres" id="pb_planter"]
 [ext_resource type="Resource" path="res://data/world/props/prop_rock.tres" id="pb_rock"]
 [ext_resource type="Script" path="res://src/gameplay/pets/pet_encounter.gd" id="60_petenc"]
+[ext_resource type="Script" path="res://src/gameplay/npcs/world_npc.gd" id="62_npc"]
+[ext_resource type="Resource" path="res://data/characters/npc_elder_shen.tres" id="63_shen"]
 [ext_resource type="Resource" path="res://data/pets/pet_hoang_khuyen.tres" id="61_hound"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
@@ -687,3 +689,9 @@ y_sort_enabled = true
 position = Vector2(652, 452)
 script = ExtResource("60_petenc")
 pet = ExtResource("61_hound")
+
+[node name="ShenBuqi" type="Node2D" parent="Interactables"]
+position = Vector2(468, 352)
+script = ExtResource("62_npc")
+character_id = &"actor_elder_shen"
+character_template = ExtResource("63_shen")

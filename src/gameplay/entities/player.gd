@@ -70,6 +70,19 @@ func bind_character_state(state: CharacterState) -> void:
 
 
 ## The authoritative CharacterState this node realizes (or null in an isolated harness).
+## Turn to face `world_point` while standing (Phase 18: the player turns to whoever they are
+## speaking with). Facing only — the same two consumers the movement intent feeds: the visual
+## and the attack component's aim. It moves nobody.
+func face_toward(world_point: Vector2) -> void:
+	var toward := world_point - global_position
+	if toward.length() < 0.5:
+		return
+	if _visual != null:
+		_visual.update_facing(toward.normalized(), false)
+	if _attack != null:
+		_attack.set_facing(toward.normalized())
+
+
 func get_character_state() -> CharacterState:
 	return _character_state
 

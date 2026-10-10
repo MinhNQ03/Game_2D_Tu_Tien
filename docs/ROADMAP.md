@@ -470,6 +470,16 @@ arrive with that phase. Sect / faction effects arrive with the first content tha
 changes a relationship dimension through the service; a dialogue grant is visible through the
 Knowledge Core, not a local copy; a choice opens the existing shop; tested.
 
+**Status: IMPLEMENTED (D-066) — pending exact-SHA CI on the feature commit.** Six
+`Dialogue*Data` resources + the pure-domain `DialogueService`; `DialogueRuntime` (15th
+per-session node, ended first) owning only the open conversation's cursor; `DialogueView` +
+`DialoguePanel` (portrait medallion, mood, gesture, focus, transition); Kha Thản
+(`dlg_scout_ko`, in Rừng Vỡ Mạch) and Thẩm Bất Kỳ (`dlg_elder_shen`, in Lạc Hà) speak through
+the one seam; regard moves through `RelationshipService` and is read back by the shop's
+prices; knowledge is granted through the Knowledge Core; "Trade" hands over to the existing
+shop; isolated dialogue E2E as CI gate 13. Not built (by decision, D-066): flags, a record of
+choices, sect / faction effects, an EventBus `dialogue_chosen`, any dialogue save state.
+
 ## Phase 19 — Quest
 Quest FSM (domain), QuestData, objectives driven by EventBus; quests arise from and affect
 characters/sects/politics. **PRODUCES and READS knowledge** through `KnowledgeService`, which is

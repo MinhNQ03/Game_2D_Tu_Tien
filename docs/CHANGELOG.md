@@ -8,6 +8,26 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Phase 18 (2/2): dialogue runtime, NPC / shop integration, the dialogue box
+
+- **Added.** `DialogueRuntime` (15th session node, ended first): the open conversation's
+  cursor and nothing else. `DialogueView` + `DialoguePanel`: the speaker's portrait medallion,
+  the line's mood in words and name-plate colour, the answers, the keys; a fade-in, a settling
+  line, a nod of the portrait on a gestured line. HUD dialogue focus: the prompt strip and
+  technique dock stand down and the announcement band rides above the box.
+- **Added (content).** Thẩm Bất Kỳ stands in Lạc Hà (`hub_map.tscn`) and has a talk sheet
+  (3 131 B); Kha Thản and he have portrait medallions (4 135 B, 4 107 B), named by
+  `CharacterTemplateData.portrait_ref`.
+- **Changed.** Talking to Kha Thản opens his conversation; his shop is its "Trade" answer.
+  `NpcRuntime.interact` is split into `engage` / `reach_refusal` / `gesture` / `open_shop_of`
+  (it remains what someone with no authored conversation does). `WorldNpc.gesture(action)`;
+  `Player.face_toward`. `SESSION_START_ORDER` has 15 entries.
+- **Fixed (found in real-app captures).** The mood word read as a label on the first answer;
+  the announcement band entered the clear zone; an English answer was truncated.
+- **CI.** Gate 13: the isolated dialogue E2E. 983 tests locally.
+- **Not built.** Flags, a record of choices, sect / faction effects, dialogue save state,
+  quests, story.
+
 ### 2026-10-10 — Phase 18 (1/2): dialogue data and domain (D-066)
 
 - **Added.** Six resources under `src/data/dialogue/` (catalog, dialogue, node, choice,

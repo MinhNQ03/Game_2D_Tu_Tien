@@ -281,14 +281,14 @@ DLG_KO_CHOICE_WOODS,Ask about the woods,Hỏi về khu rừng
 DLG_KO_CHOICE_PRICE,Talk about his prices,Bàn chuyện giá cả
 DLG_KO_WOODS,The mist wolves keep to where the vein surges. When its beat falls away they scatter — that is when I cross.,"Vụ Lang bám chỗ mạch dâng. Khi nhịp mạch hụt xuống, chúng tản đi — ta chỉ băng rừng vào lúc ấy."
 DLG_KO_PRICE,My price is what the risk costs me. Have you anything worth as much?,Giá của ta là giá của rủi ro. Ngươi có gì đáng đổi lại không?
-DLG_KO_CHOICE_SHARE_STELE,Tell him what the stele records,Kể điều bia Lạc Hà ghi
+DLG_KO_CHOICE_SHARE_STELE,Share the stele's record,Kể điều bia Lạc Hà ghi
 DLG_KO_CHOICE_PRESS,Press him to lower his prices,Ép hắn hạ giá
 DLG_KO_CHOICE_PRICE_BACK,Let it go,"Thôi, bỏ qua"
 DLG_KO_PLEASED,The stele says that? Then the old cutters knew this vein. That is worth coin to a scout. You pay a friend's price.,Bia ghi vậy thật sao? Vậy người xưa đã biết mạch này. Tin ấy đáng tiền với kẻ đi rừng. Từ nay ngươi trả giá người quen.
 DLG_KO_BRISTLE,You haggle with a man who trades his neck for these? Then you pay for the insult too.,Ép giá kẻ đem mạng đổi hàng sao? Vậy ngươi trả thêm cả phần xúc phạm.
 DLG_SHEN_GREET,The Azure Terrace does not teach those who will not read. The stele in the village — have you looked at it?,"Thanh Đài không dạy kẻ chẳng chịu tự đọc. Tấm bia trong làng, ngươi đã xem chưa?"
 DLG_SHEN_HUB,Speak.,Nói đi.
-DLG_SHEN_CHOICE_REPORT,Recount what the stele records,Thưa lại điều bia ghi
+DLG_SHEN_CHOICE_REPORT,Recount the stele's record,Thưa lại điều bia ghi
 DLG_SHEN_CHOICE_ASK,Ask for his instruction,Xin trưởng lão chỉ điểm
 DLG_SHEN_APPROVE,"The village vein weak but even; the woods' vein unquiet. You read, and you kept it. Good.","Mạch làng yếu mà đều, mạch rừng chảy không yên. Ngươi đọc, và ngươi nhớ. Được."
 DLG_SHEN_TEACH,"Then keep the Terrace's first precept: until the body is opened, do not sit over a restless vein. The stele warns once.","Vậy hãy giữ giới điều đầu tiên của Thanh Đài: thân chưa khai mở, chớ ngồi trên mạch động. Bia đá chỉ nhắc một lần."

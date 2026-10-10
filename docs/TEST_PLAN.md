@@ -4,7 +4,7 @@
 > Goal: **not** blind 100% coverage — strong coverage of high-risk logic, cheap smoke
 > coverage of the whole flow, and every fixed bug pinned by a regression test.
 >
-> **CURRENT STATUS (through Phase 15 + D-063 Phase A closeout):** strategy defined;
+> **CURRENT STATUS (through Phase 18):** strategy defined;
 > runner + framework in place. The suite covers the core framework (lifecycle/scene-router/
 > input/localization/event-bus/settings), the **session lifecycle contract** (the ordered
 > teardown, D-047), the Player core (stats/health/movement/damage + player↔dummy integration),
@@ -18,11 +18,12 @@
 > session runtime, a performance budget), **Enemy AI** (Phase 10: the pure-domain brain, target
 > selection, leash, cadence, determinism, damage/attack feedback), **Level/XP Progression**
 > (Phase 11 — inventory in the per-phase list below), and the UI/theme asset contracts — plus
-> five dedicated
-> real-application E2E processes (app-flow, player-flow, world-flow, pet-flow, npc-flow).
+> six dedicated
+> real-application E2E processes (app-flow, player-flow, world-flow, pet-flow, npc-flow,
+> dialogue-flow).
 >
-> **CI runs 12 gates** (see §5; the eleventh is the Phase-16 pet E2E, the twelfth the
-> Phase-17 NPC / shop E2E). That number is the COUNT OF CI GATES and is unrelated to the
+> **CI runs 13 gates** (see §5; the eleventh is the Phase-16 pet E2E, the twelfth the
+> Phase-17 NPC / shop E2E, the thirteenth the Phase-18 dialogue E2E). That number is the COUNT OF CI GATES and is unrelated to the
 > number of stages in `docs/PHASE_EXECUTION_PROTOCOL.md` — the phase protocol has more review
 > stages (pre-flight → … → final review) because most of them are human review steps that no
 > CI job can run. Do not "reconcile" the two numbers.
@@ -111,9 +112,9 @@ godot --headless --path . --quit-after 2
 godot --headless --path . -s res://tests/run_tests.gd
 ```
 
-Then the five dedicated E2E processes (app / player sandbox / world-map / pet / npc-shop), one
-gate each — 12 gates in total. The pet and npc gates also fail on any `SCRIPT ERROR:` or leak
-line in their logs.
+Then the six dedicated E2E processes (app / player sandbox / world-map / pet / npc-shop /
+dialogue), one gate each — 13 gates in total. The pet, npc and dialogue gates also fail on any
+`SCRIPT ERROR:` or leak line in their logs.
 
 > **The headless-suite gate also fails on any `SCRIPT ERROR:`, even when the runner exits 0**
 > (D-038). GDScript has no try/catch (D-004), so a VM error (a bad typed-array assignment, a
@@ -1086,3 +1087,62 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   `tools/playtest_flow.gd` 30/30.
 - Local tally at this checkpoint: 929 tests, 929 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak
   lines; app / player / world / pet / npc E2E PASS. CI: run 38024661103 green on `fbb6376`.
+
+### Phase 18 — Dialogue (D-066)
+- `tests/unit/dialogue/test_dialogue_domain.gd` (19) — no scene tree; the REAL
+  `KnowledgeService` and `RelationshipService`. A valid graph is accepted; every structural
+  defect is named (start, dangling choice / continue, duplicate node / choice / dialogue ids,
+  speaker, prefix, missing keys, an unreachable node, choices + continue, an all-conditional
+  line, one speaker with two dialogues, an empty catalog); unknown condition / effect kinds,
+  stray payloads, a shop handoff that continues, and a regard choice that nothing stops (no
+  bound, a bound the wrong way, a bound on another dimension); a chain of lines that never
+  ends; what other owners cannot supply (knowledge ids, dimensions, thresholds, translations,
+  shops). Offers follow the owners' state; a hidden / unknown / stale answer is refused and
+  changes nothing; continue and choices follow the graph. Regard: one directed speaker →
+  player edge made through the service, an existing (even symmetric) edge reused, clamped at
+  the bound, no edge for a move that moves nothing, an unknown dimension refused whole.
+  Knowledge: granted once through the Core, no copy kept, no grant path = refused. The shop
+  answer returns an action and mutates nothing. A second service over the same world repeats
+  nothing.
+- `tests/integration/test_dialogue_content.gd` (7) — the SHIPPED catalog against the knowledge
+  catalog, the relationship config, the shop catalog, the world simulation's cast and the
+  localization table (every line, answer, mood and dimension name in vi AND en); both authored
+  conversations played through the service.
+- `tests/integration/test_dialogue_runtime.gd` (17) — real `NpcRuntime`, `KnowledgeRuntime`,
+  `RelationshipRuntime`, `InventoryRuntime`, `WorldNpc` bodies: the session fails closed on
+  content an owner cannot supply; a talk opens at the first line, the speaker turns and
+  gestures; range is `NpcRuntime`'s decision; someone with nothing authored keeps the Phase-17
+  behaviour; a stale answer and an answer from out of reach are refused; a regard answer moves
+  the real graph once AND the shop's real view shows the new price (−8% → 13, +9% → 16);
+  knowledge is announced once through `knowledge_gained`; knowledge gained elsewhere changes
+  what the elder offers; "Trade" closes the conversation BEFORE the shop opens and buys
+  nothing; a map change, leaving and the session ending close it and drop the connection; a
+  restarted session repeats nothing; the view is rebuilt on changes only; no `to_dict`.
+- `tests/unit/presentation/test_dialogue_panel.gd` (9) — the box follows the view (three open
+  views take ONE modal context); focus stands the strip and dock down and brings them back
+  without touching the dock's own rule; a shop after a conversation leaves one context; who
+  speaks, how, and what can be answered, in Vietnamese; no shipped line, answer or mood
+  renders as a raw key in either language; selection wraps and a request names the line it
+  answers; the box, AS LAID OUT, fits under the clear zone for every shipped line in both
+  languages; no shipped answer is truncated; mood colours are palette roles.
+- `tests/performance/test_dialogue_budget.gd` (2) — nothing in a closed conversation processes;
+  `eligible_choices` measured (see `PERFORMANCE.md`).
+- `tests/unit/bootstrap/test_session_lifecycle.gd` — 15 subsystems, `DialogueRuntime` last.
+- **E2E gate 13** `tests/e2e/run_dialogue_flow.gd` — isolated process, real app, semantic
+  inputs, one press per step, 15 named steps: the elder's prompt and conversation; the opening
+  press answers nothing; move / attack / pet-summon blocked; the knowledge-gated answer
+  absent; Esc leaves the talk, not the game; the stele read with a real key; the answer now
+  offered raises respect in the real graph once; respect opens the next answer, which grants
+  through the Knowledge Core; leaving by choosing it; the scout's own lines and gesture through
+  the same box; affinity raised through two nodes; "Trade" opens the existing shop at the
+  adjusted price (13, not 14) with nothing bought; ONE close restores gameplay; a map change
+  and a return to menu with a conversation open both close it; `DialogueRuntime` ended first.
+- `tests/e2e/npc_flow_case.gd` now reaches the shop through the conversation, step by step.
+- Mutation-checked (each turns tests red): no re-validation on submit; always creating the
+  edge; a second edge beside a symmetric one; no self-limiting rule; reading keys on the frame
+  a line appears; opening the shop before closing the conversation; no range re-check; keeping
+  the modal context on close; not consuming Esc; the two truncated English answers.
+- Real app: `tools/capture_motion.gd -- <dir> dialogue <vi|en>`; frames opened and judged at
+  1280×720 (vi, 16:9), 1280×800 (en, 16:10) and a requested 1920×1200 that the desktop clamps
+  to 1920×1011 (en, 1.90:1). `tools/capture_motion.gd -- <dir> shop vi` re-run: the shop still
+  opens at base price with nothing bought. `tools/playtest_flow.gd -- vi <dir>` 30/30.

@@ -4,7 +4,7 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> **Status: through Phase 17 (NPC / Shop, D-065).** Phase state is owned by `docs/ROADMAP.md`;
+> **Status: through Phase 18 (Dialogue, D-066).** Phase state is owned by `docs/ROADMAP.md`;
 > this block only says what the FLOW is today.
 > Split three ways on purpose — the old block mixed them, which is how it came to say
 > "combat exists only in the Phase-02 sandbox" three phases after combat went live. (It then
@@ -48,15 +48,20 @@
 > - **A LINH THÚ FOLLOWS AND FIGHTS** (Phase 16, D-064) — the stray Hoàng Khuyển in Lạc Hà can
 >   be befriended; `pet_summon` calls and dismisses it; it fights on the player's team.
 > - **PEOPLE STAND IN THE WORLD AND ONE OF THEM TRADES** (Phase 17, D-065) — Kha Thản's body at
->   the edge of Rừng Vỡ Mạch is his registry `CharacterState`; `interact` opens his shop (a
->   modal panel), paid in the linh thạch in the bag, priced by his regard for the player.
+>   the edge of Rừng Vỡ Mạch is his registry `CharacterState`; his shop (a modal panel) is paid
+>   in the linh thạch in the bag and priced by his regard for the player.
+> - **PEOPLE CAN BE TALKED TO** (Phase 18, D-066) — `interact` on Kha Thản or on Thẩm Bất Kỳ (in
+>   Lạc Hà) opens an authored, branching conversation in a modal box. What a line offers
+>   depends on what the player knows and how the speaker regards them; an answer may move that
+>   regard (through `RelationshipService`), teach something (through the Knowledge Core) or
+>   hand over to the speaker's shop. Dialogue owns no state of its own.
 > - A failure of ANY per-session runtime ABORTS New Game and unwinds back to the menu
 >   (D-037/D-047/D-054) rather than entering a half-wired world.
 >
 > **② FUTURE — design target, NOT implemented.**
-> - **Dialogue (Phase 18), quests (19), the story / chapter / flag engine (20), dungeons (21),
->   bosses (22) and file-level save (23) do not exist.** People can be traded with, not yet
->   talked to; nothing sets or reads a story flag. Dialogue's ownership boundary is D-066.
+> - **Quests (19), the story / chapter / flag engine (20), dungeons (21), bosses (22) and
+>   file-level save (23) do not exist.** Nothing sets or reads a story flag: a conversation
+>   branches on knowledge and regard only, and remembers nothing itself (D-066).
 > - The branching-story / quest flow below is the design target for those phases. The
 >   "PROLOGUE" box in §1 is a future story scene, **not** the current first gameplay scene — it
 >   is specified beat-by-beat in `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039).
@@ -238,9 +243,9 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   (Phase 09, D-007), **enemy AI** in the field (Phase 10 — two authored Vụ Lang that hunt, hit
   back and die), **level/XP progression** off those kills (Phase 11, §3.8), **cultivation and
   knowledge** (Phase 12), **items, equipment and techniques** (Phases 13–15), **a companion**
-  (Phase 16) and **one NPC who trades** (Phase 17).
-  **Still future, and genuinely not implemented:** the prologue beats themselves, story flags,
-  dialogue and quests — nothing in the running game produces or consumes any of them, so
+  (Phase 16), **one NPC who trades** (Phase 17) and **two who talk** (Phase 18).
+  **Still future, and genuinely not implemented:** the prologue beats themselves, story flags
+  and quests — nothing in the running game produces or consumes any of them, so
   this box stays a design box until the phases that own them land.
   *(Historical: the Phase-02 Player Sandbox is retained as an isolated combat harness; it is
   neither the first scene nor how combat reaches the player.)* Maps are data-driven (`MapData`
@@ -632,3 +637,31 @@ field map: walk within reach of Kha Thản (WorldNpc, bound to his CharacterStat
 a fight starting or a map change closes the shop the same way
 ```
 No new game phase. Esc with a shop open never returns to the menu.
+*(Since Phase 18 this direct path is what someone with NO authored conversation does. Kha Thản
+has one, so his shop is reached through its "Trade" answer — next note.)*
+
+## Phase 18 note (D-066) — conversations, one more modal branch
+
+```
+walk within reach of a person (WorldNpc) → HUD prompt names them
+   └─ interact → MapBase.interactable_used(&"npc", id) → WorldRuntime → DialogueRuntime.talk
+        ├─ nobody authored for them → NpcRuntime.interact (the Phase-17 path above, unchanged)
+        └─ NpcRuntime.engage: in this map, bound, in reach? they turn to the player
+             └─ DialogueView(open) → HUD shows DialoguePanel, input context UI_MODAL
+                  the prompt strip and technique dock stand down; the announcement band
+                  rides above the box; the player turns to the speaker
+                  ├─ a line with no answers:  interact → continue (or end)
+                  ├─ a line with answers:     move_up / move_down choose, interact says it
+                  │     DialogueRuntime.choose(node, choice)
+                  │       → range asked of NpcRuntime again; conditions asked again
+                  │       → ONE effect, in its owner:
+                  │            regard     RelationshipService.apply_delta (edge made if absent)
+                  │            knowledge  KnowledgeRuntime.grant → knowledge_gained (announced)
+                  │            trade      conversation CLOSES, then NpcRuntime.open_shop_of
+                  │       → next line  |  refusal: a reason in the band, nothing changed
+                  └─ Esc → DialogueRuntime.leave → DialogueView(closed)
+                        → box hidden, context popped, strip and dock back, gameplay input restored
+a fight starting, a map change or the session ending closes the conversation the same way
+```
+No new game phase. Esc with a conversation open never returns to the menu. The key press that
+opens a conversation, or that leads to a new line, never also answers that line.

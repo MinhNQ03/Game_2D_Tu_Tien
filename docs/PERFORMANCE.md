@@ -3,7 +3,7 @@
 > Performance principles + the mandatory log of every non-trivial optimization.
 > Rules summary: `.kiro/steering/05-performance-testing.md`.
 >
-## CURRENT STATUS (through Phase 17; the opening bullets date from Phase 11 and still hold)
+## CURRENT STATUS (through Phase 18; the opening bullets date from Phase 11 and still hold)
 
 - **A measured benchmark EXISTS.** `tests/performance/test_world_sim_budget.gd` measures the
   world-simulation tick loop at a representative population (200 background actors × 300
@@ -63,6 +63,16 @@
   expected ~120 / ~150); a retarget pass is one scan of the spawned enemies. Measured locally
   (2026-10-10, headless): 1800 frames with one pet — 4 hostiles 10.07 ms, 40 hostiles 15.03 ms
   (1.49× for 10× the hostiles; 8.3 µs per frame). No optimization was needed, so §4 has no entry.
+- **A conversation that is not open costs nothing (Phase 18)**:
+  `tests/performance/test_dialogue_budget.gd`. `DialogueRuntime` has no `_process` /
+  `_physics_process`; a closed `DialoguePanel` and a `WorldNpc` nobody is talking to do not
+  process. What a line offers is evaluated when a line is SHOWN and when an answer is
+  submitted — never per frame (the integration suite counts view rebuilds: open 1, new line 1,
+  refusal 0, close 1). Measured locally (2026-10-10, headless): `eligible_choices` on the two
+  most-conditioned shipped nodes, with an edge and the gated knowledge present, **12.81 µs per
+  call** over 20 000 calls (ceiling 100 µs). The panel's reaction and transition are engine
+  tweens of 0.12–0.14 s, started on a line change. No optimization was needed, so §4 has no
+  entry.
 
 ## HISTORICAL NOTES (kept as written; each records the discipline of its phase)
 

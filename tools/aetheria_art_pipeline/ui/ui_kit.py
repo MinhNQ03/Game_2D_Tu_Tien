@@ -455,7 +455,9 @@ KIT = {
 # The medallions the game LOADS (UIPalette.TEX_MEDALLION_*), keyed by output name -> the actor
 # whose built portrait (work/<actor>/portrait.png, from `build.py pixel`) it frames. Only what
 # the HUD references ships; another actor gets a medallion when a screen shows it.
-MEDALLIONS = {"player_proto": "player_proto", "cultivator_f_proto": "lin_yue"}
+MEDALLIONS = {"player_proto": "player_proto", "cultivator_f_proto": "lin_yue",
+              # Phase 18: the dialogue panel shows who is speaking.
+              "merchant_proto": "ko_than", "elder_proto": "shen_buqi"}
 
 
 def build():

@@ -152,6 +152,16 @@ const HUD_MARGIN := 18
 ## disagree and jump as content changes.
 const SIDE_PANEL_WIDTH := 330
 
+## The dialogue box (Phase 18): one bounded box at the bottom centre. Wide enough for a
+## three-line sentence beside the medallion and the answers; `DIALOGUE_LINE_MIN_HEIGHT` holds
+## two lines of `FONT_SIZE_BODY` (the longest shipped line, in either language, wraps to two)
+## so the box does not change height from line to line.
+const DIALOGUE_BOX_WIDTH := 860
+const DIALOGUE_CHOICE_WIDTH := 250
+const DIALOGUE_LINE_MIN_HEIGHT := 46
+## How far above the dialogue box the announcement band sits while a conversation is open.
+const DIALOGUE_NOTICE_GAP := 8
+
 ## Height of the bottom strip RESERVED for the control prompts. No side panel may enter it.
 ##
 ## This is a layout CONTRACT, not padding. The faction panel used to be sized by its content
@@ -698,4 +708,3 @@ const UI_TEXTURES := [
 ## Surface brightness (0-255) above which light text stops being readable, so the surface
 ## must NOT be used behind the light text tokens. Asserted by the UI theme test.
 const SURFACE_LIGHT_BRIGHTNESS_LIMIT := 120
-

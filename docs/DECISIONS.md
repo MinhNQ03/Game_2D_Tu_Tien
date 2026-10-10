@@ -4812,3 +4812,105 @@ the runtime's place without the panel or the content changing.
 - A dialogue cannot yet move sect reputation or faction standing.
 - Branches are visible in the state of the world (what you know, how someone regards you), not
   in a hidden ledger — which is also what makes them testable through the owners' own APIs.
+
+### Implementation (Phase 18) — what was built to this decision
+
+**Status:** recorded in `docs/ROADMAP.md` Phase 18 with the exact commit and CI run.
+
+**Layers.** Data: six resources in `src/data/dialogue/`. Domain: `DialogueService` +
+`DialogueOutcome` (`src/domain/dialogue/`) — no cursor, no state, no node. Gameplay:
+`DialogueRuntime` (`src/gameplay/world/`), the 15th and last entry of `SESSION_START_ORDER`,
+so the first session ended. Presentation: `DialogueView` + `DialoguePanel`
+(`src/presentation/dialogue/`), pushed `WorldRuntime` → `MapBase` → `GameplayHUD` like every
+other view.
+
+**Who decides what.**
+- WHO is in reach: `NpcRuntime`. Its old `interact` was split into `engage` (the range
+  authority: in this map, bound, in reach; turns the person to the player), `reach_refusal`
+  (the same question as a pure query), `gesture`, and `open_shop_of`. `interact` is now those
+  composed, and is exactly what someone with NO authored conversation still does. Dialogue
+  asks `engage` when a talk starts and `reach_refusal` again on every answer.
+- WHICH conversation: content. `DialogueCatalogData.dialogue_of_speaker(character_id)`; no
+  runtime names a character.
+- WHAT is offered and what an answer comes to: `DialogueService`.
+- WHERE the conversation is: `DialogueRuntime`'s cursor (dialogue, node, a line serial). It has
+  no `to_dict` — a test asserts that, so adding one is a visible decision.
+
+**The handoff to the shop.** `OPEN_SHOP` comes back from the service as an action. The runtime
+closes the conversation FIRST and then calls `NpcRuntime.open_shop_of`, so the HUD pops the
+dialogue's modal context before the shop pushes its own: there is never a frame with two.
+
+**Presentation of a line** (the Phase-18 seed: portrait reaction, emotion, gesture, focus,
+transition).
+- *Portrait*: the speaker's own pipeline medallion, named by
+  `CharacterTemplateData.portrait_ref` (a Phase-04 contract field, read for the first time).
+- *Emotion*: `DialogueNodeData.mood`, shown as a WORD beside the name and as the name plate's
+  colour (`UITheme.dialogue_mood_color`: the kit's own roles). Never an icon, never a verdict on
+  the player (`UI_UX_BIBLE.md` §5).
+- *Gesture*: `DialogueNodeData.gesture` names an action of the SHARED
+  `CharacterVisualComponent` layer; `WorldNpc.gesture(action)` plays it (the Phase-17 `greet`
+  is now `gesture(ACTION_TALK)`). A look with no sheet for it keeps its idle.
+- *Reaction*: the medallion dips once when a gestured line appears.
+- *Focus*: the speaker turns to the player (`engage`), the player turns to the speaker
+  (`Player.face_toward`), the prompt strip and technique dock stand down, and the announcement
+  band rides just above the box.
+- *Transition*: the box fades in over 0.14 s; a new line settles over 0.12 s. Engine tweens,
+  started on a line change, read back by nothing.
+
+**Feedback.** A regard change is announced in the existing HUD band
+(`UI_DIALOGUE_REGARD_UP` / `_DOWN`, naming the person, the dimension and the amount). Knowledge
+a line taught is announced by the Knowledge Core's own `knowledge_gained` — Dialogue adds no
+second "you learned" message. A refusal is an `announce_answer`.
+
+**Content.** Two people, one seam:
+- **Kha Thản** (`dlg_scout_ko`, Rừng Vỡ Mạch): a wary, gestured greeting → trade / ask about
+  the woods (teaches `know_vu_lang_hunting_ground`) / talk prices → tell him what the stele
+  records (needs `know_lac_ha_stele_record`; affinity +40 while below 40) or press him
+  (affinity −30 while at least −20).
+- **Thẩm Bất Kỳ** (`dlg_elder_shen`, Lạc Hà — the simulation's `home_map_id` for him): a
+  stern greeting WITHOUT a gesture → recount the stele (same knowledge; respect +15 while
+  below 15) → with respect ≥ 15, ask for instruction (teaches `know_thanh_dai_precept`).
+  His talk sheet is new (Blender pipeline, opted into by `shen_buqi.yaml`).
+Both stay inside the prologue's limits (`NARRATIVE_MASTER_PLAN.md` §5): frontier talk and the
+stele's own warning; nothing about the Thiên Khế, and `know_tien_thien_threshold` — "no one in
+Lạc Hà knows it" — is deliberately NOT what the elder teaches.
+
+### Defects found by evidence in this phase (and fixed)
+
+- **The mood word read as a label on the first answer** (first vi capture: "điềm tĩnh" sat
+  against "▸ Mua bán"). A hairline now separates what is said from what may be answered.
+- **The announcement band entered the playfield's clear zone** (first vi capture: its text at
+  y 528–544 of 720, the zone ends at 540) because four answer rows made the box 146 px tall.
+  Rows were tightened and the line area sized for the two lines the longest shipped text
+  needs; in the recapture the box is 120 px tall (y 580–700) and the band's text sits at
+  y 548–563. A test measures the box AS LAID OUT for
+  every shipped line in both languages.
+- **An English answer was cut short** ("Tell him what the stele reco…", 1280×800 capture). Two
+  answers were reworded; a test now fails if any shipped answer needs more width than its row
+  has (verified against the old wording: 251 px needed, 243 available).
+- **A test measured a wrapped label's MINIMUM size** (1 454 px "tall") instead of its laid-out
+  size. The measurement was wrong, not the layout: an autowrapped `Label` reports the height
+  it would need at zero width until it has been laid out. The test now waits for layout.
+- **The technique dock would have been force-shown.** The first focus code set
+  `SkillDock.visible`, which the dock itself owns (it hides with no techniques). It is faded
+  with `modulate` instead; a test pins that the dock's own rule is untouched.
+- **The Phase-17 NPC E2E still passed for the wrong reason**: its "press interact until the
+  shop opens" loop walked through the new conversation by pressing three times. It now states
+  each step (talk, past the greeting, Trade) and still proves nothing was bought.
+
+### Drift found and corrected (beyond Checkpoint 0)
+
+- `tools/capture_motion.gd`'s `shop` scenario said "nothing in the game moves a keeper's
+  affinity yet"; the `dialogue` scenario now reaches an adjusted price by really talking.
+- Earlier reports called the English capture "1920×1200". The desktop clamps that window: the
+  frame actually written is **1920×1011** (1.90:1). It is still a different aspect ratio from
+  16:9, and a true 16:10 frame (1280×800) is now captured as well.
+
+### Not built (deliberately)
+
+Flags and a record of choices (Phase 20); sect / faction effects and an EventBus
+`dialogue_chosen` (with their first consumer); a conversation for Lâm Nguyệt (she has no body
+yet); voiced or typed-out text; skipping; a log of past lines; NPC bodies that follow the
+simulation's schedule; file-level save. The runtime's `node_id` check on an answer is a second
+line of defence only — the service's own re-validation is what refuses a stale answer, and a
+mutation of the runtime check alone is not caught by a test.

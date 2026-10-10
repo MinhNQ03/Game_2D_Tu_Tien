@@ -18,6 +18,7 @@ name: CI
 #  10. world/map E2E flow (dedicated isolated process — Phase 03)
 #  11. pet / linh thú E2E flow (dedicated isolated process — Phase 16)
 #  12. NPC / interaction / shop E2E flow (dedicated isolated process — Phase 17)
+#  13. dialogue E2E flow (dedicated isolated process — Phase 18)
 #
 # NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
 # scripts were statically validated via the GDScript language server. The first real
@@ -305,5 +306,37 @@ jobs:
           if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
               _e2e_npc.log; then
             echo "::error::[e2e-npc] the run printed a script error or a leak line"
+            exit 1
+          fi
+
+      - name: Dialogue E2E flow (Phase 18)
+        run: |
+          set -uo pipefail
+          # Dedicated, ISOLATED process (D-019): boots the real app and drives two conversations
+          # with semantic inputs — the elder (a knowledge-gated answer, respect through the
+          # relationship graph, a precept through the Knowledge Core) and the scout (affinity,
+          # then "Trade" handing over to his shop at the adjusted price, nothing bought by the
+          # press that chose it), the modal context, Esc, a map change, return to menu.
+          # A `SCRIPT ERROR:` or a leak line fails the gate even when the runner exits 0: a VM
+          # error aborts the case mid-way, which an exit code cannot distinguish from a pass.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_dialogue_flow.gd 2>&1 \
+            | tee _e2e_dialogue.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### Dialogue E2E (rc=$rc)"
+            echo '```'
+            tail -n 60 _e2e_dialogue.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            grep -E 'FAIL|ERROR|RESULT' _e2e_dialogue.log | tail -n 40 \
+              | while IFS= read -r line; do echo "::error::[e2e-dialogue] ${line}"; done
+            exit "$rc"
+          fi
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
+              _e2e_dialogue.log; then
+            echo "::error::[e2e-dialogue] the run printed a script error or a leak line"
             exit 1
           fi

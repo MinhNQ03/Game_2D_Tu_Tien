@@ -69,6 +69,11 @@ signal inventory_use_requested(item_id: StringName, equipped: bool)
 signal shop_buy_requested(item_id: StringName)
 signal shop_sell_requested(item_id: StringName)
 signal shop_close_requested()
+## Dialogue intents (Phase 18). The HUD forwards what the panel asked for; `DialogueRuntime`
+## decides. A choice names the line it answers.
+signal dialogue_choice_requested(node_id: StringName, choice_id: StringName)
+signal dialogue_advance_requested()
+signal dialogue_close_requested()
 
 ## Side of the small sect emblem chip in the identity panel. HUD-local: nothing else in the
 ## UI draws a chip this size, so it stays here rather than widening the shared palette.
@@ -190,6 +195,14 @@ var _inventory_modal: bool = false
 ## The shop (Phase 17): shown while a `ShopView` says a shop is open; holds a UI_MODAL context.
 var _shop_panel: ShopPanel
 var _shop_modal: bool = false
+## The conversation (Phase 18): shown while a `DialogueView` says one is open; holds a UI_MODAL
+## context. While it is open the prompt strip and the technique dock stand down (none of their
+## keys act) and the announcement band rides above the box.
+var _dialogue_panel: DialoguePanel
+var _dialogue_modal: bool = false
+var _prompt_strip: Control
+var _notice_rest_top: float = 0.0
+var _notice_rest_bottom: float = 0.0
 ## Arguments of the interact prompt's text (a person's prompt names them).
 var _interact_label_args: Dictionary = {}
 # The skill dock (Phase 15): bottom-centre (D-062), hidden until a technique is learned.
@@ -212,6 +225,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_hide_dialogue()
 	close_inventory()
 	_hide_shop()
 	# Stop the level-up celebration before the HUD leaves the tree. A map transition or a
@@ -455,6 +469,8 @@ func _build_ui() -> void:
 	_notice_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_notice_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_notice_label.visible = false
+	_notice_rest_top = _notice_label.offset_top
+	_notice_rest_bottom = _notice_label.offset_bottom
 	root.add_child(_notice_label)
 	_notice_timer = Timer.new()
 	_notice_timer.name = "NoticeHold"
@@ -623,6 +639,7 @@ func _build_ui() -> void:
 	# anchored and is why the prompts must stay narrow (one badge + one short label each).
 	prompt_panel.grow_horizontal = Control.GROW_DIRECTION_END
 	root.add_child(prompt_panel)
+	_prompt_strip = prompt_panel
 
 	var prompt_box := HBoxContainer.new()
 	prompt_box.add_theme_constant_override("separation", UIPalette.SPACE_LG)
@@ -708,6 +725,22 @@ func _build_ui() -> void:
 	_shop_panel.sell_requested.connect(func(item_id: StringName) -> void:
 		shop_sell_requested.emit(item_id))
 	root.add_child(_shop_panel)
+
+	# The conversation (Phase 18): ONE bounded box at the bottom centre — below the playfield's
+	# clear zone, where the two people talking are never covered. Its height is its content.
+	_dialogue_panel = DialoguePanel.new()
+	_dialogue_panel.name = "DialoguePanel"
+	_dialogue_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_dialogue_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_dialogue_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_dialogue_panel.position = Vector2(0, -UIPalette.HUD_MARGIN)
+	_dialogue_panel.visible = false
+	_dialogue_panel.choice_requested.connect(func(node_id: StringName, id: StringName) -> void:
+		dialogue_choice_requested.emit(node_id, id))
+	_dialogue_panel.advance_requested.connect(func() -> void:
+		dialogue_advance_requested.emit())
+	_dialogue_panel.resized.connect(_place_notice_band)
+	root.add_child(_dialogue_panel)
 
 	# The technique dock sits BOTTOM-CENTRE (D-062): the composition every action game reads —
 	# the player's hands are under the player. It is below the playfield's clear zone and
@@ -1366,6 +1399,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _input == null:
 		return
 	var handled := false
+	# A conversation owns the keys while it is open: Esc ASKS to leave it (never the game).
+	if _dialogue_modal:
+		if _input.call("is_system_action_just_pressed", &"open_menu"):
+			dialogue_close_requested.emit()
+			var talk_vp := get_viewport()
+			if talk_vp != null:
+				talk_vp.set_input_as_handled()
+		return
 	# The shop owns the keys while it is open: Esc ASKS to close it (never leaves the game),
 	# and nothing else here reacts until the shop's owner has closed it.
 	if _shop_modal:
@@ -1409,6 +1450,8 @@ func _close_side_panels() -> void:
 	# A fight ends a conversation: ask the shop's owner to close it.
 	if _shop_modal:
 		shop_close_requested.emit()
+	if _dialogue_modal:
+		dialogue_close_requested.emit()
 
 
 ## Open the bag: one reading surface at a time (the other side panels close), and the input
@@ -1488,6 +1531,76 @@ func _hide_shop() -> void:
 
 func is_shop_open() -> bool:
 	return _shop_panel != null and _shop_panel.visible
+
+
+## Push the conversation view (Phase 18). The view is the authority on whether a conversation
+## is open: an open view shows the box and takes a UI_MODAL context; a closed one hides it and
+## gives the context back. Idempotent both ways.
+func set_dialogue_view(view: DialogueView) -> void:
+	if _dialogue_panel == null:
+		return
+	_dialogue_panel.set_view(view)
+	if view != null and view.open:
+		_show_dialogue()
+	else:
+		_hide_dialogue()
+
+
+func _show_dialogue() -> void:
+	if _dialogue_panel.visible:
+		return
+	_close_side_panels()
+	_dialogue_panel.visible = true
+	_dialogue_panel.set_process(true)
+	if _input != null and not _dialogue_modal:
+		_input.call("push_modal_context")
+		_dialogue_modal = true
+	_refresh_dialogue_focus()
+
+
+func _hide_dialogue() -> void:
+	if _dialogue_panel != null:
+		_dialogue_panel.visible = false
+		_dialogue_panel.set_process(false)
+	if _input != null and _dialogue_modal:
+		_input.call("pop_context")
+		_dialogue_modal = false
+		_refresh_dialogue_focus()
+
+
+## DIALOGUE FOCUS: while two people talk, the controls that cannot act stand down (the prompt
+## strip, the technique dock) and come back, untouched, when the talk ends.
+func _refresh_dialogue_focus() -> void:
+	if _prompt_strip != null:
+		_prompt_strip.visible = not _dialogue_modal
+	# The dock decides its own `visible` (it hides with no techniques), so it is faded, not
+	# hidden: its own rule is untouched when the talk ends.
+	if _skill_dock != null:
+		_skill_dock.modulate.a = 0.0 if _dialogue_modal else 1.0
+	_place_notice_band()
+
+
+## The announcement band rides just above the dialogue box while one is open (a result of what
+## was just said must not be printed across the line that said it), and rests where it always
+## does otherwise.
+func _place_notice_band() -> void:
+	if _notice_label == null:
+		return
+	var lift := 0.0
+	if _dialogue_modal and _dialogue_panel != null:
+		var box_top := UIPalette.HUD_MARGIN + _dialogue_panel.size.y \
+			+ UIPalette.DIALOGUE_NOTICE_GAP
+		lift = maxf(0.0, box_top + _notice_rest_bottom)
+	_notice_label.offset_top = _notice_rest_top - lift
+	_notice_label.offset_bottom = _notice_rest_bottom - lift
+
+
+func is_dialogue_open() -> bool:
+	return _dialogue_panel != null and _dialogue_panel.visible
+
+
+func dialogue_panel() -> DialoguePanel:
+	return _dialogue_panel
 
 
 func shop_panel() -> ShopPanel:
@@ -1657,7 +1770,7 @@ func _refresh_prompts() -> void:
 		var attack_key := _display_label(ATTACK_ACTION)
 		_attack_row.set_prompt(attack_key, _text("UI_HUD_ATTACK_ACTION"))
 	# Not while the shop holds the keys: `interact` trades there, and the panel says so itself.
-	_interact_row.visible = _interact_available and not _shop_modal
+	_interact_row.visible = _interact_available and not _shop_modal and not _dialogue_modal
 	if _interact_row.visible:
 		var interact_key := _display_label(INTERACT_ACTION)
 		_interact_row.set_prompt(interact_key, _interact_text())

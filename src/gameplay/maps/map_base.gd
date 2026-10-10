@@ -41,6 +41,10 @@ signal interactable_used(kind: StringName, id: StringName)
 signal shop_buy_requested(item_id: StringName)
 signal shop_sell_requested(item_id: StringName)
 signal shop_close_requested()
+## Dialogue intents from the HUD's dialogue panel (Phase 18); `DialogueRuntime` decides.
+signal dialogue_choice_requested(node_id: StringName, choice_id: StringName)
+signal dialogue_advance_requested()
+signal dialogue_close_requested()
 ## Intent to leave the world back to the menu (same contract the sandbox/prologue used).
 signal return_to_menu_requested()
 
@@ -63,6 +67,7 @@ var _inventory_view: InventoryView = null  # cached read-only bag view (Phase 13
 var _skill_view: SkillView = null  # cached read-only skill dock view (Phase 15)
 var _pet_view: PetView = null  # cached read-only linh thú view (Phase 16)
 var _shop_view: ShopView = null  # cached read-only shop view (Phase 17)
+var _dialogue_view: DialogueView = null  # cached read-only conversation view (Phase 18)
 ## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
 var _active_source: KnowledgeSource = null
 ## The interactable in reach (Phase 16): a stele, a stray animal, later a person. `_active_source`
@@ -307,6 +312,13 @@ func set_skill_view(view: SkillView) -> void:
 	_skill_view = view
 	if _hud != null:
 		_hud.set_skill_view(view)
+
+
+## Push the conversation view (Phase 18): an open view opens the box, a closed one closes it.
+func set_dialogue_view(view: DialogueView) -> void:
+	_dialogue_view = view
+	if _hud != null:
+		_hud.set_dialogue_view(view)
 
 
 ## Push the shop view (Phase 17): an open view opens the panel, a closed one closes it.
@@ -585,6 +597,10 @@ func _setup_hud() -> void:
 	_hud.shop_sell_requested.connect(func(item_id: StringName) -> void:
 		shop_sell_requested.emit(item_id))
 	_hud.shop_close_requested.connect(func() -> void: shop_close_requested.emit())
+	_hud.dialogue_choice_requested.connect(func(node_id: StringName, id: StringName) -> void:
+		dialogue_choice_requested.emit(node_id, id))
+	_hud.dialogue_advance_requested.connect(func() -> void: dialogue_advance_requested.emit())
+	_hud.dialogue_close_requested.connect(func() -> void: dialogue_close_requested.emit())
 
 
 func _refresh_hud() -> void:
@@ -624,6 +640,8 @@ func _refresh_hud() -> void:
 		_hud.set_pet_view(_pet_view)
 	if _shop_view != null:
 		_hud.set_shop_view(_shop_view)
+	if _dialogue_view != null:
+		_hud.set_dialogue_view(_dialogue_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

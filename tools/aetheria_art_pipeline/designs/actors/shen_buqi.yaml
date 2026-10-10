@@ -43,6 +43,9 @@ materials:
   eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
   pin:        {ramp: ["#5b4524", "#86683a", "#c9a865", "#e6cf93"], priority: 2.0, flat: true}
 
+animations:
+  talk: {frames: 6, loops: false}          # an elder speaking: the deep sleeve lifts (Phase 18)
+
 outputs:
   sheet_prefix: elder_proto
   anchors: elder_anchors

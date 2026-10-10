@@ -157,23 +157,71 @@ func is_shop_open() -> bool:
 
 # --- Talking ------------------------------------------------------------------
 
-## The player talks to `character_id`. Validated here (the body is in this map, bound, within
-## reach): the person turns and gestures, and their shop opens if they keep one. Returns &"" on
-## success, else the refusal key (also emitted).
-func interact(character_id: StringName) -> StringName:
+## The player turns to `character_id`. THE range authority for every way of addressing a
+## person: the body must be in this map, bound, and within its reach of the player. On success
+## the person turns to face the player and &"" is returned; otherwise the refusal key (also
+## emitted). A conversation (Phase 18) starts here too — nobody else decides who is in reach.
+func engage(character_id: StringName) -> StringName:
+	var refusal := reach_refusal(character_id)
+	if refusal != &"":
+		return _refuse_interaction(refusal)
+	_find_npc(character_id).face_toward(_player().global_position)
+	return &""
+
+
+## Why `character_id` cannot be addressed right now, or &"" when they can. A pure query.
+func reach_refusal(character_id: StringName) -> StringName:
 	if not _session_active:
-		return _refuse_interaction(REFUSE_UNAVAILABLE)
-	var npc := _npc_in_reach(character_id)
-	if npc == null:
-		return _refuse_interaction(REFUSE_NOBODY if _find_npc(character_id) == null
-			else REFUSE_TOO_FAR)
-	var player := _player()
-	npc.face_toward(player.global_position)
-	npc.greet()
-	var shop := _service.catalog().shop_of_keeper(character_id)
-	if shop == null:
+		return REFUSE_UNAVAILABLE
+	if _npc_in_reach(character_id) != null:
+		return &""
+	return REFUSE_NOBODY if _find_npc(character_id) == null else REFUSE_TOO_FAR
+
+
+## Have `character_id`'s body play a gesture of the shared action layer. Presentation only.
+func gesture(character_id: StringName, action: StringName) -> bool:
+	var npc := _find_npc(character_id)
+	return npc != null and npc.gesture(action)
+
+
+## Where `character_id` stands in this map, or `Vector2.INF` when they have no body here.
+func position_of(character_id: StringName) -> Vector2:
+	var npc := _find_npc(character_id)
+	return npc.global_position if npc != null else Vector2.INF
+
+
+## The template the body of `character_id` in this map was authored with (their look, their
+## portrait), or null when they have no body here.
+func template_of(character_id: StringName) -> CharacterTemplateData:
+	var npc := _find_npc(character_id)
+	return npc.character_template if npc != null else null
+
+
+## The player addresses `character_id` with nothing more specific to say — the behaviour of
+## someone who has NO authored conversation (`DialogueRuntime` handles those who do): they turn
+## and gesture, and their shop opens if they keep one. Returns &"" on success, else the refusal
+## key (also emitted).
+func interact(character_id: StringName) -> StringName:
+	var refusal := engage(character_id)
+	if refusal != &"":
+		return refusal
+	_find_npc(character_id).greet()
+	if _service.catalog().shop_of_keeper(character_id) == null:
 		npc_greeted.emit(character_id)
 		return &""
+	return open_shop_of(character_id)
+
+
+## Open the shop `character_id` keeps (a conversation's "trade" choice hands over to this).
+## Range is re-checked here; someone who keeps no shop refuses. A shop already open stays as
+## it is. Returns &"" on success, else the refusal key (also emitted).
+func open_shop_of(character_id: StringName) -> StringName:
+	var refusal := reach_refusal(character_id)
+	if refusal != &"":
+		return _refuse_interaction(refusal)
+	var shop := _service.catalog().shop_of_keeper(character_id)
+	if shop == null:
+		return _refuse_interaction(REFUSE_SHOP_CLOSED)
 	if _open_shop == shop.id:
 		return &""  # already open: a repeated press opens nothing twice
 	_open_shop = shop.id

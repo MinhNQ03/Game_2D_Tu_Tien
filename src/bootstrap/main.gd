@@ -72,6 +72,7 @@ const EQUIPMENT_RUNTIME_SCRIPT := "res://src/gameplay/world/equipment_runtime.gd
 const SKILL_RUNTIME_SCRIPT := "res://src/gameplay/world/skill_runtime.gd"
 const PET_RUNTIME_SCRIPT := "res://src/gameplay/world/pet_runtime.gd"
 const NPC_RUNTIME_SCRIPT := "res://src/gameplay/world/npc_runtime.gd"
+const DIALOGUE_RUNTIME_SCRIPT := "res://src/gameplay/world/dialogue_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -116,7 +117,7 @@ const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
 	&"WorldSimulationRuntime", &"CombatRuntime", &"ProgressionRuntime",
 	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime", &"EquipmentRuntime",
-	&"SkillRuntime", &"PetRuntime", &"NpcRuntime",
+	&"SkillRuntime", &"PetRuntime", &"NpcRuntime", &"DialogueRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -160,6 +161,10 @@ var _pets: Node = null
 # NpcRuntime (Phase 17): binds people in the world's map to the registry's characters and
 # trades through the inventory, priced by the relationship graph — after all three.
 var _npcs: Node = null
+# DialogueRuntime (Phase 18): asks NpcRuntime who is in reach, reads and moves the relationship
+# graph, grants through KnowledgeRuntime — after all three, so it is the FIRST session ended
+# and an open conversation closes before anything it points at is gone.
+var _dialogue: Node = null
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -249,6 +254,7 @@ func _boot() -> void:
 	_skills = _create_runtime(SKILL_RUNTIME_SCRIPT, "SkillRuntime")
 	_pets = _create_runtime(PET_RUNTIME_SCRIPT, "PetRuntime")
 	_npcs = _create_runtime(NPC_RUNTIME_SCRIPT, "NpcRuntime")
+	_dialogue = _create_runtime(DIALOGUE_RUNTIME_SCRIPT, "DialogueRuntime")
 
 	if not bool(gs.call("mark_ready")):
 		push_error("[boot] mark_ready rejected; aborting boot")
@@ -613,6 +619,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _pets
 		&"NpcRuntime":
 			return _npcs
+		&"DialogueRuntime":
+			return _dialogue
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
 		% subsystem + "session would be silently skipped on teardown")
 	return null
@@ -931,6 +939,11 @@ func _start_cultivation_sessions() -> bool:
 		return false
 	if _world.has_method("refresh_active_map_shop_view"):
 		_world.call("refresh_active_map_shop_view")
+	if _dialogue == null or not bool(_dialogue.call("start_session", _world, _npcs,
+			_knowledge, _relationship)):
+		return false
+	if _world.has_method("refresh_active_map_dialogue_view"):
+		_world.call("refresh_active_map_dialogue_view")
 	return true
 
 

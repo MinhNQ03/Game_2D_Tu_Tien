@@ -192,3 +192,24 @@ Phase 05 implements the core relationship domain (this doc §1–§8) as:
 of truth). Still NOT in Phase 05: relationship UI, NPC/dialogue/quest/story/faction/
 world-sim consumers, sect referential validation, and save orchestration
 (`RelationshipStore.to_dict/from_dict` is the ready seam; `SaveService` is Phase 23).
+
+## 12. First gameplay producer: dialogue (Phase 18, D-066)
+
+Until Phase 18 the only things that moved an edge in a running game were the sect / faction
+mirrors and world-simulation events between actors. A conversation is the first PLAYER act that
+does:
+
+- A dialogue choice with a `RELATIONSHIP_DELTA` effect calls `RelationshipService.apply_delta`
+  on the SPEAKER's edge to the player — the service is still the only mutation path (§8); the
+  cause recorded in the edge's history is the dialogue id.
+- The edge is found with `find_between(speaker, player, include_symmetric = true)`. Only when
+  none exists AND the delta would change something is one created, through `create_edge`:
+  directed speaker → player, type `ACQUAINTED`, `known = true`, id
+  `rel_regard__<speaker>__<player>`. An existing edge of any type is reused as it is.
+- Dialogue CONDITIONS read the same edge through `read_dimension_as`; no edge reads as the
+  dimension's default.
+- The shop's prices (Phase 17) read that edge too, so what was said changes what is charged —
+  with no code path between the two systems other than the graph.
+- Dialogue keeps no relationship state. Because it also keeps no "already said" flag, content
+  must make every regard choice self-limiting on the dimension it moves (validated — see
+  `DATA_SCHEMA.md` DialogueData).

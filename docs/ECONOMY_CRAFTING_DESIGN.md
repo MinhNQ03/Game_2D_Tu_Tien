@@ -16,8 +16,12 @@
 >
 > **NOT IMPLEMENTED — everything else in this document:** gathering, processing, professions,
 > crafting and recipes, the regional market (§7), contribution, travel and information sinks,
-> anti-inflation policy as a running system. Nothing in the game yet changes a keeper's regard
-> (dialogue, Phase 18, is the first thing that may — through `RelationshipService`, D-066).
+> anti-inflation policy as a running system.
+>
+> **What moves a price today (Phase 18, D-066):** talking to the keeper. A dialogue answer may
+> raise or lower his regard through `RelationshipService`; the shop reads the same edge, so
+> Kha Thản's affinity of +40 is 8% off and −30 is 9% dearer. Nothing else changes a price —
+> no supply, no region, no time.
 
 ---
 

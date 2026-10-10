@@ -211,6 +211,8 @@ Remaining stock is NOT here — it is `ShopState` (SAVE_FORMAT `shops`).
 
 An NPC needs no schema of its own: it is a `CharacterTemplateData` realized as a
 `CharacterState`. `CharacterVisualProfileData` gained the optional `talk_sheet`.
+`CharacterTemplateData.portrait_ref` (a path, "" = none) is read since Phase 18: the medallion
+the dialogue box shows for that speaker.
 
 ### QuestData (`quest_*`)
 ```

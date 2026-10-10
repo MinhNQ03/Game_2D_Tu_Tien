@@ -18,8 +18,8 @@ extends SceneTree
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
 ## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
-## techniques, golden, field_fight, pet, shop (second user argument runs one; a third picks the
-## language, `vi` or `en`, default the saved setting).
+## techniques, golden, field_fight, pet, shop, dialogue (second user argument runs one; a third
+## picks the language, `vi` or `en`, default the saved setting).
 ##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
 ## on top of the camera's own zoom) and `<out>/scene_<name>.png` full frames. Exit code 1 if any
@@ -103,6 +103,9 @@ func _run() -> void:
 	if _only == "shop":
 		print("[capture_motion] scenario shop")
 		await _scenario_shop()
+	if _only == "dialogue":
+		print("[capture_motion] scenario dialogue")
+		await _scenario_dialogue()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -535,8 +538,10 @@ func _scenario_pet() -> void:
 ## taken against the player (the adjusted AND base price both showing).
 ##
 ## SETUP, stated plainly: the pills and stones are real pickups the player is stood on, and the
-## last frame's regard is written through the relationship service (nothing in the game moves
-## a keeper's affinity yet — Phase 18+). Every action after a placement is a real key.
+## last frame's regard is STAGED through the relationship service to show the mark-up colours
+## (the `dialogue` scenario reaches an adjusted price by really talking to him). Every action
+## after a placement is a real key. Since Phase 18 his shop is his conversation's "Trade"
+## answer: interact (talk), interact (past the greeting), interact (Trade).
 func _scenario_shop() -> void:
 	var player := _player()
 	var pill := _map_node("Pickups/HubPill1") as Node2D
@@ -571,6 +576,11 @@ func _scenario_shop() -> void:
 	await _press(&"interact")
 	var talk := await _strip(func() -> Vector2: return ko.global_position + Vector2(8, -18), 8, 4)
 	_save_strip("motion_npc_talk", talk)
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _press(&"interact")
+	await _settle()
 	if not npcs.is_shop_open():
 		_fail("shop: interact did not open the shop")
 		return
@@ -601,6 +611,129 @@ func _scenario_shop() -> void:
 	await _press(&"open_menu")
 	await _settle()
 	await _shot("scene_shop_closed")
+
+
+## Dialogue (Phase 18), by name only: two people, one box. The elder in Lạc Hà (an answer that
+## appears only once the stele has been read, respect earned, a precept taught) and the scout
+## at the field's edge (news that pleases him, then "Trade" handing over to his shop at the
+## price that earns).
+##
+## SETUP, stated plainly: the player is PLACED beside each person, the stele and the pickups,
+## and the stray is befriended so the pet prompt is in the closed-HUD frame. Every action after
+## a placement is a real key; nothing is written to a runtime.
+func _scenario_dialogue() -> void:
+	var player := _player()
+	var dialogue := _main.get_node_or_null("Systems/DialogueRuntime") as DialogueRuntime
+	var npcs := _main.get_node_or_null("Systems/NpcRuntime") as NpcRuntime
+	var shen := _map_node("Interactables/ShenBuqi") as Node2D
+	var stele := _map_node("KnowledgeSources/LacHaStele") as Node2D
+	var hound := _map_node("Interactables/StrayHound") as Node2D
+	if player == null or dialogue == null or npcs == null or shen == null or stele == null:
+		_fail("dialogue: pieces missing")
+		return
+	if hound != null:
+		player.global_position = hound.global_position + Vector2(-18, 4)
+		await _settle()
+		await _press(&"interact")
+		await _settle()
+	await _stand_beside(player, shen)
+	await _shot("scene_dialogue_prompt")
+	await _press(&"interact")
+	await _settle()
+	if not dialogue.is_open():
+		_fail("dialogue: interact did not open the elder's conversation")
+		return
+	await _shot("scene_dialogue_elder_greet")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_dialogue_elder_unread")
+	await _press(&"open_menu")
+	await _settle()
+	await _shot("scene_dialogue_closed_hud")
+	player.global_position = stele.global_position + Vector2(0, 20)
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _stand_beside(player, shen)
+	await _press(&"interact")
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_dialogue_elder_choices")
+	await _press(&"interact")
+	var elder_talk := await _strip(
+		func() -> Vector2: return shen.global_position + Vector2(8, -18), 8, 4)
+	_save_strip("motion_dialogue_elder_talk", elder_talk)
+	await _shot("scene_dialogue_elder_approve")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_dialogue_elder_teach")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"move_down")
+	await _settle()
+	await _shot("scene_dialogue_elder_leave_selected")
+	await _press(&"interact")
+	await _settle()
+	if dialogue.is_open():
+		_fail("dialogue: the leave answer did not end the elder's conversation")
+		return
+	if not await _travel_through_first_exit(player):
+		_fail("dialogue: the exit did not transition")
+		return
+	await _settle()
+	for stone_name: String in ["FieldStone1", "FieldStone2"]:
+		var stone := _map_node("Pickups/%s" % stone_name) as Node2D
+		if stone != null:
+			player.global_position = stone.global_position
+			await _settle()
+	var ko := _map_node("Interactables/KoThan") as Node2D
+	if ko == null:
+		_fail("dialogue: Kha Thản is not in the field")
+		return
+	await _stand_beside(player, ko)
+	await _press(&"interact")
+	var ko_talk := await _strip(
+		func() -> Vector2: return ko.global_position + Vector2(8, -18), 8, 4)
+	_save_strip("motion_dialogue_ko_talk", ko_talk)
+	await _shot("scene_dialogue_ko_greet")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_dialogue_ko_hub")
+	await _press(&"move_down")
+	await _settle()
+	await _press(&"move_down")
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_dialogue_ko_price")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_dialogue_ko_pleased")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	if not npcs.is_shop_open() or dialogue.is_open():
+		_fail("dialogue: 'Trade' did not hand over to the shop")
+		return
+	await _shot("scene_dialogue_to_shop")
+	await _press(&"open_menu")
+	await _settle()
+	await _shot("scene_dialogue_after_shop")
+
+
+## SETUP + a short real walk: stand to the right of `who`, just out of reach, and walk in.
+func _stand_beside(player: Node2D, who: Node2D) -> void:
+	player.global_position = who.global_position + Vector2(60, 6)
+	await _settle()
+	Input.action_press(&"move_left")
+	for _i in 12:
+		await physics_frame
+	Input.action_release(&"move_left")
+	await _settle()
 
 
 ## THE GOLDEN COMBAT SCENE (D-062 CP10): the benchmark frame. Thôn Lạc Hà, the protagonist at

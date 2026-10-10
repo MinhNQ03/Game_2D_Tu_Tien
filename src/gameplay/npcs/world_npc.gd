@@ -18,7 +18,7 @@ const KIND := &"npc"
 const VisualComponentScript := preload(
 	"res://src/presentation/characters/character_visual_component.gd")
 
-## Seconds the talk gesture runs when the profile authors one.
+## Seconds a gesture runs when the profile authors a sheet for it.
 const TALK_SECONDS := 0.9
 const BODY_RADIUS := 5.0
 
@@ -126,7 +126,14 @@ func face_toward(world_point: Vector2) -> void:
 ## The talk gesture: the shared action layer's `talk` action, clocked here. A look that authors
 ## no talk sheet simply keeps its idle — presentation degrades, nothing else changes.
 func greet() -> bool:
-	if _visual == null or not _visual.play_action(CharacterVisualComponent.ACTION_TALK):
+	return gesture(CharacterVisualComponent.ACTION_TALK)
+
+
+## Play `action` — an action of the SHARED `CharacterVisualComponent` layer — as a one-shot
+## gesture (Phase 18: a dialogue line names the gesture it is said with). Presentation only:
+## false, and the idle kept, when the look authors no sheet for it.
+func gesture(action: StringName) -> bool:
+	if _visual == null or action == &"" or not _visual.play_action(action):
 		return false
 	_talk_left = TALK_SECONDS
 	set_process(true)

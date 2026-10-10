@@ -698,6 +698,21 @@ static func portrait_texture(female: bool = false) -> Texture2D:
 	return load(path) as Texture2D
 
 
+
+## The colour a line's MOOD gives the speaker's name plate (Phase 18). Tone, not judgement:
+## these are the kit's own roles — calm is plain text, warm the gold of a title, stern the
+## crimson of a warning, wary the muted grey of something held back.
+static func dialogue_mood_color(mood: int) -> Color:
+	match mood:
+		DialogueNodeData.Mood.WARM:
+			return UIPalette.COLOR_TITLE
+		DialogueNodeData.Mood.STERN:
+			return UIPalette.COLOR_CRIMSON_HOVER
+		DialogueNodeData.Mood.WARY:
+			return UIPalette.COLOR_TEXT_MUTED
+	return UIPalette.COLOR_TEXT
+
+
 ## True once every UI texture resolves (used by the asset-contract test + a startup guard).
 static func textures_present() -> bool:
 	for path in UIPalette.UI_TEXTURES:

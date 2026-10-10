@@ -37,10 +37,16 @@
 > Mạch, turns to the player, gestures (`ACTION_TALK`) and trades. An NPC has no state class of
 > its own.
 >
-> **What is still design only:** NPC authoring at scale, goals/secrets-driven behaviour, bodies
-> that follow the simulation's schedule between maps, and what people SAY — dialogue is
-> Phase 18 (ownership boundary: D-066). `CharacterState.story_flags` is a stored CONTRACT field
-> no system writes; the story engine (Phase 20) is its only future writer.
+> **People speak (Phase 18, D-066).** A conversation is authored against a character's
+> `instance_id` (`DialogueData.speaker_id`); it defines no NPC. Thẩm Bất Kỳ now has a body in
+> Lạc Hà beside Kha Thản's in Rừng Vỡ Mạch, and `CharacterTemplateData.portrait_ref` — a
+> contract field since Phase 04 — is now READ: it names the speaker's medallion in the
+> dialogue box.
+>
+> **What is still design only:** NPC authoring at scale, goals/secrets-driven behaviour, and
+> bodies that follow the simulation's schedule between maps. `CharacterState.story_flags` is a
+> stored CONTRACT field no system writes — Dialogue deliberately does not (D-066); the story
+> engine (Phase 20) is its only future writer.
 
 ## 1. Why Character is core
 
@@ -194,8 +200,8 @@ orchestration.
 
 **Since then:** relationships (Phase 05), sects (06), factions (07), the world simulation and
 its cast (08), cultivation mechanics on the stored fields (12) and NPC bodies (17) are
-IMPLEMENTED in their own documents. **Still not implemented:** the §7 EventBus character
-events, dialogue (Phase 18), and save orchestration (`SaveService`, Phase 23 —
+IMPLEMENTED in their own documents, and dialogue (18) in `DECISIONS.md` D-066. **Still not
+implemented:** the §7 EventBus character events and save orchestration (`SaveService`, Phase 23 —
 `CharacterState.to_dict/from_dict` is the ready seam).
 
 ## 11. Visual pipeline (Phase 05, D-026)
@@ -220,7 +226,7 @@ unchanged — a `CharacterState` still carries NO sprite/presentation data):
 The §6 realization diagram's "Sprite/AnimationComponent" is now concretely the
 `CharacterVisualComponent`. Since Phase 05 the component gained an ACTION layer (attack,
 slash, meditate, cast, talk — D-056/D-058/D-061/D-063/D-065) and the HUD shows the player's
-pipeline portrait as a medallion (D-062). Still NOT implemented: layered/modular compositing,
-and a portrait for anyone but the player and Lâm Nguyệt. Relationships (§5) are now a
+pipeline portrait as a medallion (D-062); Kha Thản and Thẩm Bất Kỳ have medallions too, shown
+when they speak (Phase 18). Still NOT implemented: layered/modular compositing. Relationships (§5) are now a
 real domain graph (`docs/RELATIONSHIP_SYSTEM.md` §11) that a Character references by
 `instance_id`; Character still holds no relationship store of its own.

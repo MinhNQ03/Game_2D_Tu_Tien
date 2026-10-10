@@ -7,7 +7,8 @@ extends TestCase
 ## in the world flow. The loop it proves:
 ##
 ##   pick up pills and spirit stones  →  WALK into reach of Kha Thản  →  the prompt names him  →
-##   interact opens his shop (UI_MODAL: the move keys no longer walk)  →  switch to SELL with a
+##   interact starts his conversation (Phase 18), whose "Trade" answer hands over to his shop
+##   (UI_MODAL: the move keys no longer walk; neither press buys anything)  →  switch to SELL with a
 ##   move key, sell pills  →  switch to BUY, buy one  →  a purchase the purse cannot cover is
 ##   refused with its reason and changes nothing  →  Esc closes the SHOP (not the game) and
 ##   gameplay input returns  →  walk away  →  Esc returns to the menu, NpcRuntime first down.
@@ -103,8 +104,21 @@ func test_real_npc_shop_flow() -> void:
 	var on_early_refused := func(key: StringName) -> void: early.append([key])
 	npcs.trade_done.connect(on_early_done)
 	npcs.trade_refused.connect(on_early_refused)
+	# Since Phase 18 a person with an authored conversation is TALKED to first; his shop is
+	# the conversation's "Trade" answer. One press per step, each step's effect awaited.
+	var dialogue := main.get_node_or_null("Systems/DialogueRuntime") as DialogueRuntime
+	assert_not_null(dialogue, "DialogueRuntime exists under Main/Systems")
+	await _fire_until(INTERACT, func() -> bool: return dialogue.is_open())
+	assert_true(dialogue.is_open(), "a REAL interact key started his conversation")
+	assert_false(npcs.is_shop_open(), "which is not his shop: nothing can be bought yet")
+	await _fire_until(INTERACT,
+		func() -> bool: return dialogue.current_node_id() == &"ko_hub" or not dialogue.is_open())
+	assert_eq(hud.dialogue_panel().selected_choice_id(), &"ko_trade",
+		"past his greeting, 'Trade' is the selected answer")
 	await _fire_until(INTERACT, func() -> bool: return npcs.is_shop_open())
-	assert_eq(npcs.open_shop_id(), SHOP, "a REAL interact key opened his shop")
+	assert_eq(npcs.open_shop_id(), SHOP, "a REAL interact key on 'Trade' opened his shop")
+	assert_false(dialogue.is_open(), "and the conversation closed as it did")
+	assert_false(hud.is_dialogue_open(), "no dialogue box is left behind the shop")
 	for _i in 4:
 		await scene_tree.process_frame
 	npcs.trade_done.disconnect(on_early_done)
@@ -190,8 +204,8 @@ func test_real_npc_shop_flow() -> void:
 	assert_eq(gs.get_phase(), gs.Phase.MENU, "Esc with no shop open returns to the menu")
 	assert_false(npcs.is_session_active(), "the NPC session ended")
 	var trace: Array = main.call("get_last_teardown_order")
-	assert_true(not trace.is_empty() and trace[0] == &"NpcRuntime",
-		"NpcRuntime was torn down FIRST (%s)" % str(trace))
+	assert_true(trace.size() > 2 and trace[0] == &"DialogueRuntime" and trace[1] == &"NpcRuntime",
+		"DialogueRuntime then NpcRuntime were torn down first (%s)" % str(trace))
 
 	_teardown(main)
 	await scene_tree.process_frame

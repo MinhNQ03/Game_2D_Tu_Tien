@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="CharacterVisualProfileData" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://src/data/characters/character_visual_profile_data.gd" id="1_vis"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_idle.png" id="2_idle"]
@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://data/characters/visual/anchors/elder_anchors.tres" id="5_anchors"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_meditate.png" id="6_meditate"]
 [ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_cast.png" id="7_cast"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/elder_proto_talk.png" id="8_talk"]
 
 [resource]
 script = ExtResource("1_vis")
@@ -16,6 +17,7 @@ walk_sheet = ExtResource("3_walk")
 attack_sheet = ExtResource("4_attack")
 meditate_sheet = ExtResource("6_meditate")
 cast_sheet = ExtResource("7_cast")
+talk_sheet = ExtResource("8_talk")
 frame_size = Vector2i(32, 48)
 frame_duration = 0.42
 anchor_offset = Vector2(0, 5)

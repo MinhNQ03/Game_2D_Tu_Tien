@@ -6,7 +6,7 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (through Phase 17, D-065):** Phase 05 (Relationship
+> **CURRENT STATE (through Phase 18, D-066):** Phase 05 (Relationship
 > core + early character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is
 > **CLOSED** (D-032, hardened in D-037). Phase 07 (Faction/Politics) is **IMPLEMENTED**
 > (D-042, hardened in D-047) — this block said "NOT STARTED" for five phases, which D-055
@@ -19,11 +19,19 @@
 > Phase 12 (Cultivation + Knowledge Core) is **IMPLEMENTED** (D-058), Phase 13 (Item) is
 > **IMPLEMENTED** (D-059), Phase 14 (Equipment) is **IMPLEMENTED** (D-060) and Phase 15
 > (Skill/Technique) is **IMPLEMENTED** (D-061), on the D-057B visual foundation (gait, anchors,
-> causal strike, hit reaction, ambient motion). **Phase 16 (Pet) is DONE (D-064); Phase 17 (NPC / Shop) is DONE (D-065).**
+> causal strike, hit reaction, ambient motion). **Phase 16 (Pet) is DONE (D-064); Phase 17 (NPC / Shop) is DONE (D-065); Phase 18 (Dialogue) is implemented (D-066).**
 > The per-session runtimes under `Main/Systems` now start in this order (and end in reverse):
 > World → Relationship → Sect → Faction → WorldSimulation → Combat → Progression → Knowledge →
-> Cultivation → Inventory → Equipment → Skill → Pet → Npc (`main.gd` `SESSION_START_ORDER`). Still five
-> autoloads; no manager.
+> Cultivation → Inventory → Equipment → Skill → Pet → Npc → Dialogue (`main.gd`
+> `SESSION_START_ORDER`, 15 entries). Still five autoloads; no manager.
+> **Dialogue (Phase 18) by layer:** data `src/data/dialogue/` (six resources, structural
+> validation) → domain `src/domain/dialogue/` (`DialogueService`: eligibility, re-validation,
+> one effect through its owner; no cursor, no state) → gameplay
+> `src/gameplay/world/dialogue_runtime.gd` (the open conversation's cursor — runtime only —
+> asking `NpcRuntime` for range, `KnowledgeRuntime` to grant, and handing "trade" to
+> `NpcRuntime.open_shop_of`) → presentation `src/presentation/dialogue/` (`DialogueView`,
+> `DialoguePanel`). It is started LAST and ended FIRST, so an open conversation is closed while
+> everything it points at still exists.
 > D-062 locked the visual identity: the live UI is the ORIGINAL ink-lacquer kit, and every
 > humanoid sheet, portrait, icon, world prop and map floor comes from ONE art pipeline
 > (`tools/aetheria_art_pipeline/`, Blender as a BUILD tool — `docs/AETHERIA_ART_PIPELINE.md`).
@@ -123,13 +131,13 @@
 > - Custom test runner + framework (`tests/`), an engine-free static linter
 >   (`tools/gdscript_lint.py`, runs on save + as the first CI gate — D-033), a compile checker
 >   (`tools/parse_check.gd`: load + `can_instantiate` + `class_name` registration), CI
->   (12 gates incl. four dedicated E2E processes after the app flow: player, world/map,
->   pet, NPC/shop).
+>   (13 gates incl. five dedicated E2E processes after the app flow: player, world/map,
+>   pet, NPC/shop, dialogue).
 > - Player preferences on disk: `SettingsStore` (`src/infrastructure/settings_store.gd`, a
 >   `RefCounted` over `user://settings.cfg` — NOT an autoload) + a `SettingsMenu` language
 >   screen; the game defaults to Vietnamese (D-035).
 >
-> **Not yet present (TARGET):** Dialogue/Quest/Story, Dungeon/Boss, the EventBus character
+> **Not yet present (TARGET):** Quest/Story, Dungeon/Boss, the EventBus character
 > events, a `SaveService` and file-level persistence (every persistent owner already exposes
 > `to_dict`/`from_dict`), audio. Those are TARGET below. *(HISTORICAL: this list once also
 > named Faction, World Simulation, Combat, Inventory, Equipment, Skill, Cultivation and NPC
