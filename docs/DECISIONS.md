@@ -4694,3 +4694,121 @@ change closes it.
 Dialogue, quests, NPC schedules that move a body between maps, buying more than one at a time
 from the UI (the service supports 1–99), haggling, anything that changes a keeper's regard,
 file-level save.
+
+## D-066 — Phase 18: who owns a dialogue choice (and why Dialogue owns no flag)
+
+**Status:** DECIDED before any Phase-18 code. Implementation status is recorded in
+`docs/ROADMAP.md` Phase 18.
+
+### The ambiguity
+
+Four statements were each reasonable and did not fit together:
+
+1. `ROADMAP` Phase 18: "choices feeding story + relationship + sect state … choices set
+   flags/relationship deltas".
+2. `ROADMAP` Phase 20 and `SYSTEM_DEPENDENCY_MATRIX`: Story owns "chapter, flags, choices".
+3. `CharacterState.story_flags` exists as a stored CONTRACT field (Phase 04). Nothing writes it.
+4. `KnowledgeService` is the exclusive owner of what the player knows (D-040 / C-012), and
+   file-level save is Phase 23.
+
+Read literally, (1) makes Phase 18 write flags two phases before the system that owns flags
+exists. Whatever Dialogue wrote them into would BE the flag store by the time Phase 20
+arrived, and Phase 20 would inherit its shape, its ids and its save format.
+
+### Alternatives considered
+
+- **A. `DialogueRuntime` keeps its own flags** ("seen this line", "chose X"). Rejected: a second
+  flag authority. Phase 20 would have to absorb or migrate it, and every later reader would ask
+  two owners the same question.
+- **B. Dialogue writes `CharacterState.story_flags`.** Rejected: the field has no owner yet, so
+  the first writer becomes the owner by accident. It also invites "knows X" flags beside the
+  Knowledge Core — the exact shadow C-012 forbids.
+- **C. Pull a minimal story/flag service forward into Phase 18.** Rejected: it reorders the
+  roadmap and builds Phase 20's central type without Phase 20's requirements (chapters,
+  origins, branches reading faction state).
+- **D. Dialogue owns no persistent state at all (CHOSEN).**
+
+### Decision
+
+**Phase 18 creates no flag store and writes no flag.** A dialogue is authored content; a
+conversation is a runtime cursor; everything a choice CHANGES lands in the system that already
+owns it.
+
+**Branching** comes from two things only: the authored graph (a choice names the node it leads
+to) and CONDITIONS that query existing owners. The condition set is closed and typed:
+
+| Condition | Asks | Owner queried |
+|---|---|---|
+| `KNOWS` | does the player hold this knowledge id? | `KnowledgeService.knows` |
+| `RELATIONSHIP_AT_LEAST` | is the speaker's regard for the player ≥ a value on one dimension? | the relationship graph, read through `RelationshipService` |
+
+Each may be negated ("does not know", "regard below"). No edge between the two reads as the
+dimension's default — a stranger.
+
+**Effects** are a closed, typed set, ONE per choice, each dispatched to its owner:
+
+| Effect | Goes through | Notes |
+|---|---|---|
+| `RELATIONSHIP_DELTA` | `RelationshipService.apply_delta` | on the speaker → player edge; created through `create_edge` only if absent, with a deterministic, collision-checked id |
+| `GRANT_KNOWLEDGE` | `KnowledgeRuntime.grant` → `KnowledgeService.grant` | the same path a stele uses, so `knowledge_gained` announces it; idempotent by the Core's own rule |
+| `OPEN_SHOP` | `NpcRuntime` (the shop's owner) | a gameplay HANDOFF, not a mutation; the conversation ends and the shop opens |
+
+One effect per choice is deliberate: with a single owner call there is no half-applied choice
+and no rollback to fake across two services (L-023). A choice that needs two consequences is
+two steps in the graph.
+
+**A choice is authorised twice.** It is offered only while its conditions pass, and the
+runtime re-evaluates the same conditions — and the speaker's range, through `NpcRuntime` —
+when the choice is submitted. A stale view cannot commit a choice the state no longer allows.
+
+**Repeatability without a "seen" flag.** With no flag, "you may only do this once" cannot be
+written. So a repeatable consequence must be SELF-LIMITING on the owner's own state, and the
+content boundary enforces it: a `RELATIONSHIP_DELTA` choice must carry a condition on the same
+dimension that the delta itself eventually makes false (raise only while below a value; lower
+only while at or above one). A knowledge grant needs no bound — the Core refuses the second
+grant. Regard therefore cannot be farmed by repeating a line.
+
+### What Phase 18 owns, and what stays Phase 20's
+
+| | Phase 18 — Dialogue | Phase 20 — Story |
+|---|---|---|
+| Authored content | `DialogueData` graphs (nodes, choices, conditions, effects, keys) | chapters, origins, branch definitions |
+| Runtime state | the open conversation: dialogue id, node id, speaker (NOT serialized) | — |
+| Persistent state | **none** | chapter, flags, the record of choices, `origin_id`; the only writer of `CharacterState.story_flags` |
+| Reads | Knowledge, Relationship | everything, including flags |
+| Writes | nothing of its own; Relationship / Knowledge through their services | its own flags; knowledge through `KnowledgeService` |
+
+When Phase 20 lands it adds a `FLAG` condition and a `SET_FLAG` effect as two NEW kinds in the
+same closed sets, read and written through the story service. No Phase-18 dialogue changes
+meaning when that happens, because none of them depended on a flag.
+
+**Sect and Faction effects are deferred, not forgotten.** No Phase-18 behaviour needs one, and
+a schema that can NAME an effect nothing dispatches is a speculative API (L-005). They are
+added — through `SectService` / `FactionService` — with the first content that needs them
+(a quest reward in Phase 19, or a story branch in Phase 20).
+
+**No EventBus `dialogue_chosen` yet.** The matrix sketched it for Quest. Until Quest exists
+there is no cross-system consumer, so the runtime exposes a local signal and the EventBus event
+arrives with its consumer (L-005, the same call D-065 made for `npc_interacted`).
+
+### Save contract
+
+Dialogue contributes NO block to a save. Its consequences are already inside the blocks of the
+systems that own them (`relationships`, `knowledge`, `shops`). The open conversation is
+runtime: a load resumes in the world, not mid-sentence (L-001). `SAVE_FORMAT`'s `story` block
+stays Phase 20's and is unchanged.
+
+### Multiplayer-ready separation
+
+The conversation cursor and the panel are client-local. What crosses the authority boundary is
+an INTENT — "choice `c` of node `n` in dialogue `d` with speaker `s`" — made of stable ids,
+never text or a node path. The authority re-validates range and conditions and applies the one
+effect in its owner's domain service. That is exactly the offline path, so a server can take
+the runtime's place without the panel or the content changing.
+
+### Consequences accepted
+
+- No "said once, never again" lines and no remembered refusals until Phase 20.
+- A dialogue cannot yet move sect reputation or faction standing.
+- Branches are visible in the state of the world (what you know, how someone regards you), not
+  in a hidden ledger — which is also what makes them testable through the owners' own APIs.

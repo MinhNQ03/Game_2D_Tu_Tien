@@ -2,9 +2,22 @@
 
 > **Owner of:** resource sources, processing, sinks, the market model, anti-inflation policy, and
 > the grind philosophy.
-> Phases 13–16 (Item/Equipment/Skill/Pet) and the crafting/economy content phases implement this.
-> **Nothing here is implemented.** The only economy that exists today is `SectState.resources`
-> (spirit stones / pills / manpower / blood crystals, shipped as sect-level holdings).
+> Phases 13–17 implement slices of this; the crafting/economy content phases implement the rest.
+>
+> **IMPLEMENTED — the shop / trading slice (Phases 13 + 17, D-059 / D-065):**
+> - player-held **Linh Thạch is an item** (`item_linh_thach`, an `ItemData` stack in
+>   `InventoryState`); the player's funds are the count of that stack — there is no wallet number;
+> - `InventoryState.exchange`: an all-or-nothing remove-and-add, the only way a trade moves goods;
+> - one shop (`ShopData` / `ShopState` / `ShopService`): finite and unlimited stock, buy and
+>   sell, prices moved by ONE relationship dimension of the keeper's regard for the customer,
+>   with a validated no-arbitrage bound;
+> - `SectState.resources` (spirit stones / pills / manpower / blood crystals) as sect-level
+>   holdings — a different owner and a different scale from the player's bag.
+>
+> **NOT IMPLEMENTED — everything else in this document:** gathering, processing, professions,
+> crafting and recipes, the regional market (§7), contribution, travel and information sinks,
+> anti-inflation policy as a running system. Nothing in the game yet changes a keeper's regard
+> (dialogue, Phase 18, is the first thing that may — through `RelationshipService`, D-066).
 
 ---
 

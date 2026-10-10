@@ -32,9 +32,15 @@
 > `sect_id` has with the sect roster (D-015) — the record wins, and drift is reported by
 > `WorldSimulationService.verify_character_caches()` rather than trusted.
 >
-> **What is still design only:** NPC authoring at scale, goals/secrets-driven behaviour, and NPC
-> PRESENTATION — the Phase-08 cast exists, keeps routines and moves faction influence, but
-> nothing renders or talks to them yet (Phase 17).
+> **NPC presentation is LIVE (Phase 17, D-065).** A `WorldNpc` is the BODY of a registry
+> `CharacterState` in a map (bound by `NpcRuntime`); Kha Thản stands at the edge of Rừng Vỡ
+> Mạch, turns to the player, gestures (`ACTION_TALK`) and trades. An NPC has no state class of
+> its own.
+>
+> **What is still design only:** NPC authoring at scale, goals/secrets-driven behaviour, bodies
+> that follow the simulation's schedule between maps, and what people SAY — dialogue is
+> Phase 18 (ownership boundary: D-066). `CharacterState.story_flags` is a stored CONTRACT field
+> no system writes; the story engine (Phase 20) is its only future writer.
 
 ## 1. Why Character is core
 
@@ -181,11 +187,16 @@ slice of this contract:
   owned by `WorldRuntime`; `StatsComponent` reads the authoritative numbers, `HealthComponent`
   syncs HP/death back. Composition kept.
 
-Still NOT implemented (later phases): the §7 EventBus character events, AI/schedule/world
-simulation (§5 schedule, `WORLD_SIMULATION.md`), relationships/sect/faction authority
-(`RELATIONSHIP_SYSTEM.md`/`SECT_SYSTEM.md`), spawning of non-player characters, dialogue, and
-save orchestration (`SaveService`, Phase 23 — `CharacterState.to_dict/from_dict` is the ready
-seam). No character controller beyond the existing Player composition.
+*(HISTORICAL — the Phase-04 list, kept because it shows what Phase 04 itself did not do.)*
+Not implemented IN PHASE 04: the §7 EventBus character events, AI/schedule/world simulation,
+relationships/sect/faction authority, spawning of non-player characters, dialogue, and save
+orchestration.
+
+**Since then:** relationships (Phase 05), sects (06), factions (07), the world simulation and
+its cast (08), cultivation mechanics on the stored fields (12) and NPC bodies (17) are
+IMPLEMENTED in their own documents. **Still not implemented:** the §7 EventBus character
+events, dialogue (Phase 18), and save orchestration (`SaveService`, Phase 23 —
+`CharacterState.to_dict/from_dict` is the ready seam).
 
 ## 11. Visual pipeline (Phase 05, D-026)
 
@@ -207,7 +218,9 @@ unchanged — a `CharacterState` still carries NO sprite/presentation data):
   prototype sprite; a missing/invalid profile fails loud and keeps the static fallback.
 
 The §6 realization diagram's "Sprite/AnimationComponent" is now concretely the
-`CharacterVisualComponent`. Still NOT implemented: portrait rendering, layered/modular
-compositing, and non-idle/walk animation states (combat phase). Relationships (§5) are now a
+`CharacterVisualComponent`. Since Phase 05 the component gained an ACTION layer (attack,
+slash, meditate, cast, talk — D-056/D-058/D-061/D-063/D-065) and the HUD shows the player's
+pipeline portrait as a medallion (D-062). Still NOT implemented: layered/modular compositing,
+and a portrait for anyone but the player and Lâm Nguyệt. Relationships (§5) are now a
 real domain graph (`docs/RELATIONSHIP_SYSTEM.md` §11) that a Character references by
 `instance_id`; Character still holds no relationship store of its own.

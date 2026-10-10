@@ -456,12 +456,19 @@ panel; talk gesture on the shared action layer; isolated NPC/shop E2E as CI gate
 dialogue, knowledge opportunities from NPCs, anything that changes a keeper's regard.
 
 ## Phase 18 — Dialogue
-DialogueData (localization keys), dialogue runner, choices feeding story + relationship +
-sect state. **PRODUCES knowledge** — a dialogue may grant knowledge, always by calling
-`KnowledgeService`, never by writing a private flag (D-040 / C-012). It may also **read**
-knowledge to gate lines.
-**Exit:** branching dialogue in `vi` + `en`; choices set flags/relationship deltas; a dialogue
-grant is visible through the Knowledge Core, not a local copy; tested.
+DialogueData (localization keys), a dialogue runner, and choices whose consequences land in the
+systems that already own them — **relationship** (through `RelationshipService`) and
+**knowledge**. **PRODUCES knowledge** — a dialogue may grant knowledge, always through the
+Knowledge Core, never by writing a private flag (D-040 / C-012). It may also **read** knowledge
+and relationship standing to gate lines. A choice may hand off to an NPC's existing service
+(the shop).
+**Owner boundary (D-066):** Dialogue owns NO persistent state and writes NO flag. Story flags,
+chapter state and the record of choices are Phase 20's; a `FLAG` condition / `SET_FLAG` effect
+arrive with that phase. Sect / faction effects arrive with the first content that needs them
+(Phase 19 or 20), through their services.
+**Exit:** branching dialogue in `vi` + `en` for two different NPCs through one seam; a choice
+changes a relationship dimension through the service; a dialogue grant is visible through the
+Knowledge Core, not a local copy; a choice opens the existing shop; tested.
 
 ## Phase 19 — Quest
 Quest FSM (domain), QuestData, objectives driven by EventBus; quests arise from and affect

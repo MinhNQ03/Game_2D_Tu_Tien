@@ -16,10 +16,16 @@
 >   For these, the shapes below are the SHIPPED contract — changing a field is a code +
 >   content change, and the field names here must match the scripts (a doc that contradicts
 >   the code is a bug, L-014/L-018).
-> - **DESIGN ONLY** (no script exists yet; these are intended shapes): items, equipment,
->   skills, công pháp, quests, dialogue, enemies/bosses, pets, cultivation tiers, and the
->   **Faction / World-Simulation** data (Phase 07+). Field names are the proposed contract —
->   pin changes in `docs/DECISIONS.md`.
+> - Also IMPLEMENTED since this block was first written: factions and world-simulation data
+>   (Phases 07–08), attacks/enemies/AI profiles (09–10), the progression curve (11),
+>   realms/cultivation and knowledge (12), items (13), equipment (14), techniques/skills (15),
+>   pets (16) and shops (17). Their scripts under `src/data/` are the contract. Only the
+>   sections below headed IMPLEMENTED were re-verified against those scripts; an unmarked
+>   sketch (ItemData, EquipmentData, SkillData, TechniqueData, RealmData, EnemyData) is the
+>   ORIGINAL design shape and where it differs from the script, the script wins.
+> - **DESIGN ONLY** (no script exists yet; these are intended shapes): **dialogue** (Phase 18 —
+>   the shape below is the D-066 contract), quests, story/chapters, dungeons and bosses. Field
+>   names are the proposed contract — pin changes in `docs/DECISIONS.md`.
 
 ## 0. Conventions
 
@@ -214,12 +220,23 @@ rewards: { xp, items: Array[LootEntry], flags: Array[StringName] }
 prerequisites: Array[StringName]  # flags/quests required to offer
 ```
 
-### DialogueData (`dlg_*`)
+### DialogueData (`dlg_*`) — PLANNED (Phase 18; contract decided in D-066)
 ```
-id
-lines: Array[DialogueLine]        # { speaker_key, text_key, choices }
-choices: Array[Choice]            # { text_key, set_flags, goto_line, requires }
+DialogueCatalogData:  entries: Array[DialogueData]      # one dialogue per speaker
+DialogueData:         id, speaker_id (a CharacterRegistry instance id), start_node_id,
+                      nodes: Array[DialogueNodeData]
+DialogueNodeData:     id, text_key, mood, gesture, choices: Array[DialogueChoiceData],
+                      next_node_id            # a line without choices continues here, or ends
+DialogueChoiceData:   id, text_key, conditions: Array[DialogueConditionData],
+                      effect: DialogueEffectData (one, optional), next_node_id ("" = end)
+DialogueConditionData: kind (KNOWS | RELATIONSHIP_AT_LEAST), knowledge_id | dimension + value,
+                      negate
+DialogueEffectData:   kind (RELATIONSHIP_DELTA | GRANT_KNOWLEDGE | OPEN_SHOP),
+                      dimension + delta | knowledge_id
 ```
+No `set_flags` and no flag condition: Dialogue owns no flag (D-066). The earlier sketch
+(`set_flags`, `requires` as free-form) is superseded. Field names become the shipped contract
+when the scripts land; this block is then re-verified and marked IMPLEMENTED.
 
 ### MapData (`map_*`)  — IMPLEMENTED (`src/data/maps/map_data.gd`, D-021 + D-022)
 ```
@@ -287,8 +304,9 @@ start_character_template: StringName   # the player's CharacterTemplateData (see
 > (`src/data/characters/character_template_data.gd`, `src/domain/character/character_state.gd`);
 > the player uses `data/characters/player_default.tres`. `CharacterState` serializes its
 > persistent tier via `to_dict`/`from_dict` (the save seam; cultivation fields are stored as
-> CONTRACT only — no mechanics yet). The Relationship/Sect/Faction/WorldSim schemas below
-> remain design-only contracts for their phases.
+> CONTRACT only at Phase 04; cultivation mechanics arrived in Phase 12). *(HISTORICAL: at
+> Phase 04 the Relationship/Sect/Faction/WorldSim schemas below were design-only; all four are
+> implemented — Phases 05–08.)*
 
 ### CharacterTemplateData — definition (`char_*`)
 ```

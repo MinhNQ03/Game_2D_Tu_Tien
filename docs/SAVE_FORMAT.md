@@ -70,7 +70,9 @@ SaveFile:
     # authors; atomic; strict TYPE_INT. Not saved: which shop is open (runtime).
   quests:
     log: Array[{ quest_id, state, objective_progress }]
-  story:
+  # (no `dialogue` block: Dialogue owns no persistent state — D-066. What a choice changed is
+  #  already in `relationships` / `knowledge` / `shops`; an open conversation is runtime.)
+  story:                                      # Phase 20 owns ALL of this, including `flags`
     chapter_id: StringName
     completed_chapters: Array[StringName]
     flags: Dictionary { flag -> value }

@@ -4,9 +4,12 @@
 > start to end and how each major system fits in. Every code change starts by reading
 > this (see `.kiro/steering/08-ai-review-protocol.md`).
 >
-> **Status: through Phase 11 (Level/XP Progression), hardened and closed in D-055.**
+> **Status: through Phase 17 (NPC / Shop, D-065).** Phase state is owned by `docs/ROADMAP.md`;
+> this block only says what the FLOW is today.
 > Split three ways on purpose — the old block mixed them, which is how it came to say
-> "combat exists only in the Phase-02 sandbox" three phases after combat went live.
+> "combat exists only in the Phase-02 sandbox" three phases after combat went live. (It then
+> drifted again: until D-066 it still read "through Phase 11" and called cultivation, items,
+> equipment, skills and pets design-only, six phases after they shipped.)
 >
 > ---
 >
@@ -36,17 +39,31 @@
 >   gameplay beats, deterministic from seeded per-subsystem RNG streams.
 > - The player is a real **Character** (one authoritative `CharacterState` bound to the Player
 >   node, D-023) and the HUD shows identity + map name + localized control hints.
-> - A relationship, sect, faction or progression session failure ABORTS New Game and unwinds
->   back to the menu (D-037/D-047/D-054) rather than entering a half-wired world.
+> - **CẢNH GIỚI / TU LUYỆN AND THE KNOWLEDGE CORE ARE LIVE** (Phase 12, D-058) — `cultivate`
+>   seats the player (tọa thiền), a breakthrough is decided by `CultivationService`, and a stele
+>   teaches through `KnowledgeService`, the one owner of what the player knows (§3.8).
+> - **ITEMS, EQUIPMENT, TECHNIQUES AND SKILLS ARE LIVE** (Phases 13–15, D-059/D-060/D-061) — a
+>   bag (`inventory`, a modal panel), slots that change real stats, and knowledge-gated công
+>   pháp cast from the technique dock (`skill_1..4`) for linh khí.
+> - **A LINH THÚ FOLLOWS AND FIGHTS** (Phase 16, D-064) — the stray Hoàng Khuyển in Lạc Hà can
+>   be befriended; `pet_summon` calls and dismisses it; it fights on the player's team.
+> - **PEOPLE STAND IN THE WORLD AND ONE OF THEM TRADES** (Phase 17, D-065) — Kha Thản's body at
+>   the edge of Rừng Vỡ Mạch is his registry `CharacterState`; `interact` opens his shop (a
+>   modal panel), paid in the linh thạch in the bag, priced by his regard for the player.
+> - A failure of ANY per-session runtime ABORTS New Game and unwinds back to the menu
+>   (D-037/D-047/D-054) rather than entering a half-wired world.
 >
 > **② FUTURE — design target, NOT implemented.**
-> - **CẢNH GIỚI / TU LUYỆN (cultivation) is Phase 12 and does not exist yet.** Level is not
->   cultivation; see §3.8. `MapData` has no `min_level` and never will (C-002).
-> - The branching-story / dialogue / quest / NPC flow below is the design target for later
->   phases. The "PROLOGUE" box in §1 is a future story scene, **not** the current first
->   gameplay scene — it is specified beat-by-beat in `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039).
-> - Inventory, equipment, pets, skills and công pháp are design-only. Keyboard bindings exist
->   for `skill_1..4` and `dodge`, and **a binding is not a system** — nothing consumes them.
+> - **Dialogue (Phase 18), quests (19), the story / chapter / flag engine (20), dungeons (21),
+>   bosses (22) and file-level save (23) do not exist.** People can be traded with, not yet
+>   talked to; nothing sets or reads a story flag. Dialogue's ownership boundary is D-066.
+> - The branching-story / quest flow below is the design target for those phases. The
+>   "PROLOGUE" box in §1 is a future story scene, **not** the current first gameplay scene — it
+>   is specified beat-by-beat in `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039).
+> - Crafting, professions, a regional market and the wider economy are design only
+>   (`docs/ECONOMY_CRAFTING_DESIGN.md`); the one shop is the only trade that exists.
+> - `dodge` has a keyboard binding and no consumer — **a binding is not a system**.
+> - `MapData` has no `min_level` and never will (C-002). Level is not cultivation; see §3.8.
 > - Everything beyond the CURRENT list is the intended flow plus the contracts implementation
 >   must satisfy.
 >
@@ -219,9 +236,11 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   player walks to a `MapExitZone` and presses the semantic `interact` action to move between
   the hub and a field map. What is live in that world: **combat** in the real application
   (Phase 09, D-007), **enemy AI** in the field (Phase 10 — two authored Vụ Lang that hunt, hit
-  back and die), and **level/XP progression** off those kills (Phase 11, §3.8).
+  back and die), **level/XP progression** off those kills (Phase 11, §3.8), **cultivation and
+  knowledge** (Phase 12), **items, equipment and techniques** (Phases 13–15), **a companion**
+  (Phase 16) and **one NPC who trades** (Phase 17).
   **Still future, and genuinely not implemented:** the prologue beats themselves, story flags,
-  dialogue, NPCs and quests — nothing in the running game produces or consumes any of them, so
+  dialogue and quests — nothing in the running game produces or consumes any of them, so
   this box stays a design box until the phases that own them land.
   *(Historical: the Phase-02 Player Sandbox is retained as an isolated combat harness; it is
   neither the first scene nor how combat reaches the player.)* Maps are data-driven (`MapData`
@@ -295,40 +314,40 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   The names `hit` and `combatant_died` were design sketches and have **no implementation** —
   the real surface is the table above.
 
-### 3.8 LEVEL UP — two distinct axes (XP/Level is LIVE; cảnh giới / tu luyện is Phase 12)
+### 3.8 LEVEL UP — two distinct axes (both LIVE: XP/Level since Phase 11, cảnh giới / tu luyện since Phase 12)
 > **The LEVEL/XP half is IMPLEMENTED (Phase 11, D-054).** The live path is
 > `enemy dies → CombatRuntime.enemy_defeated(reward_id, xp_reward) → ProgressionRuntime →
 > ProgressionService.grant_xp() → CharacterState.xp → xp_gained / level_changed → WorldRuntime
 > → MapBase → GameplayHUD`. Combat ANNOUNCES and does not pay; `ProgressionService` is the only
 > writer of XP; **the level is DERIVED from cumulative XP and the authored curve, never stored**.
 > The defeat event is `CombatRuntime.enemy_defeated`, not an EventBus `enemy_died` (§3.7 holds
-> the full table since D-055-D). The **cảnh giới / tu luyện** half remains design-only; Phase 12
-> owns it, and **Phase 12 must not reimplement, duplicate or replace the XP/Level axis** — see
-> the handoff contract in D-055.
+> the full table since D-055-D). The **cảnh giới / tu luyện** half is IMPLEMENTED too (Phase 12,
+> D-058): `CultivationRuntime` + `CultivationService` own it, and it did not reimplement,
+> duplicate or replace the XP/Level axis (the D-055 handoff contract).
 >
 > **OWNERSHIP, in one table, because this is where the next phase will look:**
 >
-> | | AXIS 1 — Level / XP (LIVE) | AXIS 2 — Cảnh giới / tu luyện (Phase 12) |
+> | | AXIS 1 — Level / XP (LIVE) | AXIS 2 — Cảnh giới / tu luyện (LIVE, Phase 12) |
 > |---|---|---|
-> | Stored state | `CharacterState.xp` — cumulative, the ONLY stored number | `CharacterState.realm_id` + `cultivation_progress` (contract only) |
+> | Stored state | `CharacterState.xp` — cumulative, the ONLY stored number | `CharacterState.realm_id` + `cultivation_progress` |
 > | Derived | **level** = f(xp, curve); never stored | — |
-> | Authority | `ProgressionService.grant_xp()` | not implemented |
+> | Authority | `ProgressionService.grant_xp()` | `CultivationService` (through `CultivationRuntime`) |
 > | Content | `ProgressionCurveData` (`.tres`) | realm defs, breakthrough rules |
 > | What it does | tunes POWER, frequently | unlocks CAPABILITY and CONTENT, rarely |
 > | Gates content? | **NEVER** (C-002) | yes, that is its purpose |
 >
-- **Input:** `enemy_defeated` (live). Later: `tu_luyện` actions, breakthrough attempts.
-- **State:** XP (live, persistent) → level (live, DERIVED). Later: current cảnh giới +
-  cultivation progress, unlocked skills/công pháp slots. Two distinct axes that must not be
+- **Input:** `enemy_defeated`; the `cultivate` action and breakthrough attempts (both live).
+- **State:** XP (persistent) → level (DERIVED); current cảnh giới + cultivation progress;
+  learned công pháp. Two distinct axes that must not be
   collapsed (see `.kiro/steering/02-game-design.md`).
-- **Processing:** apply the authored XP curve → level ups (fine power) — live. Later:
-  accumulate cultivation → breakthrough rules gate realm advances (content/capability
-  unlocks). All in domain, pure and testable.
+- **Processing:** apply the authored XP curve → level ups (fine power); accumulate
+  cultivation → breakthrough rules gate realm advances (content/capability unlocks). All in
+  domain, pure and testable.
 - **Design (D-039/D-040):** the frozen realm hierarchy is `docs/PROGRESSION_CULTIVATION_DESIGN.md`
-  §2 (CL-02), and **level is never an access gate** (C-002). Phase 12 also lands the
+  §2 (CL-02), and **level is never an access gate** (C-002). Phase 12 also landed the
   **Knowledge Core** (`KnowledgeStore`/`KnowledgeService`, its own owner, no autoload) because
-  cultivation breakthroughs and techniques READ knowledge — Story/Quest *produce* it later but
-  never own it (§7a, C-012).
+  cultivation breakthroughs and techniques READ knowledge — Dialogue/Quest/Story *produce* it
+  later but never own it (§7a, C-012, D-066).
 - **Output:** new stats, newly unlocked skills/zones/công pháp, breakthrough events.
 - **Dependencies:** domain (XP curve, breakthrough rules), data (curves/realm defs),
   reacts to combat events.

@@ -6,7 +6,7 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (through Phase 11 + its D-055 close-out hardening):** Phase 05 (Relationship
+> **CURRENT STATE (through Phase 17, D-065):** Phase 05 (Relationship
 > core + early character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is
 > **CLOSED** (D-032, hardened in D-037). Phase 07 (Faction/Politics) is **IMPLEMENTED**
 > (D-042, hardened in D-047) — this block said "NOT STARTED" for five phases, which D-055
@@ -123,16 +123,19 @@
 > - Custom test runner + framework (`tests/`), an engine-free static linter
 >   (`tools/gdscript_lint.py`, runs on save + as the first CI gate — D-033), a compile checker
 >   (`tools/parse_check.gd`: load + `can_instantiate` + `class_name` registration), CI
->   (10 gates incl. a dedicated world/map E2E process).
+>   (12 gates incl. four dedicated E2E processes after the app flow: player, world/map,
+>   pet, NPC/shop).
 > - Player preferences on disk: `SettingsStore` (`src/infrastructure/settings_store.gd`, a
 >   `RefCounted` over `user://settings.cfg` — NOT an autoload) + a `SettingsMenu` language
 >   screen; the game defaults to Vietnamese (D-035).
 >
-> **Not yet present (TARGET):** Faction/World-Sim domain systems, Combat,
-> Inventory/Equipment/Skill/Cultivation mechanics (Character holds cultivation fields as
-> CONTRACT only), Dialogue/Quest/Story, non-player Character spawning + the EventBus character
-> events, `Config`/`RNG`/`SaveService` autoloads, persistence, and most content Resources.
-> Those are TARGET below.
+> **Not yet present (TARGET):** Dialogue/Quest/Story, Dungeon/Boss, the EventBus character
+> events, a `SaveService` and file-level persistence (every persistent owner already exposes
+> `to_dict`/`from_dict`), audio. Those are TARGET below. *(HISTORICAL: this list once also
+> named Faction, World Simulation, Combat, Inventory, Equipment, Skill, Cultivation and NPC
+> bodies — all implemented since, Phases 07–17 — and `Config`/`RNG` autoloads, which were
+> deliberately NOT built: the autoload budget is frozen at five and the RNG seam is a
+> per-session `RngService`.)*
 
 ## 1. Goals
 

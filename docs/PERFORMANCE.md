@@ -3,7 +3,7 @@
 > Performance principles + the mandatory log of every non-trivial optimization.
 > Rules summary: `.kiro/steering/05-performance-testing.md`.
 >
-## CURRENT STATUS (through Phase 11 + its D-055 close-out)
+## CURRENT STATUS (through Phase 17; the opening bullets date from Phase 11 and still hold)
 
 - **A measured benchmark EXISTS.** `tests/performance/test_world_sim_budget.gd` measures the
   world-simulation tick loop at a representative population (200 background actors × 300

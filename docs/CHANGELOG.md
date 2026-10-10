@@ -8,6 +8,22 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Docs: current-state reconciliation + dialogue ownership (D-066)
+
+- **Corrected (stale status).** `GAME_FLOW` still read "through Phase 11" and called
+  cultivation, items, equipment, skills and pets design-only; it now lists Phases 12–17 as
+  CURRENT and dialogue/quest/story/dungeon/boss/save as FUTURE. `CHARACTER_SYSTEM` no longer
+  says nothing renders NPCs. `ECONOMY_CRAFTING_DESIGN` separates the implemented shop slice
+  from the unbuilt economy. `ARCHITECTURE` (state header, 12 CI gates, "not yet present"),
+  `DATA_SCHEMA` and `PERFORMANCE` headers brought up to Phase 17. Superseded statements that
+  still explain a decision are kept and labelled HISTORICAL.
+- **Decided (D-066).** Dialogue owns no persistent state and writes no flag. Conditions query
+  the Knowledge Core and the relationship graph; a choice has one effect, applied by its owner
+  (`RelationshipService`, the Knowledge Core, or a handoff to `NpcRuntime`). Flags, chapters
+  and the record of choices stay Phase 20's. `ROADMAP` Phase 18, the `DATA_SCHEMA` dialogue
+  shape, the dependency-matrix row and a `SAVE_FORMAT` note follow that decision.
+- No code, no content, no test changed.
+
 ### 2026-10-10 — Phase 17: NPC / interaction / shop (D-065)
 
 - **Added.** `WorldNpc` (a character's body in a map) and `NpcRuntime` (14th session node, ended
