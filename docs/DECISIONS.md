@@ -4466,7 +4466,8 @@ changes (alpha identical everywhere) — single-pixel tone flips inside the figu
 
 ## D-064 — Phase 16: Pet / Linh Thú
 
-**Status:** IMPLEMENTED on `d063/phase-a`; DONE once CI is green on the exact Phase-16 commit.
+**Status:** DONE — implemented in `455dec9` on `d063/phase-a`; all 11 gates green in
+CI run 38023117165 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38023117165), `head_sha` = `455dec9`.
 
 ### The ADR: a pet's level is DERIVED from its XP
 

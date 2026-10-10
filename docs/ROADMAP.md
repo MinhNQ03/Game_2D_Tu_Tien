@@ -51,7 +51,7 @@
 > player could not discover from the screen.
 > **Phase 12 (Cultivation + Knowledge Core) — DONE (D-058).** **Phase 13 (Item) — DONE (D-059).**
 > **Phase 14 (Equipment) — DONE (D-060).** **Phase 15 (Skill/Technique) — DONE (D-061).**
-> **Phase 16 (Pet) — IMPLEMENTED (D-064).**
+> **Phase 16 (Pet) — DONE (D-064, `455dec9`).**
 > Phase 18+ (Dialogue, Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
@@ -434,7 +434,7 @@ correctly withheld and then granted when the knowledge is acquired.
 PetData, pet as an Entity with ally AIComponent; follows/assists in combat.
 **Exit:** add a pet via data; pet state serializes; combat assist tested.
 
-**Status: IMPLEMENTED (D-064)** — DONE once CI is green on the exact Phase-16 commit. `PetData` +
+**Status: DONE (D-064)** — `455dec9`, 11 gates green in CI run 38023117165 on that exact SHA. `PetData` +
 validated catalog; `PetStore`/`PetService` (XP stored, level derived); `PetRuntime` session node;
 the companion reuses `AiBrain`/`AIComponent` with a moving home and fights through
 `CombatService` on the player's team; first pet Hoàng Khuyển befriended in Lạc Hà; `pet_summon`
