@@ -134,6 +134,7 @@ AUD-07 · AUD-09 · AUD-10 · AUD-12 · AUD-13 · AUD-14 — see §6.
 | AUD-10 | nothing states a first objective at spawn (the elder's first line and the stele are the only lead) | objectives are the quest system | Phase 19 (Quest) | a new player can state their current objective from the screen within 30 s of spawning (playtest) | no |
 | AUD-12 | no loot / drop system and no owner named for one, while Phase 21 assumes "map + combat + loot" | drop rules need a reward ledger shared with quest rewards | decided at Phase 19 Gate B (quest rewards); built no later than Phase 21 | one documented owner for "what a defeat or a container yields", used by both quest rewards and drops | **yes** — two reward paths would duplicate the ledger |
 | AUD-13 | a person greets the player with the same line every time; nothing is "said once" | Dialogue owns no flag (D-066) | Phase 20 (Story: `FLAG` condition / `SET_FLAG` effect) | a line can be authored to be said once, through the story service | no |
+| AUD-15 | none today — but the HUD now owns four modal surfaces (satchel, shop, conversation, session prompt), each with its own flag and its own push / pop of the input context, in a 1 957-line file | unifying them is a refactor of working code with no player-facing gain today | Phase 25 (UI Consolidation); **constraint on Phase 19 now:** the quest journal is a reading panel (non-modal, closed by `close_reading_panels`), or it registers through the same three calls the others use — it may not invent a fifth pattern | one modal-surface seam in the HUD: adding a surface is one registration, and the threat / Esc / teardown rules apply to it without new code | **yes** — every new surface copies the pattern by hand |
 | AUD-14 | after a defeat the run ends: there is no revival, no checkpoint, no penalty design | what defeat MEANS is a design decision, and "continue" needs a save | Phase 23 (Save / Load: continue from the last save) with the rule decided at Phase 20 Gate A | the defeat box offers "continue" from a real save and the consequence of defeat is an ADR | no |
 
 ## 7. What the repairs changed for the player (Checkpoint 2)
@@ -151,3 +152,31 @@ the first version of the regression tests; the tests were sharpened until they w
 
 Local gates on the repaired tree: lint PASS, parse PASS, 986/986, six isolated E2E PASS (the
 NPC flow five times in a row), 0 `SCRIPT ERROR:`, 0 leak lines; `playtest_flow` 30/30.
+
+## 8. Cross-phase dependency risks, Phase 19–27 (Checkpoint 3)
+
+Constraints, not ideas. Each is already written where the owning phase will read it
+(`ROADMAP.md` "Player Experience Contracts", the register above, or the ADR named).
+
+| # | Risk | Constraint | Where it is recorded |
+|---|---|---|---|
+| 1 | **Two reward paths.** Quests will pay rewards; Phase 21 assumes loot; no system owns either today | Phase 19 Gate B names ONE reward ledger; drops reuse it | AUD-12; ROADMAP P19 contract; D-067 |
+| 2 | **A second conversation system.** A quest offer is the first thing that will want its own dialog | offers, accepts and turn-ins are `DialogueEffectData` kinds dispatched to the quest service; the dialogue box is the only talking surface | ROADMAP P19 contract; D-066 (closed sets grow by kind) |
+| 3 | **Flags in three places.** `CharacterState.story_flags` exists, quests will want "done" flags, dialogue will want "said" flags | the story service is the only owner and the only writer; quests hold quest state, not flags; dialogue asks through a `FLAG` condition | ROADMAP P20 contract; D-066; AUD-13 |
+| 4 | **Defeat with no rule under a boss.** A boss fight needs a retry; today defeat ends the run | the rule is an ADR at Phase 20 Gate A, before Phase 22 depends on it | AUD-14; ROADMAP P20 / P22 / P23 contracts |
+| 5 | **Saving what is not state.** The open conversation, the open shop, the session prompt and "is the player threatened" are runtime | `SaveService` calls the owners' `to_dict` / `from_dict` and nothing else; a test in Phase 23 asserts no view or cursor is in a save | ROADMAP P23 contract; SAVE_FORMAT (no `dialogue` block) |
+| 6 | **A new surface that ignores the session rules.** Esc, threat and teardown are enforced per surface | every new HUD surface closes in `_close_side_panels` and answers Esc before the leave question | AUD-15; D-068 |
+| 7 | **Content placed because there was space.** Quests add people, objects and rewards to two prototype maps | each new placement gets its one-sentence reason in the phase's ADR, continuing D-067's placement record; each is walked into with a held key | PLAYER_EXPERIENCE_STANDARD PX-2 / PX-3 |
+| 8 | **"Polish later" as a phase.** Phases 24–26 could become where screens first get translated, laid out or given feedback | they consolidate and sweep; they are never the first treatment | ROADMAP P24 / P25 / P26 contracts |
+
+## 9. Commits and CI of this task
+
+| Checkpoint | Commit | CI run (`head_sha` equal) | Result |
+|---|---|---|---|
+| Phase 18 closed (audit baseline) | `321d2b9` | 38046625731 | success |
+| 0 + 1 — baseline, ledger, standard, protocol, roadmap contracts | `9af4ac4` | 38047159096 | success |
+| 2 — the four repairs | `0e26a6f` | 38049053769 | success — 13 gates, the runner's annotation: 986 passed, 0 failed |
+| 3 — readiness (this section) | the commit that adds it | verified after push | see `ROADMAP.md` |
+
+**Phase 19 (Quest) and every later phase are NOT STARTED.** This task added no quest, story,
+dungeon, boss, save, audio or network code.

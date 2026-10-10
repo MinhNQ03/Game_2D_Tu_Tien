@@ -55,8 +55,9 @@
 > **Phase 17 (NPC / Shop) — DONE (D-065, `fbb6376`).**
 > **Phase 18 (Dialogue) — DONE (D-066, `ba9e63c`).**
 > **Post-Phase-18 audit (D-067, not a phase):** `PLAYER_EXPERIENCE_STANDARD.md` adopted, its
-> gates wired into the phase protocol, and the shipped game audited
-> (`docs/handoff/post-phase-18-audit.md`).
+> gates wired into the phase protocol, the shipped game audited
+> (`docs/handoff/post-phase-18-audit.md`) and four defects in shipped systems repaired
+> (D-068, `0e26a6f`, CI run 38049053769).
 > Phase 19+ (Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design

@@ -6,7 +6,7 @@
 > Status: **design doc.** Most of the structure below is the **TARGET** to grow into
 > (clearly labelled), not an existing tree.
 >
-> **CURRENT STATE (through Phase 18, D-066):** Phase 05 (Relationship
+> **CURRENT STATE (through Phase 18, D-066, and the post-Phase-18 audit, D-067 / D-068):** Phase 05 (Relationship
 > core + early character visual pipeline) is **CLOSED** (D-026) and Phase 06 (Sect) is
 > **CLOSED** (D-032, hardened in D-037). Phase 07 (Faction/Politics) is **IMPLEMENTED**
 > (D-042, hardened in D-047) — this block said "NOT STARTED" for five phases, which D-055

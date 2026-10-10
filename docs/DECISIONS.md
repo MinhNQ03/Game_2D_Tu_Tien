@@ -4978,7 +4978,9 @@ directly: **no system owns loot or drops** while Phase 21 is written as "map + c
 
 ## D-068 — Leaving, being hunted, being defeated: three rules the session did not have
 
-**Status:** IMPLEMENTED with the post-Phase-18 audit (D-067). Closes audit AUD-01 … AUD-04.
+**Status:** DONE — `0e26a6f` on `d063/phase-a`; all 13 gates green in CI run 38049053769
+(https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38049053769), `head_sha` = `0e26a6f`.
+Part of the post-Phase-18 audit (D-067). Closes audit AUD-01 … AUD-04.
 
 Each rule existed nowhere, because each sat between two owners. They are decided here once.
 
