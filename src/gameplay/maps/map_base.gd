@@ -67,6 +67,7 @@ var _skill_view: SkillView = null  # cached read-only skill dock view (Phase 15)
 var _pet_view: PetView = null  # cached read-only linh thú view (Phase 16)
 var _shop_view: ShopView = null  # cached read-only shop view (Phase 17)
 var _dialogue_view: DialogueView = null  # cached read-only conversation view (Phase 18)
+var _quest_view: QuestJournalView = null  # cached read-only quest view (Phase 19)
 ## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
 var _active_source: KnowledgeSource = null
 ## The interactable in reach (Phase 16): a stele, a stray animal, later a person. `_active_source`
@@ -323,6 +324,14 @@ func close_reading_panels() -> void:
 func show_defeat() -> void:
 	if _hud != null:
 		_hud.show_defeat()
+
+
+## Push the quest view (Phase 19): the journal's entries and the place plaque's purpose line.
+## Cached like every other view, so the next map's fresh HUD shows it at once.
+func set_quest_view(view: QuestJournalView) -> void:
+	_quest_view = view
+	if _hud != null:
+		_hud.set_quest_view(view)
 
 
 ## Push the conversation view (Phase 18): an open view opens the box, a closed one closes it.
@@ -650,6 +659,8 @@ func _refresh_hud() -> void:
 		_hud.set_shop_view(_shop_view)
 	if _dialogue_view != null:
 		_hud.set_dialogue_view(_dialogue_view)
+	if _quest_view != null:
+		_hud.set_quest_view(_quest_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

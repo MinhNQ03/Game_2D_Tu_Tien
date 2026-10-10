@@ -420,8 +420,8 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 		assert_eq(int(absf(panel.offset_right - panel.offset_left)),
 			UIPalette.SIDE_PANEL_WIDTH,
 			"its width comes from SIDE_PANEL_WIDTH, not from its content")
-	assert_eq(side_panels, 4,
-		"all four side panels (sect, politics, satchel, shop) are bounded boxes (got %d)"
+	assert_eq(side_panels, 5,
+		"all five side panels (sect, politics, satchel, shop, journal) are bounded boxes (got %d)"
 			% side_panels)
 	free_node(hud)
 
@@ -519,6 +519,13 @@ func _populate_plaques(hud: Node) -> void:
 	progression.xp_for_next = 5925
 	progression.progress = 0.92
 	hud.call("set_progression_view", progression)
+	# The purpose line (Phase 19) is hidden until a quest view arrives — the hidden-child trap
+	# a FOURTH time. The plaque is measured as a player sees it: with something to be about.
+	var quests := QuestJournalView.new()
+	quests.available = true
+	quests.purpose_key = &"QUEST_UNQUIET_VEIN_LEAD"
+	quests.purpose_phase = QuestService.Phase.AVAILABLE
+	hud.call("set_quest_view", quests)
 	# A visible combat target too. It is CENTRE-anchored so it does not affect the reserve,
 	# but populating it here keeps the fixture honest about what a live HUD contains — the
 	# habit that L-035 exists to enforce.
@@ -613,7 +620,7 @@ func test_side_panels_scroll_their_content() -> void:
 		assert_eq(int(scroll.mouse_filter), int(Control.MOUSE_FILTER_STOP),
 			"and it accepts mouse input, or the wheel passes through and clipped content "
 				+ "becomes unreachable (every other node in the panel is IGNORE)")
-	assert_eq(scrollers, 4, "all four side panels scroll (got %d)" % scrollers)
+	assert_eq(scrollers, 5, "all five side panels scroll (got %d)" % scrollers)
 	free_node(hud)
 
 

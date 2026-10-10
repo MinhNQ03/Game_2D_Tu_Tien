@@ -49,7 +49,7 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"DialogueRuntime",
+	&"DialogueRuntime", &"QuestRuntime",
 	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
 	&"CultivationRuntime",
 	&"KnowledgeRuntime",
@@ -258,11 +258,22 @@ func test_real_world_map_flow() -> void:
 		for t in hud_text:
 			assert_false(t.contains("sect_azure_cloud"),
 				"no raw sect id leaks into the HUD (%s)" % t)
-			# §7: the sect panel's resource summary must render localized names, never the
-			# internal content ids the domain keys its resource dict by.
+		# §7: the sect panel's resource summary must render localized names, never the
+		# internal content ids the domain keys its resource dict by. Measured on the SECT
+		# PANEL, the surface that renders those ids: since Phase 19 the HUD also holds the
+		# journal's prose, and one of these ids ("pills") is an ordinary English word there
+		# ("the two pills Lạc Hà owes its watch") — a substring match over the whole HUD
+		# was reporting on English, not on a leak.
+		var sect_panels := hud.find_children("*", "SectPanel", true, false)
+		assert_eq(sect_panels.size(), 1, "the HUD owns one sect panel")
+		var sect_text := _all_label_text(sect_panels[0]) if not sect_panels.is_empty() else []
+		assert_true(sect_text.size() >= 4,
+			"the sect panel's labels were read (%d)" % sect_text.size())
+		for t in sect_text:
 			for raw_resource_id in ["spirit_stones", "pills", "manpower"]:
 				assert_false(t.contains(raw_resource_id),
-					"no raw resource id '%s' leaks into the HUD (%s)" % [raw_resource_id, t])
+					"no raw resource id '%s' leaks into the sect panel (%s)"
+						% [raw_resource_id, t])
 		# Toggle the Sect detail panel via a REAL `sect_panel` key event (bounded retry for
 		# input-dispatch frame timing). It starts closed, opens on the key.
 		assert_false(hud.call("is_sect_panel_open"), "sect panel starts closed")

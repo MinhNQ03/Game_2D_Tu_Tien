@@ -19,6 +19,7 @@ name: CI
 #  11. pet / linh thú E2E flow (dedicated isolated process — Phase 16)
 #  12. NPC / interaction / shop E2E flow (dedicated isolated process — Phase 17)
 #  13. dialogue E2E flow (dedicated isolated process — Phase 18)
+#  14. quest E2E flow (dedicated isolated process — Phase 19)
 #
 # NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
 # scripts were statically validated via the GDScript language server. The first real
@@ -338,5 +339,38 @@ jobs:
           if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
               _e2e_dialogue.log; then
             echo "::error::[e2e-dialogue] the run printed a script error or a leak line"
+            exit 1
+          fi
+
+      - name: Quest E2E flow (Phase 19)
+        run: |
+          set -uo pipefail
+          # Dedicated, ISOLATED process (D-019): boots the real app and plays both shipped
+          # quests with semantic inputs — the purpose line at spawn, an offer declined and then
+          # taken, the journal (its key, not modal, Esc one level), a quest given back and
+          # taken again, the knowledge route, a real kill counted, a reward refused by a full
+          # bag and then paid once through the one reward ledger, the pills carried to the
+          # scout, return to menu.
+          # A `SCRIPT ERROR:` or a leak line fails the gate even when the runner exits 0: a VM
+          # error aborts the case mid-way, which an exit code cannot distinguish from a pass.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_quest_flow.gd 2>&1 \
+            | tee _e2e_quest.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### Quest E2E (rc=$rc)"
+            echo '```'
+            tail -n 60 _e2e_quest.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            grep -E 'FAIL|ERROR|RESULT' _e2e_quest.log | tail -n 40 \
+              | while IFS= read -r line; do echo "::error::[e2e-quest] ${line}"; done
+            exit "$rc"
+          fi
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
+              _e2e_quest.log; then
+            echo "::error::[e2e-quest] the run printed a script error or a leak line"
             exit 1
           fi

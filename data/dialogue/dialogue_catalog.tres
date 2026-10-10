@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=41 format=3]
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=91 format=3]
 
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
@@ -48,12 +48,56 @@ script = ExtResource("3_choice")
 id = &"ko_leave"
 text_key = &"DLG_CHOICE_LEAVE"
 
+[sub_resource type="Resource" id="C_ko_pills_ask_0"]
+script = ExtResource("1_cond")
+kind = 2
+quest_id = &"quest_treeline_pills"
+
+[sub_resource type="Resource" id="H_ko_pills_ask"]
+script = ExtResource("3_choice")
+id = &"ko_pills_ask"
+text_key = &"DLG_KO_CHOICE_PILLS_ASK"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_pills_ask_0")])
+next_node_id = &"ko_pills_offer"
+
+[sub_resource type="Resource" id="C_ko_pills_about_0"]
+script = ExtResource("1_cond")
+kind = 2
+quest_id = &"quest_treeline_pills"
+quest_phase = 1
+
+[sub_resource type="Resource" id="H_ko_pills_about"]
+script = ExtResource("3_choice")
+id = &"ko_pills_about"
+text_key = &"DLG_KO_CHOICE_PILLS_ABOUT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_pills_about_0")])
+next_node_id = &"ko_pills_waiting"
+
+[sub_resource type="Resource" id="C_ko_pills_give_0"]
+script = ExtResource("1_cond")
+kind = 2
+quest_id = &"quest_treeline_pills"
+quest_phase = 2
+
+[sub_resource type="Resource" id="E_ko_pills_give"]
+script = ExtResource("2_effect")
+kind = 4
+quest_id = &"quest_treeline_pills"
+
+[sub_resource type="Resource" id="H_ko_pills_give"]
+script = ExtResource("3_choice")
+id = &"ko_pills_give"
+text_key = &"DLG_KO_CHOICE_PILLS_GIVE"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_pills_give_0")])
+effect = SubResource("E_ko_pills_give")
+next_node_id = &"ko_pills_done"
+
 [sub_resource type="Resource" id="N_ko_hub"]
 script = ExtResource("4_node")
 id = &"ko_hub"
 text_key = &"DLG_KO_HUB"
 mood = 0
-choices = Array[ExtResource("3_choice")]([SubResource("H_ko_trade"), SubResource("H_ko_ask_woods"), SubResource("H_ko_talk_price"), SubResource("H_ko_leave")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_trade"), SubResource("H_ko_ask_woods"), SubResource("H_ko_talk_price"), SubResource("H_ko_pills_ask"), SubResource("H_ko_pills_about"), SubResource("H_ko_pills_give"), SubResource("H_ko_leave")])
 
 [sub_resource type="Resource" id="N_ko_woods"]
 script = ExtResource("4_node")
@@ -137,12 +181,102 @@ text_key = &"DLG_KO_BRISTLE"
 mood = 2
 next_node_id = &"ko_hub"
 
+[sub_resource type="Resource" id="E_ko_pills_accept"]
+script = ExtResource("2_effect")
+kind = 3
+quest_id = &"quest_treeline_pills"
+
+[sub_resource type="Resource" id="H_ko_pills_accept"]
+script = ExtResource("3_choice")
+id = &"ko_pills_accept"
+text_key = &"DLG_KO_CHOICE_PILLS_ACCEPT"
+effect = SubResource("E_ko_pills_accept")
+next_node_id = &"ko_pills_taken"
+
+[sub_resource type="Resource" id="H_ko_pills_decline"]
+script = ExtResource("3_choice")
+id = &"ko_pills_decline"
+text_key = &"DLG_CHOICE_TASK_DECLINE"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="N_ko_pills_offer"]
+script = ExtResource("4_node")
+id = &"ko_pills_offer"
+text_key = &"DLG_KO_PILLS_OFFER"
+mood = 3
+gesture = &"talk"
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_pills_accept"), SubResource("H_ko_pills_decline")])
+
+[sub_resource type="Resource" id="N_ko_pills_taken"]
+script = ExtResource("4_node")
+id = &"ko_pills_taken"
+text_key = &"DLG_KO_PILLS_TAKEN"
+mood = 0
+gesture = &"talk"
+
+[sub_resource type="Resource" id="H_ko_pills_keep"]
+script = ExtResource("3_choice")
+id = &"ko_pills_keep"
+text_key = &"DLG_CHOICE_TASK_KEEP"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="H_ko_pills_giveup"]
+script = ExtResource("3_choice")
+id = &"ko_pills_giveup"
+text_key = &"DLG_CHOICE_TASK_GIVEUP"
+next_node_id = &"ko_pills_confirm"
+
+[sub_resource type="Resource" id="N_ko_pills_waiting"]
+script = ExtResource("4_node")
+id = &"ko_pills_waiting"
+text_key = &"DLG_KO_PILLS_WAITING"
+mood = 3
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_pills_keep"), SubResource("H_ko_pills_giveup")])
+
+[sub_resource type="Resource" id="H_ko_pills_stay"]
+script = ExtResource("3_choice")
+id = &"ko_pills_stay"
+text_key = &"DLG_CHOICE_TASK_STAY"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="E_ko_pills_abandon"]
+script = ExtResource("2_effect")
+kind = 5
+quest_id = &"quest_treeline_pills"
+
+[sub_resource type="Resource" id="H_ko_pills_abandon"]
+script = ExtResource("3_choice")
+id = &"ko_pills_abandon"
+text_key = &"DLG_CHOICE_TASK_ABANDON"
+effect = SubResource("E_ko_pills_abandon")
+next_node_id = &"ko_pills_released"
+
+[sub_resource type="Resource" id="N_ko_pills_confirm"]
+script = ExtResource("4_node")
+id = &"ko_pills_confirm"
+text_key = &"DLG_KO_PILLS_CONFIRM"
+mood = 3
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_pills_stay"), SubResource("H_ko_pills_abandon")])
+
+[sub_resource type="Resource" id="N_ko_pills_released"]
+script = ExtResource("4_node")
+id = &"ko_pills_released"
+text_key = &"DLG_KO_PILLS_RELEASED"
+mood = 0
+
+[sub_resource type="Resource" id="N_ko_pills_done"]
+script = ExtResource("4_node")
+id = &"ko_pills_done"
+text_key = &"DLG_KO_PILLS_DONE"
+mood = 1
+gesture = &"talk"
+
 [sub_resource type="Resource" id="D_dlg_scout_ko"]
 script = ExtResource("5_dlg")
 id = &"dlg_scout_ko"
 speaker_id = &"actor_scout_ko"
 start_node_id = &"ko_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done")])
 
 [sub_resource type="Resource" id="N_shen_greet"]
 script = ExtResource("4_node")
@@ -201,12 +335,91 @@ script = ExtResource("3_choice")
 id = &"shen_leave"
 text_key = &"DLG_CHOICE_LEAVE_ELDER"
 
+[sub_resource type="Resource" id="C_shen_task_ask_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_lac_ha_stele_record"
+
+[sub_resource type="Resource" id="C_shen_task_ask_1"]
+script = ExtResource("1_cond")
+kind = 2
+quest_id = &"quest_unquiet_vein"
+
+[sub_resource type="Resource" id="H_shen_task_ask"]
+script = ExtResource("3_choice")
+id = &"shen_task_ask"
+text_key = &"DLG_SHEN_CHOICE_TASK_ASK"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_task_ask_0"), SubResource("C_shen_task_ask_1")])
+next_node_id = &"shen_task_why"
+
+[sub_resource type="Resource" id="C_shen_task_about_0"]
+script = ExtResource("1_cond")
+kind = 2
+quest_id = &"quest_unquiet_vein"
+quest_phase = 1
+
+[sub_resource type="Resource" id="H_shen_task_about"]
+script = ExtResource("3_choice")
+id = &"shen_task_about"
+text_key = &"DLG_SHEN_CHOICE_TASK_ABOUT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_task_about_0")])
+next_node_id = &"shen_task_waiting"
+
+[sub_resource type="Resource" id="C_shen_task_report_word_0"]
+script = ExtResource("1_cond")
+kind = 2
+quest_id = &"quest_unquiet_vein"
+quest_phase = 2
+
+[sub_resource type="Resource" id="C_shen_task_report_word_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_vu_lang_hunting_ground"
+
+[sub_resource type="Resource" id="E_shen_task_report_word"]
+script = ExtResource("2_effect")
+kind = 4
+quest_id = &"quest_unquiet_vein"
+
+[sub_resource type="Resource" id="H_shen_task_report_word"]
+script = ExtResource("3_choice")
+id = &"shen_task_report_word"
+text_key = &"DLG_SHEN_CHOICE_TASK_REPORT_WORD"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_task_report_word_0"), SubResource("C_shen_task_report_word_1")])
+effect = SubResource("E_shen_task_report_word")
+next_node_id = &"shen_task_done_word"
+
+[sub_resource type="Resource" id="C_shen_task_report_fight_0"]
+script = ExtResource("1_cond")
+kind = 2
+quest_id = &"quest_unquiet_vein"
+quest_phase = 2
+
+[sub_resource type="Resource" id="C_shen_task_report_fight_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_vu_lang_hunting_ground"
+negate = true
+
+[sub_resource type="Resource" id="E_shen_task_report_fight"]
+script = ExtResource("2_effect")
+kind = 4
+quest_id = &"quest_unquiet_vein"
+
+[sub_resource type="Resource" id="H_shen_task_report_fight"]
+script = ExtResource("3_choice")
+id = &"shen_task_report_fight"
+text_key = &"DLG_SHEN_CHOICE_TASK_REPORT_FIGHT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_task_report_fight_0"), SubResource("C_shen_task_report_fight_1")])
+effect = SubResource("E_shen_task_report_fight")
+next_node_id = &"shen_task_done_fight"
+
 [sub_resource type="Resource" id="N_shen_hub"]
 script = ExtResource("4_node")
 id = &"shen_hub"
 text_key = &"DLG_SHEN_HUB"
 mood = 0
-choices = Array[ExtResource("3_choice")]([SubResource("H_shen_report"), SubResource("H_shen_ask"), SubResource("H_shen_leave")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_report"), SubResource("H_shen_ask"), SubResource("H_shen_task_ask"), SubResource("H_shen_task_about"), SubResource("H_shen_task_report_word"), SubResource("H_shen_task_report_fight"), SubResource("H_shen_leave")])
 
 [sub_resource type="Resource" id="N_shen_approve"]
 script = ExtResource("4_node")
@@ -224,12 +437,116 @@ mood = 0
 gesture = &"talk"
 next_node_id = &"shen_hub"
 
+[sub_resource type="Resource" id="N_shen_task_why"]
+script = ExtResource("4_node")
+id = &"shen_task_why"
+text_key = &"DLG_SHEN_TASK_WHY"
+mood = 2
+gesture = &"talk"
+next_node_id = &"shen_task_offer"
+
+[sub_resource type="Resource" id="E_shen_task_accept"]
+script = ExtResource("2_effect")
+kind = 3
+quest_id = &"quest_unquiet_vein"
+
+[sub_resource type="Resource" id="H_shen_task_accept"]
+script = ExtResource("3_choice")
+id = &"shen_task_accept"
+text_key = &"DLG_SHEN_CHOICE_TASK_ACCEPT"
+effect = SubResource("E_shen_task_accept")
+next_node_id = &"shen_task_taken"
+
+[sub_resource type="Resource" id="H_shen_task_decline"]
+script = ExtResource("3_choice")
+id = &"shen_task_decline"
+text_key = &"DLG_CHOICE_TASK_DECLINE"
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="N_shen_task_offer"]
+script = ExtResource("4_node")
+id = &"shen_task_offer"
+text_key = &"DLG_SHEN_TASK_OFFER"
+mood = 0
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_task_accept"), SubResource("H_shen_task_decline")])
+
+[sub_resource type="Resource" id="N_shen_task_taken"]
+script = ExtResource("4_node")
+id = &"shen_task_taken"
+text_key = &"DLG_SHEN_TASK_TAKEN"
+mood = 0
+gesture = &"talk"
+
+[sub_resource type="Resource" id="H_shen_task_keep"]
+script = ExtResource("3_choice")
+id = &"shen_task_keep"
+text_key = &"DLG_CHOICE_TASK_KEEP"
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="H_shen_task_giveup"]
+script = ExtResource("3_choice")
+id = &"shen_task_giveup"
+text_key = &"DLG_CHOICE_TASK_GIVEUP"
+next_node_id = &"shen_task_confirm"
+
+[sub_resource type="Resource" id="N_shen_task_waiting"]
+script = ExtResource("4_node")
+id = &"shen_task_waiting"
+text_key = &"DLG_SHEN_TASK_WAITING"
+mood = 2
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_task_keep"), SubResource("H_shen_task_giveup")])
+
+[sub_resource type="Resource" id="H_shen_task_stay"]
+script = ExtResource("3_choice")
+id = &"shen_task_stay"
+text_key = &"DLG_CHOICE_TASK_STAY"
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="E_shen_task_abandon"]
+script = ExtResource("2_effect")
+kind = 5
+quest_id = &"quest_unquiet_vein"
+
+[sub_resource type="Resource" id="H_shen_task_abandon"]
+script = ExtResource("3_choice")
+id = &"shen_task_abandon"
+text_key = &"DLG_CHOICE_TASK_ABANDON"
+effect = SubResource("E_shen_task_abandon")
+next_node_id = &"shen_task_released"
+
+[sub_resource type="Resource" id="N_shen_task_confirm"]
+script = ExtResource("4_node")
+id = &"shen_task_confirm"
+text_key = &"DLG_SHEN_TASK_CONFIRM"
+mood = 2
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_task_stay"), SubResource("H_shen_task_abandon")])
+
+[sub_resource type="Resource" id="N_shen_task_released"]
+script = ExtResource("4_node")
+id = &"shen_task_released"
+text_key = &"DLG_SHEN_TASK_RELEASED"
+mood = 0
+
+[sub_resource type="Resource" id="N_shen_task_done_word"]
+script = ExtResource("4_node")
+id = &"shen_task_done_word"
+text_key = &"DLG_SHEN_TASK_DONE_WORD"
+mood = 1
+gesture = &"talk"
+
+[sub_resource type="Resource" id="N_shen_task_done_fight"]
+script = ExtResource("4_node")
+id = &"shen_task_done_fight"
+text_key = &"DLG_SHEN_TASK_DONE_FIGHT"
+mood = 1
+gesture = &"talk"
+
 [sub_resource type="Resource" id="D_dlg_elder_shen"]
 script = ExtResource("5_dlg")
 id = &"dlg_elder_shen"
 speaker_id = &"actor_elder_shen"
 start_node_id = &"shen_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight")])
 
 [resource]
 script = ExtResource("6_cat")

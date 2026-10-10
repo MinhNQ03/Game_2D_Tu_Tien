@@ -32,7 +32,7 @@ const MAIN_SOURCE_PATH := "res://src/bootstrap/main.gd"
 ## The frozen teardown order, written out as a literal rather than derived, so this file says
 ## what the contract IS instead of only saying "the reverse of whatever start happens to be".
 const EXPECTED_TEARDOWN := [
-	&"DialogueRuntime",
+	&"DialogueRuntime", &"QuestRuntime",
 	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
 	&"CultivationRuntime",
 	&"KnowledgeRuntime",
@@ -59,6 +59,7 @@ const SUBSYSTEM_SCRIPTS := {
 	"SkillRuntime": "res://src/gameplay/world/skill_runtime.gd",
 	"PetRuntime": "res://src/gameplay/world/pet_runtime.gd",
 	"NpcRuntime": "res://src/gameplay/world/npc_runtime.gd",
+	"QuestRuntime": "res://src/gameplay/world/quest_runtime.gd",
 	"DialogueRuntime": "res://src/gameplay/world/dialogue_runtime.gd",
 }
 
@@ -73,11 +74,15 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 16, "sixteen per-session subsystems (got %s)" % str(order))
-	assert_eq(order[15], &"DialogueRuntime",
+	assert_eq(order.size(), 17, "seventeen per-session subsystems (got %s)" % str(order))
+	assert_eq(order[16], &"DialogueRuntime",
 		"conversations are LAST: they ask NpcRuntime who is in reach, move the relationship "
-		+ "graph and grant through the Knowledge Core, so an open conversation is closed "
-		+ "before any of the three is torn down (Phase 18)")
+		+ "graph, grant through the Knowledge Core and dispatch quest answers, so an open "
+		+ "conversation is closed before any of the four is torn down (Phase 18, Phase 19)")
+	assert_eq(order[15], &"QuestRuntime",
+		"quests come just before conversations: they pay through the bag, progression, the "
+		+ "relationship graph and the reward ledger and listen to knowledge, the bag and "
+		+ "combat, so they start after all of them and stop listening first (Phase 19, D-070)")
 	assert_eq(order[14], &"NpcRuntime",
 		"people and shops follow: they bind bodies in the world's map to the registry's "
 		+ "characters, trade through the inventory and price by the relationship graph "

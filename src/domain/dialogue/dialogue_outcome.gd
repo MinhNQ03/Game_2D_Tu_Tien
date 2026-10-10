@@ -27,6 +27,8 @@ var new_value: int = 0
 ## GRANT_KNOWLEDGE: the id and the Knowledge Core's own answer (`KnowledgeService.GRANTED` …).
 var knowledge_id: StringName = &""
 var knowledge_result: StringName = &""
+## A quest effect: the quest it was about (accepted, answered or given back).
+var quest_id: StringName = &""
 
 const NO_EFFECT := -1
 

@@ -7,6 +7,7 @@ const DIALOGUES_PATH := "res://data/dialogue/dialogue_catalog.tres"
 const KNOWLEDGE_PATH := "res://data/knowledge/knowledge_catalog.tres"
 const CONFIG_PATH := "res://data/relationship/relationship_config.tres"
 const SHOPS_PATH := "res://data/shops/shop_catalog.tres"
+const QUESTS_PATH := "res://data/quests/quest_catalog.tres"
 const WORLD_SIM_PATH := "res://data/worldsim/world_sim_catalog.tres"
 const LocalizationScript := preload("res://src/infrastructure/localization.gd")
 
@@ -19,6 +20,7 @@ var _knowledge: KnowledgeService = null
 var _relationship: RelationshipService = null
 var _config: RelationshipConfigData = null
 var _service: DialogueService = null
+var _quests: QuestService = null
 var _loc: Node = null
 
 
@@ -27,8 +29,13 @@ func before_each() -> void:
 	_relationship = RelationshipService.new(RelationshipStore.new(_config), _config)
 	_knowledge = KnowledgeService.new(load(KNOWLEDGE_PATH) as KnowledgeCatalogData,
 		KnowledgeStore.new())
+	# The shipped conversations name the shipped quests (Phase 19): the quest owner is one of
+	# the owners this content is validated against. Nothing here pays a reward.
+	_quests = QuestService.new(load(QUESTS_PATH) as QuestCatalogData, QuestState.new(),
+		_knowledge, RewardService.new(RewardLedger.new()),
+		func(_item_id: StringName) -> int: return 0)
 	_service = DialogueService.new(load(DIALOGUES_PATH) as DialogueCatalogData, _knowledge,
-		_relationship, _config)
+		_relationship, _config, _quests)
 	# A private instance: the shared autoload's language is never touched (L-010).
 	_loc = LocalizationScript.new()
 
@@ -38,6 +45,7 @@ func after_each() -> void:
 		_loc.free()
 	_loc = null
 	_service = null
+	_quests = null
 	_relationship = null
 	_knowledge = null
 
@@ -136,11 +144,12 @@ func test_the_elder_opens_up_only_to_one_who_has_read() -> void:
 	assert_eq(_ids(dialogue.id, &"shen_hub"), [&"shen_leave"] as Array[StringName],
 		"to someone who has read nothing he offers only the door")
 	_knowledge.grant(STELE, &"test")
-	assert_eq(_ids(dialogue.id, &"shen_hub"), [&"shen_report", &"shen_leave"]
-		as Array[StringName], "the stele gives the player something to recount")
+	assert_eq(_ids(dialogue.id, &"shen_hub"), [&"shen_report", &"shen_task_ask", &"shen_leave"]
+		as Array[StringName],
+		"the stele gives the player something to recount, and him someone to ask (Phase 19)")
 	var reported := _choose(dialogue.id, &"shen_hub", &"shen_report")
 	assert_eq([reported.dimension, reported.new_value], [&"respect", 15], "respect earned")
-	assert_eq(_ids(dialogue.id, &"shen_hub"), [&"shen_ask", &"shen_leave"]
+	assert_eq(_ids(dialogue.id, &"shen_hub"), [&"shen_ask", &"shen_task_ask", &"shen_leave"]
 		as Array[StringName], "which closes one line and opens the next")
 	var taught := _choose(dialogue.id, &"shen_hub", &"shen_ask")
 	assert_eq(taught.knowledge_result, KnowledgeService.GRANTED, "now he teaches")

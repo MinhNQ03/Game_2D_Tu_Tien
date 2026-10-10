@@ -317,3 +317,82 @@ UI_LEAVE_KEYS,{confirm} Leave to the menu · {close} Stay,{confirm} Về menu ·
 UI_DEFEAT_TITLE,You have fallen,Ngươi đã gục ngã
 UI_DEFEAT_BODY,This journey ends here. Nothing was saved.,Cuộc hành trình dừng tại đây. Chưa có gì được lưu.
 UI_DEFEAT_KEYS,{confirm} Return to the menu,{confirm} Về menu
+QUEST_UNQUIET_VEIN_TITLE,The Unquiet Vein,Mạch rừng không yên
+QUEST_UNQUIET_VEIN_SUMMARY,Elder Shen must know whether the mist wolves have settled on the woods' vein before anyone from Lạc Hà crosses.,"Trưởng lão Thẩm cần biết Vụ Lang đã bám hẳn vào mạch rừng hay chưa, rồi mới cho người Lạc Hà băng qua."
+QUEST_UNQUIET_VEIN_LEAD,Speak with Elder Shen,Gặp Trưởng lão Thẩm
+QUEST_UNQUIET_VEIN_GOAL,See if wolves hold the vein,Xem Vụ Lang có bám mạch rừng
+QUEST_UNQUIET_VEIN_RETURN,Report to Elder Shen,Về báo Trưởng lão Thẩm
+QUEST_UNQUIET_VEIN_OBJ_FIGHT,Put down a mist wolf in Broken-Vein Woods,Hạ một con Vụ Lang trong Rừng Vỡ Mạch
+QUEST_UNQUIET_VEIN_OBJ_ASK,Learn from Ko Than where the wolves hunt,Hỏi Kha Thản về bãi săn của Vụ Lang
+QUEST_TREELINE_PILLS_TITLE,Pills for the Treeline Watch,Thuốc cho người gác bìa rừng
+QUEST_TREELINE_PILLS_SUMMARY,"Ko Than cannot leave the crossing, and the two pills Lạc Hà owes its watch have not come.","Kha Thản không rời được lối băng rừng, mà hai viên thuốc Lạc Hà nợ người gác vẫn chưa tới."
+QUEST_TREELINE_PILLS_LEAD,Ko Than awaits the village pills,Kha Thản chờ thuốc của làng
+QUEST_TREELINE_PILLS_GOAL,Bring Ko Than two pills,Mang thuốc tới cho Kha Thản
+QUEST_TREELINE_PILLS_RETURN,Hand Ko Than the pills,Trao thuốc cho Kha Thản
+QUEST_TREELINE_PILLS_OBJ_CARRY,Carry Blood-Mending Pills to Ko Than,Mang Bổ Huyết Đan tới cho Kha Thản
+DLG_CHOICE_TASK_DECLINE,Not now,Chưa phải lúc này
+DLG_CHOICE_TASK_KEEP,Say it is in hand,Thưa rằng vẫn đang lo
+DLG_CHOICE_TASK_GIVEUP,Ask to be released,Xin thôi việc này
+DLG_CHOICE_TASK_STAY,No — see it through,Không — làm cho xong
+DLG_CHOICE_TASK_ABANDON,Yes — give it back,Phải — xin trả việc
+DLG_SHEN_CHOICE_TASK_ASK,Ask what weighs on him,Hỏi điều trưởng lão bận lòng
+DLG_SHEN_TASK_WHY,"The stele's warning about the woods' vein is old, and mist wolves have been seen at its edge.","Lời bia nhắc về mạch rừng đã cũ, mà dạo này có người thấy Vụ Lang quanh mép mạch."
+DLG_SHEN_TASK_OFFER,"Have they settled on it? See for yourself — or ask the scout at the treeline, who watches them.","Chúng đã bám hẳn ở đó chưa? Tự đi mà xem — hoặc hỏi tay trinh sát ở bìa rừng, hắn canh chúng."
+DLG_SHEN_CHOICE_TASK_ACCEPT,Agree to find out,Nhận lời đi xem
+DLG_SHEN_TASK_TAKEN,"Then go. Until I hear from you, no one from Lạc Hà crosses those woods.","Vậy đi đi. Chưa có tin của ngươi, người Lạc Hà chưa ai được băng rừng."
+DLG_SHEN_CHOICE_TASK_ABOUT,Speak of the woods' vein,Thưa chuyện mạch rừng
+DLG_SHEN_TASK_WAITING,"You have nothing for me yet. Move one off the vein and see what the rest do, or hear it from the scout.","Ngươi chưa có gì để thưa. Đuổi một con khỏi mạch xem bầy còn lại ra sao, hoặc nghe tay trinh sát kể."
+DLG_SHEN_TASK_CONFIRM,Give it back and whatever you have done for it counts for nothing. Are you certain?,Trả việc lại thì những gì ngươi đã làm cho nó coi như chưa có. Ngươi chắc chứ?
+DLG_SHEN_TASK_RELEASED,"Then it waits for someone else — or for you, when you are ready.","Vậy việc ấy chờ người khác — hoặc chờ chính ngươi, khi ngươi sẵn sàng."
+DLG_SHEN_CHOICE_TASK_REPORT_WORD,Pass on the scout's word,Thưa lại lời tay trinh sát
+DLG_SHEN_CHOICE_TASK_REPORT_FIGHT,Tell what you met at the vein,Kể điều gặp ở mạch rừng
+DLG_SHEN_TASK_DONE_WORD,So they hold where the vein surges and scatter when it falls. Then there are hours to cross. Take these from the hall's store.,"Vậy là mạch dâng thì chúng bám, mạch hụt thì chúng tản. Tức là có giờ băng rừng được. Cầm lấy, thuốc trong kho Thanh Đài."
+DLG_SHEN_TASK_DONE_FIGHT,"So they stand their ground there, and it took force to move one. Then no one crosses unarmed. Take these from the hall's store.","Vậy là chúng giữ chỗ ở đó, phải động thủ mới đuổi được một con. Vậy không ai được tay không băng rừng. Cầm lấy, thuốc trong kho Thanh Đài."
+DLG_KO_CHOICE_PILLS_ASK,Ask what he is short of,Hỏi hắn đang thiếu gì
+DLG_KO_PILLS_OFFER,"What I sell is my wage. The two pills Lạc Hà owes its watch have not come, and I cannot leave this crossing. Bring them; I pay in stone.","Hàng ta bán là tiền công của ta. Hai viên thuốc Lạc Hà nợ người gác vẫn chưa tới, mà ta không rời lối này được. Mang tới, ta trả bằng linh thạch."
+DLG_KO_CHOICE_PILLS_ACCEPT,Agree to bring them,Nhận lời mang tới
+DLG_KO_PILLS_TAKEN,Two Blood-Mending Pills. The hall leaves its issue out on the steps.,Hai viên Bổ Huyết Đan. Thanh Đài hay để phần phát ngoài bậc thềm.
+DLG_KO_CHOICE_PILLS_ABOUT,Speak of the pills,Nói chuyện mấy viên thuốc
+DLG_KO_PILLS_WAITING,"Two pills, and you have not got them. I am not going anywhere.","Hai viên thuốc, mà ngươi chưa có. Ta thì chẳng đi đâu cả."
+DLG_KO_PILLS_CONFIRM,Hand the errand back and I ask the next one through. Sure?,Trả việc lại thì ta nhờ kẻ kế tiếp đi qua. Chắc chưa?
+DLG_KO_PILLS_RELEASED,"Then the watch waits, as it has.","Vậy người gác cứ chờ, như vẫn chờ."
+DLG_KO_CHOICE_PILLS_GIVE,Hand over the two pills,Trao hai viên thuốc
+DLG_KO_PILLS_DONE,"Counted. Three stones, as the risk is worth — and I remember who walked them out here.","Đủ rồi. Ba viên linh thạch, đúng giá của rủi ro — và ta nhớ ai đã mang chúng ra tận đây."
+UI_QUEST_UNAVAILABLE,No task can be taken or answered right now.,Lúc này chưa thể nhận hay thưa việc.
+UI_QUEST_UNKNOWN,Nobody knows of such a task.,Không ai biết việc đó.
+UI_QUEST_ALREADY_TAKEN,You have already taken that on.,Việc ấy ngươi đã nhận rồi.
+UI_QUEST_ALREADY_DONE,That is already done.,Việc ấy đã xong.
+UI_QUEST_NOT_TAKEN,You have not taken that on.,Ngươi chưa nhận việc đó.
+UI_QUEST_NOT_FINISHED,It is not done yet.,Việc vẫn chưa xong.
+UI_QUEST_WRONG_PERSON,This is not the one to speak to about it.,Chuyện này không phải nói với người này.
+UI_QUEST_REWARD_OWED,Part of the reward is still owed — ask again.,Phần thưởng còn thiếu — hãy hỏi lại.
+UI_QUEST_REWARD_NO_ROOM,"Your satchel is full — make room, then come back for the reward.",Túi đồ đã đầy — dọn chỗ rồi quay lại nhận thưởng.
+UI_QUEST_REWARD_UNPAYABLE,The reward cannot be given right now.,Lúc này chưa thể trao thưởng.
+UI_QUEST_ACCEPTED,Taken on: {title}  ({key} journal),Đã nhận việc: {title}  ({key} sổ việc)
+UI_QUEST_ABANDONED,Given back: {title},Đã trả việc: {title}
+UI_QUEST_ADVANCED,{text}: {value}/{required},{text}: {value}/{required}
+UI_QUEST_READY,{title} — {hint},{title} — {hint}
+UI_QUEST_COMPLETED,Done: {title},Xong việc: {title}
+UI_QUEST_HANDED_OVER,Handed over: {name} ×{count},Đã trao: {name} ×{count}
+UI_QUEST_RECEIVED,Received: {name} ×{count},Được trao: {name} ×{count}
+UI_QUEST_JOURNAL_TITLE,Journal,Sổ việc
+UI_QUEST_JOURNAL_EMPTY,Nobody has asked anything of you.,Chưa ai nhờ ngươi việc gì.
+UI_QUEST_JOURNAL_KEYS,{close} Close,{close} Đóng
+UI_QUEST_PHASE_AVAILABLE,on offer,chờ người nhận
+UI_QUEST_PHASE_ACTIVE,under way,đang làm
+UI_QUEST_PHASE_READY,ready to answer,"xong, chờ thưa lại"
+UI_QUEST_PHASE_OWED,reward owed,còn thiếu thưởng
+UI_QUEST_PHASE_COMPLETED,done,đã xong
+UI_QUEST_ANY_OF,Any one of these:,Chỉ cần một trong các cách:
+UI_QUEST_OBJECTIVE_COUNT,{text} ({value}/{required}),{text} ({value}/{required})
+UI_QUEST_FROM,Asked by {name},Người nhờ: {name}
+UI_QUEST_ANSWER_TO,Answer to {name},Thưa lại với: {name}
+UI_QUEST_REWARD,Reward: {list},Thưởng: {list}
+UI_QUEST_REWARD_ITEM,{name} ×{count},{name} ×{count}
+UI_QUEST_REWARD_XP,{xp} XP,{xp} KN
+UI_QUEST_REWARD_REGARD,{name}'s {dimension},{dimension} của {name}
+UI_REWARD_NO_ROOM,There is no room for it.,Không còn chỗ chứa.
+UI_REWARD_UNPAYABLE,It cannot be given right now.,Lúc này chưa thể trao.
+UI_REWARD_BUSY,It is already being given.,Đang được trao rồi.
+UI_REWARD_OWED,Part of it is still owed.,Vẫn còn thiếu một phần.
+UI_QUEST_OBJECTIVE_MET,{text} — done,{text} — xong

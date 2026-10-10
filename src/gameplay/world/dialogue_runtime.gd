@@ -12,7 +12,9 @@ class_name DialogueRuntime
 ##   * which answers are offered and what submitting one comes to is `DialogueService`'s;
 ##   * a regard move lands in the relationship graph through `RelationshipService`, a grant
 ##     goes through `KnowledgeRuntime.grant` (so it is announced like any other learning), and
-##     "trade" is handed to `NpcRuntime.open_shop_of` AFTER this conversation has closed.
+##     "trade" is handed to `NpcRuntime.open_shop_of` AFTER this conversation has closed;
+##   * a quest is taken, answered or given back by `QuestRuntime` (Phase 19) — this node only
+##     passes the request on, and a refusal there refuses the answer here, with its reason.
 ##
 ## Someone with no authored conversation is not this node's business: `talk` passes them to
 ## `NpcRuntime.interact`, whose behaviour for them is unchanged (a greeting, or their own shop).
@@ -43,6 +45,8 @@ const REASON_SESSION := &"session"      # the session ended
 var _world: Node = null
 var _npcs: NpcRuntime = null
 var _knowledge: KnowledgeRuntime = null
+## Optional (null = this session has no quests): who carries out a quest effect.
+var _quests: QuestRuntime = null
 var _service: DialogueService = null
 var _session_active: bool = false
 
@@ -54,10 +58,13 @@ var _line_serial: int = 0
 ## Start the session. Builds into locals and commits only when every check passed: the catalog
 ## is structurally valid AND everything it names exists in its owner (a registered character
 ## for every speaker, knowledge ids, relationship dimensions and ranges, a shop for every
-## "trade", a translation of every line in every language). `catalog` is the content seam
-## (null = the shipped one).
+## "trade", a quest for every quest condition and effect — spoken by the right person, and
+## every quest reachable — and a translation of every line in every language). `catalog` is
+## the content seam (null = the shipped one). `quests` is the session's quest owner; content
+## that names a quest cannot start without it.
 func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
-		relationship: RelationshipRuntime, catalog: DialogueCatalogData = null) -> bool:
+		relationship: RelationshipRuntime, catalog: DialogueCatalogData = null,
+		quests: QuestRuntime = null) -> bool:
 	if _session_active:
 		push_error("[dialogue-rt] start_session while a session is active")
 		return false
@@ -71,8 +78,12 @@ func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
 	if catalog == null:
 		push_error("[dialogue-rt] session NOT started: %s did not load" % CATALOG_PATH)
 		return false
+	if quests != null and not quests.is_session_active():
+		push_error("[dialogue-rt] session NOT started: the quest session is not active")
+		return false
 	var service := DialogueService.new(catalog, knowledge.get_service(),
-		relationship.get_service(), relationship.get_config())
+		relationship.get_service(), relationship.get_config(),
+		quests.get_service() if quests != null else null)
 	if not service.is_ready():
 		push_error("[dialogue-rt] session NOT started: the DialogueService refused its catalog")
 		return false
@@ -94,6 +105,7 @@ func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
 	_world = world
 	_npcs = npcs
 	_knowledge = knowledge
+	_quests = quests
 	_service = service
 	_dialogue = null
 	_node_id = &""
@@ -113,6 +125,7 @@ func end_session() -> void:
 	_world = null
 	_npcs = null
 	_knowledge = null
+	_quests = null
 	_service = null
 	_dialogue = null
 	_node_id = &""
@@ -189,10 +202,26 @@ func choose(node_id: StringName, choice_id: StringName) -> DialogueOutcome:
 		return _refuse(reach)
 	var listener := _listener_id()
 	var outcome := _service.choose(_dialogue.id, _node_id, choice_id, listener,
-		_knowledge.grant)
+		_knowledge.grant, _quest_op if _quests != null else Callable())
 	if not outcome.ok:
 		return _refuse(outcome.reason)
 	return _follow(outcome)
+
+
+## Carry out a quest effect through the quest owner. Returns &"" when it happened, else the
+## owner's reason — nothing changed, and the answer that asked for it is refused with it.
+func _quest_op(kind: int, quest_id: StringName, speaker_id: StringName) -> StringName:
+	var outcome: QuestOutcome = null
+	match kind:
+		DialogueEffectData.Kind.QUEST_ACCEPT:
+			outcome = _quests.accept(quest_id, speaker_id)
+		DialogueEffectData.Kind.QUEST_TURN_IN:
+			outcome = _quests.turn_in(quest_id, speaker_id)
+		DialogueEffectData.Kind.QUEST_ABANDON:
+			outcome = _quests.abandon(quest_id, speaker_id)
+	if outcome == null:
+		return DialogueService.REFUSE_EFFECT_FAILED
+	return &"" if outcome.ok else outcome.reason
 
 
 ## The player leaves the conversation. Safe (and silent) when none is open.

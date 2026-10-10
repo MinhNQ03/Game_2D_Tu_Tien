@@ -24,7 +24,7 @@ const SEMANTIC_ACTIONS := [
 	"interact", "attack",
 	"skill_1", "skill_2", "skill_3", "skill_4",
 	"dodge", "open_menu", "pause", "sect_panel", "faction_panel", "cultivate",
-	"inventory", "pet_summon",
+	"inventory", "pet_summon", "quest_journal",
 ]
 
 ## Context stack. Bottom is the implicit baseline; we start in a non-gameplay MENU at boot.

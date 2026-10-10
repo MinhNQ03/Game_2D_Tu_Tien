@@ -215,8 +215,11 @@ func test_the_box_fits_under_the_clear_zone_in_both_languages() -> void:
 			for line in dialogue.nodes:
 				var view := _hub_view(1)
 				view.text_key = line.text_key
+				# The tallest box this line can ever show: the LARGEST set of its answers
+				# that can be offered together (Phase 19: answers gated on different phases
+				# of one quest, or on knowing and not knowing one thing, never are).
 				var choices: Array[Dictionary] = []
-				for option in line.choices:
+				for option in _largest_offer(line):
 					choices.append({"id": option.id, "text_key": option.text_key})
 				view.choices = choices
 				hud.set_dialogue_view(view)
@@ -234,6 +237,71 @@ func test_the_box_fits_under_the_clear_zone_in_both_languages() -> void:
 						% [code, line.id, shown.y])
 	_use_language("vi")
 	free_node(hud)
+
+
+## The largest set of `line`'s answers that some state of the world offers TOGETHER.
+##
+## A quest is in exactly one phase and a thing is either known or not, so answers conditioned
+## on different phases of one quest — or on knowing and on not knowing the same thing — are
+## mutually exclusive by construction; every state of those two owners is tried and the widest
+## offer kept. Regard is NOT modelled: a regard condition is assumed met, which can only make
+## the measured box taller than any real one.
+func _largest_offer(line: DialogueNodeData) -> Array[DialogueChoiceData]:
+	var quests: Array[StringName] = []
+	var facts: Array[StringName] = []
+	for option in line.choices:
+		for condition in option.conditions:
+			if condition.kind == DialogueConditionData.Kind.QUEST_PHASE \
+					and not quests.has(condition.quest_id):
+				quests.append(condition.quest_id)
+			elif condition.kind == DialogueConditionData.Kind.KNOWS \
+					and not facts.has(condition.knowledge_id):
+				facts.append(condition.knowledge_id)
+	var phases := QuestService.Phase.size()
+	var states := int(pow(phases, quests.size())) * int(pow(2, facts.size()))
+	var best: Array[DialogueChoiceData] = []
+	for state in states:
+		var phase_of: Dictionary = {}
+		var known: Dictionary = {}
+		var rest := state
+		for quest_id in quests:
+			phase_of[quest_id] = rest % phases
+			rest /= phases
+		for fact in facts:
+			known[fact] = rest % 2 == 1
+			rest /= 2
+		var offered: Array[DialogueChoiceData] = []
+		for option in line.choices:
+			var met := true
+			for condition in option.conditions:
+				var holds := true
+				if condition.kind == DialogueConditionData.Kind.QUEST_PHASE:
+					holds = int(phase_of[condition.quest_id]) == int(condition.quest_phase)
+				elif condition.kind == DialogueConditionData.Kind.KNOWS:
+					holds = bool(known[condition.knowledge_id])
+				else:
+					continue  # regard: assumed met
+				if holds == condition.negate:
+					met = false
+			if met:
+				offered.append(option)
+		if offered.size() > best.size():
+			best = offered
+	return best
+
+
+func test_the_largest_offer_is_the_widest_set_that_can_be_shown_together() -> void:
+	var catalog := load(DIALOGUES) as DialogueCatalogData
+	var hub := catalog.dialogue_of_speaker(&"actor_scout_ko").node(&"ko_hub")
+	var ids: Array[StringName] = []
+	for option in _largest_offer(hub):
+		ids.append(option.id)
+	assert_eq(hub.choices.size(), 7, "seven answers are authored on the scout's hub")
+	assert_eq(ids.size(), 5, "of which at most five are ever offered together (got %s)" % str(ids))
+	assert_true(ids.has(&"ko_trade") and ids.has(&"ko_leave"), "the unconditional ones always")
+	var elder := catalog.dialogue_of_speaker(&"actor_elder_shen").node(&"shen_hub")
+	assert_true(_largest_offer(elder).size() <= 4,
+		"the elder never offers more than four (got %d)" % _largest_offer(elder).size())
 
 
 ## An answer must say what it is about: none may be cut short by the column (the first English

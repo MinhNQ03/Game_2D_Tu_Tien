@@ -73,6 +73,7 @@ const EQUIPMENT_RUNTIME_SCRIPT := "res://src/gameplay/world/equipment_runtime.gd
 const SKILL_RUNTIME_SCRIPT := "res://src/gameplay/world/skill_runtime.gd"
 const PET_RUNTIME_SCRIPT := "res://src/gameplay/world/pet_runtime.gd"
 const NPC_RUNTIME_SCRIPT := "res://src/gameplay/world/npc_runtime.gd"
+const QUEST_RUNTIME_SCRIPT := "res://src/gameplay/world/quest_runtime.gd"
 const DIALOGUE_RUNTIME_SCRIPT := "res://src/gameplay/world/dialogue_runtime.gd"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
@@ -114,6 +115,11 @@ const REQUIRED_AUTOLOADS := [
 ## session) and LISTENS to `CombatRuntime.enemy_defeated`. Starting last means ending FIRST,
 ## so it disconnects from the signal before its emitter is torn down and stops being able to
 ## grant XP into a `CharacterState` the world session is in the middle of freeing.
+## QuestRuntime (Phase 19, D-070) pays through the bag, progression, the relationship graph
+## and the reward ledger, and listens to knowledge, the bag and combat — so it starts after
+## all of them, and BEFORE DialogueRuntime, which dispatches a quest answer into it. Ending
+## in reverse, an open conversation closes first and the quest session stops listening before
+## anything it listens to is gone.
 ## RewardRuntime (Phase 19, D-070) holds the session's ONE reward ledger. It needs nothing,
 ## and it sits immediately before the first runtime that pays — ProgressionRuntime, which
 ## claims each defeat in that ledger — so it ends after every runtime that records a payment.
@@ -121,7 +127,7 @@ const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
 	&"WorldSimulationRuntime", &"CombatRuntime", &"RewardRuntime", &"ProgressionRuntime",
 	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime", &"EquipmentRuntime",
-	&"SkillRuntime", &"PetRuntime", &"NpcRuntime", &"DialogueRuntime",
+	&"SkillRuntime", &"PetRuntime", &"NpcRuntime", &"QuestRuntime", &"DialogueRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -167,6 +173,9 @@ var _pets: Node = null
 # NpcRuntime (Phase 17): binds people in the world's map to the registry's characters and
 # trades through the inventory, priced by the relationship graph — after all three.
 var _npcs: Node = null
+# QuestRuntime (Phase 19): the session's quests. Pays through inventory / progression /
+# relationship / rewards, listens to knowledge, inventory and combat; Dialogue dispatches to it.
+var _quests: Node = null
 # DialogueRuntime (Phase 18): asks NpcRuntime who is in reach, reads and moves the relationship
 # graph, grants through KnowledgeRuntime — after all three, so it is the FIRST session ended
 # and an open conversation closes before anything it points at is gone.
@@ -261,6 +270,7 @@ func _boot() -> void:
 	_skills = _create_runtime(SKILL_RUNTIME_SCRIPT, "SkillRuntime")
 	_pets = _create_runtime(PET_RUNTIME_SCRIPT, "PetRuntime")
 	_npcs = _create_runtime(NPC_RUNTIME_SCRIPT, "NpcRuntime")
+	_quests = _create_runtime(QUEST_RUNTIME_SCRIPT, "QuestRuntime")
 	_dialogue = _create_runtime(DIALOGUE_RUNTIME_SCRIPT, "DialogueRuntime")
 
 	if not bool(gs.call("mark_ready")):
@@ -628,6 +638,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _pets
 		&"NpcRuntime":
 			return _npcs
+		&"QuestRuntime":
+			return _quests
 		&"DialogueRuntime":
 			return _dialogue
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
@@ -954,8 +966,15 @@ func _start_cultivation_sessions() -> bool:
 		return false
 	if _world.has_method("refresh_active_map_shop_view"):
 		_world.call("refresh_active_map_shop_view")
+	# Quests before conversations: a quest is offered, answered and given back IN a
+	# conversation, so the dialogue session validates its content against the quest owner.
+	if _quests == null or not bool(_quests.call("start_session", _world, _knowledge,
+			_inventory, _combat, _progression, _relationship, _rewards)):
+		return false
+	if _world.has_method("refresh_active_map_quest_view"):
+		_world.call("refresh_active_map_quest_view")
 	if _dialogue == null or not bool(_dialogue.call("start_session", _world, _npcs,
-			_knowledge, _relationship)):
+			_knowledge, _relationship, null, _quests)):
 		return false
 	if _world.has_method("refresh_active_map_dialogue_view"):
 		_world.call("refresh_active_map_dialogue_view")

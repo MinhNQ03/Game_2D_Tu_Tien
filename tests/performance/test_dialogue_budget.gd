@@ -41,8 +41,14 @@ func test_deciding_what_a_line_offers_costs_microseconds() -> void:
 	var relationship := RelationshipService.new(RelationshipStore.new(config), config)
 	var knowledge := KnowledgeService.new(load(KNOWLEDGE_PATH) as KnowledgeCatalogData,
 		KnowledgeStore.new())
+	# With the quest owner, as in a session: a quest condition is then a real question
+	# (the phase is DERIVED from the owners each time it is asked — Phase 19).
+	var quests := QuestService.new(load("res://data/quests/quest_catalog.tres") as QuestCatalogData,
+		QuestState.new(), knowledge, RewardService.new(RewardLedger.new()),
+		func(_item_id: StringName) -> int: return 2)
+	assert_true(quests.accept(&"quest_treeline_pills", &"actor_scout_ko").ok, "a quest under way")
 	var service := DialogueService.new(load(DIALOGUES_PATH) as DialogueCatalogData, knowledge,
-		relationship, config)
+		relationship, config, quests)
 	assert_true(service.is_ready(), "the shipped catalog")
 	# The realistic worst case: an edge exists (so regard is a graph read, not a default) and
 	# the gated knowledge is held (so every condition is evaluated to the end).
@@ -60,7 +66,8 @@ func test_deciding_what_a_line_offers_costs_microseconds() -> void:
 	var per_call := float(Time.get_ticks_usec() - started) / float(EVALUATIONS)
 	print("[dialogue-budget] eligible_choices: %.2f usec per call over %d calls"
 		% [per_call, EVALUATIONS])
-	assert_eq(offered, EVALUATIONS / 2 * 3 + EVALUATIONS / 2 * 4,
-		"every call really evaluated its node (3 answers at the price talk, 4 at the hub)")
+	assert_eq(offered, EVALUATIONS / 2 * 3 + EVALUATIONS / 2 * 5,
+		"every call really evaluated its node (3 answers at the price talk, 5 at the hub: "
+		+ "the four he always has and the errand that is ready to hand in)")
 	assert_true(per_call <= BUDGET_USEC_PER_EVALUATION,
 		"%.2f usec per evaluation is within %.0f" % [per_call, BUDGET_USEC_PER_EVALUATION])

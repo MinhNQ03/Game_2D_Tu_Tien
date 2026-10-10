@@ -61,6 +61,7 @@ const FACTION_PANEL_ACTION := &"faction_panel"
 const CULTIVATE_ACTION := &"cultivate"
 const INVENTORY_ACTION := &"inventory"
 const PET_SUMMON_ACTION := &"pet_summon"
+const QUEST_JOURNAL_ACTION := &"quest_journal"
 
 ## The player asked to use an item from the bag (Phase 13). The HUD decides nothing: MapBase
 ## forwards it to WorldRuntime → InventoryRuntime.
@@ -108,6 +109,9 @@ var _map_label: Label
 ## World time + the last world event (Phase 08). Two muted lines under the place name.
 var _world_date_label: Label
 var _world_event_label: Label
+## The ONE line of purpose under the place and the date (Phase 19): what the player is about.
+## Orientation, like the two lines above it — not a quest-tracker widget.
+var _purpose_label: Label
 var _portrait: TextureRect
 ## The player's health gauge (Phase 09). Hidden until a health value arrives, so a HUD built
 ## outside a combat session shows no gauge rather than a full bar for health nothing owns.
@@ -196,6 +200,10 @@ var _sect_panel: SectPanel
 # from the sect panel so the player can read membership and politics side by side rather than
 # having one cover the other.
 var _faction_panel: FactionPanel
+## The quest journal (Phase 19): a READING panel like the two above — toggled on its own
+## action, never modal, closed with them by Esc and by a threat.
+var _quest_panel: QuestJournalPanel
+var _quest_view: QuestJournalView = null
 # The inventory panel (Phase 13): a MODAL reading surface — while open the HUD holds a UI_MODAL
 # input context so the move keys choose a row instead of walking the player.
 var _inventory_panel: InventoryPanel
@@ -586,6 +594,23 @@ func _build_ui() -> void:
 	_world_event_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	map_body.add_child(_world_event_label)
 
+	# What the player is ABOUT (Phase 19, audit AUD-10): the third orientation answer after
+	# "where" and "when". One row, in body text so it outranks the two muted lines above it,
+	# and never more than one row — a longer line trims rather than growing the plaque over
+	# the playfield (the area budget has room for exactly this, `HUD_PERMANENT_AREA_BUDGET`).
+	# Hidden when there is nothing to be about. It is a LINE in the place plaque, not a
+	# tracker box, and nothing in the world wears a marker (XIANXIA_IDENTITY_CONTRACT R-13).
+	_purpose_label = Label.new()
+	_purpose_label.name = "Purpose"
+	_purpose_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_purpose_label.add_theme_font_size_override("font_size", UIPalette.FONT_SIZE_HINT)
+	_purpose_label.add_theme_color_override("font_color", UIPalette.COLOR_TEXT)
+	_purpose_label.custom_minimum_size = Vector2(UIPalette.HUD_MAP_PANEL_WIDTH, 0)
+	_purpose_label.clip_text = true
+	_purpose_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_purpose_label.visible = false
+	map_body.add_child(_purpose_label)
+
 	# --- Top-centre: the combat target plaque (Phase 10) --------------------------
 	#
 	# Between the two top plaques, which is the one region of the top strip nothing owns, and
@@ -783,6 +808,14 @@ func _build_ui() -> void:
 	_bound_side_panel(_faction_panel, true)
 	_faction_panel.visible = false
 	root.add_child(_faction_panel)
+
+	# The quest journal (Phase 19): the RIGHT column, where the sect panel also opens — one
+	# reading surface per side, so opening either closes the other.
+	_quest_panel = QuestJournalPanel.new()
+	_quest_panel.name = "QuestJournalPanel"
+	_bound_side_panel(_quest_panel, false)
+	_quest_panel.visible = false
+	root.add_child(_quest_panel)
 
 
 ## Anchor a toggleable side panel as a BOUNDED BOX defined by the screen, not by its content.
@@ -1338,7 +1371,8 @@ func _refresh_notice() -> void:
 	var notice_key := StringName(_shown["key"])
 	var args := (_shown["args"] as Dictionary).duplicate()
 	# The satchel key is named where items are gained, so the bag is discoverable without a
-	# seventh permanent prompt in the strip.
+	# seventh permanent prompt in the strip. (The journal key is named the same way, where a
+	# quest is taken on — Phase 19: an eighth prompt measured 704 px, past the strip's half.)
 	if not args.is_empty() and not args.has("key"):
 		args["key"] = _display_label(INVENTORY_ACTION)
 	elif typeof(args.get("key")) == TYPE_STRING_NAME:
@@ -1471,6 +1505,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _sect_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", SECT_PANEL_ACTION):
 		_sect_panel.visible = not _sect_panel.visible
+		if _sect_panel.visible and _quest_panel != null:
+			_quest_panel.visible = false  # one reading surface on the right
+		handled = true
+	if _quest_panel != null \
+			and _input.call("is_gameplay_action_just_pressed", QUEST_JOURNAL_ACTION):
+		_quest_panel.visible = not _quest_panel.visible
+		if _quest_panel.visible and _sect_panel != null:
+			_sect_panel.visible = false
 		handled = true
 	if _faction_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", FACTION_PANEL_ACTION):
@@ -1479,9 +1521,10 @@ func _unhandled_input(_event: InputEvent) -> void:
 	# Esc steps BACK one level (PX-4). A reading panel that is open closes; only with nothing
 	# open does it ask about leaving — and asking is all one press can do.
 	if not handled and _input.call("is_system_action_just_pressed", OPEN_MENU_ACTION):
-		if is_sect_panel_open() or is_faction_panel_open():
+		if is_sect_panel_open() or is_faction_panel_open() or is_quest_journal_open():
 			_sect_panel.visible = false
 			_faction_panel.visible = false
+			_quest_panel.visible = false
 		else:
 			_show_session_prompt(PROMPT_LEAVE)
 		handled = true
@@ -1497,6 +1540,8 @@ func _close_side_panels() -> void:
 		_sect_panel.visible = false
 	if _faction_panel != null:
 		_faction_panel.visible = false
+	if _quest_panel != null:
+		_quest_panel.visible = false
 	close_inventory()
 	# A fight ends a conversation: ask the shop's owner to close it.
 	if _shop_modal:
@@ -1762,6 +1807,43 @@ func set_inventory_view(view: InventoryView) -> void:
 
 
 ## Is the Sect detail panel currently shown? (for tests)
+## Push the quest view (Phase 19): the journal's entries and the plaque's purpose line.
+func set_quest_view(view: QuestJournalView) -> void:
+	_quest_view = view
+	if _quest_panel != null:
+		_quest_panel.set_view(view)
+	_refresh_purpose()
+
+
+func is_quest_journal_open() -> bool:
+	return _quest_panel != null and _quest_panel.visible
+
+
+func quest_journal_panel() -> QuestJournalPanel:
+	return _quest_panel
+
+
+## The purpose line as shown, or "" when hidden — for tests and captures.
+func purpose_text() -> String:
+	return _purpose_label.text if _purpose_label != null and _purpose_label.visible else ""
+
+
+## One row under the place and the date: where to go, what to do, or who to return to. Body
+## colour normally; the accent when a quest is ready to answer — and the WORDS differ too.
+func _refresh_purpose() -> void:
+	if _purpose_label == null:
+		return
+	var shown := _quest_view != null and _quest_view.available \
+		and _quest_view.purpose_key != &""
+	_purpose_label.visible = shown
+	if not shown:
+		_purpose_label.text = ""
+		return
+	_purpose_label.text = _resolve(_quest_view.purpose_key)
+	_purpose_label.add_theme_color_override("font_color", UIPalette.COLOR_ACCENT
+		if _quest_view.purpose_phase == QuestService.Phase.READY else UIPalette.COLOR_TEXT)
+
+
 func is_sect_panel_open() -> bool:
 	return _sect_panel != null and _sect_panel.visible
 
@@ -1793,6 +1875,9 @@ func _refresh() -> void:
 	_refresh_notice()
 	_refresh_breakthrough_text()
 	_refresh_world_sim()
+	_refresh_purpose()
+	if _quest_panel != null:
+		_quest_panel.refresh_language()
 	_refresh_prompts()
 
 

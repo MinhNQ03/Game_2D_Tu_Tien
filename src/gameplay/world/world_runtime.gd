@@ -346,6 +346,9 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	_connect_pet_signals()
 	_connect_npc_signals()
 	_connect_dialogue_signals()
+	# The quest view is the player's, not the map's: the new map's HUD shows it at once.
+	_connect_quest_signals()
+	_push_quest_view_to_active_map()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -547,6 +550,25 @@ func arm_active_map_combat(combat_runtime: Node) -> bool:
 
 ## Spawn the active map's authored enemies, and tell them what to hunt (Phase 10).
 ##
+## Every kind of creature (`EnemyData.id`) some map of this world spawns. Asked once, at
+## session start, by whoever must know that a creature it names can ever be met (a quest's
+## DEFEAT objective, Phase 19). Reads the same per-map spawn tables the maps are populated from.
+func get_enemy_kinds() -> Array[StringName]:
+	var kinds: Array[StringName] = []
+	for map_id: StringName in get_map_lookup():
+		var table_path := "%s/spawn_table_%s.tres" % [
+			SPAWN_TABLE_DIR, String(map_id).trim_prefix("map_")]
+		if not ResourceLoader.exists(table_path):
+			continue
+		var table := load(table_path) as EnemySpawnTableData
+		if table == null:
+			continue
+		for enemy in table.enemies:
+			if enemy != null and not kinds.has(enemy.id):
+				kinds.append(enemy.id)
+	return kinds
+
+
 ## The player is the hunt target, pushed from here because the WORLD is what knows the player
 ## exists — an enemy that searched the tree for one would be an O(tree) walk per creature per
 ## tick and a dependency pointing the wrong way.
@@ -1054,6 +1076,108 @@ func _on_shop_close_requested() -> void:
 
 
 # --- Conversations (Phase 18) ---------------------------------------------------------
+
+# --- Quests (Phase 19) ---------------------------------------------------------
+
+## Push the quest view (the journal and the plaque's purpose line) into the active map's HUD.
+## Called by Main once the quest session is live, after every map entry, and whenever the
+## quest owner says its view changed.
+func refresh_active_map_quest_view() -> void:
+	_connect_quest_signals()
+	_push_quest_view_to_active_map()
+
+
+func _push_quest_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_quest_view"):
+		return
+	var quests := _find_sibling_of(QuestRuntime) as QuestRuntime
+	if quests == null or not quests.is_session_active():
+		return
+	_active_map.call("set_quest_view", quests.build_view())
+
+
+func _connect_quest_signals() -> void:
+	var quests := _find_sibling_of(QuestRuntime) as QuestRuntime
+	if quests == null:
+		return
+	if not quests.view_changed.is_connected(_push_quest_view_to_active_map):
+		quests.view_changed.connect(_push_quest_view_to_active_map)
+	if not quests.quest_accepted.is_connected(_on_quest_accepted):
+		quests.quest_accepted.connect(_on_quest_accepted)
+	if not quests.quest_abandoned.is_connected(_on_quest_abandoned):
+		quests.quest_abandoned.connect(_on_quest_abandoned)
+	if not quests.quest_advanced.is_connected(_on_quest_advanced):
+		quests.quest_advanced.connect(_on_quest_advanced)
+	if not quests.quest_ready.is_connected(_on_quest_ready):
+		quests.quest_ready.connect(_on_quest_ready)
+	if not quests.quest_completed.is_connected(_on_quest_completed):
+		quests.quest_completed.connect(_on_quest_completed)
+
+
+func _quest_data(quest_id: StringName) -> QuestData:
+	var quests := _find_sibling_of(QuestRuntime) as QuestRuntime
+	return quests.get_service().catalog().entry(quest_id) \
+		if quests != null and quests.is_session_active() else null
+
+
+## Each quest announcement follows the OWNER's outcome signal (PX-6), and each says a
+## different thing: taken on, given back, an objective moved, ready to answer, done.
+func _on_quest_accepted(quest_id: StringName) -> void:
+	var quest := _quest_data(quest_id)
+	if quest != null:
+		# The journal's key is named HERE, where a quest is taken on — the way the satchel's
+		# is named where an item is gained — instead of an eighth prompt in the strip.
+		_notify(&"announce_result", &"UI_QUEST_ACCEPTED", {"title": quest.title_key,
+			"key": &"quest_journal"})
+
+
+func _on_quest_abandoned(quest_id: StringName) -> void:
+	var quest := _quest_data(quest_id)
+	if quest != null:
+		_notify(&"announce_result", &"UI_QUEST_ABANDONED", {"title": quest.title_key, "key": ""})
+
+
+## PASSIVE: it happened on the player's way (a pickup, a kill), so it waits its turn behind
+## the answer to whatever they are doing.
+func _on_quest_advanced(quest_id: StringName, objective_id: StringName, value: int,
+		required: int) -> void:
+	var quest := _quest_data(quest_id)
+	var entry := quest.objective(objective_id) if quest != null else null
+	if entry != null:
+		_notify(&"announce", &"UI_QUEST_ADVANCED", {"text": entry.text_key, "value": value,
+			"required": required, "key": ""})
+
+
+func _on_quest_ready(quest_id: StringName) -> void:
+	var quest := _quest_data(quest_id)
+	if quest != null:
+		_notify(&"announce", &"UI_QUEST_READY", {"title": quest.title_key,
+			"hint": quest.return_key, "key": ""})
+
+
+## Done, and what it paid — each from what the quest AUTHORED, after the ledger said paid:
+## what changed hands, what was received, whose regard moved. (XP shows in its own meter.)
+func _on_quest_completed(quest_id: StringName) -> void:
+	var quest := _quest_data(quest_id)
+	if quest == null:
+		return
+	_notify(&"announce_result", &"UI_QUEST_COMPLETED", {"title": quest.title_key, "key": ""})
+	for entry in quest.objectives:
+		if entry.kind == QuestObjectiveData.Kind.HOLD_ITEM and entry.consumed:
+			_announce_item(&"announce_result", &"UI_QUEST_HANDED_OVER", entry.target_id,
+				entry.count)
+	for row in quest.reward.items:
+		_announce_item(&"announce_result", &"UI_QUEST_RECEIVED", row.item.id, row.count)
+	var who := _characters.get_character(quest.reward.regard_character_id) \
+		if _characters != null and quest.reward.has_regard() else null
+	if who != null:
+		var raised := quest.reward.regard_delta > 0
+		_notify(&"announce_result",
+			&"UI_DIALOGUE_REGARD_UP" if raised else &"UI_DIALOGUE_REGARD_DOWN",
+			{"name": who.name_key, "dimension": StringName("UI_REL_DIM_%s"
+				% String(quest.reward.regard_dimension).to_upper()),
+				"amount": absi(quest.reward.regard_delta), "key": ""})
+
 
 func refresh_active_map_dialogue_view() -> void:
 	_connect_dialogue_signals()

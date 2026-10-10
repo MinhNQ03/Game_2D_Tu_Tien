@@ -12,7 +12,9 @@ class_name DialogueService
 ##   * knowledge is granted through the `grant` Callable the caller supplies — the Knowledge
 ##     Core's own grant path (`KnowledgeRuntime.grant` in a session, so it is announced);
 ##   * opening a shop is returned as an ACTION for the gameplay layer: this class cannot and
-##     does not open anything.
+##     does not open anything;
+##   * a quest is taken, answered or given back through the `quest_op` Callable the caller
+##     supplies (`QuestRuntime`, D-070). What a quest's phase is, is `QuestService`'s to say.
 ##
 ## A choice is authorised TWICE: `eligible_choices` decides what is shown, and `choose` asks
 ## the same conditions again before it changes anything, so a stale list cannot commit a
@@ -34,10 +36,14 @@ var _catalog: DialogueCatalogData = null
 var _knowledge: KnowledgeService = null
 var _relationship: RelationshipService = null
 var _config: RelationshipConfigData = null
+## Optional: the quest owner, asked for a quest's phase. Without it, content that names a
+## quest is a content error and a quest condition is never met.
+var _quests: QuestService = null
 
 
 func _init(catalog: DialogueCatalogData = null, knowledge: KnowledgeService = null,
-		relationship: RelationshipService = null, config: RelationshipConfigData = null) -> void:
+		relationship: RelationshipService = null, config: RelationshipConfigData = null,
+		quests: QuestService = null) -> void:
 	if catalog == null or knowledge == null or not knowledge.is_ready() \
 			or relationship == null or config == null:
 		return
@@ -48,6 +54,7 @@ func _init(catalog: DialogueCatalogData = null, knowledge: KnowledgeService = nu
 	_knowledge = knowledge
 	_relationship = relationship
 	_config = config
+	_quests = quests if quests != null and quests.is_ready() else null
 
 
 func is_ready() -> bool:
@@ -91,6 +98,8 @@ func content_errors(has_text: Callable = Callable(), keeps_shop: Callable = Call
 				for condition in option.conditions:
 					errors.append_array(_condition_errors(where, condition))
 				errors.append_array(_effect_errors(where, dialogue, option.effect, keeps_shop))
+				errors.append_array(_quest_effect_errors(where, dialogue, option))
+	errors.append_array(_quest_coverage_errors())
 	return errors
 
 
@@ -110,6 +119,68 @@ func _condition_errors(where: String, condition: DialogueConditionData) -> Array
 				errors.append("%s: threshold %d on '%s' is outside [%d, %d]" % [where,
 					condition.value, condition.dimension, _config.get_min(condition.dimension),
 					_config.get_max(condition.dimension)])
+		DialogueConditionData.Kind.QUEST_PHASE:
+			if _quests == null or not _quests.catalog().has(condition.quest_id):
+				errors.append("%s: asks about quest '%s', which the quest catalog does not define"
+					% [where, condition.quest_id])
+	return errors
+
+
+## A quest effect must name a quest that exists and be said by the right person: a quest is
+## taken from and given back to its GIVER, and answered to its RECEIVER. A turn-in must be
+## conditioned on the quest being READY, so it is never offered before it can succeed.
+func _quest_effect_errors(where: String, dialogue: DialogueData,
+		option: DialogueChoiceData) -> Array[String]:
+	var errors: Array[String] = []
+	var effect := option.effect
+	if effect == null or not effect.is_quest_kind():
+		return errors
+	var quest := _quests.catalog().entry(effect.quest_id) if _quests != null else null
+	if quest == null:
+		errors.append("%s: acts on quest '%s', which the quest catalog does not define"
+			% [where, effect.quest_id])
+		return errors
+	if effect.kind == DialogueEffectData.Kind.QUEST_TURN_IN:
+		if dialogue.speaker_id != quest.receiver_id:
+			errors.append("%s: '%s' is answered to '%s', not to '%s'" % [where, quest.id,
+				quest.receiver_id, dialogue.speaker_id])
+		if not _requires_phase(option, quest.id, QuestService.Phase.READY):
+			errors.append(("%s: a turn-in of '%s' must require QUEST_PHASE READY, or it is "
+				+ "offered before it can succeed") % [where, quest.id])
+	elif dialogue.speaker_id != quest.giver_id:
+		errors.append("%s: '%s' is given by '%s', not by '%s'" % [where, quest.id,
+			quest.giver_id, dialogue.speaker_id])
+	return errors
+
+
+func _requires_phase(option: DialogueChoiceData, quest_id: StringName,
+		phase: QuestService.Phase) -> bool:
+	for condition in option.conditions:
+		if condition.kind == DialogueConditionData.Kind.QUEST_PHASE and not condition.negate \
+				and condition.quest_id == quest_id and condition.quest_phase == phase:
+			return true
+	return false
+
+
+## Every quest must be reachable in conversation, whole: taken, answered and given back. A
+## quest nobody offers could never start; one nobody takes back could never be abandoned.
+func _quest_coverage_errors() -> Array[String]:
+	var errors: Array[String] = []
+	if _quests == null:
+		return errors
+	var said: Dictionary = {}
+	for dialogue in _catalog.entries:
+		for line in dialogue.nodes:
+			for option in line.choices:
+				if option.effect != null and option.effect.is_quest_kind():
+					said["%s#%d" % [option.effect.quest_id, option.effect.kind]] = true
+	var names := {DialogueEffectData.Kind.QUEST_ACCEPT: "offers",
+		DialogueEffectData.Kind.QUEST_TURN_IN: "takes the answer to",
+		DialogueEffectData.Kind.QUEST_ABANDON: "takes back"}
+	for quest in _quests.catalog().entries:
+		for kind: int in names:
+			if not said.has("%s#%d" % [quest.id, kind]):
+				errors.append("quest '%s': no conversation %s it" % [quest.id, names[kind]])
 	return errors
 
 
@@ -154,6 +225,10 @@ func condition_met(condition: DialogueConditionData, speaker_id: StringName,
 			met = _knowledge.knows(condition.knowledge_id)
 		DialogueConditionData.Kind.RELATIONSHIP_AT_LEAST:
 			met = regard(speaker_id, listener_id, condition.dimension) >= condition.value
+		DialogueConditionData.Kind.QUEST_PHASE:
+			if _quests == null:
+				return false  # nobody to ask: never met, negated or not
+			met = _quests.phase_of(condition.quest_id) == condition.quest_phase
 		_:
 			return false  # an unknown kind is never met, negated or not
 	return met != condition.negate
@@ -200,8 +275,11 @@ func advance(dialogue_id: StringName, node_id: StringName) -> DialogueOutcome:
 ## does the conversation move. A refusal — unknown, no longer offered, or refused by the
 ## effect's owner — changes nothing and leaves the conversation where it was.
 ## `grant(knowledge_id, source_id) -> StringName` is the Knowledge Core's grant path.
+## `quest_op(kind, quest_id, speaker_id) -> StringName` is the quest owner's: empty on
+## success, else ITS reason — which becomes this refusal's, so the player is told why.
 func choose(dialogue_id: StringName, node_id: StringName, choice_id: StringName,
-		listener_id: StringName, grant: Callable) -> DialogueOutcome:
+		listener_id: StringName, grant: Callable, quest_op: Callable = Callable()) \
+		-> DialogueOutcome:
 	var dialogue := _catalog.entry(dialogue_id) if is_ready() else null
 	var line := dialogue.node(node_id) if dialogue != null else null
 	if line == null or listener_id == &"":
@@ -221,6 +299,16 @@ func choose(dialogue_id: StringName, node_id: StringName, choice_id: StringName,
 			applied = _apply_grant(outcome, dialogue, option.effect, grant)
 		DialogueEffectData.Kind.OPEN_SHOP:
 			outcome.action = ACTION_OPEN_SHOP
+		DialogueEffectData.Kind.QUEST_ACCEPT, DialogueEffectData.Kind.QUEST_TURN_IN, \
+		DialogueEffectData.Kind.QUEST_ABANDON:
+			if not quest_op.is_valid():
+				applied = false
+			else:
+				var why: StringName = quest_op.call(option.effect.kind,
+					option.effect.quest_id, dialogue.speaker_id)
+				if why != &"":
+					return DialogueOutcome.refused(why, dialogue_id, node_id, choice_id)
+				outcome.quest_id = option.effect.quest_id
 		_:
 			applied = false
 	if not applied:

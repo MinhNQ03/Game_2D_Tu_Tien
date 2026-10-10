@@ -1,0 +1,91 @@
+[gd_resource type="Resource" script_class="QuestCatalogData" load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://src/data/quest/quest_catalog_data.gd" id="1_cat"]
+[ext_resource type="Script" path="res://src/data/quest/quest_data.gd" id="2_quest"]
+[ext_resource type="Script" path="res://src/data/quest/quest_objective_data.gd" id="3_obj"]
+[ext_resource type="Script" path="res://src/data/reward/reward_data.gd" id="4_reward"]
+[ext_resource type="Script" path="res://src/data/reward/reward_item_data.gd" id="5_ritem"]
+[ext_resource type="Resource" path="res://data/items/item_bo_huyet_dan.tres" id="10_pill"]
+[ext_resource type="Resource" path="res://data/items/item_linh_thach.tres" id="11_stone"]
+
+[sub_resource type="Resource" id="O_vein_fight"]
+script = ExtResource("3_obj")
+id = &"fight"
+kind = 2
+target_id = &"enemy_mist_wolf"
+count = 1
+text_key = &"QUEST_UNQUIET_VEIN_OBJ_FIGHT"
+
+[sub_resource type="Resource" id="O_vein_ask"]
+script = ExtResource("3_obj")
+id = &"ask"
+kind = 0
+target_id = &"know_vu_lang_hunting_ground"
+count = 1
+text_key = &"QUEST_UNQUIET_VEIN_OBJ_ASK"
+
+[sub_resource type="Resource" id="RI_vein_pills"]
+script = ExtResource("5_ritem")
+item = ExtResource("10_pill")
+count = 2
+
+[sub_resource type="Resource" id="R_vein"]
+script = ExtResource("4_reward")
+items = Array[ExtResource("5_ritem")]([SubResource("RI_vein_pills")])
+xp = 10
+regard_character_id = &"actor_elder_shen"
+regard_dimension = &"respect"
+regard_delta = 10
+
+[sub_resource type="Resource" id="Q_unquiet_vein"]
+script = ExtResource("2_quest")
+id = &"quest_unquiet_vein"
+title_key = &"QUEST_UNQUIET_VEIN_TITLE"
+summary_key = &"QUEST_UNQUIET_VEIN_SUMMARY"
+lead_key = &"QUEST_UNQUIET_VEIN_LEAD"
+goal_key = &"QUEST_UNQUIET_VEIN_GOAL"
+return_key = &"QUEST_UNQUIET_VEIN_RETURN"
+giver_id = &"actor_elder_shen"
+receiver_id = &"actor_elder_shen"
+completion = 1
+objectives = Array[ExtResource("3_obj")]([SubResource("O_vein_fight"), SubResource("O_vein_ask")])
+reward = SubResource("R_vein")
+
+[sub_resource type="Resource" id="O_pills_carry"]
+script = ExtResource("3_obj")
+id = &"carry"
+kind = 1
+target_id = &"item_bo_huyet_dan"
+count = 2
+consumed = true
+text_key = &"QUEST_TREELINE_PILLS_OBJ_CARRY"
+
+[sub_resource type="Resource" id="RI_pills_stones"]
+script = ExtResource("5_ritem")
+item = ExtResource("11_stone")
+count = 3
+
+[sub_resource type="Resource" id="R_pills"]
+script = ExtResource("4_reward")
+items = Array[ExtResource("5_ritem")]([SubResource("RI_pills_stones")])
+regard_character_id = &"actor_scout_ko"
+regard_dimension = &"affinity"
+regard_delta = 15
+
+[sub_resource type="Resource" id="Q_treeline_pills"]
+script = ExtResource("2_quest")
+id = &"quest_treeline_pills"
+title_key = &"QUEST_TREELINE_PILLS_TITLE"
+summary_key = &"QUEST_TREELINE_PILLS_SUMMARY"
+lead_key = &"QUEST_TREELINE_PILLS_LEAD"
+goal_key = &"QUEST_TREELINE_PILLS_GOAL"
+return_key = &"QUEST_TREELINE_PILLS_RETURN"
+giver_id = &"actor_scout_ko"
+receiver_id = &"actor_scout_ko"
+completion = 0
+objectives = Array[ExtResource("3_obj")]([SubResource("O_pills_carry")])
+reward = SubResource("R_pills")
+
+[resource]
+script = ExtResource("1_cat")
+entries = Array[ExtResource("2_quest")]([SubResource("Q_unquiet_vein"), SubResource("Q_treeline_pills")])

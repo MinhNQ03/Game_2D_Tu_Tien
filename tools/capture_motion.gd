@@ -18,8 +18,8 @@ extends SceneTree
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
 ## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
-## techniques, golden, field_fight, pet, shop, dialogue, session (second user argument runs
-## one; a third picks the language, `vi` or `en`, default the saved setting).
+## techniques, golden, field_fight, pet, shop, dialogue, session, quest (second user argument
+## runs one; a third picks the language, `vi` or `en`, default the saved setting).
 ##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
 ## on top of the camera's own zoom) and `<out>/scene_<name>.png` full frames. Exit code 1 if any
@@ -109,6 +109,9 @@ func _run() -> void:
 	if _only == "session":
 		print("[capture_motion] scenario session")
 		await _scenario_session()
+	if _only == "quest":
+		print("[capture_motion] scenario quest")
+		await _scenario_quest()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -675,8 +678,7 @@ func _scenario_dialogue() -> void:
 	await _shot("scene_dialogue_elder_teach")
 	await _press(&"interact")
 	await _settle()
-	await _press(&"move_down")
-	await _settle()
+	await _choose(&"shen_leave")
 	await _shot("scene_dialogue_elder_leave_selected")
 	await _press(&"interact")
 	await _settle()
@@ -782,6 +784,198 @@ func _scenario_session() -> void:
 		return
 	await _settle()
 	await _shot("scene_session_defeat")
+
+
+## Both shipped quests (Phase 19), start to finish: the purpose line at spawn, the elder's
+## ask and its explicit choice, the journal, the question before a task is given back, the
+## scout's errand, the knowledge route, a reward refused by a full satchel and then paid, the
+## pills carried to the scout.
+##
+## SETUP, stated plainly: the player is PLACED beside each person and the stele, and the
+## satchel is filled and emptied through `InventoryRuntime` for the refusal frame. Every
+## answer, every panel and every map change is a real key.
+func _scenario_quest() -> void:
+	var player := _player()
+	var quests := _main.get_node_or_null("Systems/QuestRuntime") as QuestRuntime
+	var inventory := _main.get_node_or_null("Systems/InventoryRuntime") as InventoryRuntime
+	var shen := _map_node("Interactables/ShenBuqi") as Node2D
+	var stele := _map_node("KnowledgeSources/LacHaStele") as Node2D
+	if player == null or quests == null or inventory == null or shen == null or stele == null:
+		_fail("quest: pieces missing")
+		return
+	await _settle()
+	await _shot("scene_quest_01_spawn_lead")
+	player.global_position = stele.global_position + Vector2(0, 20)
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	if not await _open_talk(player, shen):
+		return
+	await _choose(&"shen_task_ask")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_quest_02_elder_why")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_quest_03_elder_offer")
+	await _press(&"interact")
+	await _settle()
+	if quests.get_service().phase_of(&"quest_unquiet_vein") != QuestService.Phase.ACTIVE:
+		_fail("quest: the elder's task was not accepted")
+		return
+	await _shot("scene_quest_04_accepted")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"quest_journal")
+	await _settle()
+	await _shot("scene_quest_05_journal_active")
+	await _press(&"quest_journal")
+	await _settle()
+	if not await _open_talk(player, shen):
+		return
+	await _choose(&"shen_task_about")
+	await _press(&"interact")
+	await _settle()
+	await _choose(&"shen_task_giveup")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_quest_06_abandon_question")
+	await _press(&"interact")  # the answer under the cursor KEEPS the task
+	await _settle()
+	await _press(&"open_menu")
+	await _settle()
+	if not await _travel_through_first_exit(player):
+		_fail("quest: the exit did not transition")
+		return
+	await _settle()
+	var ko := _map_node("Interactables/KoThan") as Node2D
+	if ko == null or not await _open_talk(player, ko):
+		_fail("quest: Kha Thản could not be talked to")
+		return
+	await _shot("scene_quest_07_ko_hub_five")
+	await _choose(&"ko_pills_ask")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_quest_08_ko_offer")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_quest_09_ko_taken")
+	await _press(&"interact")
+	await _settle()
+	if not await _open_talk(player, ko):
+		return
+	await _choose(&"ko_ask_woods")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	await _press(&"open_menu")
+	# The answers to this press drain first; then the passive "ready" line has the band.
+	for _i in 600:
+		await process_frame
+		if _hud() != null and _hud().purpose_text() != "" \
+				and _hud().notice_text().contains(_hud().purpose_text()):
+			break
+	await _shot("scene_quest_10_ready_notice")
+	await _press(&"quest_journal")
+	await _settle()
+	await _shot("scene_quest_11_journal_ready_and_active")
+	await _press(&"quest_journal")
+	await _settle()
+	if not await _travel_through_first_exit(player):
+		_fail("quest: the way back did not transition")
+		return
+	await _settle()
+	shen = _map_node("Interactables/ShenBuqi") as Node2D
+	var bag := inventory.get_bag()
+	inventory.give(&"item_kiem_thanh_thiet", bag.capacity)  # SETUP: a full satchel
+	var blades := inventory.count_of(&"item_kiem_thanh_thiet")
+	if not await _open_talk(player, shen):
+		return
+	await _choose(&"shen_task_report_word")
+	await _press(&"interact")
+	await _settle()
+	await _shot("scene_quest_12_reward_refused")
+	await _press(&"open_menu")
+	await _settle()
+	inventory.take(&"item_kiem_thanh_thiet", blades)  # SETUP: room made
+	if not await _open_talk(player, shen):
+		return
+	await _choose(&"shen_task_report_word")
+	await _press(&"interact")
+	await _settle()
+	if quests.get_service().phase_of(&"quest_unquiet_vein") != QuestService.Phase.COMPLETED:
+		_fail("quest: the elder's task was not completed")
+		return
+	await _shot("scene_quest_13_reward_paid")
+	for _i in 600:
+		await process_frame
+		if _hud() != null and _hud().notice_text().contains("×2"):
+			break
+	await _shot("scene_quest_14_reward_received")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"quest_journal")
+	await _settle()
+	await _shot("scene_quest_15_journal_done_and_ready")
+	await _press(&"quest_journal")
+	await _settle()
+	if not await _travel_through_first_exit(player):
+		_fail("quest: the road to the scout did not transition")
+		return
+	await _settle()
+	ko = _map_node("Interactables/KoThan") as Node2D
+	if ko == null or not await _open_talk(player, ko):
+		return
+	await _choose(&"ko_pills_give")
+	await _press(&"interact")
+	await _settle()
+	if quests.get_service().phase_of(&"quest_treeline_pills") != QuestService.Phase.COMPLETED:
+		_fail("quest: the scout's errand was not completed")
+		return
+	await _shot("scene_quest_16_ko_done")
+	await _press(&"interact")
+	await _settle()
+	await _press(&"quest_journal")
+	await _settle()
+	await _shot("scene_quest_17_journal_all_done")
+
+
+## The HUD of the active map, or null.
+func _hud() -> GameplayHUD:
+	var map := _current_map()
+	var found := map.find_children("*", "GameplayHUD", true, false) if map != null else []
+	return found[0] as GameplayHUD if not found.is_empty() else null
+
+
+## Walk beside `who`, open their conversation with a real key and pass the greeting.
+func _open_talk(player: Node2D, who: Node2D) -> bool:
+	var dialogue := _main.get_node_or_null("Systems/DialogueRuntime") as DialogueRuntime
+	await _stand_beside(player, who)
+	await _press(&"interact")
+	await _settle()
+	if dialogue == null or not dialogue.is_open():
+		_fail("the conversation did not open")
+		return false
+	await _press(&"interact")
+	await _settle()
+	return true
+
+
+## Move the cursor to `choice_id` with real move keys (bounded; a lost press is retried).
+func _choose(choice_id: StringName) -> void:
+	var hud := _hud()
+	var panel := hud.dialogue_panel() if hud != null else null
+	if panel == null or not panel.choice_ids().has(choice_id):
+		_fail("'%s' is not offered" % choice_id)
+		return
+	for _i in 8:
+		if panel.selected_choice_id() == choice_id:
+			break
+		await _press(&"move_down")
+		await _settle()
+	if panel.selected_choice_id() != choice_id:
+		_fail("'%s' could not be selected" % choice_id)
 
 
 ## SETUP + a short real walk: stand to the right of `who`, just out of reach, and walk in.

@@ -174,8 +174,9 @@ func test_real_dialogue_flow() -> void:
 	await _walk_into_reach(player, hub, shen, Vector2(70, 6), MOVE_LEFT)
 	await _press_until(INTERACT, func() -> bool: return dialogue.is_open())
 	await _press_until(INTERACT, func() -> bool: return dialogue.current_node_id() == &"shen_hub")
-	assert_eq(panel.choice_ids(), [&"shen_report", &"shen_leave"] as Array[StringName],
-		"having read the stele, recounting it IS offered")
+	assert_eq(panel.choice_ids(), [&"shen_report", &"shen_task_ask", &"shen_leave"]
+		as Array[StringName],
+		"having read the stele, recounting it IS offered (and what he would ask of a reader)")
 	assert_eq(panel.selected_choice_id(), &"shen_report", "and is the selected answer")
 	await _press_until(INTERACT,
 		func() -> bool: return dialogue.current_node_id() == &"shen_approve")
@@ -190,8 +191,8 @@ func test_real_dialogue_flow() -> void:
 
 	# --- 9. respect opens the next answer; he teaches through the Knowledge Core -----------
 	await _press_until(INTERACT, func() -> bool: return dialogue.current_node_id() == &"shen_hub")
-	assert_eq(panel.choice_ids(), [&"shen_ask", &"shen_leave"] as Array[StringName],
-		"respect closed one answer and opened another")
+	assert_eq(panel.choice_ids(), [&"shen_ask", &"shen_task_ask", &"shen_leave"]
+		as Array[StringName], "respect closed one answer and opened another")
 	var learned: Array[StringName] = []
 	var on_learned := func(id: StringName, _source: StringName) -> void: learned.append(id)
 	knowledge.knowledge_gained.connect(on_learned)
@@ -241,7 +242,7 @@ func test_real_dialogue_flow() -> void:
 
 	# --- 12. tell him the stele's news: affinity, in the graph -------------------------------
 	await _press_until(INTERACT, func() -> bool: return dialogue.current_node_id() == &"ko_hub")
-	assert_eq(panel.choice_ids().size(), 4, "four answers")
+	assert_eq(panel.choice_ids().size(), 5, "four answers, and the errand he has (Phase 19)")
 	await _press_until(MOVE_DOWN,
 		func() -> bool: return panel.selected_choice_id() == &"ko_ask_woods")
 	await _press_until(MOVE_DOWN,
