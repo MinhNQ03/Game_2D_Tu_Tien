@@ -302,17 +302,23 @@ func _step_feedback(map: Node) -> void:
 	# out-of-order notice fails.
 	started = Time.get_ticks_msec()
 	var sequence: Array[String] = []
-	var last_seq := 0
+	# EVERY id recorded so far, not just the last: the HUD resumes an interrupted notice with
+	# its original id, and "different from the last one" recorded the resumed notice twice.
+	var recorded_ids: Dictionary = {}
+	var diagnostics: Array[String] = []
 	var budget := int((expected_passives + 3) * UIPalette.HUD_NOTICE_SECONDS * 75.0)
 	for _i in budget:
 		await process_frame
 		var text := hud.notice_text()
 		var seq := hud.notice_seq()
 		# Identity, not text: two distinct notice instances with identical kind and
-		# text have different seq values and must both be recorded.
-		if NoticeSequenceValidator.should_record(text, seq, last_seq):
-			sequence.append("%s:%s" % [hud.notice_kind(), text])
-			last_seq = seq
+		# text have different seq values and must both be recorded; a resumed instance
+		# keeps its seq and is recorded once.
+		var seen: Dictionary = NoticeSequenceValidator.record(sequence, recorded_ids,
+			String(hud.notice_kind()), text, seq)
+		var diagnostic := String(seen["diagnostic"])
+		if diagnostic != "" and not diagnostics.has(diagnostic):
+			diagnostics.append(diagnostic)
 		if text == "" and hud.pending_notice_keys().is_empty():
 			break
 	var second := String(loc.call("t", "KNOW_LAC_HA_STELE_RECORD_NAME"))
@@ -327,8 +333,11 @@ func _step_feedback(map: Node) -> void:
 		{"kind": String(GameplayHUD.NOTICE_PASSIVE), "contains": robe_name},
 	]
 	var verdict: Dictionary = NoticeSequenceValidator.validate(sequence, expected)
-	var ok: bool = bool(verdict["ok"]) and not hud.notice_backlog_overflowed()
+	var ok: bool = (bool(verdict["ok"]) and not hud.notice_backlog_overflowed()
+		and diagnostics.is_empty())
 	var detail := String(verdict["reason"]) if not bool(verdict["ok"]) else "sequence exact"
+	if not diagnostics.is_empty():
+		detail += "; MALFORMED NOTICE: " + " / ".join(diagnostics)
 	if hud.notice_backlog_overflowed():
 		detail += "; BACKLOG OVERFLOWED"
 	_record("05d_notices_kept",

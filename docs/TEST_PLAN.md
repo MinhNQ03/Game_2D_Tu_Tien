@@ -998,6 +998,9 @@ baseline). After A1 carried item #1: 841 tests, 841 passed, 0 failed — verifie
 (https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/37899934278).
 After A1 item #2 reopen fix: 853 tests, 853 passed, 0 failed — verified locally
 (Godot 4.7.2 `ed1daf0bf`, 0 SCRIPT ERROR, 0 leaks) and by CI on the closeout HEAD.
+After the resumed-notice identity regression fix (2026-10-10): the validator has 18 tests
+(the recorder keeps the set of EVERY recorded id; A/41 → B/42 → A/41 resumed records A and B
+only); suite 859 tests, 859 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak lines — local.
 
 **D-063 A2a (physical truth — the stele and the spring):** `tests/gameplay/test_prop_bodies.gd`
 (4: the bodies exist from the pipeline's PropData; a walk with the player's own collision shape

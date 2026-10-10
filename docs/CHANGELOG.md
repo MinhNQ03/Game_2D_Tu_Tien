@@ -8,6 +8,24 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — D-063 regression: a resumed notice was recorded twice
+
+- **Root cause.** The HUD preserves an interrupted notice and resumes it with its ORIGINAL
+  sequence id (A/41 → B/42 interrupts → A/41 resumes). `NoticeSequenceValidator.should_record`
+  compared a visible id only with the LAST recorded id, so the resumed A (41 ≠ 42) was recorded
+  a second time. The HUD's interrupt/resume behaviour is correct and unchanged.
+- **Fix.** The recorder remembers EVERY recorded id per collection (`recorded: Dictionary`);
+  `should_record(text, seq, recorded)` rejects blank text, non-positive ids and any id already
+  recorded. `NoticeSequenceValidator.record()` appends the entry and marks the id only after
+  the append; malformed input (negative id, id without text, text without id, no kind) is never
+  recorded and is diagnosed, and `05d` fails on any diagnostic. `tools/playtest_flow.gd` 05d
+  uses the same recorder.
+- **Tests.** 18 validator tests (was 12): new id, repeated frame, identical text with distinct
+  ids, the A→B→A interruption, A still rejected after four later ids, blank text, zero/negative
+  ids, id marked only after the write, malformed-input diagnostics. Mutation-checked (dropping
+  the `recorded.has` test turns 4 of them red). Suite 859/859, 0 `SCRIPT ERROR:`, 0 leak lines;
+  app/player/world E2E PASS; real-app playtest 30/30 with `05d` "sequence exact".
+
 ### 2026-10-09 — D-063 Phase A final closeout (A1#2 identity, A2 deps, 5A/5B/5C)
 
 - **Notice identity is now stable.** `GameplayHUD.notice_seq()` exposes the notice's
