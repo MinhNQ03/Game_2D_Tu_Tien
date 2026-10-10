@@ -94,43 +94,53 @@
 ## 1. High-level flow
 
 ```
-START
+  [LIVE]             runs in the game today
+  [FUTURE, Phase N]  design target — NOT implemented; nothing in the running game does it
+
+START                                                               [LIVE]
   ↓
-MAIN MENU
+MAIN MENU                                                           [LIVE]
   ↓
-NEW GAME ─────────────► (or LOAD GAME → resume at saved state)
-  ↓
-PROLOGUE
-  ↓
-VILLAGE  ◄──────────────┐
+NEW GAME                                                            [LIVE]
+  ↓  ╌╌╌╌► LOAD GAME → resume at saved state                        [FUTURE, Phase 23]
+  ↓        (no save exists: the menu entry is shown DISABLED)
+PROLOGUE                                                            [FUTURE, story — Phase 20+]
+  ↓        (today New Game opens straight into the hub map)
+VILLAGE  ◄──────────────┐                                           [LIVE — the hub map]
   ↓                     │
-QUEST                   │
+QUEST                   │                                           [FUTURE, Phase 19]
   ↓                     │
-FOREST (map)            │
+FOREST (map)            │                                           [LIVE — the field map]
   ↓                     │
-COMBAT                  │
+COMBAT                  │                                           [LIVE, Phases 09–10]
   ↓                     │
 LEVEL UP  (XP / Level)  │   ← frequent, numerical, combat-derived   [LIVE, Phase 11]
   ↓                     │
-CẢNH GIỚI / TU LUYỆN    │   ← rare, qualitative, unlocks capability [FUTURE, Phase 12]
+CẢNH GIỚI / TU LUYỆN    │   ← rare, qualitative, unlocks capability [LIVE, Phase 12]
   ↓                     │
-DUNGEON                 │
+DUNGEON                 │                                           [FUTURE, Phase 21]
   ↓                     │
-BOSS                    │
+BOSS                    │                                           [FUTURE, Phase 22]
   ↓                     │
-STORY (branching)       │
+STORY (branching)       │                                           [FUTURE, Phase 20]
   ↓                     │
-CHAPTER PROGRESSION ────┘  (loop into next chapter's village/maps)
+CHAPTER PROGRESSION ────┘  (loop into next chapter's village/maps)  [FUTURE, Phase 20]
   ↓
-SAVE   (can occur at many points, not only here)
+SAVE   (can occur at many points, not only here)                    [FUTURE, Phase 23]
   ↓
-END GAME
+END GAME                                                            [FUTURE]
 ```
 
-The vertical line is the **player's first-playthrough path**. The loop-back arrow is
+The vertical line is the **player's first-playthrough path** — the DESIGN TARGET, not a
+description of today's build. Each box carries its own tag so the two cannot be confused: only
+the `[LIVE]` boxes run (the status block's ① list is the detail), and the path a player can
+actually walk today is `MAIN MENU → NEW GAME → hub ↔ field → MENU`. In particular **there is
+no working load flow**: file-level Save / Load is Phase 23, the menu's Load entry is a disabled
+placeholder (`main_menu.gd`), and what exists is only each owner's in-memory
+`to_dict()` / `from_dict()` boundary (§3.13). The loop-back arrow is
 the key architectural truth: after a chapter, the game returns to the explore → quest →
 combat → progress loop with *new content*, not new systems. SAVE is drawn once for
-clarity but is a cross-cutting capability available throughout.
+clarity but is designed as a cross-cutting capability available throughout.
 
 > **The two progression boxes are two AXES, not two steps** (D-055-C). The diagram is vertical
 > because it traces one playthrough, but levelling is not a prerequisite for a breakthrough and
@@ -139,7 +149,9 @@ clarity but is a cross-cutting capability available throughout.
 > giới is the rare qualitative axis that gates content and capability, and a realm advance must
 > answer "what can I do now that I could not before?" with something other than a bigger
 > number. Collapsing them into one bar is forbidden by
-> `docs/PROGRESSION_CULTIVATION_DESIGN.md` §1. Only the first axis exists today.
+> `docs/PROGRESSION_CULTIVATION_DESIGN.md` §1. **Both axes are live and separately owned**:
+> Level / XP since Phase 11 (`ProgressionService`, D-054) and cảnh giới / tu luyện since Phase 12
+> (`CultivationService`, D-058) — §3.8 holds the two contracts.
 
 ## 1b. World & social flow (Character / Sect are CORE, not quest decoration)
 
@@ -196,7 +208,8 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **State:** `GameState` owns the lifecycle: `BOOT → INITIALIZING → READY → MENU`
   (then `STARTING_SESSION → RUNNING → TRANSITIONING/PAUSED`). Infrastructure autoloads that
   exist now (D-017): `EventBus`, `GameState`, `Localization`, `InputService`, `SceneRouter`.
-  `Config`/`RNG`/`SaveService` are still *planned* (added when first needed).
+  `Config` and `SaveService` (Phase 23) are still *planned* (added when first needed). The
+  seeded RNG is NOT an autoload: it arrived in Phase 08 as the session-owned `RngService` (§4).
 - **Processing:** `Main._ready()` validates the shell, drives the lifecycle via `GameState`,
   gives `SceneRouter` its content host (`Main/World`) + registers Phase-1 scenes, emits
   `game_booted`, then shows the Main Menu shell. Language defaults to **`vi`** via
@@ -212,10 +225,12 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   (D-035) and opens a language screen (vi/en) OVER the menu: the menu is hidden, not freed,
   and closing Settings reveals it again, so the lifecycle never leaves the `MENU` phase.
   Load Game stays disabled until SaveService (Phase 23).
-- **State:** menu selection; list of existing save slots (from SaveService).
-- **Processing:** on New Game → initialize a fresh run; on Load → ask SaveService to
-  load a slot and hydrate GameState.
-- **Output:** transition to Prologue (new) or to saved scene/state (load).
+- **State:** menu selection. *(Design target, Phase 23: the list of existing save slots, from
+  SaveService.)*
+- **Processing:** on New Game → initialize a fresh run. *(Design target, Phase 23: on Load →
+  ask SaveService to load a slot and hydrate GameState. No load path exists today.)*
+- **Output:** transition into the world session (new; the Prologue is §3.3's design target).
+  *(Design target, Phase 23: or to the saved scene/state.)*
 - **Dependencies:** presentation (UI) → gameplay (new-run init) → persistence (load),
   infrastructure (Localization, SceneRouter).
 - **Events:** `new_game_requested`, `load_game_requested(slot)`, `language_changed`.
@@ -253,6 +268,10 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   edit (D-003 resolved / D-021).
 
 ### 3.4 VILLAGE (hub map)
+- **Implementation status:** the hub map (Lạc Hà) is live: movement, the stele (knowledge), the
+  stray linh thú, and Thẩm Bất Kỳ, who can be talked to (Phase 18). **Quest givers and
+  `quest_offered` are Phase 19 and do not exist**; the one shop that exists is Kha Thản's, in
+  the FIELD map (Phase 17). The bullets below are the full contract, part live and part target.
 - **Input:** player movement/interaction; arrival from SceneRouter.
 - **State:** current map id, player position, active NPCs, available quests, shop state.
 - **Processing:** top-down movement; interact with NPCs (dialogue), quest givers, shops.
@@ -262,7 +281,17 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   domain (quest/inventory rules), data (map, NPC, dialogue, quest resources).
 - **Events:** `map_entered(map_id)`, `npc_interacted(npc_id)`, `quest_offered(quest_id)`.
 
-### 3.5 QUEST
+### 3.5 QUEST  *(design target — Phase 19, NOT implemented)*
+- **Implementation status:** no quest code or data exists. The Phase-19 contract — including
+  what "serializable" means there (the owner's in-memory `to_dict()` / `from_dict()`, NOT a
+  save file) — is owned by `docs/ROADMAP.md` ("Phase 19 — Quest" and its Player Experience
+  Contract). Objectives must advance from AUTHORITATIVE world events. The event names listed
+  below are design sketches: none of them is emitted today — `EventBus` carries only boot,
+  scene-transition and language signals, and the live gameplay surface is the owners' own
+  outcome signals (§3.7's table, `KnowledgeRuntime.knowledge_gained`,
+  `DialogueRuntime.choice_made`, …). `SYSTEM_DEPENDENCY_MATRIX.md` records the plan: an
+  EventBus gameplay event arrives with its first consumer (Quest) and is emitted by the owner
+  AFTER its authoritative result; the exact surface is fixed at Phase-19 Gate B.
 - **Input:** `quest_offered` / accept; world events that satisfy objectives.
 - **State:** quest log — each quest has a state machine
   (`AVAILABLE → ACTIVE → COMPLETED → TURNED_IN`, plus `FAILED` where relevant) and
@@ -358,7 +387,7 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   reacts to combat events.
 - **Events:** `level_changed`, `realm_changed`, `skill_unlocked`, `stat_changed`.
 
-### 3.9 DUNGEON
+### 3.9 DUNGEON  *(design target — Phase 21, NOT implemented)*
 - **Input:** enter dungeon (from map/quest).
 - **State:** dungeon instance (rooms, encounters, modifiers), run progress.
 - **Processing:** a dungeon is authored content (a specialized map/sequence) running on
@@ -367,7 +396,7 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Dependencies:** gameplay (map/combat orchestration), data (dungeon resource).
 - **Events:** `dungeon_entered`, `dungeon_cleared`.
 
-### 3.10 BOSS
+### 3.10 BOSS  *(design target — Phase 22, NOT implemented)*
 - **Input:** reach boss trigger.
 - **State:** boss combatant (richer stat/skill set, phases), arena state.
 - **Processing:** combat system drives it; boss behavior/phases are data + an AI
@@ -376,7 +405,7 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Dependencies:** combat (domain/gameplay), data (boss resource, phase/skill data).
 - **Events:** `boss_engaged(boss_id)`, `boss_phase_changed`, `boss_defeated(boss_id)`.
 
-### 3.11 STORY (branching)
+### 3.11 STORY (branching)  *(design target — Phase 20, NOT implemented)*
 - **Input:** story flags, completed quests, player choices, `boss_defeated`, etc.
 - **State:** chapter id, story flags, choices made, branch taken — explicit data.
 - **Processing:** domain story engine evaluates flag/branch conditions to decide next
@@ -386,7 +415,7 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   localization keys), infrastructure (SceneRouter for scene changes).
 - **Events:** `story_beat`, `branch_taken(branch_id)`, `flag_set(flag)`.
 
-### 3.12 CHAPTER PROGRESSION
+### 3.12 CHAPTER PROGRESSION  *(design target — Phase 20, NOT implemented)*
 - **Input:** chapter completion conditions met (`boss_defeated` + required flags).
 - **State:** completed chapters, current chapter, unlocked chapters/maps.
 - **Processing:** advance to next chapter → load its hub/maps and new content; loops
@@ -395,7 +424,11 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Dependencies:** story + SceneRouter + data; no system rewrite.
 - **Events:** `chapter_completed(chapter_id)`, `chapter_entered(next_id)`.
 
-### 3.13 SAVE (cross-cutting)
+### 3.13 SAVE (cross-cutting)  *(design target — Phase 23, NOT implemented)*
+- **Implementation status:** there is no `SaveService`, no save file, no slot and no load
+  flow. What exists is the SEAM this contract will orchestrate: each shipped owner already
+  round-trips its own persistent state through `to_dict()` / `from_dict()` in memory (tested
+  per owner). Until Phase 23 nothing is written to disk and a session cannot be resumed.
 - **Input:** save request (auto at checkpoints, manual, on quit).
 - **State:** a serializable snapshot — player state, inventory, progression (level + XP +
   cảnh giới), quest log, story flags, current map/position, pet state, equipment.
@@ -408,7 +441,7 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   system except SaveService knows the on-disk format.
 - **Events:** `save_requested`, `save_completed(slot)`, `load_completed(slot)`.
 
-### 3.14 END GAME
+### 3.14 END GAME  *(design target — NOT implemented)*
 - **Input:** final chapter/story terminal condition.
 - **State:** ending reached / branch outcome, final save.
 - **Processing:** play ending beats, record completion, offer continue/new game+ (future).
@@ -482,14 +515,15 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
 - **Performance:** governed by `.kiro/steering/05-performance-testing.md` — never full AI
   for hundreds of NPCs per frame.
 
-## 4. Cross-cutting services (always available in the flow)
+## 4. Cross-cutting services (available throughout the flow once built)
 
 - **EventBus** — the backbone of the loose coupling above. Emitters never import
   listeners.
 - **Localization** — every string shown in any box resolves through here (`vi`/`en`).
 - **SceneRouter** — all map/scene transitions go through one place (testable, no leaks).
-- **SaveService** — snapshot/restore across the flow.
-- **Config / RNG** — tunables and *seeded* randomness. The deterministic RNG seam is
+- **SaveService** — snapshot/restore across the flow. *(Phase 23 — NOT implemented; §3.13.)*
+- **Config / RNG** — tunables and *seeded* randomness. *(`Config` is not built; the RNG is
+  live as the session-owned `RngService`.)* The deterministic RNG seam is
   **stream-scoped** (one run/world seed → per-subsystem streams) and is **introduced in Phase 08
   with World Simulation**, the first genuine consumer; Combat (09) reuses it rather than adding a
   second source (D-040 / C-010, `docs/SYSTEM_DEPENDENCY_MATRIX.md` §4c). No domain code calls a
@@ -526,8 +560,10 @@ The runnable flow is UNCHANGED (START → MAIN MENU → NEW GAME → WORLD SESSI
 MENU). Phase 05 adds, underneath that flow:
 - a **relationship graph** owned by a new `RelationshipRuntime` under `Main/Systems` (a
   sibling of `WorldRuntime`, not an autoload) that starts with New Game, survives map swaps,
-  and ends on return to menu — it has no gameplay surface yet (no NPC/dialogue/quest produces
-  real events in-game), it is the substrate those later systems will drive;
+  and ends on return to menu — at Phase 05 it had no gameplay surface (no NPC/dialogue/quest
+  produced real events in-game); it is the substrate those later systems drive. *(It has one
+  now: the shop reads regard from it since Phase 17, and a dialogue answer moves it through
+  `RelationshipService` since Phase 18.)*;
 - a **data-driven character sprite** on the Player (resolved from its template
   `sprite_set_ref` via `CharacterVisualProfileData` + `CharacterVisualComponent`) replacing the
   hard-coded prototype sprite.

@@ -492,6 +492,33 @@ what enables alternate knowledge-based quest solutions (D-040 / C-012).
 **Exit:** add a quest via data; full lifecycle incl. serialize mid-quest; a knowledge-gated
 alternate solution works; tested.
 
+> **How to read this section (D-069) — it is ONE contract with the Phase-19 Player Experience
+> Contract further down, not an alternative to it.** This section states the system scope and
+> the exit; the contract states the player's side (offer → accept / decline in the existing
+> dialogue box → objectives advanced by authoritative world events → return → reward paid
+> exactly once; declining, abandoning and a refusal are complete paths; a knowledge-gated
+> alternate solution; a non-modal journal; vi/en verification; ONE reward ledger named at
+> Gate B). Where they seem to differ, both hold, read as follows:
+>
+> - **"Serialize mid-quest" is an OWNER-LEVEL, IN-MEMORY round trip — it is not a save file.**
+>   Phase 19 MUST give the quest owner `to_dict()` / `from_dict()` (plain data, versioned by a
+>   `schema` field, atomic: a rejected payload changes nothing), and MUST prove in a test that
+>   a quest that is ACTIVE with partial objective progress survives `to_dict()` → a fresh
+>   owner → `from_dict()`, with no reward becoming payable a second time (WHICH owner records
+>   "paid" is the Gate-B reward-ledger decision, AUD-12 — not settled here). That is
+>   the same seam every shipped owner already has (`CharacterState`, `ShopState`, the
+>   Knowledge Core …) and the `quests` block `SAVE_FORMAT.md` sketches.
+> - **File-level persistence stays Phase 23.** Phase 19 MUST NOT add a `SaveService`, write or
+>   read any file or `user://` path for game state, add save slots or autosave, enable the
+>   menu's Load entry or add a Continue button, or introduce any second persistence path.
+>   Nothing calls the quest owner's `to_dict()` in the running game until Phase 23 does; quest
+>   state is per session, and nothing on screen may promise otherwise (PX-3).
+> - **"Driven by EventBus" does not mean the events exist.** Today `EventBus` carries boot,
+>   scene-transition and language signals only. A gameplay event is added when its first
+>   consumer needs it, and is emitted by the authoritative owner AFTER its result
+>   (`SYSTEM_DEPENDENCY_MATRIX.md`, Dialogue and Quest rows); a quest never advances from a
+>   key press, a UI signal or a presentation state.
+
 ## Phase 20 — Story
 Story/flag engine; branches read character/sect/faction state + flags; chapter loop +
 world-state-change feedback (`docs/GAME_FLOW.md` §1b). **PRODUCES and READS knowledge** through

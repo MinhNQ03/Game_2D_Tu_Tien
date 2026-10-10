@@ -68,8 +68,9 @@ SaveFile:
     stock: Dictionary { shop_id -> { item_id -> int } }   # FINITE entries only
     # `ShopState.to_dict()` / `from_dict()`: must name exactly the finite entries the catalog
     # authors; atomic; strict TYPE_INT. Not saved: which shop is open (runtime).
-  quests:
-    log: Array[{ quest_id, state, objective_progress }]
+  quests:                                     # sketch. Phase 19 builds the owner's to_dict()/
+    log: Array[{ quest_id, state, objective_progress }]   # from_dict() ONLY; no file before
+                                              # Phase 23 (ROADMAP Phase 19, D-069)
   # (no `dialogue` block: Dialogue owns no persistent state — D-066. What a choice changed is
   #  already in `relationships` / `knowledge` / `shops`; an open conversation is runtime.)
   story:                                      # Phase 20 owns ALL of this, including `flags`
