@@ -364,6 +364,35 @@ func test_what_other_owners_cannot_supply_is_reported_by_the_service() -> void:
 		"a structurally invalid catalog is refused outright")
 
 
+func test_a_speaker_must_resolve_to_a_registered_character() -> void:
+	var registry := CharacterRegistry.new()
+	var keeper := CharacterState.new()
+	keeper.instance_id = SPEAKER
+	assert_true(registry.add(keeper), "the keeper is registered")
+	var service := _service(_catalog([_dialogue(), _dialogue(&"dlg_test_ghost", &"char_ghost")]))
+	var errors := service.content_errors(Callable(), Callable(), registry.resolver())
+	assert_true(_has_error(errors, "dlg_test_ghost: is spoken by 'char_ghost'"),
+		"a conversation spoken by nobody the session knows is a content error")
+	assert_false(_has_error(errors, "%s: is spoken by" % DLG),
+		"and the one spoken by a registered character is not")
+	assert_eq(errors.size(), 1, "exactly the orphan, nothing else")
+	# The registry is the authority, not the id's shape: once registered, the same id passes.
+	var ghost := CharacterState.new()
+	ghost.instance_id = &"char_ghost"
+	registry.add(ghost)
+	assert_eq(service.content_errors(Callable(), Callable(), registry.resolver()),
+		[] as Array[String], "registering the speaker clears it")
+	# A resolver that answers with something that is not a character resolves nobody.
+	assert_eq(service.content_errors(Callable(), Callable(),
+		func(_id: StringName) -> Variant: return true).size(), 2,
+		"an answer that is not a CharacterState is not a character")
+	assert_eq(service.content_errors(Callable(), Callable(),
+		func(_id: StringName) -> CharacterState: return null).size(), 2,
+		"an empty registry resolves nobody")
+	assert_eq(service.content_errors(), [] as Array[String],
+		"with no resolver at all the domain has nobody to ask and skips the check")
+
+
 # --- 3/4. Eligibility ------------------------------------------------------------
 
 func test_the_offered_choices_follow_the_owners_state() -> void:

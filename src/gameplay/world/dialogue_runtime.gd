@@ -52,9 +52,10 @@ var _line_serial: int = 0
 
 
 ## Start the session. Builds into locals and commits only when every check passed: the catalog
-## is structurally valid AND everything it names exists in its owner (knowledge ids,
-## relationship dimensions and ranges, a shop for every "trade", a translation of every line
-## in every language). `catalog` is the content seam (null = the shipped one).
+## is structurally valid AND everything it names exists in its owner (a registered character
+## for every speaker, knowledge ids, relationship dimensions and ranges, a shop for every
+## "trade", a translation of every line in every language). `catalog` is the content seam
+## (null = the shipped one).
 func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
 		relationship: RelationshipRuntime, catalog: DialogueCatalogData = null) -> bool:
 	if _session_active:
@@ -75,9 +76,18 @@ func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
 	if not service.is_ready():
 		push_error("[dialogue-rt] session NOT started: the DialogueService refused its catalog")
 		return false
+	# Who a conversation is spoken by is the registry's to answer. No registry is a refusal,
+	# not a skipped check: every speaker would go unverified.
+	var registry: CharacterRegistry = world.call("get_character_registry") \
+		if world.has_method("get_character_registry") else null
+	if registry == null:
+		push_error("[dialogue-rt] session NOT started: the world has no character registry "
+			+ "to resolve the speakers in")
+		return false
 	var shops := npcs.get_service().catalog()
 	var errors := service.content_errors(_translation_check(),
-		func(character_id: StringName) -> bool: return shops.shop_of_keeper(character_id) != null)
+		func(character_id: StringName) -> bool: return shops.shop_of_keeper(character_id) != null,
+		registry.resolver())
 	if not errors.is_empty():
 		push_error("[dialogue-rt] session NOT started: %s" % str(errors))
 		return false
@@ -148,6 +158,8 @@ func talk(character_id: StringName) -> StringName:
 		return refusal
 	_dialogue = dialogue
 	dialogue_opened.emit(dialogue.id, dialogue.speaker_id)
+	if _dialogue != dialogue:
+		return &""  # a listener ended it as it opened: there is no first line to show
 	_enter(dialogue.start_node_id)
 	return &""
 
@@ -188,8 +200,16 @@ func leave() -> void:
 	_close(REASON_LEFT)
 
 
+## Announce an accepted answer, then move the conversation. The announcement goes out FIRST
+## (its listeners read the conversation the answer was given in), so a listener may end the
+## conversation while hearing it — a surface yielding to a threat does exactly that. Then
+## there is nothing left to move: the conversation stays as that listener left it.
 func _follow(outcome: DialogueOutcome) -> DialogueOutcome:
+	var dialogue := _dialogue
+	var serial := _line_serial
 	choice_made.emit(outcome)
+	if _dialogue != dialogue or _line_serial != serial:
+		return outcome
 	if outcome.action == DialogueService.ACTION_OPEN_SHOP:
 		# Close FIRST: the shop must never open behind a conversation that still holds input.
 		var keeper := _dialogue.speaker_id

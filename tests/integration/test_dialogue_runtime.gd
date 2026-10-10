@@ -226,6 +226,57 @@ func test_content_that_names_what_an_owner_lacks_stops_the_session() -> void:
 	_free(rig)
 
 
+func _listeners(rig: Rig) -> int:
+	var count := 0
+	for connection in rig.world.active_map_leaving.get_connections():
+		if (connection["callable"] as Callable).get_object() == rig.dialogue:
+			count += 1
+	return count
+
+
+func test_a_speaker_nobody_registered_stops_the_session_and_leaves_nothing_behind() -> void:
+	var rig := _rig(null, false)
+	assert_true(rig.world.registry.has(KO) and rig.world.registry.has(SHEN),
+		"both shipped speakers are registered characters")
+	var orphan: DialogueCatalogData = (load(DIALOGUES) as DialogueCatalogData).duplicate(true)
+	orphan.dialogue_of_speaker(SHEN).speaker_id = &"actor_nobody_at_all"
+	assert_eq(orphan.validation_errors(), [] as Array[String],
+		"the catalog is structurally fine: only the registry can tell")
+	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
+		rig.relationship, orphan), "a conversation spoken by nobody fails closed")
+	assert_false(rig.dialogue.is_session_active(), "no session")
+	assert_null(rig.dialogue.get_service(), "no service kept")
+	assert_false(rig.dialogue.is_open(), "no conversation")
+	assert_eq(_listeners(rig), 0, "and no connection to the world")
+	assert_eq(rig.dialogue.talk(KO), DialogueService.REFUSE_NOT_READY,
+		"so nobody can be talked to through it")
+	# Registration is the question, not a body in THIS map: a registered speaker whose body
+	# is elsewhere is valid content (reach is NpcRuntime's, when they are addressed).
+	var elsewhere := CharacterState.new()
+	elsewhere.instance_id = &"actor_nobody_at_all"
+	rig.world.registry.add(elsewhere)
+	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
+		rig.relationship, orphan), "once registered, the same content starts")
+	assert_eq(_listeners(rig), 1, "with its one connection")
+	assert_eq(rig.dialogue.talk(&"actor_nobody_at_all"), NpcRuntime.REFUSE_NOBODY,
+		"and someone with no body here is refused by NpcRuntime, at the talk")
+	_free(rig)
+
+
+func test_a_world_with_no_character_registry_refuses_the_session() -> void:
+	var rig := _rig(null, false)
+	var registry := rig.world.registry
+	rig.world.registry = null
+	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
+		rig.relationship), "nobody to resolve the speakers in: refused, not skipped")
+	assert_false(rig.dialogue.is_session_active(), "no half-session")
+	assert_eq(_listeners(rig), 0, "no connection")
+	rig.world.registry = registry
+	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
+		rig.relationship), "and the refusal left it able to start properly")
+	_free(rig)
+
+
 # === Starting a talk ================================================================
 
 func test_talking_opens_the_authored_conversation_at_its_first_line() -> void:
@@ -446,6 +497,65 @@ func test_trade_closes_the_conversation_before_the_shop_opens() -> void:
 	assert_false(rig.dialogue.is_open(), "and no conversation is")
 	assert_eq(rig.inventory.to_dict(), bag, "the handoff bought nothing")
 	assert_eq(rig.npcs.to_dict(), stock, "and moved no stock")
+	_free(rig)
+
+
+func test_a_handoff_the_shop_refuses_is_answered_by_its_owner_and_opens_nothing() -> void:
+	var rig := _rig()
+	var answers: Array[StringName] = []
+	var on_refused := func(reason: StringName) -> void: answers.append(reason)
+	# The keeper stops being addressable between the answer and the handoff (his body is
+	# unbound by whoever hears the answer first).
+	var on_made := func(_outcome: DialogueOutcome) -> void: rig.ko.unbind()
+	rig.npcs.interaction_refused.connect(on_refused)
+	_open_ko_hub(rig)
+	rig.dialogue.choice_made.connect(on_made)
+	var bag := rig.inventory.to_dict()
+	rig.dialogue.choose(&"ko_hub", &"ko_trade")
+	rig.dialogue.choice_made.disconnect(on_made)
+	rig.npcs.interaction_refused.disconnect(on_refused)
+	assert_false(rig.npcs.is_shop_open(), "no shop opened behind a keeper who cannot be met")
+	assert_false(rig.dialogue.is_open(), "and the conversation did close: nothing holds input")
+	assert_eq(rig.closed, [[&"dlg_scout_ko", DialogueRuntime.REASON_HANDOFF]], "as a handoff")
+	assert_eq(answers, [NpcRuntime.REFUSE_TOO_FAR] as Array[StringName],
+		"NpcRuntime, the owner of the refusal, says why")
+	assert_eq(rig.inventory.to_dict(), bag, "nothing was traded")
+	_free(rig)
+
+
+func test_a_listener_that_ends_the_conversation_mid_answer_leaves_it_ended() -> void:
+	var rig := _rig()
+	# Walks away on hearing an ANSWER (a "continue" has no choice id and is let through).
+	var on_made := func(outcome: DialogueOutcome) -> void:
+		if outcome.choice_id != &"":
+			rig.dialogue.leave()
+	_open_ko_hub(rig)
+	rig.dialogue.choice_made.connect(on_made)
+	# An answer that would lead to another line: whoever hears it walks away first.
+	var moved := rig.dialogue.choose(&"ko_hub", &"ko_talk_price")
+	assert_true(moved.ok, "the answer itself was accepted")
+	assert_false(rig.dialogue.is_open(), "the conversation stays closed: no line is shown")
+	assert_eq(rig.dialogue.current_node_id(), &"", "and its cursor is nowhere")
+	assert_eq(rig.closed, [[&"dlg_scout_ko", DialogueRuntime.REASON_LEFT]], "closed once, as LEFT")
+	# The same for an answer that hands over to the shop: nothing opens for someone who left.
+	_open_ko_hub(rig)
+	rig.dialogue.choose(&"ko_hub", &"ko_trade")
+	assert_false(rig.npcs.is_shop_open(), "walking away mid-answer opens no shop")
+	assert_false(rig.dialogue.is_open(), "and no conversation")
+	# And for one that would have ended it anyway: closed once, not twice.
+	_open_ko_hub(rig)
+	rig.dialogue.choose(&"ko_hub", &"ko_leave")
+	rig.dialogue.choice_made.disconnect(on_made)
+	assert_eq(rig.closed.size(), 3, "three talks, three closings")
+	# Someone who ends it the moment it OPENS: no first line is entered behind them.
+	var views := rig.views
+	var on_opened := func(_id: StringName, _speaker: StringName) -> void: rig.dialogue.leave()
+	rig.dialogue.dialogue_opened.connect(on_opened)
+	assert_eq(rig.dialogue.talk(KO), &"", "the talk was accepted")
+	rig.dialogue.dialogue_opened.disconnect(on_opened)
+	assert_false(rig.dialogue.is_open(), "and ended at once")
+	assert_eq(rig.dialogue.current_node_id(), &"", "with no line entered")
+	assert_eq(rig.views - views, 1, "one view change: the closing")
 	_free(rig)
 
 

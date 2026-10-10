@@ -61,16 +61,25 @@ func catalog() -> DialogueCatalogData:
 ## What the catalog asks of OTHER systems that they cannot give: a knowledge id the Core does
 ## not define, a dimension the graph does not have, a threshold outside its range. Structural
 ## errors are `DialogueCatalogData.validation_errors`; this is the cross-owner half.
-## `has_text(key) -> bool` and `keeps_shop(character_id) -> bool` are optional seams for the two
-## owners the domain cannot see (localization, the shop catalog); an invalid Callable skips
-## that check.
-func content_errors(has_text: Callable = Callable(), keeps_shop: Callable = Callable()) \
-		-> Array[String]:
+## `has_text(key) -> bool`, `keeps_shop(character_id) -> bool` and
+## `resolve_character(instance_id) -> CharacterState` are optional seams for the three owners
+## the domain cannot see (localization, the shop catalog, the session's character registry —
+## the same resolver `SectService` and `FactionService` take); an invalid Callable skips that
+## check. A SPEAKER must resolve to a registered character: a conversation is found by who is
+## addressed, so one spoken by nobody could never be opened and would never be noticed. Whether
+## that character has a body in the CURRENT map is not asked here — that is `NpcRuntime`'s, at
+## the moment of the talk.
+func content_errors(has_text: Callable = Callable(), keeps_shop: Callable = Callable(),
+		resolve_character: Callable = Callable()) -> Array[String]:
 	var errors: Array[String] = []
 	if not is_ready():
 		errors.append("the dialogue service is not ready")
 		return errors
 	for dialogue in _catalog.entries:
+		if resolve_character.is_valid() \
+				and not (resolve_character.call(dialogue.speaker_id) is CharacterState):
+			errors.append("%s: is spoken by '%s', who is not a registered character"
+				% [dialogue.id, dialogue.speaker_id])
 		if has_text.is_valid():
 			for key in dialogue.text_keys():
 				if not bool(has_text.call(key)):

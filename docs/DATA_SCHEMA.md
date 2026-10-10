@@ -268,8 +268,13 @@ gesture, a payload a kind does not use, an `OPEN_SHOP` choice that claims to con
 `RELATIONSHIP_DELTA` choice with no condition on its own dimension that the delta eventually
 makes false (raise only while below a value; lower only while at or above one).
 
-**Validated against the owners** (`DialogueService.content_errors`): every knowledge id is in
-the knowledge catalog; every dimension is one the relationship config defines and every
+**Validated against the owners** (`DialogueService.content_errors`): every `speaker_id`
+resolves to a `CharacterState` REGISTERED in the session's `CharacterRegistry` when the
+dialogue session starts (D-069 — registration, not a body in the current map: reach stays
+`NpcRuntime`'s question at the talk. In practice a speaker is a member of the world-simulation
+cast, which the session registers before Dialogue starts; a person who exists only as a body
+on a map that has not been entered is not registered yet and may not be given a conversation);
+every knowledge id is in the knowledge catalog; every dimension is one the relationship config defines and every
 threshold is inside its range; an `OPEN_SHOP` speaker keeps a shop; every `text_key` has a
 non-empty value in every supported language (`Localization.is_translated`).
 
