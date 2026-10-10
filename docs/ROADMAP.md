@@ -53,7 +53,8 @@
 > **Phase 14 (Equipment) — DONE (D-060).** **Phase 15 (Skill/Technique) — DONE (D-061).**
 > **Phase 16 (Pet) — DONE (D-064, `455dec9`).**
 > **Phase 17 (NPC / Shop) — DONE (D-065, `fbb6376`).**
-> Phase 18+ (Dialogue, Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
+> **Phase 18 (Dialogue) — DONE (D-066, `ba9e63c`).**
+> Phase 19+ (Quest, Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
 > contract (`MOTION_DESIGN_CONTRACT.md`) and corrected the HUD's composition by measurement;
@@ -470,7 +471,7 @@ arrive with that phase. Sect / faction effects arrive with the first content tha
 changes a relationship dimension through the service; a dialogue grant is visible through the
 Knowledge Core, not a local copy; a choice opens the existing shop; tested.
 
-**Status: IMPLEMENTED (D-066) — pending exact-SHA CI on the feature commit.** Six
+**Status: DONE (D-066)** — `ba9e63c`, 13 gates green in CI run 38046511848 on that exact SHA (983 tests). Six
 `Dialogue*Data` resources + the pure-domain `DialogueService`; `DialogueRuntime` (15th
 per-session node, ended first) owning only the open conversation's cursor; `DialogueView` +
 `DialoguePanel` (portrait medallion, mood, gesture, focus, transition); Kha Thản

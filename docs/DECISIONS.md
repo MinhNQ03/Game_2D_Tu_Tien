@@ -4697,8 +4697,10 @@ file-level save.
 
 ## D-066 — Phase 18: who owns a dialogue choice (and why Dialogue owns no flag)
 
-**Status:** DECIDED before any Phase-18 code. Implementation status is recorded in
-`docs/ROADMAP.md` Phase 18.
+**Status:** DONE — decided in `963fccb` before any Phase-18 code; domain and data in `076d335`
+(CI run 38026685370); runtime, NPC / shop integration and the dialogue box in `ba9e63c` on
+`d063/phase-a`; all 13 gates green in CI run 38046511848
+(https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38046511848), `head_sha` = `ba9e63c`.
 
 ### The ambiguity
 
@@ -4814,8 +4816,6 @@ the runtime's place without the panel or the content changing.
   in a hidden ledger — which is also what makes them testable through the owners' own APIs.
 
 ### Implementation (Phase 18) — what was built to this decision
-
-**Status:** recorded in `docs/ROADMAP.md` Phase 18 with the exact commit and CI run.
 
 **Layers.** Data: six resources in `src/data/dialogue/`. Domain: `DialogueService` +
 `DialogueOutcome` (`src/domain/dialogue/`) — no cursor, no state, no node. Gameplay:

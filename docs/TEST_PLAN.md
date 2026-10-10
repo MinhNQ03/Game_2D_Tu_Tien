@@ -1146,3 +1146,6 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   1280×720 (vi, 16:9), 1280×800 (en, 16:10) and a requested 1920×1200 that the desktop clamps
   to 1920×1011 (en, 1.90:1). `tools/capture_motion.gd -- <dir> shop vi` re-run: the shop still
   opens at base price with nothing bought. `tools/playtest_flow.gd -- vi <dir>` 30/30.
+- Local tally at this checkpoint: 983 tests, 983 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak
+  lines; app / player / world / pet / npc / dialogue E2E PASS. CI: run 38046511848 green on
+  `ba9e63c` (the runner's own annotation: "ran 983 test(s): 983 passed, 0 failed").
