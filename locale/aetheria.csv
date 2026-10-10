@@ -310,3 +310,10 @@ UI_REL_DIM_RESPECT,respect,kính trọng
 UI_REL_DIM_FEAR,fear,e sợ
 UI_REL_DIM_RIVALRY,rivalry,ganh đua
 UI_REL_DIM_DEBT,debt,ân nợ
+UI_NPC_NOT_NOW,Not now — something is hunting you.,Chưa phải lúc — có thứ đang săn ngươi.
+UI_LEAVE_TITLE,Leave this journey?,Rời cuộc hành trình?
+UI_LEAVE_BODY,Nothing is saved yet. Everything from this session will be lost.,Chưa có gì được lưu. Mọi thứ của phiên chơi này sẽ mất.
+UI_LEAVE_KEYS,{confirm} Leave to the menu · {close} Stay,{confirm} Về menu · {close} Ở lại
+UI_DEFEAT_TITLE,You have fallen,Ngươi đã gục ngã
+UI_DEFEAT_BODY,This journey ends here. Nothing was saved.,Cuộc hành trình dừng tại đây. Chưa có gì được lưu.
+UI_DEFEAT_KEYS,{confirm} Return to the menu,{confirm} Về menu

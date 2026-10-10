@@ -128,6 +128,24 @@ func test_real_pet_flow() -> void:
 		await scene_tree.physics_frame
 		worst = maxf(worst, pet.global_position.distance_to(previous))
 		previous = pet.global_position
+	# It comes to rest BESIDE its owner, not on them (audit AUD-04: it used to stop 1 px away,
+	# depending on where in the brain's 0.2 s cadence the owner happened to stop — so several
+	# walk-and-stop cycles are measured, not one). Neither the walk in nor its idle amble may
+	# carry it inside its standing distance; the allowance is two physics steps of overshoot.
+	var closest := INF
+	for move: StringName in [MOVE_RIGHT, MOVE_LEFT, MOVE_RIGHT, MOVE_LEFT, MOVE_RIGHT, MOVE_LEFT]:
+		Input.action_press(move)
+		for _i in 55:
+			await scene_tree.physics_frame
+		Input.action_release(move)
+		for _i in 75:
+			await scene_tree.physics_frame
+			closest = minf(closest, pet.global_position.distance_to(player.global_position))
+	var ally := pet.data().ai_profile
+	var standoff := ally.home_arrival_radius - 2.0 * speed * physics_step
+	assert_true(closest >= standoff,
+		"the companion never stood on the player (closest %.1f px, standing distance %.1f)"
+			% [closest, standoff])
 	var walked := player_start.distance_to(player.global_position)
 	var gap := pet.global_position.distance_to(player.global_position)
 	assert_true(walked > 150.0, "the player walked a real distance (%.1f px)" % walked)
@@ -219,10 +237,14 @@ func test_real_pet_flow() -> void:
 	# --- 8. return to menu frees everything -------------------------------------------
 	for a in [MOVE_LEFT, MOVE_RIGHT, ATTACK]:
 		Input.action_release(a)
+	# Esc ASKS (D-068); the confirm key leaves.
 	await _fire_action(OPEN_MENU)
 	await scene_tree.process_frame
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "one Esc only asks")
+	await _fire_action(INTERACT)
 	await scene_tree.process_frame
-	assert_eq(gs.get_phase(), gs.Phase.MENU, "open_menu returned to the menu")
+	await scene_tree.process_frame
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "confirming returned to the menu")
 	assert_false(pets.is_session_active(), "the pet session ended")
 	assert_eq(_count_pets(), 0, "no pet body survives the session")
 	var trace: Array = main.call("get_last_teardown_order")

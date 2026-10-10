@@ -1120,11 +1120,19 @@ func _step_natural_encounter(main: Node) -> void:
 func _step_return_to_menu(main: Node) -> void:
 	var started := Time.get_ticks_msec()
 	var gs := root.get_node_or_null("GameState")
-	var back := await _press_until(&"open_menu", func() -> bool:
+	# Esc ASKS (D-068): the question must appear, and only the confirm key leaves.
+	var router := root.get_node_or_null("SceneRouter")
+	var map: Node = router.call("get_current_scene") if router != null else null
+	var hud := map.get_node_or_null("GameplayHUD") as GameplayHUD if map != null else null
+	var asked := hud != null and await _press_until(&"open_menu", func() -> bool:
+		return hud.session_prompt_kind() == GameplayHUD.PROMPT_LEAVE)
+	var still_running := gs != null and bool(gs.call("is_session_active"))
+	await _shot("22_leave_question")
+	var back := asked and still_running and await _press_until(&"interact", func() -> bool:
 		return gs != null and not bool(gs.call("is_session_active")))
 	var teardown: Array = main.call("get_last_teardown_order") if main.has_method(
 		"get_last_teardown_order") else []
-	_record("22_return_to_menu", "open_menu ends the session",
+	_record("22_return_to_menu", "Esc asks, the confirm key ends the session",
 		"session_active=%s teardown=%s" % [
 			gs != null and bool(gs.call("is_session_active")), str(teardown)],
 		back, started, await _shot("22_menu"))

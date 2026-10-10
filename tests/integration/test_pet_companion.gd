@@ -227,12 +227,23 @@ func test_it_follows_gradually_and_never_teleports() -> void:
 	rig.player.global_position += Vector2(260, 0)
 	var start_gap := pet.global_position.distance_to(rig.player.global_position)
 	var worst_step := 0.0
+	var closest := INF
 	var previous := pet.global_position
 	for i in 240:
 		_step(rig)
 		worst_step = maxf(worst_step, pet.global_position.distance_to(previous))
+		closest = minf(closest, pet.global_position.distance_to(rig.player.global_position))
 		previous = pet.global_position
 	var end_gap := pet.global_position.distance_to(rig.player.global_position)
+	# It stops BESIDE its owner, not on them (audit AUD-04: the brain decides every 0.2 s and
+	# the walk used to run on through the arrival band between two decisions, to 1 px; and
+	# its idle amble could wander in). The allowance is two steps of overshoot. The real-app
+	# pet E2E holds the same line under real physics.
+	var arrival := pet.data().ai_profile
+	var standoff := arrival.home_arrival_radius - 2.0 * speed * FRAME
+	assert_true(closest >= standoff,
+		"it never came closer than its standing distance (closest %.1f px, limit %.1f)"
+			% [closest, standoff])
 	assert_true(worst_step <= speed * FRAME * 1.05 + 0.01,
 		"no frame moved it further than its speed allows (worst %.2f px, limit %.2f)"
 			% [worst_step, speed * FRAME * 1.05])

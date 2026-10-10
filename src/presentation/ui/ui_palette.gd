@@ -159,6 +159,11 @@ const SIDE_PANEL_WIDTH := 330
 const DIALOGUE_BOX_WIDTH := 860
 const DIALOGUE_CHOICE_WIDTH := 250
 const DIALOGUE_LINE_MIN_HEIGHT := 46
+## The session prompt (D-068): narrow enough to read as a question, wide enough for one
+## sentence in either language on two lines.
+const SESSION_PROMPT_WIDTH := 420
+## How far below the screen centre its top edge hangs (clear of a 48 px figure standing there).
+const SESSION_PROMPT_DROP := 40
 ## How far above the dialogue box the announcement band sits while a conversation is open.
 const DIALOGUE_NOTICE_GAP := 8
 

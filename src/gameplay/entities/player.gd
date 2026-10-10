@@ -184,6 +184,10 @@ func _physics_process(delta: float) -> void:
 	# No input service (e.g. an isolated unit harness) → no movement; deterministic.
 	if _input == null:
 		return
+	# The fallen do not walk, strike or cast (audit AUD-01): the body comes to rest and stays.
+	if _health.is_dead():
+		_movement.apply_intent(Vector2.ZERO, 0.0, delta)
+		return
 	var intent: Vector2 = _input.call("get_move_vector")
 	# A swing in flight is a commitment: the attack's authored data decides how much speed the
 	# player keeps through it (D-057B), so the strike is planted rather than skated.

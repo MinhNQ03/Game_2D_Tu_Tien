@@ -411,10 +411,44 @@ func test_real_world_map_flow() -> void:
 	assert_true(is_instance_valid(player), "player still alive after %d transitions" % ROUND_TRIPS)
 	assert_eq(player.get_instance_id(), player_id, "still the SAME player after all transitions")
 
-	# --- 7. a REAL open_menu key returns to the menu + frees the player ----------
+	# --- 7. Esc steps BACK and ASKS; only a confirmation leaves (D-068, audit AUD-02) ---
+	# Nothing is saved before Phase 23, so one key press must never end the session.
+	var leave_hud := _find_hud(router.get_current_scene())
+	var input_service: Node = scene_tree.root.get_node("InputService")
+	for _attempt in 4:
+		await _fire_action(SECT_PANEL)
+		await scene_tree.process_frame
+		if leave_hud.is_sect_panel_open():
+			break
+	assert_true(leave_hud.is_sect_panel_open(), "the sect panel is open")
 	await _fire_action(OPEN_MENU)
 	await scene_tree.process_frame
-	assert_eq(gs.get_phase(), gs.Phase.MENU, "open_menu ended the session back to MENU")
+	assert_false(leave_hud.is_sect_panel_open(), "a REAL Esc closed the open panel")
+	assert_eq(leave_hud.session_prompt_kind(), GameplayHUD.PROMPT_NONE,
+		"and asked nothing: it stepped back ONE level")
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "the session is still running")
+	await _fire_action(OPEN_MENU)
+	await scene_tree.process_frame
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "asking is not leaving")
+	if gs.get_phase() != gs.Phase.RUNNING or not is_instance_valid(leave_hud):
+		return  # one Esc ended the session: the HUD is gone, nothing below can be asked
+	assert_eq(leave_hud.session_prompt_kind(), GameplayHUD.PROMPT_LEAVE,
+		"with nothing open, Esc ASKS whether to leave")
+	assert_true(is_instance_valid(player), "the player is untouched")
+	assert_eq(int(input_service.call("current_context")), int(input_service.Context.UI_MODAL),
+		"the question holds the keys")
+	await _fire_action(OPEN_MENU)
+	await scene_tree.process_frame
+	assert_eq(leave_hud.session_prompt_kind(), GameplayHUD.PROMPT_NONE,
+		"a second Esc answers 'stay': Esc pressed twice never leaves")
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "still running")
+	assert_true(bool(input_service.call("is_gameplay_active")), "and control is back")
+	await _fire_action(OPEN_MENU)
+	await scene_tree.process_frame
+	assert_eq(leave_hud.session_prompt_kind(), GameplayHUD.PROMPT_LEAVE, "asked again")
+	await _fire_action(INTERACT)
+	await scene_tree.process_frame
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "the confirm key ended the session back to MENU")
 	assert_false(gs.is_session_active(), "session ended")
 	assert_eq(router.get_current_key(), "", "no content scene after returning to menu")
 	assert_false(is_instance_valid(player), "the persistent player was freed on session end")

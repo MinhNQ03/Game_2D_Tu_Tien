@@ -74,6 +74,14 @@ signal shop_close_requested()
 signal dialogue_choice_requested(node_id: StringName, choice_id: StringName)
 signal dialogue_advance_requested()
 signal dialogue_close_requested()
+## The player CONFIRMED leaving the session (or acknowledged a defeat). Never emitted by a
+## single Esc: see `_unhandled_input`.
+signal leave_session_requested()
+
+## Which question the session prompt is asking (`_prompt_kind`).
+const PROMPT_NONE := &""
+const PROMPT_LEAVE := &"leave"
+const PROMPT_DEFEAT := &"defeat"
 
 ## Side of the small sect emblem chip in the identity panel. HUD-local: nothing else in the
 ## UI draws a chip this size, so it stays here rather than widening the shared palette.
@@ -201,6 +209,10 @@ var _shop_modal: bool = false
 var _dialogue_panel: DialoguePanel
 var _dialogue_modal: bool = false
 var _prompt_strip: Control
+## The session prompt (D-068): the one centred box for "leave?" and "you have fallen". Holds a
+## UI_MODAL context while shown.
+var _session_prompt: SessionPrompt
+var _prompt_kind: StringName = PROMPT_NONE
 var _notice_rest_top: float = 0.0
 var _notice_rest_bottom: float = 0.0
 ## Arguments of the interact prompt's text (a person's prompt names them).
@@ -225,6 +237,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_hide_session_prompt()
 	_hide_dialogue()
 	close_inventory()
 	_hide_shop()
@@ -741,6 +754,19 @@ func _build_ui() -> void:
 		dialogue_advance_requested.emit())
 	_dialogue_panel.resized.connect(_place_notice_band)
 	root.add_child(_dialogue_panel)
+
+	# The session prompt (D-068): centred, above everything — the only box that may take the
+	# middle of the screen, because while it is shown nothing else can be done.
+	_session_prompt = SessionPrompt.new()
+	_session_prompt.name = "SessionPrompt"
+	_session_prompt.set_anchors_preset(Control.PRESET_CENTER)
+	_session_prompt.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	# It hangs BELOW the centre: the camera keeps the player at the centre, and a box drawn
+	# there covered the very figure the defeat box is about (seen in the first capture).
+	_session_prompt.grow_vertical = Control.GROW_DIRECTION_END
+	_session_prompt.position = Vector2(0, UIPalette.SESSION_PROMPT_DROP)
+	_session_prompt.visible = false
+	root.add_child(_session_prompt)
 
 	# The technique dock sits BOTTOM-CENTRE (D-062): the composition every action game reads —
 	# the player's hands are under the player. It is below the playfield's clear zone and
@@ -1399,6 +1425,22 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _input == null:
 		return
 	var handled := false
+	# The session prompt is on top of everything. A DEFEAT has one way on; a LEAVE question is
+	# answered by `interact` (leave) or Esc (stay) — so Esc pressed twice never leaves.
+	if _prompt_kind != PROMPT_NONE:
+		var confirmed: bool = _input.call("is_modal_action_just_pressed", INTERACT_ACTION)
+		var backed: bool = _input.call("is_system_action_just_pressed", OPEN_MENU_ACTION)
+		if not confirmed and not backed:
+			return
+		var prompt_vp := get_viewport()
+		if prompt_vp != null:
+			prompt_vp.set_input_as_handled()
+		if confirmed or _prompt_kind == PROMPT_DEFEAT:
+			# LAST: the listener may unload this scene synchronously (L-013).
+			leave_session_requested.emit()
+		else:
+			_hide_session_prompt()
+		return
 	# A conversation owns the keys while it is open: Esc ASKS to leave it (never the game).
 	if _dialogue_modal:
 		if _input.call("is_system_action_just_pressed", &"open_menu"):
@@ -1433,6 +1475,15 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _faction_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", FACTION_PANEL_ACTION):
 		_faction_panel.visible = not _faction_panel.visible
+		handled = true
+	# Esc steps BACK one level (PX-4). A reading panel that is open closes; only with nothing
+	# open does it ask about leaving — and asking is all one press can do.
+	if not handled and _input.call("is_system_action_just_pressed", OPEN_MENU_ACTION):
+		if is_sect_panel_open() or is_faction_panel_open():
+			_sect_panel.visible = false
+			_faction_panel.visible = false
+		else:
+			_show_session_prompt(PROMPT_LEAVE)
 		handled = true
 	if handled:
 		var vp := get_viewport()
@@ -1533,6 +1584,55 @@ func is_shop_open() -> bool:
 	return _shop_panel != null and _shop_panel.visible
 
 
+## A hostile has turned on the player (the world session says so): every reading surface
+## closes and the modal ones ask their owners to close. Public, because the fact is gameplay's.
+func close_reading_panels() -> void:
+	_close_side_panels()
+	if _prompt_kind == PROMPT_LEAVE:
+		_hide_session_prompt()
+
+
+## The player has fallen: say so, and offer the one way on. It replaces a leave question that
+## happened to be open, and nothing dismisses it but acknowledging it.
+func show_defeat() -> void:
+	_close_side_panels()
+	_show_session_prompt(PROMPT_DEFEAT)
+
+
+func _show_session_prompt(kind: StringName) -> void:
+	if _session_prompt == null:
+		return
+	var confirm := _display_label(INTERACT_ACTION)
+	if kind == PROMPT_DEFEAT:
+		_session_prompt.set_prompt(&"UI_DEFEAT_TITLE", &"UI_DEFEAT_BODY", &"UI_DEFEAT_KEYS",
+			{"confirm": confirm})
+	else:
+		_session_prompt.set_prompt(&"UI_LEAVE_TITLE", &"UI_LEAVE_BODY", &"UI_LEAVE_KEYS",
+			{"confirm": confirm, "close": _display_label(OPEN_MENU_ACTION)})
+	if _prompt_kind == PROMPT_NONE and _input != null:
+		_input.call("push_modal_context")
+	_prompt_kind = kind
+	_session_prompt.visible = true
+	_refresh_focus()
+
+
+func _hide_session_prompt() -> void:
+	if _session_prompt != null:
+		_session_prompt.visible = false
+	if _prompt_kind != PROMPT_NONE and _input != null:
+		_input.call("pop_context")
+	_prompt_kind = PROMPT_NONE
+	_refresh_focus()
+
+
+func session_prompt_kind() -> StringName:
+	return _prompt_kind
+
+
+func session_prompt() -> SessionPrompt:
+	return _session_prompt
+
+
 ## Push the conversation view (Phase 18). The view is the authority on whether a conversation
 ## is open: an open view shows the box and takes a UI_MODAL context; a closed one hides it and
 ## gives the context back. Idempotent both ways.
@@ -1555,7 +1655,7 @@ func _show_dialogue() -> void:
 	if _input != null and not _dialogue_modal:
 		_input.call("push_modal_context")
 		_dialogue_modal = true
-	_refresh_dialogue_focus()
+	_refresh_focus()
 
 
 func _hide_dialogue() -> void:
@@ -1565,18 +1665,20 @@ func _hide_dialogue() -> void:
 	if _input != null and _dialogue_modal:
 		_input.call("pop_context")
 		_dialogue_modal = false
-		_refresh_dialogue_focus()
+		_refresh_focus()
 
 
-## DIALOGUE FOCUS: while two people talk, the controls that cannot act stand down (the prompt
-## strip, the technique dock) and come back, untouched, when the talk ends.
-func _refresh_dialogue_focus() -> void:
+## FOCUS: while two people talk — or the session itself is in question — the controls that
+## cannot act stand down (the prompt strip, the technique dock) and come back, untouched,
+## afterwards. A strip that advertises "attack" under a defeat box promises nothing.
+func _refresh_focus() -> void:
+	var focused := _dialogue_modal or _prompt_kind != PROMPT_NONE
 	if _prompt_strip != null:
-		_prompt_strip.visible = not _dialogue_modal
+		_prompt_strip.visible = not focused
 	# The dock decides its own `visible` (it hides with no techniques), so it is faded, not
 	# hidden: its own rule is untouched when the talk ends.
 	if _skill_dock != null:
-		_skill_dock.modulate.a = 0.0 if _dialogue_modal else 1.0
+		_skill_dock.modulate.a = 0.0 if focused else 1.0
 	_place_notice_band()
 
 

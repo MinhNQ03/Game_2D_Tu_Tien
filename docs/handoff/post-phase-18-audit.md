@@ -74,7 +74,8 @@ shown or queued; a held move key still moved the body (15.9 px in 40 frames).
 character is permanently `DEAD` in its `CharacterState` and keeps walking.
 *Systems:* Player entity, WorldRuntime, HUD. *Owner:* combat / world session (shipped, Phase 09).
 *Smallest fix:* a defeated player cannot act; the HUD shows a defeat box; one key returns to
-the menu. *Verification:* an E2E that is really killed by a wolf. **Status: OPEN → Checkpoint 2.**
+the menu. *Verification:* an E2E that is really killed by a wolf. **Status: CLOSED (D-068 §3)** — the
+revival rule itself is debt AUD-14.
 
 **AUD-02 — One Esc ends the session, even with a panel open, and nothing is saved.**
 *Repro:* New Game → `T` (sect panel) → Esc.
@@ -82,8 +83,8 @@ the menu. *Verification:* an E2E that is really killed by a wolf. **Status: OPEN
 *Impact:* Esc is "close" for the satchel, the shop and a conversation, so a second press — or
 the same habit with another panel — destroys the whole unsaved session without a question.
 *Systems:* MapBase, HUD. *Smallest fix:* Esc closes the top reading panel; with nothing open
-it asks, and only a second, different key leaves. *Verification:* E2E. **Status: OPEN →
-Checkpoint 2.**
+it asks, and only a second, different key leaves. *Verification:* E2E. **Status: CLOSED
+(D-068 §1).**
 
 **AUD-03 — The shop keeps the keys while a hostile is biting.**
 *Repro:* fight a wolf without killing it, walk to Kha Thản, open his shop, let the wolf return.
@@ -94,7 +95,7 @@ already showing a live target has no transition left to fire. A presentation sta
 standing in for a gameplay fact.
 *Smallest fix:* combat announces when a hostile turns on the player; every reading surface
 yields to that, and a talk is refused while it is true. *Verification:* integration + E2E.
-**Status: OPEN → Checkpoint 2.**
+**Status: CLOSED (D-068 §2).**
 
 ### P2 — usable but rough
 
@@ -104,8 +105,9 @@ yields to that, and a talk is refused while it is true. *Verification:* integrat
 *Root cause:* the brain decides every 0.2 s; between decisions `RETURN_HOME` keeps walking at
 full speed, through the 22 px arrival band it is supposed to stop in.
 *Smallest fix:* executing `RETURN_HOME` honours the same arrival radius the brain decides on.
-*Verification:* a unit test on the component + the pet budget and E2E still green.
-**Status: OPEN → Checkpoint 2.**
+*Verification:* the pet E2E over six walk-and-stop cycles (the one-cycle check passed by
+luck against the broken code) and the integration test. **Status: CLOSED (D-068 §4)** — it
+also no longer ambles into its owner.
 
 **AUD-06 — The hub's pickups had no recorded reason to be where they are.**
 *Evidence (SOURCE, PLAY):* a pill and two bundles on the hall steps, a sword in the yard.
@@ -127,9 +129,25 @@ AUD-07 · AUD-09 · AUD-10 · AUD-12 · AUD-13 · AUD-14 — see §6.
 
 | ID | Symptom / cost to the player | Why not now | Owner | Closure criterion | Makes later work harder? |
 |---|---|---|---|---|---|
-| AUD-07 | a defeated character has no fallen pose: the body simply stops | needs a new sheet for every humanoid; a presentation asset, not a rule | Phase 26 (Audio / VFX: "death" is in its seed list) | every humanoid profile authors a fall action and the defeat box appears after it | no |
+| AUD-07 | a defeated character has no fallen pose: the body stops, standing, in the corpse tint | needs a new sheet for every humanoid; a presentation asset, not a rule | Phase 26 (Audio / VFX: "death" is in its seed list) | every humanoid profile authors a fall action and the defeat box appears after it | no |
 | AUD-09 | the place plaque's world line ("Ties between people rose") states a change without saying whose or why | it needs a chronicle the player can open | Phase 20 (Story: chronicle UI) | the line names its subject, or opens a chronicle entry that does | no |
 | AUD-10 | nothing states a first objective at spawn (the elder's first line and the stele are the only lead) | objectives are the quest system | Phase 19 (Quest) | a new player can state their current objective from the screen within 30 s of spawning (playtest) | no |
 | AUD-12 | no loot / drop system and no owner named for one, while Phase 21 assumes "map + combat + loot" | drop rules need a reward ledger shared with quest rewards | decided at Phase 19 Gate B (quest rewards); built no later than Phase 21 | one documented owner for "what a defeat or a container yields", used by both quest rewards and drops | **yes** — two reward paths would duplicate the ledger |
 | AUD-13 | a person greets the player with the same line every time; nothing is "said once" | Dialogue owns no flag (D-066) | Phase 20 (Story: `FLAG` condition / `SET_FLAG` effect) | a line can be authored to be said once, through the story service | no |
 | AUD-14 | after a defeat the run ends: there is no revival, no checkpoint, no penalty design | what defeat MEANS is a design decision, and "continue" needs a save | Phase 23 (Save / Load: continue from the last save) with the rule decided at Phase 20 Gate A | the defeat box offers "continue" from a real save and the consequence of defeat is an ADR | no |
+
+## 7. What the repairs changed for the player (Checkpoint 2)
+
+| | Before | After | Evidence |
+|---|---|---|---|
+| AUD-01 | 0 health: no message, a dead body that walks, the session never ends | the body stops; a box says "Ngươi đã gục ngã — Cuộc hành trình dừng tại đây. Chưa có gì được lưu."; `E` returns to the menu | NPC E2E steps 10–11; PLAY vi 1280×720, en 1280×800 (the box hangs below the fallen figure, which is in the corpse tint; the prompt strip is hidden) |
+| AUD-02 | Esc with the sect panel open → main menu | Esc closes the panel; Esc again asks "Rời cuộc hành trình?"; Esc again stays; `E` leaves | world E2E step 7; PLAY both frames |
+| AUD-03 | shop stays modal while bitten (100 → 55) | the shop closes before the first bite; talking while hunted answers "Chưa phải lúc — có thứ đang săn ngươi." | NPC E2E step 9 (health unchanged at the moment control returns) |
+| AUD-04 | companion 1.1 px from the player | never closer than its standing distance minus two physics steps over six cycles | pet E2E; PLAY (the hound at heel) |
+
+Six mutations (no standoff, engagement not announced, the fallen can walk, one Esc leaves, talk
+allowed while hunted, defeat not shown) each turn a test red. Three of them were NOT caught by
+the first version of the regression tests; the tests were sharpened until they were.
+
+Local gates on the repaired tree: lint PASS, parse PASS, 986/986, six isolated E2E PASS (the
+NPC flow five times in a row), 0 `SCRIPT ERROR:`, 0 leak lines; `playtest_flow` 30/30.

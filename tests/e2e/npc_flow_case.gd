@@ -197,11 +197,81 @@ func test_real_npc_shop_flow() -> void:
 		"the player walks again (%.1f px)" % (player.global_position.x - before_leave.x))
 	assert_null(map.call("active_interactable"), "and out of reach he is no longer offered")
 
-	# --- 9. return to menu -------------------------------------------------------------------
-	await _fire_action(OPEN_MENU)
+	# --- 9. a hostile turns on the player while the shop is open (audit AUD-03) -------------
+	# The shop is reached again through the conversation, then a Vụ Lang is PLACED nearby
+	# (setup). What follows is the game's own: the shop must give the keys back before a bite.
+	var combat := main.get_node_or_null("Systems/CombatRuntime") as CombatRuntime
+	var health := player.get_node_or_null("HealthComponent") as HealthComponent
+	# The Vụ Lang whose den is nearest: Kha Thản stands inside its leash, so it will really
+	# come for someone standing beside him instead of turning for home.
+	# "Nearest" is measured to its DEN (its AI home), not to wherever its patrol has taken
+	# it: the den is the fixed point — 334 px from him, beyond the 280 px at which a wolf
+	# loses interest, so putting it back there reliably ends the first brush.
+	var wolf: Enemy = null
+	for candidate in combat.enemies():
+		if wolf == null or candidate.ai().home().distance_to(ko.global_position) \
+				< wolf.ai().home().distance_to(ko.global_position):
+			wolf = candidate
+	var den := wolf.ai().home()
+	player.global_position = ko.global_position + Vector2(24, 4)
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	# The defect needed an EARLIER brush with the same creature: the HUD's target plaque is
+	# then already showing it, and "a target appeared" never happens a second time. So: it
+	# notices the player once, is put back in its den and loses interest — and only then does
+	# the player open the shop.
+	wolf.global_position = player.global_position + Vector2(120, 0)
+	await _wait_until(func() -> bool: return combat.is_player_threatened(), 120)
+	assert_true(combat.is_player_threatened(), "the wolf noticed the player once")
+	wolf.global_position = den
+	await _wait_until(func() -> bool: return not combat.is_player_threatened(), 600)
+	assert_false(combat.is_player_threatened(), "back in its den it lost interest")
+	assert_true(hud.is_target_panel_visible(), "the target plaque still shows it")
+	await _fire_until(INTERACT, func() -> bool: return npcs.is_shop_open())
+	assert_true(npcs.is_shop_open(), "the shop is open again")
+	var full_health := health.get_current_health()
+	wolf.global_position = player.global_position + Vector2(70, 0)
+	await _wait_until(func() -> bool: return not npcs.is_shop_open(), 120)
+	assert_false(npcs.is_shop_open(), "a hostile turning on the player closed the shop")
+	assert_false(hud.is_shop_open(), "and its panel")
+	assert_true(bool(input.call("is_gameplay_active")), "control is back in the player's hands")
+	assert_eq(health.get_current_health(), full_health, "BEFORE the first bite landed")
+	assert_true(combat.is_player_threatened(), "the player is being hunted")
+	await _fire_action(INTERACT)
+	await scene_tree.process_frame
+	assert_false(dialogue.is_open(), "nobody trades words while being hunted")
+	assert_false(npcs.is_shop_open(), "and the shop stays shut")
+	assert_eq(hud.notice_text(), String(loc.call("t", "UI_NPC_NOT_NOW")),
+		"the key answers with why ('%s')" % hud.notice_text())
+
+	# --- 10. the player is defeated: a clear end, not a walking body (audit AUD-01) ----------
+	# SETUP: the player is stood in the den, where the wolf's leash cannot call it off. The
+	# defeat itself is the game's own — real bites, nobody fighting back.
+	player.global_position = den + Vector2(30, 0)
+	wolf.global_position = den
+	await _wait_until(func() -> bool: return health.is_dead(), 3600)
+	assert_true(health.is_dead(), "left alone, the wolves really defeat the player")
+	await scene_tree.process_frame
+	assert_eq(hud.session_prompt_kind(), GameplayHUD.PROMPT_DEFEAT, "the defeat box is shown")
+	assert_eq(hud.session_prompt().title_text(), String(loc.call("t", "UI_DEFEAT_TITLE")),
+		"it says what happened")
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "nothing left the session on its own")
+	var fallen_at := player.global_position
+	Input.action_press(MOVE_RIGHT)
+	for _i in 30:
+		await scene_tree.physics_frame
+	Input.action_release(MOVE_RIGHT)
+	await scene_tree.physics_frame
+	assert_true(player.global_position.distance_to(fallen_at) < 0.5,
+		"the fallen do not walk (%.1f px)" % player.global_position.distance_to(fallen_at))
+
+	# --- 11. the one key on the defeat box returns to the menu -------------------------------
+	await _fire_action(INTERACT)
 	await scene_tree.process_frame
 	await scene_tree.process_frame
-	assert_eq(gs.get_phase(), gs.Phase.MENU, "Esc with no shop open returns to the menu")
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "acknowledging the defeat returns to the menu")
+	assert_eq(int(input.call("current_context")), int(input.Context.MENU),
+		"with no modal context left behind")
 	assert_false(npcs.is_session_active(), "the NPC session ended")
 	var trace: Array = main.call("get_last_teardown_order")
 	assert_true(trace.size() > 2 and trace[0] == &"DialogueRuntime" and trace[1] == &"NpcRuntime",

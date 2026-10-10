@@ -665,3 +665,25 @@ a fight starting, a map change or the session ending closes the conversation the
 ```
 No new game phase. Esc with a conversation open never returns to the menu. The key press that
 opens a conversation, or that leads to a new line, never also answers that line.
+
+## Session rules (D-068) — leaving, being hunted, being defeated
+
+```
+Esc (always the HUD's): steps BACK one level
+   session prompt open → answers it      conversation / shop open → asks its owner to close
+   satchel open → closes it              sect / politics panel open → closes it
+   nothing open → ASKS: "Leave this journey? Nothing is saved yet."
+        interact → MapBase.return_to_menu_requested → Main ends the session stack
+        Esc      → stay (Esc pressed any number of times never leaves)
+
+a hostile's brain enters ALERT → CombatRuntime.hostile_engaged → WorldRuntime
+   → DialogueRuntime.leave · NpcRuntime.close_shop · the HUD's reading panels close
+   while CombatRuntime.is_player_threatened(): talking is refused, with the reason
+
+player health reaches 0 → Player.died → WorldRuntime
+   → everything open closes · the body no longer moves, strikes or casts
+   → HUD session prompt: "You have fallen. This journey ends here. Nothing was saved."
+        interact (or Esc) → return to the menu
+```
+Defeat ends the run until a save exists to continue from (Phase 23) and the story has decided
+what defeat means (Phase 20) — audit debt AUD-14.

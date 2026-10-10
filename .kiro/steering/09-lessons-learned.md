@@ -1310,3 +1310,37 @@
 - **Guards:** `tools/capture_motion.gd`; `test_decor_props_are_rooted_on_dry_ground`,
   `test_the_world_is_depth_sorted_and_layered`; the strike-height and flash-strength assertions in
   `test_attack_feedback.gd`.
+
+## L-046 — A rule that sits between two owners has no owner, and a regression test must fail on the bug before it may guard the fix
+
+- **Found:** the post-Phase-18 audit (D-067 / D-068). Eighteen phases had closed green; four
+  defects were found in one afternoon by playing ACROSS systems instead of reading one.
+- **What happened:**
+  - *Defeat.* `Player` emitted `died`; nothing listened. The session ran on with a dead
+    character that walked. Every phase owned a piece (health, life-state, HUD) and none owned
+    "what happens next".
+  - *Leaving.* The map owned Esc-to-menu, the HUD owned Esc-to-close. Nobody owned the ORDER,
+    so Esc with a panel open ended an unsaved session.
+  - *A presentation transition stood in for a gameplay fact.* "Close the panels when a fight
+    starts" was hung on the HUD's target plaque going from empty to shown. A creature already
+    met produced no second transition; the shop stayed modal while it bit.
+  - *A decision cadence was not honoured by its executor.* The brain stops at an arrival
+    radius every 0.2 s; the component walked through it in between and parked the companion on
+    its owner.
+  - *Three of six regression tests passed against the BROKEN code*: one measured a single
+    walk-and-stop (the bug depended on timing phase), one reproduced the first engagement
+    (the bug needed a second), one crashed instead of failing.
+- **Rules:**
+  - For every state that ENDS something (defeat, leaving, closing, interruption) name the one
+    listener that owns what happens next. A signal with no listener is an unfinished feature.
+  - One key, one owner. If two nodes read the same key, one of them is wrong.
+  - Hang a rule on the FACT (a domain / runtime signal), never on a widget's transition.
+  - Whatever executes an intent between decisions must honour the same thresholds the
+    decision uses.
+  - Run the new regression test against the unfixed code. If it passes, it is not a
+    regression test yet — find what the reproduction is missing (history, timing phase,
+    repetition) and add that.
+  - Play a journey that crosses at least three systems before closing a phase
+    (`PLAYER_EXPERIENCE_STANDARD.md` Gate D).
+- **Guards:** `world_flow_case.gd` step 7; `npc_flow_case.gd` steps 9–11; `pet_flow_case.gd`
+  (six cycles); `test_session_prompt.gd`; `test_enemy_encounter.gd` (`hostile_engaged`).

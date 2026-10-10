@@ -4975,3 +4975,85 @@ reason beside the content, checked by a real walk).
 The register is `docs/handoff/post-phase-18-audit.md` §6. One entry constrains the next phase
 directly: **no system owns loot or drops** while Phase 21 is written as "map + combat + loot"
 (AUD-12). Phase 19's Gate B must name one reward ledger for quest rewards and drops alike.
+
+## D-068 — Leaving, being hunted, being defeated: three rules the session did not have
+
+**Status:** IMPLEMENTED with the post-Phase-18 audit (D-067). Closes audit AUD-01 … AUD-04.
+
+Each rule existed nowhere, because each sat between two owners. They are decided here once.
+
+### 1. Esc steps back one level; leaving a session is asked, never done by one press
+
+*Before:* `MapBase` returned to the menu on any Esc. The HUD closed the satchel, the shop and a
+conversation on Esc — and nothing else — so Esc with the sect or politics panel open, or a
+second Esc after closing something, ended an unsaved session.
+*Decision:* **Esc belongs to the HUD, entirely.** In order: a session prompt answers it; a
+conversation or a shop is asked to close; the satchel closes; an open sect / politics panel
+closes; and with nothing open it ASKS — the session prompt, "Leave this journey? Nothing is
+saved yet." The confirm key (`interact`) leaves; Esc again stays. **Esc pressed any number of
+times never leaves.** `MapBase` only forwards a confirmed leave.
+*Rejected:* a pause menu (a new screen with one working entry); leaving without asking once a
+panel was closed (the same accident one press later); confirming with Esc (the double-press
+this exists to defuse).
+*When it changes:* when file-level save exists (Phase 23) the sentence about losing progress
+is shown only if there is unsaved progress.
+
+### 2. A hostile turning on the player closes every surface that holds the keys
+
+*Before:* panels closed when the HUD's target plaque went from "no live target" to "a live
+target" — a presentation transition. A creature that had already been met once produced no
+second transition, so a shop opened later stayed modal while it bit (health 100 → 55).
+*Decision:* **`CombatRuntime.hostile_engaged` is the fact** — emitted every time a hostile's
+brain enters ALERT, the edge of every engagement. `WorldRuntime` answers it: the conversation
+is left and the shop closed THROUGH THEIR OWNERS, and the map's HUD closes its reading panels.
+`CombatRuntime.is_player_threatened()` is the same fact as a question: while it is true,
+talking to someone is refused with a reason ("Not now — something is hunting you").
+The HUD's plaque rule stays as it was; it is no longer the only thing between a modal panel
+and a bite.
+*Not changed:* the satchel can still be RE-OPENED mid-fight — taking a pill under pressure is
+a choice (D-057B).
+
+### 3. Defeat ends the run, in words
+
+*Before:* at 0 health the `Player` marked its `CharacterState` dead and emitted `died`.
+Nothing listened. The session went on with a dead character that could still walk.
+*Decision — the smallest one that is true today:* **a defeated player cannot act, and the
+session says so.** `Player` ignores movement, attack and cast intent once dead; `WorldRuntime`
+closes everything open and the HUD shows the session prompt: "You have fallen. This journey
+ends here. Nothing was saved." Its one key returns to the menu. The body keeps the existing
+corpse tint (`DamageFeedback`).
+*Why not revive at the hub:* `CharacterState` life-state is ALIVE → DEAD, once, by design
+(D-023); a revival is a rule about what defeat MEANS — penalty, place, cost — and that is
+canon nobody has written. Inventing it to make a screen friendlier is exactly what PX-7
+forbids. It is recorded as debt AUD-14: the rule is decided at Phase 20's Gate A, and
+"Continue" arrives with a real save in Phase 23.
+*Rejected:* leaving the silent dead end until then (a P1 with a five-line fix).
+
+### 4. A follower stops beside its owner, not on them
+
+*Before:* `AiBrain` decides every 0.2 s; between decisions `AIComponent` kept executing
+`RETURN_HOME` at full speed, through the 22 px arrival band, to the home point itself — the
+owner's feet. Its idle amble could also wander in.
+*Decision:* the component honours the band the brain decides on: `RETURN_HOME` does not move
+inside `home_arrival_radius`, and a body with a moving home does not take an amble step that
+carries it further inside it. Enemies with a fixed home are unaffected except that they stop
+within their (8 px) tolerance instead of on the exact pixel.
+
+### The session prompt
+
+One new presentation piece, `SessionPrompt`: the kit's modal box (frame, title, one sentence,
+keys). It hangs below the screen centre so it never covers the figure the camera is centred
+on, holds a UI_MODAL context while shown, and — like a conversation — stands the prompt strip
+and the technique dock down. It is the pattern for any later question about the session as a
+whole (save, load, continue); it is not a general dialog system.
+
+### Evidence
+
+Each rule has a regression test that was run against the broken code first: the world E2E
+(a panel closes, Esc asks, Esc-Esc stays, confirm leaves), the NPC E2E (a wolf met once, sent
+home, then returning to a player in the shop: the shop closes BEFORE the first bite; a talk is
+refused while hunted; a real defeat; the fallen do not walk; one key to the menu), the pet E2E
+(six walk-and-stop cycles, never inside the standing distance), and
+`tests/unit/presentation/test_session_prompt.gd`. Six mutations were applied; all six turn a
+test red. Real-app frames at vi 1280×720 and en 1280×800: the leave question, the defeat box,
+the companion at heel.

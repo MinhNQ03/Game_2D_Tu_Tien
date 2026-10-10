@@ -103,6 +103,7 @@ in D-040 (`CONTRADICTION_REGISTER.md` C-012, C-010).
 | **P-12 Knowledge Core → P-15 Technique** | technique reads a core that already exists | **OK (fixed, C-012)** |
 | P-12 Cultivation → P-15 Technique | technique gates on realm | OK |
 | P-15 Technique → P-16 Pet | pet skills reuse the technique/skill model | OK |
+| P-09 Combat → session surfaces (D-068) | `hostile_engaged` / `is_player_threatened` close and refuse conversations, shops and reading panels; `Player.died` ends the run | OK |
 | P-17 NPC → P-18 Dialogue | dialogue needs someone to talk to | OK (built: `NpcRuntime.engage` is the range authority) |
 | P-18 Dialogue → P-19 Quest | quest choices surface through dialogue | OK |
 | P-19 Quest → P-20 Story | story reads quest outcomes | OK |

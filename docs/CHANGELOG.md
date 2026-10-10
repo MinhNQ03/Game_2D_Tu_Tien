@@ -8,6 +8,22 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-10 — Post-Phase-18 audit (2/2): four repairs in shipped systems (D-068)
+
+- **Fixed (P1).** A defeated player was a silent dead end: the body kept walking and the
+  session never ended. The fallen no longer act; a box says the run is over and that nothing
+  was saved; one key returns to the menu.
+- **Fixed (P1).** One Esc ended an unsaved session, even with a panel open. Esc now steps back
+  one level and, with nothing open, asks; only the confirm key leaves.
+- **Fixed (P1).** The shop kept the keys while a wolf bit. Combat now announces every
+  engagement (`hostile_engaged`); conversations, the shop and reading panels yield to it, and
+  talking while hunted is refused with a reason.
+- **Fixed (P2).** The companion came to rest on top of the player. It stops at its standing
+  distance and no longer ambles into its owner.
+- **Added.** `SessionPrompt`, the modal box for questions about the session itself.
+- 986 tests locally; the E2E flows cover each repair and were sharpened until six mutations all
+  failed. Phase 19 is NOT started.
+
 ### 2026-10-10 — Post-Phase-18 audit (1/2): the Player Experience Standard (D-067)
 
 - **Added.** `docs/PLAYER_EXPERIENCE_STANDARD.md`: nine player-side rules, five gates, the

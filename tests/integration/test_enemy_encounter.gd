@@ -211,10 +211,23 @@ func test_an_enemy_notices_the_player_and_closes() -> void:
 	var enemy := runtime.enemies()[0]
 	var start_distance := enemy.global_position.distance_to(player.global_position)
 
+	# The engagement is ANNOUNCED as a gameplay fact (audit AUD-03): reading and trading
+	# surfaces yield to it, so it must fire on the edge and be answerable as a question.
+	var engaged := [0]
+	var on_engaged := func() -> void: engaged[0] += 1
+	runtime.hostile_engaged.connect(on_engaged)
+	assert_false(runtime.is_player_threatened(), "nothing has noticed the player yet")
 	var states := {}
+	var threatened_while_engaged := true
 	for _i in 40:
 		runtime.tick_enemies(STEP)
 		states[enemy.ai_state_name()] = true
+		if enemy.ai_state_name() in CombatRuntime.ENGAGED_STATES:
+			threatened_while_engaged = threatened_while_engaged \
+				and runtime.is_player_threatened()
+	runtime.hostile_engaged.disconnect(on_engaged)
+	assert_eq(engaged[0], 1, "one engagement, announced once (not once per state)")
+	assert_true(threatened_while_engaged, "and 'is the player threatened' is true throughout")
 
 	assert_true(states.has("ALERT"),
 		"it telegraphed noticing the player, got %s" % str(states.keys()))

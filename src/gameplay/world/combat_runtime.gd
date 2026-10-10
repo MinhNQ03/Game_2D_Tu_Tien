@@ -32,6 +32,9 @@ class_name CombatRuntime
 ## (`03-architecture.md`: emitters never depend on listeners).
 signal combat_target_changed(view: CombatTargetView)
 
+## The AI states in which a creature is in a fight (`AiBrain.STATE_NAMES`).
+const ENGAGED_STATES: Array[String] = ["ALERT", "CHASE", "ATTACK", "RECOVER"]
+
 ## A creature was defeated, and this is what defeating it is worth (Phase 11).
 ##
 ## COMBAT ANNOUNCES; IT DOES NOT PAY. This carries the authored `xp_reward` and an identity,
@@ -48,6 +51,11 @@ signal combat_target_changed(view: CombatTargetView)
 ## it is a gameplay fact, and presentation reacts to the progression owner's events, not to
 ## this one.
 signal enemy_defeated(reward_id: StringName, xp_reward: int)
+## A hostile has just turned on someone (its brain entered ALERT). A gameplay FACT, announced
+## every time it happens — not the HUD plaque's "a target is now shown", which fires once and
+## then stays true while a creature wanders off and comes back (audit AUD-03). Reading and
+## trading surfaces yield to this.
+signal hostile_engaged()
 
 ## The enemy scene. Every creature is this ONE scene configured by `EnemyData` — there is no
 ## per-creature scene, which is what makes a new creature a `.tres` (Phase 10 exit criterion).
@@ -455,8 +463,21 @@ func _on_enemy_health_changed(_current: int, _maximum: int, enemy: Enemy) -> voi
 ## walking through a populated map would flicker the plaque between whatever happens to be
 ## nearby.
 func _on_enemy_ai_state_changed(state_name: String, enemy: Enemy) -> void:
-	if state_name in ["ALERT", "CHASE", "ATTACK", "RECOVER"]:
+	if state_name in ENGAGED_STATES:
 		_publish_target(enemy)
+	# Every engagement begins in ALERT (from IDLE, PATROL or RETURN), so this is its edge.
+	if state_name == "ALERT":
+		hostile_engaged.emit()
+
+
+## Is any living hostile engaged right now (alerted, chasing, attacking or recovering between
+## blows)? Asked before a conversation starts: nobody trades words while being hunted.
+func is_player_threatened() -> bool:
+	for enemy in _enemies:
+		if enemy != null and is_instance_valid(enemy) and not enemy.is_dead() \
+				and enemy.ai_state_name() in ENGAGED_STATES:
+			return true
+	return false
 
 
 ## Compose a per-spawn reward identity. `enemy_mist_wolf_1#3` reads as "the third creature

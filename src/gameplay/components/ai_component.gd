@@ -239,12 +239,23 @@ func _execute(intent: int, delta: float) -> void:
 		AiBrain.Intent.WANDER:
 			direction = Vector2.RIGHT.rotated(_brain.patrol_angle())
 			speed_scale = _profile.patrol_speed_scale
+			# A FOLLOWER ambles around its owner, never into them: a step that would carry
+			# it further inside its standing distance is not taken (audit AUD-04).
+			if home_anchor() != null and direction.dot(_body.global_position.direction_to(
+					home())) > 0.0 and _body.global_position.distance_to(home()) \
+					<= _profile.home_arrival_radius:
+				direction = Vector2.ZERO
 		AiBrain.Intent.APPROACH:
 			direction = _toward_target()
 		AiBrain.Intent.BACK_OFF:
 			direction = -_toward_target()
 		AiBrain.Intent.RETURN_HOME:
-			direction = _body.global_position.direction_to(home())
+			# The brain decides on a cadence; this runs every tick. Stop INSIDE the arrival
+			# radius the brain will call "arrived" at, or a fast walker covers the whole band
+			# between two decisions and comes to rest on the home point itself — for a
+			# companion, on top of its owner (audit AUD-04).
+			if _body.global_position.distance_to(home()) > _profile.home_arrival_radius:
+				direction = _body.global_position.direction_to(home())
 			speed_scale = _profile.effective_return_speed_scale()
 		AiBrain.Intent.SWING:
 			# Face the target, then swing. Facing FIRST matters: `CombatService` tests the arc

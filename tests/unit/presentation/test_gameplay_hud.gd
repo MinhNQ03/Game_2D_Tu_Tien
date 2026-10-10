@@ -375,6 +375,8 @@ func _is_token_inset(inset: float) -> bool:
 		# rather than as a number, which is the whole point of this helper — it accepts
 		# insets that are composed of layout tokens and rejects hand-typed literals.
 		float(UIPalette.HUD_MARGIN + UIPalette.TOP_PLAQUE_RESERVE),
+		# D-068: the session prompt hangs a NAMED distance below the screen centre.
+		float(UIPalette.SESSION_PROMPT_DROP),
 	]
 	return allowed.has(absf(inset))
 

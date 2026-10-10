@@ -248,6 +248,8 @@ func _spawn_player() -> bool:
 		_player.call("set_visual_profile_from_ref", template.sprite_set_ref)
 	# Parent to WorldRuntime (under Systems) so a SceneRouter content swap can't free it.
 	add_child(_player)
+	if _player.has_signal("died"):
+		_player.connect("died", _on_player_died)
 	return true
 
 
@@ -378,6 +380,8 @@ func _repopulate_combat_for_active_map() -> void:
 	# reason the sect and politics views are pushed from here.
 	if not combat.is_connected("combat_target_changed", _on_combat_target_changed):
 		combat.connect("combat_target_changed", _on_combat_target_changed)
+	if not combat.is_connected("hostile_engaged", _on_hostile_engaged):
+		combat.connect("hostile_engaged", _on_hostile_engaged)
 	# A fresh map means a fresh HUD with no target, and the previous map's creatures are gone.
 	_push_target_view_to_active_map(CombatTargetView.make_empty())
 	combat.call("despawn_enemies")
@@ -392,6 +396,34 @@ func _repopulate_combat_for_active_map() -> void:
 
 func _on_combat_target_changed(view: CombatTargetView) -> void:
 	_push_target_view_to_active_map(view)
+
+
+## A hostile has turned on the player: every surface that holds the keys or covers the field
+## yields NOW — the conversation and the shop through their owners, the reading panels through
+## the map's HUD — so control is never withheld while the player is being harmed (PX-4).
+func _on_hostile_engaged() -> void:
+	_yield_surfaces()
+
+
+func _yield_surfaces() -> void:
+	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if dialogue != null and dialogue.is_session_active():
+		dialogue.leave()
+	var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
+	if npcs != null and npcs.is_session_active():
+		npcs.close_shop()
+	if _active_map != null and _active_map.has_method("close_reading_panels"):
+		_active_map.call("close_reading_panels")
+
+
+## The player has fallen. Defeat ends the run: there is no save to continue from before
+## Phase 23 and what defeat MEANS is not decided before Phase 20 (D-068), so the game says so
+## plainly instead of leaving a body that walks. Everything open closes; the map's HUD shows
+## the defeat box, whose one key returns to the menu.
+func _on_player_died() -> void:
+	_yield_surfaces()
+	if _active_map != null and _active_map.has_method("show_defeat"):
+		_active_map.call("show_defeat")
 
 
 ## Push a read-only combat-target view into the active map's HUD. Null-safe at every hop: a map
@@ -900,7 +932,12 @@ func _on_interactable_used(kind: StringName, id: StringName) -> void:
 		# to `NpcRuntime`). With no dialogue session, `NpcRuntime`'s own behaviour stands.
 		var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
 		var npcs := _find_sibling_of(NpcRuntime) as NpcRuntime
-		if dialogue != null and dialogue.is_session_active():
+		var combat := _find_combat_runtime()
+		if combat != null and bool(combat.call("is_session_active")) \
+				and bool(combat.call("is_player_threatened")):
+			# Nobody trades words while being hunted: the key answers with why.
+			_notify(&"announce_answer", &"UI_NPC_NOT_NOW")
+		elif dialogue != null and dialogue.is_session_active():
 			dialogue.talk(id)
 		elif npcs != null and npcs.is_session_active():
 			npcs.interact(id)

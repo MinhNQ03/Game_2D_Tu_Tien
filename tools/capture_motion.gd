@@ -18,8 +18,8 @@ extends SceneTree
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
 ## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
-## techniques, golden, field_fight, pet, shop, dialogue (second user argument runs one; a third
-## picks the language, `vi` or `en`, default the saved setting).
+## techniques, golden, field_fight, pet, shop, dialogue, session (second user argument runs
+## one; a third picks the language, `vi` or `en`, default the saved setting).
 ##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
 ## on top of the camera's own zoom) and `<out>/scene_<name>.png` full frames. Exit code 1 if any
@@ -106,6 +106,9 @@ func _run() -> void:
 	if _only == "dialogue":
 		print("[capture_motion] scenario dialogue")
 		await _scenario_dialogue()
+	if _only == "session":
+		print("[capture_motion] scenario session")
+		await _scenario_session()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -723,6 +726,62 @@ func _scenario_dialogue() -> void:
 	await _press(&"open_menu")
 	await _settle()
 	await _shot("scene_dialogue_after_shop")
+
+
+## The session itself (D-068), by name only: the companion standing BESIDE its owner, Esc
+## asking before it leaves, and a real defeat ending the run in words.
+##
+## SETUP, stated plainly: the player is placed beside the stray and, for the defeat, in a Vụ
+## Lang's den. The bites, the fall and every key press are the game's own.
+func _scenario_session() -> void:
+	var player := _player()
+	var hound := _map_node("Interactables/StrayHound") as Node2D
+	var combat := _main.get_node_or_null("Systems/CombatRuntime") as CombatRuntime
+	if player == null or hound == null or combat == null:
+		_fail("session: pieces missing")
+		return
+	player.global_position = hound.global_position + Vector2(-18, 4)
+	await _settle()
+	await _press(&"interact")
+	await _settle()
+	for move: StringName in [&"move_left", &"move_up"]:
+		Input.action_press(move)
+		for _i in 50:
+			await physics_frame
+		Input.action_release(move)
+		for _i in 80:
+			await physics_frame
+	await _shot("scene_session_pet_beside")
+	await _press(&"sect_panel")
+	await _settle()
+	await _press(&"open_menu")
+	await _settle()
+	await _shot("scene_session_esc_closed_panel")
+	await _press(&"open_menu")
+	await _settle()
+	await _shot("scene_session_leave_question")
+	await _press(&"open_menu")
+	await _settle()
+	# Sent away with its own key: a companion would win the fight this frame needs lost.
+	await _press(&"pet_summon")
+	await _settle()
+	if not await _travel_through_first_exit(player):
+		_fail("session: the exit did not transition")
+		return
+	await _settle()
+	var wolf := combat.enemies()[0] as Node2D
+	player.global_position = wolf.global_position + Vector2(30, 0)
+	var fallen := false
+	for _i in 4000:
+		await physics_frame
+		if bool(player.call("is_dead")):
+			fallen = true
+			break
+	if not fallen:
+		_fail("session: the player was not defeated")
+		return
+	await _settle()
+	await _shot("scene_session_defeat")
 
 
 ## SETUP + a short real walk: stand to the right of `who`, just out of reach, and walk in.

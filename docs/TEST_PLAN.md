@@ -1149,3 +1149,28 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
 - Local tally at this checkpoint: 983 tests, 983 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak
   lines; app / player / world / pet / npc / dialogue E2E PASS. CI: run 38046511848 green on
   `ba9e63c` (the runner's own annotation: "ran 983 test(s): 983 passed, 0 failed").
+
+### Post-Phase-18 audit repairs (D-067 / D-068)
+- `tests/e2e/world_flow_case.gd` step 7 — real keys: Esc closes an open sect panel and asks
+  nothing; Esc asks to leave (still RUNNING, UI_MODAL); Esc again stays; the confirm key ends
+  the session. Guarded so that "one Esc left" fails as an assertion, not as a crash.
+- `tests/e2e/npc_flow_case.gd` steps 9–11 — a Vụ Lang is met once, put back in its den (its AI
+  home, 334 px away) until it loses interest while the plaque still shows it, then returns to
+  a player in the shop: the shop closes with health unchanged; a talk while hunted is refused
+  with `UI_NPC_NOT_NOW`; left alone in the den the player is really defeated; the defeat box
+  shows; a held move key does not move the body; one key returns to the menu with no modal
+  context left.
+- `tests/e2e/pet_flow_case.gd` — six walk-and-stop cycles; the companion never comes inside
+  its standing distance (the first, one-cycle version passed against the broken code).
+- `tests/integration/test_enemy_encounter.gd` — one engagement announces `hostile_engaged`
+  once; `is_player_threatened()` is false before and true throughout.
+- `tests/integration/test_pet_companion.gd` — the same standing distance under the rig's clock.
+- `tests/unit/presentation/test_session_prompt.gd` (3) — the defeat box is modal, truthful
+  ("nothing was saved"), closes the satchel, stands the strip down, hangs below the centre,
+  survives a threat, and gives back exactly one context; a threat closes the satchel and asks
+  an open shop's owner to close every time; both languages fit.
+- Mutation-checked: six mutations, six red.
+- Real app: `tools/capture_motion.gd -- <dir> session <vi|en>` at 1280×720 (vi) and 1280×800
+  (en), frames opened; `tools/playtest_flow.gd -- vi <dir>` 30/30 (its step 22 now asks, then
+  confirms).
+- Local tally: 986 tests, 986 passed, 0 failed, 0 `SCRIPT ERROR:`, 0 leak lines; six E2E PASS.

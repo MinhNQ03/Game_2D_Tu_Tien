@@ -13,8 +13,8 @@ class_name MapBase
 ##
 ## On the semantic `interact` intent (via InputService — never raw keys) while the player
 ## stands in an exit zone, it emits `exit_requested(to_map_id, entry_point)` read from the
-## AUTHORITATIVE `MapExit` (not from the scene). It emits `return_to_menu_requested` on the
-## `open_menu` system intent.
+## AUTHORITATIVE `MapExit` (not from the scene). It emits `return_to_menu_requested` when the
+## HUD reports a CONFIRMED leave (Esc itself belongs to the HUD — D-068).
 ##
 ## It owns NO transition mechanics (SceneRouter) and NO location truth (GameState) and does
 ## not reach into the player's internals — it only emits intents. State is throwaway; carried
@@ -49,7 +49,6 @@ signal dialogue_close_requested()
 signal return_to_menu_requested()
 
 const INTERACT_ACTION := &"interact"
-const OPEN_MENU_ACTION := &"open_menu"
 
 const GameplayHUDScript := preload("res://src/presentation/hud/gameplay_hud.gd")
 
@@ -314,6 +313,18 @@ func set_skill_view(view: SkillView) -> void:
 		_hud.set_skill_view(view)
 
 
+## A hostile has turned on the player: close every reading panel (the HUD decides which).
+func close_reading_panels() -> void:
+	if _hud != null:
+		_hud.close_reading_panels()
+
+
+## The player has fallen: the HUD shows the defeat box.
+func show_defeat() -> void:
+	if _hud != null:
+		_hud.show_defeat()
+
+
 ## Push the conversation view (Phase 18): an open view opens the box, a closed one closes it.
 func set_dialogue_view(view: DialogueView) -> void:
 	_dialogue_view = view
@@ -512,14 +523,9 @@ func get_spawn_position(entry_point: StringName) -> Vector2:
 func _unhandled_input(_event: InputEvent) -> void:
 	if _input == null:
 		return
-	# Return to menu (system action, allowed above gameplay). Null-check viewport + emit
-	# LAST (L-013: emitting can synchronously unload this scene).
-	if _input.call("is_system_action_just_pressed", OPEN_MENU_ACTION):
-		var viewport := get_viewport()
-		if viewport != null:
-			viewport.set_input_as_handled()
-		return_to_menu_requested.emit()
-		return
+	# Esc is the HUD's (PX-4, D-068): it steps BACK one level — closes the top surface, and
+	# with nothing open ASKS before leaving. The map only forwards a CONFIRMED leave
+	# (`_setup_hud`), so no single key press can end an unsaved session.
 	# Use the exit the player is standing in (gameplay action, gated on GAMEPLAY context).
 	# Destination comes from the AUTHORITATIVE MapExit data, not the scene (D-022).
 	if _active_exit != null and _input.call("is_gameplay_action_just_pressed", INTERACT_ACTION):
@@ -601,6 +607,8 @@ func _setup_hud() -> void:
 		dialogue_choice_requested.emit(node_id, id))
 	_hud.dialogue_advance_requested.connect(func() -> void: dialogue_advance_requested.emit())
 	_hud.dialogue_close_requested.connect(func() -> void: dialogue_close_requested.emit())
+	# Emitting can synchronously unload this scene (L-013): nothing may follow it.
+	_hud.leave_session_requested.connect(func() -> void: return_to_menu_requested.emit())
 
 
 func _refresh_hud() -> void:
