@@ -5770,3 +5770,40 @@ plants the first thing an institution will lie about, and puts the player's hand
 split by a cream sash, hair up in a full knot — against one grey-blue robe to the floor. The
 skirt's cloth is design data (`garment.skirt_material`), and it uses the free `accent` slot
 because the id pass holds twelve cloths (L-053).
+
+
+### D-072 addendum (Checkpoint 4) — how the Night is carried out
+
+**E. An encounter is a beat's data, spawned by the world, answered with the player's feet.**
+`StoryBeatData` may name an `encounter_id` (→ `data/enemies/spawn_table_<id>.tres`), the choice
+it answers, the option for *cleared* and the option for *left*, and a flag raised when it
+begins. `WorldRuntime` — which already populates maps through `CombatRuntime.spawn_from_table`
+— spawns it ONCE, only in the table's own map, and only after the beat's scene has ended:
+nothing hostile moves while a scene holds the player. The last creature down, or the player
+leaving the map, is submitted to `StoryRuntime.choose`; the story owner records it once and
+applies the consequences. No menu asks "fight or flee". Rejected: a new session node for
+encounters (a nineteenth runtime for one caller); StoryRuntime spawning creatures (the story
+would reach into combat).
+
+**F. An event's creatures have their own identity.** `EnemySpawnTableData.tag` is part of
+every instance id (`map_field__night__enemy_mist_wolf__0`), so the Night's wave never shares
+an id with the woods' own wolves; reward ids were already per-spawn. No corpse is revived and
+nothing is paid twice.
+
+**G. What is in a map because of the story asks the story.** `StoryPresence` (a child node:
+`flag_id`, `present_when_set`) shows or removes its parent — hidden AND bodiless — every time
+the map is entered and every time the story moves. `WorldItem.appears_with_flag` does the same
+for a pickup. A hidden interactable is not offered. The wreck and what spilled from it appear
+with `flag_vein_broke`; the survey stake disappears and the weighted sheet appears with
+`flag_night_over`. Nothing is freed and no map has a second version.
+
+**H. A scene waits for a conversation.** `DialogueRuntime` tells `StoryRuntime` when one opens
+and closes; a scene that becomes due in between is entered when the speaker has finished.
+
+**I. The sheet is in one place for both roads.** Kept or told, the torn survey sheet is
+weighted under a stone at the foot of the stele once the Night is over. What differs is who
+the player is to Lâm Nguyệt when they find it: she tells a keeper of her confidence where to
+look; a teller finds it with no help, and she says only that something was hidden in a hurry.
+
+**J. Sitting is announced.** `CultivationRuntime.gathered(amount)` is emitted when the service
+accepts tu vi; Main passes it to the story. Beat 10 completes on a real gather at any site.

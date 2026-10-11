@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StoryCatalogData" load_steps=74 format=3]
+[gd_resource type="Resource" script_class="StoryCatalogData" load_steps=79 format=3]
 
 [ext_resource type="Script" path="res://src/data/story/story_catalog_data.gd" id="s_story_catalog_data"]
 [ext_resource type="Script" path="res://src/data/story/story_chapter_data.gd" id="s_story_chapter_data"]
@@ -47,6 +47,23 @@ max_value = 2
 script = ExtResource("s_story_flag_data")
 id = &"flag_asked_carter_load"
 purpose = "The player asked the carter what he hauls, and was told pine."
+
+[sub_resource type="Resource" id="F_flag_vein_broke"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_vein_broke"
+purpose = "The vein under the woods has broken; what the rupture left is in the world."
+
+[sub_resource type="Resource" id="F_flag_night_over"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_night_over"
+purpose = "The Night is past: 1 the player stood until the last creature fell, 2 they withdrew."
+kind = 1
+max_value = 2
+
+[sub_resource type="Resource" id="F_flag_ko_night_said"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_ko_night_said"
+purpose = "Kha Than has said his one line about how the player met the Night."
 
 [sub_resource type="Resource" id="F_flag_lin_origin_said"]
 script = ExtResource("s_story_flag_data")
@@ -117,11 +134,17 @@ character_id = &"actor_scout_ko"
 dimension = &"respect"
 delta = 10
 
+[sub_resource type="Resource" id="Q_choice_night_stand_stood_1"]
+script = ExtResource("s_story_consequence_data")
+kind = 0
+flag_id = &"flag_night_over"
+value = 1
+
 [sub_resource type="Resource" id="O_choice_night_stand_stood"]
 script = ExtResource("s_story_option_data")
 id = &"stood"
 record_key = &"STORY_CHOICE_NIGHT_STAND_STOOD"
-consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_night_stand_stood_0")])
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_night_stand_stood_0"), SubResource("Q_choice_night_stand_stood_1")])
 
 [sub_resource type="Resource" id="Q_choice_night_stand_withdrew_0"]
 script = ExtResource("s_story_consequence_data")
@@ -130,11 +153,17 @@ character_id = &"actor_scout_ko"
 dimension = &"affinity"
 delta = -5
 
+[sub_resource type="Resource" id="Q_choice_night_stand_withdrew_1"]
+script = ExtResource("s_story_consequence_data")
+kind = 0
+flag_id = &"flag_night_over"
+value = 2
+
 [sub_resource type="Resource" id="O_choice_night_stand_withdrew"]
 script = ExtResource("s_story_option_data")
 id = &"withdrew"
 record_key = &"STORY_CHOICE_NIGHT_STAND_WITHDREW"
-consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_night_stand_withdrew_0")])
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_night_stand_withdrew_0"), SubResource("Q_choice_night_stand_withdrew_1")])
 
 [sub_resource type="Resource" id="C_choice_night_stand"]
 script = ExtResource("s_story_choice_data")
@@ -282,7 +311,7 @@ objective_key = &"STORY_BEAT_WARNING_OBJECTIVE"
 record_key = &"STORY_BEAT_WARNING_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 7; §4 TRIGGER"
-entry_scene_id = &""
+entry_scene_id = &"scene_night_warning"
 plays_origin_vignette = false
 trigger = SubResource("T_beat_warning")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_warning_0")])
@@ -306,10 +335,15 @@ objective_key = &"STORY_BEAT_NIGHT_OBJECTIVE"
 record_key = &"STORY_BEAT_NIGHT_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 8; §4 IMMEDIATE RESULT"
-entry_scene_id = &""
+entry_scene_id = &"scene_night_rupture"
 plays_origin_vignette = false
 trigger = SubResource("T_beat_night")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_night_0")])
+encounter_id = &"field_night"
+encounter_choice_id = &"choice_night_stand"
+encounter_cleared_option = &"stood"
+encounter_left_option = &"withdrew"
+encounter_flag_id = &"flag_vein_broke"
 
 [sub_resource type="Resource" id="T_beat_aftermath"]
 script = ExtResource("s_story_trigger_data")
@@ -330,7 +364,7 @@ objective_key = &"STORY_BEAT_AFTERMATH_OBJECTIVE"
 record_key = &"STORY_BEAT_AFTERMATH_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 9; §4 SOCIAL CONSEQUENCE"
-entry_scene_id = &""
+entry_scene_id = &"scene_morning_after"
 plays_origin_vignette = false
 trigger = SubResource("T_beat_aftermath")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_aftermath_0")])
@@ -469,6 +503,6 @@ beats = Array[ExtResource("s_story_beat_data")]([SubResource("BEAT_beat_standing
 [resource]
 script = ExtResource("s_story_catalog_data")
 chapters = Array[ExtResource("s_story_chapter_data")]([SubResource("CH_prologue"), SubResource("CH_act1")])
-flags = Array[ExtResource("s_story_flag_data")]([SubResource("F_flag_heard_village_business"), SubResource("F_flag_heard_elder_account"), SubResource("F_flag_heard_road_ahead"), SubResource("F_flag_outpost_issue"), SubResource("F_flag_lam_asked"), SubResource("F_flag_lam_settled"), SubResource("F_flag_asked_carter_load"), SubResource("F_flag_lin_origin_said"), SubResource("F_flag_te_origin_said")])
+flags = Array[ExtResource("s_story_flag_data")]([SubResource("F_flag_heard_village_business"), SubResource("F_flag_heard_elder_account"), SubResource("F_flag_heard_road_ahead"), SubResource("F_flag_outpost_issue"), SubResource("F_flag_lam_asked"), SubResource("F_flag_lam_settled"), SubResource("F_flag_asked_carter_load"), SubResource("F_flag_vein_broke"), SubResource("F_flag_night_over"), SubResource("F_flag_ko_night_said"), SubResource("F_flag_lin_origin_said"), SubResource("F_flag_te_origin_said")])
 choices = Array[ExtResource("s_story_choice_data")]([SubResource("C_choice_lam_readings"), SubResource("C_choice_night_stand")])
 start_beat_id = &"beat_road"

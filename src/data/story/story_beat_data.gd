@@ -26,6 +26,20 @@ class_name StoryBeatData
 ## The story rests here: nothing completes it yet (the standing purpose at the end of what is
 ## authored). A terminal beat has no trigger and no branches.
 @export var terminal: bool = false
+## The world's part of this beat, if it has one: a wave of creatures the session spawns when
+## the beat's entry scene has ended (`data/enemies/spawn_table_<encounter_id>.tres`). The
+## player answers `encounter_choice_id` with their feet: `encounter_cleared_option` when the
+## last creature is down, `encounter_left_option` if they leave the map first. All four or none.
+@export var encounter_id: StringName = &""
+@export var encounter_choice_id: StringName = &""
+@export var encounter_cleared_option: StringName = &""
+@export var encounter_left_option: StringName = &""
+## Optional: a story flag raised the moment the encounter begins (the world has changed).
+@export var encounter_flag_id: StringName = &""
+
+
+func has_encounter() -> bool:
+	return encounter_id != &""
 
 
 func text_keys() -> Array[StringName]:

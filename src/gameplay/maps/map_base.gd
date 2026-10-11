@@ -273,8 +273,13 @@ func _track_knowledge_source(player_position: Vector2) -> void:
 	var candidates: Array = []
 	for host_path in INTERACTABLE_HOSTS:
 		var host := get_node_or_null(host_path)
-		if host != null:
-			candidates.append_array(host.get_children())
+		if host == null:
+			continue
+		for child in host.get_children():
+			# Something the story has not put in the world yet (`StoryPresence`) is not there
+			# to be talked to or read.
+			if not (child is CanvasItem) or (child as CanvasItem).visible:
+				candidates.append(child)
 	var found := WorldInteractable.nearest_in_reach(candidates, player_position)
 	if found != _active_interactable:
 		_active_interactable = found

@@ -160,8 +160,8 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 | 0 | Gate A: D-072, this file, CL-09 id fix, save-format and character-system reconciliation | `89dec88` | 38113654836 — success, `head_sha` `89dec88513e63394d1573ec263e91f2c45af7735` |
 | 1 | Story / Origin domain and data | `d8edcf7` | 38114604673 — success, `head_sha` `d8edcf7…` |
 | 2 | Real New Game, identity, Origins, the sectless start | `8a3bc2f` | 38117230702 — success, `head_sha` `8a3bc2f96e575827f1373835cdb54cdf4eb33365` (15 gates) |
-| 3 | Arrival, contacts, the small problem, the first decision | *(this commit)* | *(recorded by the next)* |
-| 4 | The Night, the encounter, the aftermath, cultivation, the sheet | | |
+| 3 | Arrival, contacts, the small problem, the first decision | `d676f51` | 38129290085 — success, `head_sha` `d676f51f1c62f60352d9b432c6684d652b026893` (15 gates) |
+| 4 | The Night, the encounter, the aftermath, cultivation, the sheet | *(this commit)* | *(recorded by the next)* |
 | 5 | Chronicle, purpose arbitration, the way out | | |
 | 6 | Audit, real app, close-out | | |
 
@@ -172,6 +172,53 @@ manager · save file, slots, autosave, Continue · loot or drops · dungeon, bos
 a sect join · per-Origin campaigns · an audio system · anything Phase 21 owns.
 
 ## 11. Evidence
+
+### Checkpoint 4 — the Night, the encounter, the morning, the first sitting, the sheet (built)
+
+**What is playable (beats 7–11), with real keys.**
+
+| Stage | What the player sees | What changed, and who owns it |
+|---|---|---|
+| before | the spring, the stake in the woods, the carter waiting | — |
+| warning | when Lâm Nguyệt has finished speaking: a band over the village — the spring misses a beat, the lanterns gutter, the cart has gone for its last load | nothing (a scene changes nothing) |
+| event | on arrival in the woods: the rupture, told over the woods | `beat_night` is current (Story) |
+| the wave | when the scene ends: two creatures of the Night, far from the entrance; the cart abandoned with its crates split, a manual on the ground | spawned by Combat through its own seam; `flag_vein_broke` (Story) |
+| the answer | the last one down → *stood*; walking back out → *withdrew* | `choice_night_stand` recorded once (Story); Kha Thản's regard (Relationship); XP through the one ledger |
+| aftermath | "the next morning", over a covered map; the stake is gone | `flag_night_over` 1 or 2 |
+| consequence | the elder opens with his account; the watchman says one line about how the player met the Night; Lâm Nguyệt says where to look, or only that something was hidden | `flag_heard_elder_account` |
+| cultivation | sitting at the spring and gathering tu vi | `CultivationService`; the story only hears `gathered` |
+| mystery | a sheet weighted under a stone at the stele's foot | `know_survey_fragment` (Knowledge) |
+
+**Fairness (AUD-14 stays honest).** The wave begins > 300 px from the entrance and only after
+the scene; the exit behind the player stays open and leaving is a recorded answer, not a
+failure; the creatures are the shipped mist wolf with its shipped telegraph (no new stats);
+the E2E clears both with the base attack and the player alive.
+
+**Tests.** Story E2E: 17 real-key steps (8d the rupture and the wave, 8e standing, 8f the
+account / the sitting / the sheet, 11 withdrawing in a second run). Suite unchanged in count
+(1182): the map invariants (`test_map_scenes`, `test_prop_bodies`) caught two real mistakes
+on the way — a stake drawn off its measured origin with no body, and a weight stone standing
+on its own reading spot — and both were fixed in the scene, not in the tests.
+
+**Mutations (8, all RED, restored):** a scene opens over a conversation · the wave spawns
+during the scene · leaving is no answer · clearing is no answer · presence ignored · sitting
+tells nobody · the wave shares ids with the woods' wolves · the rupture flag is not raised.
+
+**Real application.** `tools/capture_ui.gd` gained `_capture_the_night` (a capture, staged
+through the story owner): six states photographed at 1280×720 vi and opened — the warning
+card and caption over the village; the rupture caption over the woods with the stake standing
+and Kha Thản at the treeline; the wave with the abandoned cart, its pale crates and the
+spilled manual; the morning card over a covered map; the stone at the stele's foot.
+
+**Honest limits.** (1) The "wreck" is the cart sprite standing — not visibly broken; the
+caption says *abandoned*, not *overturned*, to stay true to the picture. (2) There is no
+night: the woods are lit as by day, and darkness is told, not shown. (3) The Night's creatures
+are the shipped wolf, unchanged — "not themselves" is said, not seen. (4) In the E2E the
+player's attack was found mid-recovery on returning to the village and ended the first sitting
+as *attacked*; the test now waits for READY. Whether a real player can reproduce a stuck
+recovery was NOT investigated (CHƯA VERIFY). (5) That a hidden interactable is not offered is
+exercised only through presence in the E2E; it has no test of its own. (6) The purpose line
+and the world line are still Checkpoint 5's.
 
 ### Checkpoint 3 — arrival, the people of Lạc Hà, the village's business, whom to trust (built)
 

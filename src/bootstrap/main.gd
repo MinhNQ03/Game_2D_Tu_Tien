@@ -1075,6 +1075,10 @@ func _start_cultivation_sessions() -> bool:
 	if _story == null or not bool(_story.call("start_session", _world, _knowledge,
 			_relationship, _inventory, _run_origin_id)):
 		return false
+	# Sitting down and drawing qi is something the story can wait for (beat 10).
+	if _cultivation != null and _cultivation.has_signal("gathered") \
+			and not _cultivation.is_connected("gathered", _on_cultivation_gathered):
+		_cultivation.connect("gathered", _on_cultivation_gathered)
 	# What belongs to somebody stays where it is until the story says it was handed over.
 	_inventory.call("set_pickup_gate", _story_flag_is_set)
 	if _world.has_method("refresh_active_map_story_view"):
@@ -1085,6 +1089,11 @@ func _start_cultivation_sessions() -> bool:
 	if _world.has_method("refresh_active_map_dialogue_view"):
 		_world.call("refresh_active_map_dialogue_view")
 	return true
+
+
+func _on_cultivation_gathered(_amount: int) -> void:
+	if _story != null and bool(_story.call("is_session_active")):
+		_story.call("note_cultivated")
 
 
 func _story_flag_is_set(flag_id: StringName) -> bool:

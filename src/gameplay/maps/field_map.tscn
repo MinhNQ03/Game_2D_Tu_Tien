@@ -28,6 +28,9 @@
 [ext_resource type="Script" path="res://src/gameplay/maps/painted_ground.gd" id="p_ground"]
 [ext_resource type="Resource" path="res://data/maps/ground/vo_mach_ground.tres" id="p_layout"]
 [ext_resource type="Script" path="res://src/gameplay/world/props/world_prop.gd" id="p_script"]
+[ext_resource type="Script" path="res://src/gameplay/maps/story_presence.gd" id="sp_script"]
+[ext_resource type="Resource" path="res://data/world/props/cart.tres" id="p_cart"]
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_banner_pole.png" id="20_pole"]
 [ext_resource type="Resource" path="res://data/world/props/boulder.tres" id="p_boulder"]
 [ext_resource type="Resource" path="res://data/world/props/pine.tres" id="p_pine"]
 [ext_resource type="Resource" path="res://data/world/props/pine_small.tres" id="p_pine_small"]
@@ -36,6 +39,7 @@
 [ext_resource type="Script" path="res://src/gameplay/world/props/prop_body.gd" id="pb_script"]
 [ext_resource type="Resource" path="res://data/world/props/prop_lantern_post.tres" id="pb_lantern"]
 [ext_resource type="Resource" path="res://data/world/props/prop_rock.tres" id="pb_rock"]
+[ext_resource type="Resource" path="res://data/world/props/prop_banner_pole.tres" id="pb_banner"]
 [ext_resource type="Script" path="res://src/gameplay/npcs/world_npc.gd" id="60_npc"]
 [ext_resource type="Resource" path="res://data/characters/npc_scout_ko.tres" id="61_ko"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
@@ -195,6 +199,33 @@ prop = ExtResource("p_boulder")
 position = Vector2(766, 262)
 script = ExtResource("p_script")
 prop = ExtResource("p_boulder")
+
+[node name="CartWreck" type="Node2D" parent="Visual/Decor"]
+position = Vector2(700, 214)
+
+[node name="Prop_CartWreck" type="StaticBody2D" parent="Visual/Decor/CartWreck"]
+script = ExtResource("p_script")
+prop = ExtResource("p_cart")
+
+[node name="Presence" type="Node" parent="Visual/Decor/CartWreck"]
+script = ExtResource("sp_script")
+flag_id = &"flag_vein_broke"
+
+[node name="SurveyStake" type="Sprite2D" parent="Visual/Decor"]
+texture_filter = 1
+position = Vector2(548, 262)
+texture = ExtResource("20_pole")
+centered = false
+offset = Vector2(-8, -47)
+
+[node name="Body" type="StaticBody2D" parent="Visual/Decor/SurveyStake"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_banner")
+
+[node name="Presence" type="Node" parent="Visual/Decor/SurveyStake"]
+script = ExtResource("sp_script")
+flag_id = &"flag_night_over"
+present_when_set = false
 
 [node name="LanternN" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
@@ -585,11 +616,12 @@ count = 1
 pickup_id = &"pickup_fieldpill1"
 
 [node name="FieldManualLoi" type="Node2D" parent="Pickups"]
-position = Vector2(690, 190)
+position = Vector2(664, 238)
 script = ExtResource("50_witem")
 item = ExtResource("51_2")
 count = 1
 pickup_id = &"pickup_fieldmanualloi"
+appears_with_flag = &"flag_vein_broke"
 
 [node name="Look" type="Node2D" parent="Pickups/FieldStone1"]
 script = ExtResource("52_pickuplook")

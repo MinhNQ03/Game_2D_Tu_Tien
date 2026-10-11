@@ -27,6 +27,10 @@ const MOVE_LEFT := &"move_left"
 const MOVE_DOWN := &"move_down"
 const STELE := &"know_lac_ha_stele_record"
 const ISSUE := &"flag_outpost_issue"
+const KO := &"actor_scout_ko"
+const ATTACK := &"attack"
+const CULTIVATE := &"cultivate"
+const NIGHT_PREFIX := "map_field__night__"
 
 var _passed: int = 0
 var _dialogue: DialogueRuntime = null
@@ -250,6 +254,8 @@ func test_real_story_flow() -> void:
 	assert_true(hub.get_node("Spawns/from_road").global_position.distance_to(before) < 4.0,
 		"the run began on the west road, where the cart let the player down")
 	assert_eq(service.state().beat_id, &"beat_arrival", "the story waits for a first meeting")
+	assert_false((hub.get_node("KnowledgeSources/SurveySheet") as Node2D).visible,
+		"nothing is hidden under the stele yet: the Night has not happened")
 	var lin := hub.get_node_or_null("Interactables/LinYue") as WorldNpc
 	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
 	assert_eq(_dialogue.current_node_id(), &"lin_greet", "a stranger's greeting")
@@ -333,7 +339,15 @@ func test_real_story_flow() -> void:
 	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), LIN,
 		character.instance_id, &"trust"), trust_before + 15, "and her trust moved once, by 15")
 	assert_eq(service.state().beat_id, &"beat_warning", "the Night is now due")
+	assert_false(story.is_scene_playing(),
+		"but its warning waits: she is still speaking, and two surfaces never hold the player")
 	await _advance_to(&"")
+	assert_true(story.is_scene_playing(), "the moment she is done, the warning plays")
+	assert_eq(story.build_scene_view().scene_id, &"scene_night_warning",
+		"where the player stands")
+	assert_false(hud.story_scene_panel().covers_the_map(), "over the village, not instead of it")
+	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
+	assert_eq(service.state().beat_id, &"beat_warning", "reading it changed nothing")
 	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
 	assert_eq(_dialogue.current_node_id(), &"lin_after_kept",
 		"she now greets the player as someone who kept faith")
@@ -342,6 +356,109 @@ func test_real_story_flow() -> void:
 	await _say(&"lin_leave", &"")
 	assert_eq(_count_players(main), 1, "one player throughout")
 	_step("8c. heard the village's business; kept Lâm Nguyệt's confidence; the Night is due")
+
+	# --- 8d. the Night: arrival in the woods, the rupture, creatures only after the scene -----
+	var combat := main.get_node("Systems/CombatRuntime") as CombatRuntime
+	await _go_through_exit(player)
+	var field: Node = router.call("get_current_scene")
+	assert_eq(str(world.call("get_current_map_id")), "map_field",
+		"the player walked into the woods")
+	assert_eq(service.state().beat_id, &"beat_night", "arriving there is what breaks the vein")
+	assert_eq(story.build_scene_view().scene_id, &"scene_night_rupture", "the rupture is shown")
+	assert_false(bool(world.call("is_story_encounter_live")),
+		"and nothing of the Night moves while the scene holds the player")
+	var wreck := field.get_node("Visual/Decor/CartWreck") as Node2D
+	var stake := field.get_node("Visual/Decor/SurveyStake") as Node2D
+	assert_true(stake.visible and not wreck.visible, "before: a survey stake, and no wreck")
+	hud = _find_hud(field)
+	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
+	await scene_tree.process_frame
+	assert_true(bool(world.call("is_story_encounter_live")),
+		"the scene over, the Night's wave is here")
+	assert_eq(int(world.call("story_encounter_remaining")), 2, "two creatures, with their own ids")
+	assert_true(service.flag_at_least(&"flag_vein_broke", 1), "the story records the rupture")
+	assert_true(wreck.visible, "and the carter's cart stands wrecked among the trees")
+	assert_true((field.get_node("Pickups/FieldManualLoi") as WorldItem).visible,
+		"what spilled from its crates is on the ground")
+	var night_wolves: Array[Node2D] = []
+	for enemy in combat.enemies():
+		if String(enemy.name).begins_with(NIGHT_PREFIX):
+			night_wolves.append(enemy)
+	assert_eq(night_wolves.size(), 2, "they are the Night's own, apart from the woods' wolves")
+	assert_true(night_wolves[0].global_position.distance_to(player.global_position) > 300.0,
+		"and they begin far from where the player came in: there is room to choose")
+	_step("8d. the vein broke on arrival; the wave came only after the scene; the way back is open")
+
+	# --- 8e. standing: real attack keys, until the last of the Night's creatures is down ------
+	var attack := player.get_node_or_null("AttackComponent") as AttackComponent
+	var respect_before := RegardRules.read(relationship.get_service(),
+		relationship.get_config(), KO, character.instance_id, &"respect")
+	for wolf in night_wolves:
+		for _round in 40:
+			if bool(wolf.call("is_dead")):
+				break
+			player.global_position = wolf.global_position - Vector2(16, 0)  # setup: in reach
+			attack.set_facing(Vector2.RIGHT)
+			await _fire_action(ATTACK)
+			for _i in 24:
+				await scene_tree.process_frame
+				if bool(wolf.call("is_dead")):
+					break
+		assert_true(bool(wolf.call("is_dead")), "real attack keys brought it down")
+	assert_false(bool(player.call("is_dead")), "a new character with the starting kit survives it")
+	assert_eq(service.state().option_of(&"choice_night_stand"), &"stood",
+		"the last one down is the decision: recorded once, with no menu")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), KO,
+		character.instance_id, &"respect"), respect_before + 10, "the watchman saw it")
+	assert_false(bool(world.call("is_story_encounter_live")), "the encounter is over")
+	assert_eq(service.state().beat_id, &"beat_aftermath", "it is morning")
+	assert_true(hud.story_scene_panel().covers_the_map(),
+		"told over a covered map: time has passed")
+	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
+	assert_false(stake.visible, "by morning the survey stake is gone")
+	assert_true(wreck.visible, "and the wreck is not")
+	_step("8e. stood through the Night with real keys; morning came; the stake was removed")
+
+	# --- 8f. the elder's account, the first deliberate cultivation, the sheet ------------------
+	await _go_through_exit(player)
+	hub = router.call("get_current_scene")
+	hud = _find_hud(hub)
+	_panel = hud.dialogue_panel()
+	shen = hub.get_node("Interactables/ShenBuqi") as WorldNpc
+	await _talk_to(player, hub, shen, Vector2(30, 0))
+	assert_eq(_dialogue.current_node_id(), &"shen_night", "the elder opens with his account")
+	await _say(&"shen_night_stake", &"shen_night_stake_line")
+	assert_eq(service.state().beat_id, &"beat_settle", "heard: the story turns inward")
+	await _advance_to(&"")
+	var sheet := hub.get_node("KnowledgeSources/SurveySheet") as Node2D
+	assert_true(sheet.visible, "something is weighted under a stone by the stele now")
+	var spring := hub.get_node("CultivationSites/LacHaSpring") as Node2D
+	player.global_position = spring.global_position + Vector2(0, 26)  # setup: at the spring
+	await scene_tree.physics_frame
+	# A swing still recovering would end the sitting as "attacked": let the body come to rest.
+	await _wait_until(func() -> bool:
+		return attack.state() == AttackStateMachine.State.READY, 120)
+	Input.action_press(CULTIVATE)
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	Input.action_release(CULTIVATE)
+	await _wait_until(func() -> bool: return service.state().beat_id != &"beat_settle", 900)
+	assert_eq(service.state().beat_id, &"beat_sheet_told",
+		"tu vi gathered by sitting completes the beat; she kept faith, so she tells where to look")
+	assert_true(character.cultivation_progress > 0, "through the cultivation owner, for real")
+	Input.action_press(MOVE_RIGHT)  # moving is how one stands up
+	for _i in 6:
+		await scene_tree.physics_frame
+	Input.action_release(MOVE_RIGHT)
+	player.global_position = sheet.global_position + Vector2(0, 6)  # setup: at the sheet
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	await _press_until(INTERACT, func() -> bool:
+		return knowledge.get_service().knows(&"know_survey_fragment"))
+	assert_true(knowledge.get_service().knows(&"know_survey_fragment"),
+		"a real interact read the sheet: information, held by the Knowledge Core")
+	assert_eq(service.state().beat_id, &"beat_leaving", "the mystery is in hand")
+	_step("8f. the elder's account; a first deliberate cultivation; the suppressed sheet")
 
 	# --- 9. leave through the real question; everything is torn down --------------------------
 	await _press_until(OPEN_MENU, func() -> bool:
@@ -397,6 +514,39 @@ func test_real_story_flow() -> void:
 	assert_eq(story.get_service().state().beat_id, &"beat_road", "and the story starts over")
 	assert_eq(_count_players(main), 1, "one player")
 	_step("10. a second run as another Origin: nothing of the first survived")
+
+	# --- 11. the other answer to the Night: walk away from it ---------------------------------
+	# SETUP (each proved with real keys in the first run): three people met, the village's
+	# business heard, Lâm Nguyệt's confidence kept. What is proved here is the leaving.
+	RunKit.skip_scenes(main)
+	for who: StringName in [SHEN, LIN, KO]:
+		story.meet(who)
+	story.set_flag(&"flag_heard_village_business", 1)
+	story.choose(&"choice_lam_readings", &"kept")
+	RunKit.skip_scenes(main)
+	service = story.get_service()
+	assert_eq(service.state().beat_id, &"beat_warning", "setup: the Night is due")
+	player = world.call("get_player") as Node2D
+	await _go_through_exit(player)
+	assert_eq(service.state().beat_id, &"beat_night", "the vein breaks for this run too")
+	hud = _find_hud(router.call("get_current_scene"))
+	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
+	await scene_tree.process_frame
+	assert_eq(int(world.call("story_encounter_remaining")), 2, "the wave is here")
+	var affinity_before := RegardRules.read(relationship.get_service(),
+		relationship.get_config(), KO, character.instance_id, &"affinity")
+	await _go_through_exit(player)
+	assert_eq(str(world.call("get_current_map_id")), "map_hub", "the way back was open")
+	assert_eq(service.state().option_of(&"choice_night_stand"), &"withdrew",
+		"leaving is an answer: recorded once, by the player's feet")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), KO,
+		character.instance_id, &"affinity"), affinity_before - 5, "the watchman was left alone")
+	assert_eq(service.flag_value(&"flag_night_over"), 2, "and the story knows which Night this was")
+	assert_false(bool(world.call("is_story_encounter_live")),
+		"no encounter follows the player home")
+	assert_eq(service.state().beat_id, &"beat_aftermath", "morning comes either way")
+	RunKit.skip_scenes(main)
+	_step("11. withdrew from the Night through the real exit: a different, recorded outcome")
 
 	var last_map: Node = router.call("get_current_scene")
 	last_map.emit_signal("return_to_menu_requested")
@@ -485,6 +635,31 @@ func _say(choice_id: StringName, then: StringName) -> void:
 		return (not _dialogue.is_open()) if then == &"" \
 			else _dialogue.current_node_id() == then)
 	assert_eq(_dialogue.current_node_id(), then, "saying '%s' led to '%s'" % [choice_id, then])
+
+
+## Stand the player on the active map's exit (setup) and go through it with a real interact.
+func _go_through_exit(player: Node2D) -> void:
+	var router := scene_tree.root.get_node_or_null("SceneRouter")
+	var active: Node = router.call("get_current_scene")
+	var from_key := str(router.call("get_current_key"))
+	var zone: Node2D = null
+	for child in active.get_node("Exits").get_children():
+		if child is MapExitZone:
+			zone = child
+			break
+	assert_not_null(zone, "the active map has an exit")
+	if zone == null:
+		return
+	player.global_position = zone.global_position
+	zone.emit_signal("body_entered", player)
+	await scene_tree.process_frame
+	for _attempt in 8:
+		await _fire_action(INTERACT)
+		await scene_tree.process_frame
+		if str(router.call("get_current_key")) != from_key:
+			break
+	await scene_tree.process_frame
+	await scene_tree.process_frame
 
 
 func _wait_until(predicate: Callable, frames: int) -> void:

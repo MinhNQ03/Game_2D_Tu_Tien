@@ -8,6 +8,15 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Phase 20, Checkpoint 4: the Night (D-072 addendum E–J)
+
+- **Đêm Vỡ Mạch is playable:** warning → rupture → the wave → stood / withdrew → morning →
+  the elder's account → a first sitting → the suppressed sheet. Scenes are data; the encounter
+  is a beat's data spawned through the combat seam with its own ids.
+- `StoryPresence`, `WorldItem.appears_with_flag`, `EnemySpawnTableData.tag`,
+  `CultivationRuntime.gathered`; a scene waits for a conversation to close.
+- Story E2E 17 real-key steps (both outcomes); 8 mutations red. Phase 20 remains IN PROGRESS.
+
 ### 2026-10-11 — Phase 20, Checkpoint 3: the road in, the people of Lạc Hà, whom to trust (D-072 addendum)
 
 - **Dialogue ↔ Story.** `FLAG` / `ORIGIN` conditions, `SET_FLAG` / `STORY_CHOICE` effects,

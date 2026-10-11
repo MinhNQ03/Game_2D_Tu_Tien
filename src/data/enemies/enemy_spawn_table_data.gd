@@ -19,6 +19,9 @@ class_name EnemySpawnTableData
 
 ## The map this table populates (`MapData.id`).
 @export var map_id: StringName = &""
+## Tells this table's creatures from another table's on the same map (an event's wave next to
+## the map's own population). Part of every instance id; empty for a map's standing table.
+@export var tag: StringName = &""
 
 ## Creatures to spawn, index-aligned with `positions`.
 @export var enemies: Array[EnemyData] = []
@@ -67,4 +70,11 @@ func is_valid() -> bool:
 func instance_id_for(index: int) -> StringName:
 	if index < 0 or index >= enemies.size() or enemies[index] == null:
 		return &""
-	return StringName("%s__%s__%d" % [map_id, enemies[index].id, index])
+	if tag == &"":
+		return StringName("%s__%s__%d" % [map_id, enemies[index].id, index])
+	return StringName("%s__%s__%s__%d" % [map_id, tag, enemies[index].id, index])
+
+
+## The prefix every instance id of a TAGGED table starts with ("" for an untagged one).
+func instance_prefix() -> String:
+	return "" if tag == &"" else "%s__%s__" % [map_id, tag]

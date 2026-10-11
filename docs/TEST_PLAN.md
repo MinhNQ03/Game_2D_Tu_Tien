@@ -1312,6 +1312,16 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
 
 ## Phase 20 (D-072) — Story, Origins and the prologue
 
+### Checkpoint 4 — the Night
+
+| Invariant | Test |
+|---|---|
+| A scene never opens over a conversation; it opens when the speaker is done | Story E2E 8c |
+| Nothing of an encounter moves while its scene holds the player; it spawns once, with its own ids, far from the entrance | Story E2E 8d |
+| The last creature down / leaving the map is the recorded answer, once, with its consequence | Story E2E 8e, 11 |
+| What the story put in a map is there only when the story says so (wreck, manual, stake, sheet) | Story E2E 8a, 8d, 8e, 8f |
+| A real gather completes the cultivation beat; a real read of the sheet completes the mystery | Story E2E 8f |
+
 ### Checkpoint 3 — the dialogue/story seam, held pickups, the arrival
 
 | Invariant | Test |

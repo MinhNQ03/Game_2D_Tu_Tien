@@ -1462,6 +1462,9 @@ func _prove_technique_loi(main: Node, player: Node2D, map: Node) -> void:
 	if skills == null or inventory == null or combat == null or manual == null:
 		assert_true(false, "the field has the Thunder-Finger manual and the runtimes exist")
 		return
+	assert_true(RunKit.stage_the_rupture(main), "setup: the manual has spilled from the wreck")
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
 	player.global_position = manual.global_position
 	for _i in 6:
 		await scene_tree.physics_frame

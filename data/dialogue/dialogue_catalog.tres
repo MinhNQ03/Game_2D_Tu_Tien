@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=178 format=3]
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=210 format=3]
 
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
@@ -298,12 +298,92 @@ text_key = &"DLG_KO_PILLS_DONE"
 mood = 1
 gesture = &"talk"
 
+[sub_resource type="Resource" id="C_ko_open_stood_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="C_ko_open_stood_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_night_over"
+negate = true
+
+[sub_resource type="Resource" id="C_ko_open_stood_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_ko_night_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_stood"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_open_stood_0"), SubResource("C_ko_open_stood_1"), SubResource("C_ko_open_stood_2")])
+node_id = &"ko_night_stood"
+
+[sub_resource type="Resource" id="C_ko_open_left_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="C_ko_open_left_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_ko_night_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_left"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_open_left_0"), SubResource("C_ko_open_left_1")])
+node_id = &"ko_night_left"
+
+[sub_resource type="Resource" id="E_ko_night_ack"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_ko_night_said"
+
+[sub_resource type="Resource" id="H_ko_night_ack"]
+script = ExtResource("3_choice")
+id = &"ko_night_ack"
+text_key = &"DLG_CHOICE_LEAVE"
+effect = SubResource("E_ko_night_ack")
+
+[sub_resource type="Resource" id="E_ko_night_ack2"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_ko_night_said"
+
+[sub_resource type="Resource" id="H_ko_night_ack2"]
+script = ExtResource("3_choice")
+id = &"ko_night_ack2"
+text_key = &"DLG_CHOICE_LEAVE"
+effect = SubResource("E_ko_night_ack2")
+
+[sub_resource type="Resource" id="N_ko_night_stood"]
+script = ExtResource("4_node")
+id = &"ko_night_stood"
+text_key = &"DLG_KO_NIGHT_STOOD"
+mood = 1
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_night_ack")])
+
+[sub_resource type="Resource" id="N_ko_night_left"]
+script = ExtResource("4_node")
+id = &"ko_night_left"
+text_key = &"DLG_KO_NIGHT_LEFT"
+mood = 3
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_night_ack2")])
+
 [sub_resource type="Resource" id="D_dlg_scout_ko"]
 script = ExtResource("5_dlg")
 id = &"dlg_scout_ko"
 speaker_id = &"actor_scout_ko"
 start_node_id = &"ko_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart"), SubResource("N_ko_night_stood"), SubResource("N_ko_night_left")])
+openings = Array[ExtResource("7_open")]([SubResource("P_ko_stood"), SubResource("P_ko_left")])
 
 [sub_resource type="Resource" id="N_shen_greet"]
 script = ExtResource("4_node")
@@ -641,12 +721,74 @@ text_key = &"DLG_SHEN_TASK_DONE_FIGHT"
 mood = 1
 gesture = &"talk"
 
+[sub_resource type="Resource" id="C_shen_open_night_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="C_shen_open_night_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_elder_account"
+negate = true
+
+[sub_resource type="Resource" id="P_shen_night"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_open_night_0"), SubResource("C_shen_open_night_1")])
+node_id = &"shen_night"
+
+[sub_resource type="Resource" id="E_shen_night_stake"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_heard_elder_account"
+
+[sub_resource type="Resource" id="H_shen_night_stake"]
+script = ExtResource("3_choice")
+id = &"shen_night_stake"
+text_key = &"DLG_SHEN_CHOICE_NIGHT_STAKE"
+effect = SubResource("E_shen_night_stake")
+next_node_id = &"shen_night_stake_line"
+
+[sub_resource type="Resource" id="E_shen_night_nod"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_heard_elder_account"
+
+[sub_resource type="Resource" id="H_shen_night_nod"]
+script = ExtResource("3_choice")
+id = &"shen_night_nod"
+text_key = &"DLG_SHEN_CHOICE_NIGHT_NOD"
+effect = SubResource("E_shen_night_nod")
+next_node_id = &"shen_night_nod_line"
+
+[sub_resource type="Resource" id="N_shen_night"]
+script = ExtResource("4_node")
+id = &"shen_night"
+text_key = &"DLG_SHEN_NIGHT"
+mood = 2
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_night_stake"), SubResource("H_shen_night_nod")])
+
+[sub_resource type="Resource" id="N_shen_night_stake_line"]
+script = ExtResource("4_node")
+id = &"shen_night_stake_line"
+text_key = &"DLG_SHEN_NIGHT_STAKE"
+mood = 2
+
+[sub_resource type="Resource" id="N_shen_night_nod_line"]
+script = ExtResource("4_node")
+id = &"shen_night_nod_line"
+text_key = &"DLG_SHEN_NIGHT_NOD"
+mood = 0
+
 [sub_resource type="Resource" id="D_dlg_elder_shen"]
 script = ExtResource("5_dlg")
 id = &"dlg_elder_shen"
 speaker_id = &"actor_elder_shen"
 start_node_id = &"shen_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight"), SubResource("N_shen_issue"), SubResource("N_shen_told")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight"), SubResource("N_shen_issue"), SubResource("N_shen_told"), SubResource("N_shen_night"), SubResource("N_shen_night_stake_line"), SubResource("N_shen_night_nod_line")])
+openings = Array[ExtResource("7_open")]([SubResource("P_shen_night")])
 
 [sub_resource type="Resource" id="H_lin_ask_measure"]
 script = ExtResource("3_choice")
@@ -878,13 +1020,68 @@ script = ExtResource("7_open")
 conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_open_kept")])
 node_id = &"lin_after_kept"
 
+[sub_resource type="Resource" id="C_lin_open_mk_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="C_lin_open_mk_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+negate = true
+
+[sub_resource type="Resource" id="C_lin_open_mk_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_settled"
+
+[sub_resource type="Resource" id="P_lin_morning_kept"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_open_mk_0"), SubResource("C_lin_open_mk_1"), SubResource("C_lin_open_mk_2")])
+node_id = &"lin_morning_kept"
+
+[sub_resource type="Resource" id="C_lin_open_mt_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="C_lin_open_mt_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+
+[sub_resource type="Resource" id="P_lin_morning_told"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_open_mt_0"), SubResource("C_lin_open_mt_1")])
+node_id = &"lin_morning_told"
+
+[sub_resource type="Resource" id="N_lin_morning_kept"]
+script = ExtResource("4_node")
+id = &"lin_morning_kept"
+text_key = &"DLG_LIN_MORNING_KEPT"
+mood = 3
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="N_lin_morning_told"]
+script = ExtResource("4_node")
+id = &"lin_morning_told"
+text_key = &"DLG_LIN_MORNING_TOLD"
+mood = 2
+next_node_id = &"lin_hub"
+
 [sub_resource type="Resource" id="D_dlg_disciple_lin"]
 script = ExtResource("5_dlg")
 id = &"dlg_disciple_lin"
 speaker_id = &"actor_disciple_lin"
 start_node_id = &"lin_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told")])
-openings = Array[ExtResource("7_open")]([SubResource("P_lin_told"), SubResource("P_lin_kept")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told"), SubResource("N_lin_morning_kept"), SubResource("N_lin_morning_told")])
+openings = Array[ExtResource("7_open")]([SubResource("P_lin_morning_told"), SubResource("P_lin_morning_kept"), SubResource("P_lin_told"), SubResource("P_lin_kept")])
 
 [sub_resource type="Resource" id="E_te_ask_load"]
 script = ExtResource("2_effect")

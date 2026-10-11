@@ -46,6 +46,8 @@ var _session_active: bool = false
 ## The scene on screen and its step, or null. Runtime-only.
 var _scene: StorySceneData = null
 var _step: int = 0
+var _conversation_open: bool = false
+var _scene_waiting: bool = false
 
 
 ## Start the session as `origin_id`. Builds into locals and commits only when every check
@@ -123,6 +125,8 @@ func end_session() -> void:
 
 
 func _clear() -> void:
+	_conversation_open = false
+	_scene_waiting = false
 	_world = null
 	_knowledge = null
 	_relationship = null
@@ -264,7 +268,20 @@ func _apply(outcome: StoryOutcome) -> StoryOutcome:
 
 # --- Scenes (presentation; they change nothing) -------------------------------
 
+## A conversation opened or closed (told by `DialogueRuntime`). A scene that becomes due
+## while someone is still speaking waits for them to finish: two surfaces never hold the
+## player at once, and nothing is skipped.
+func set_conversation_open(open: bool) -> void:
+	_conversation_open = open
+	if not open and _scene_waiting and _session_active:
+		_enter_scene_of_current_beat()
+
+
 func _enter_scene_of_current_beat() -> void:
+	if _conversation_open:
+		_scene_waiting = true
+		return
+	_scene_waiting = false
 	var scene := _scenes.entry(_service.entry_scene_id())
 	if scene == null:
 		return

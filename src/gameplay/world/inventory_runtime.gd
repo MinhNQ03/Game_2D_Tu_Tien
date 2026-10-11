@@ -229,10 +229,12 @@ func set_pickup_gate(flag_holds: Callable) -> void:
 	_flag_holds = flag_holds
 
 
+func _flag_is_set(flag_id: StringName) -> bool:
+	return _flag_holds.is_valid() and bool(_flag_holds.call(flag_id))
+
+
 func _is_held(pickup: WorldItem) -> bool:
-	if pickup.held_by_flag == &"":
-		return false
-	return not (_flag_holds.is_valid() and bool(_flag_holds.call(pickup.held_by_flag)))
+	return pickup.held_by_flag != &"" and not _flag_is_set(pickup.held_by_flag)
 
 
 ## Collect every pickup of the active map the player stands on (public for tests).
@@ -249,11 +251,17 @@ func tick() -> void:
 	var held_under: StringName = &""
 	for child in host.get_children():
 		var pickup := child as WorldItem
-		if pickup == null or not pickup.visible:
+		if pickup == null:
+			continue
+		if pickup.appears_with_flag != &"" and not _collected.has(pickup.pickup_id):
+			pickup.visible = _flag_is_set(pickup.appears_with_flag)
+		if not pickup.visible:
 			continue
 		if _collected.has(pickup.pickup_id):
 			pickup.visible = false
 			continue
+		if pickup.appears_with_flag != &"" and not _flag_is_set(pickup.appears_with_flag):
+			continue  # not in the world yet
 		if pickup.reaches(player.global_position) and pickup.item != null:
 			if _is_held(pickup):
 				held_under = pickup.pickup_id

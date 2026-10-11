@@ -662,3 +662,17 @@ WorldItem (a node under <map>/Pickups)
   held_by_flag: StringName      # "" = nobody's, free; else held until this story flag is set
   held_reason_key: StringName   # what walking onto it says while it is held (required if held)
 ```
+
+### Story-driven world state — IMPLEMENTED (Phase 20, D-072 addendum E–G)
+
+```
+StoryBeatData (additions)
+  encounter_id: StringName            # data/enemies/spawn_table_<id>.tres (must carry a tag)
+  encounter_choice_id: StringName     # the choice the encounter answers
+  encounter_cleared_option / encounter_left_option: StringName
+  encounter_flag_id: StringName       # optional: raised when the encounter begins
+
+EnemySpawnTableData.tag: StringName   # "" for a map's standing table; part of every instance id
+WorldItem.appears_with_flag: StringName   # absent until the flag is set
+StoryPresence (child node)  flag_id, present_when_set   # shows / removes its parent, body included
+```

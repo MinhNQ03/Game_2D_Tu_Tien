@@ -57,6 +57,7 @@
 [ext_resource type="Resource" path="res://data/characters/npc_disciple_lin.tres" id="64_lin"]
 [ext_resource type="Resource" path="res://data/characters/npc_carter_te.tres" id="65_te"]
 [ext_resource type="Resource" path="res://data/world/props/cart.tres" id="p_cart"]
+[ext_resource type="Script" path="res://src/gameplay/maps/story_presence.gd" id="sp_script"]
 [ext_resource type="Resource" path="res://data/pets/pet_hoang_khuyen.tres" id="61_hound"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
@@ -649,6 +650,28 @@ offset = Vector2(-17, -50)
 [node name="Body" type="StaticBody2D" parent="KnowledgeSources/LacHaStele"]
 script = ExtResource("pb_script")
 prop = ExtResource("pb_stele")
+
+[node name="SurveySheet" type="Node2D" parent="KnowledgeSources"]
+position = Vector2(612, 356)
+script = ExtResource("45_source")
+source_id = &"source_survey_sheet"
+grants = Array[StringName]([&"know_survey_fragment"])
+reach_px = 18.0
+
+[node name="Stone" type="Sprite2D" parent="KnowledgeSources/SurveySheet"]
+texture_filter = 1
+position = Vector2(0, -16)
+texture = ExtResource("20_rock")
+centered = false
+offset = Vector2(-8, -15)
+
+[node name="Body" type="StaticBody2D" parent="KnowledgeSources/SurveySheet/Stone"]
+script = ExtResource("pb_script")
+prop = ExtResource("pb_rock")
+
+[node name="Presence" type="Node" parent="KnowledgeSources/SurveySheet"]
+script = ExtResource("sp_script")
+flag_id = &"flag_night_over"
 
 [node name="Pickups" type="Node2D" parent="."]
 y_sort_enabled = true

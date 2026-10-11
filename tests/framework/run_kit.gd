@@ -66,6 +66,14 @@ static func take_outpost_issue(main: Node) -> bool:
 	return story != null and story.set_flag(&"flag_outpost_issue", 1).ok
 
 
+## SETUP, not proof: record that the vein has broken, so a flow that is not about the story
+## finds what the rupture spilled in the woods (the thunder manual). The real path — walking
+## into the Night — is the Story E2E's.
+static func stage_the_rupture(main: Node) -> bool:
+	var story := story_of(main)
+	return story != null and story.set_flag(&"flag_vein_broke", 1).ok
+
+
 ## Step past every story scene now queued (a scene changes nothing; see `StoryRuntime`).
 static func skip_scenes(main: Node) -> int:
 	var story := story_of(main)

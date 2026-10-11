@@ -44,6 +44,12 @@ FLAGS = [
      "How the matter of her readings was settled: 1 kept quiet, 2 told to the elder.", 2),
     ("flag_asked_carter_load",
      "The player asked the carter what he hauls, and was told pine."),
+    ("flag_vein_broke",
+     "The vein under the woods has broken; what the rupture left is in the world."),
+    ("flag_night_over",
+     "The Night is past: 1 the player stood until the last creature fell, 2 they withdrew.", 2),
+    ("flag_ko_night_said",
+     "Kha Than has said his one line about how the player met the Night."),
     ("flag_lin_origin_said",
      "Lam Nguyet's one line to this Origin has been said (a line is said once, AUD-13)."),
     ("flag_te_origin_said",
@@ -64,14 +70,23 @@ CHOICES = [
           (Q_SET_FLAG, "flag_lam_settled", "", 2)]),
     ]),
     ("choice_night_stand", "beat_night", "STORY_CHOICE_NIGHT_STAND", [
-        ("stood", "STORY_CHOICE_NIGHT_STAND_STOOD", [(Q_REGARD, KO, "respect", 10)]),
-        ("withdrew", "STORY_CHOICE_NIGHT_STAND_WITHDREW", [(Q_REGARD, KO, "affinity", -5)]),
+        ("stood", "STORY_CHOICE_NIGHT_STAND_STOOD",
+         [(Q_REGARD, KO, "respect", 10), (Q_SET_FLAG, "flag_night_over", "", 1)]),
+        ("withdrew", "STORY_CHOICE_NIGHT_STAND_WITHDREW",
+         [(Q_REGARD, KO, "affinity", -5), (Q_SET_FLAG, "flag_night_over", "", 2)]),
     ]),
 ]
 
 # Beats entered with a scene: beat -> scene id, or ORIGIN_VIGNETTE for the run's own.
 ORIGIN_VIGNETTE = "<origin>"
-ENTRY_SCENES = {"beat_road": ORIGIN_VIGNETTE, "beat_arrival": "scene_arrival"}
+ENTRY_SCENES = {"beat_road": ORIGIN_VIGNETTE, "beat_arrival": "scene_arrival",
+                "beat_warning": "scene_night_warning", "beat_night": "scene_night_rupture",
+                "beat_aftermath": "scene_morning_after"}
+# beat -> (encounter id, the choice it answers, option when cleared, option when left)
+ENCOUNTERS = {"beat_night": ("field_night", "choice_night_stand", "stood", "withdrew",
+                             "flag_vein_broke")}
+# (the fifth entry is the flag raised when the encounter begins)
+
 
 
 def vignette(stem):
@@ -86,6 +101,23 @@ SCENES = {
         (S_CARD, "STORY_SCENE_ARRIVAL_PLACE", "STORY_SCENE_ARRIVAL_TIME", ""),
         (S_CAPTION, "STORY_SCENE_ARRIVAL_1", "", ""),
         (S_CAPTION, "STORY_SCENE_ARRIVAL_2", "", ""),
+    ],
+    "scene_night_warning": [
+        (S_CARD, "STORY_SCENE_ARRIVAL_PLACE", "STORY_SCENE_WARNING_TIME", ""),
+        (S_CAPTION, "STORY_SCENE_WARNING_1", "", ""),
+        (S_CAPTION, "STORY_SCENE_WARNING_2", "", ""),
+        (S_CAPTION, "STORY_SCENE_WARNING_3", "", ""),
+    ],
+    "scene_night_rupture": [
+        (S_CARD, "STORY_SCENE_RUPTURE_PLACE", "STORY_SCENE_RUPTURE_TIME", ""),
+        (S_CAPTION, "STORY_SCENE_RUPTURE_1", "", ""),
+        (S_CAPTION, "STORY_SCENE_RUPTURE_2", "", ""),
+        (S_CAPTION, "STORY_SCENE_RUPTURE_3", "", ""),
+    ],
+    "scene_morning_after": [
+        (S_CARD, "STORY_SCENE_ARRIVAL_PLACE", "STORY_SCENE_MORNING_TIME", ""),
+        (S_CAPTION, "STORY_SCENE_MORNING_1", "", ""),
+        (S_CAPTION, "STORY_SCENE_MORNING_2", "", ""),
     ],
 }
 
@@ -151,7 +183,8 @@ ORIGINS = [
 
 
 # Scenes that happen somewhere else (the map behind them is covered): every vignette.
-ELSEWHERE = set()
+# Scenes that happen somewhere or somewhen else are drawn over an opaque ground.
+ELSEWHERE = {"scene_morning_after"}
 for _oid, _stem, _grants in ORIGINS:
     SCENES["scene_vignette_%s" % _oid[len("origin_"):]] = vignette(_stem)
     ELSEWHERE.add("scene_vignette_%s" % _oid[len("origin_"):])
@@ -249,7 +282,13 @@ def story_catalog():
             ("entry_scene_id", sn("" if entry == ORIGIN_VIGNETTE else entry)),
             ("plays_origin_vignette", "true" if entry == ORIGIN_VIGNETTE else "false"),
             ("trigger", trigger),
-            ("branches", doc.array("story_branch_data", branch_refs))]))
+            ("branches", doc.array("story_branch_data", branch_refs))]
+            + ([("encounter_id", sn(ENCOUNTERS[bid][0])),
+                ("encounter_choice_id", sn(ENCOUNTERS[bid][1])),
+                ("encounter_cleared_option", sn(ENCOUNTERS[bid][2])),
+                ("encounter_left_option", sn(ENCOUNTERS[bid][3])),
+                ("encounter_flag_id", sn(ENCOUNTERS[bid][4]))]
+               if bid in ENCOUNTERS else [])))
     prologue = doc.sub("story_chapter_data", "CH_prologue", [
         ("id", sn("chapter_prologue")), ("title_key", sn("STORY_CHAPTER_PROLOGUE_TITLE")),
         ("act", 0), ("max_reveal_layer", 1),

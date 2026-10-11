@@ -17,6 +17,9 @@ class_name WorldItem
 ## nothing. Empty = nobody's (a stone the vein shed, a herb), free to pick up.
 @export var held_by_flag: StringName = &""
 @export var held_reason_key: StringName = &""
+## An item that is not there until something has happened (spilled from a wreck): absent
+## until story flag `appears_with_flag` is set. Empty = always there.
+@export var appears_with_flag: StringName = &""
 
 
 func _ready() -> void:

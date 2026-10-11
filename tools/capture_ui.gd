@@ -144,6 +144,7 @@ func _run() -> void:
 			if hud.has_method("is_sect_panel_open") and bool(hud.call("is_sect_panel_open")):
 				_toggle_panel(hud, "_sect_panel")
 			await _capture_satchel_and_equipment(main, hud)
+		await _capture_the_night(main)
 
 	print("[capture] wrote %d file(s) to %s" % [_written.size(), _out_dir])
 	for name in _written:
@@ -193,6 +194,52 @@ func _capture_identity_and_opening(main: Node) -> void:
 		await _shot("04e_opening_step_%02d" % step)
 		story.advance_scene()
 	await _settle()
+
+
+## The Night (Phase 20, beats 7-11) as the window shows it. A CAPTURE, not a proof: the story
+## is brought to the Night through its owner (the real-key path is the Story E2E's), and each
+## state is photographed where the player would see it.
+func _capture_the_night(main: Node) -> void:
+	var story := RunKit.story_of(main)
+	var world := main.get_node_or_null("Systems/WorldRuntime")
+	if story == null or world == null or not story.is_session_active():
+		push_error("[capture] no story to capture the Night of")
+		_failed = true
+		return
+	for who: StringName in [&"actor_elder_shen", &"actor_disciple_lin", &"actor_carter_te"]:
+		story.meet(who)
+	story.set_flag(&"flag_heard_village_business", 1)
+	story.choose(&"choice_lam_readings", &"kept")
+	await _settle()
+	await _shot("20_night_warning_card")
+	story.advance_scene()
+	await _settle()
+	await _shot("21_night_warning_caption")
+	RunKit.skip_scenes(main)
+	world.call("request_map_transition", &"map_field", &"from_hub")
+	await _settle()
+	await _settle()
+	story.advance_scene()
+	story.advance_scene()
+	await _settle()
+	await _shot("22_night_rupture_caption")
+	RunKit.skip_scenes(main)
+	await _settle()
+	var player := world.call("get_player") as Node2D
+	if player != null:
+		player.global_position = Vector2(590, 262)  # staging: in sight of the wreck
+	await _settle()
+	await _shot("23_night_wave_and_wreck")
+	world.call("request_map_transition", &"map_hub", &"from_field")  # withdrawing is an answer
+	await _settle()
+	await _settle()
+	await _shot("24_morning_card")
+	RunKit.skip_scenes(main)
+	player = world.call("get_player") as Node2D
+	if player != null:
+		player.global_position = Vector2(612, 364)  # staging: at the weighted sheet
+	await _settle()
+	await _shot("25_morning_sheet_under_the_stele")
 
 
 func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:

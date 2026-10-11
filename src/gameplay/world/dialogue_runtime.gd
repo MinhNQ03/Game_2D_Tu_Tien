@@ -182,6 +182,8 @@ func talk(character_id: StringName) -> StringName:
 	# said to somebody not yet met.
 	var first := _service.opening_node_id(dialogue.id, _listener_id())
 	_dialogue = dialogue
+	if _story != null:
+		_story.set_conversation_open(true)
 	dialogue_opened.emit(dialogue.id, dialogue.speaker_id)
 	if _dialogue != dialogue:
 		return &""  # a listener ended it as it opened: there is no first line to show
@@ -296,6 +298,8 @@ func _close(reason: StringName) -> void:
 	_node_id = &""
 	dialogue_closed.emit(dialogue_id, reason)
 	view_changed.emit()
+	if _story != null and _session_active:
+		_story.set_conversation_open(false)  # after the panel is gone: a waiting scene may open
 
 
 func _refuse(reason: StringName) -> DialogueOutcome:

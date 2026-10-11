@@ -36,6 +36,8 @@ signal realm_advanced(realm_id: StringName, layer: int, changed_realm: bool)
 signal cultivation_refused(reason_key: StringName)
 ## The visible cultivation state changed (progress, phase, reach): rebuild the HUD view.
 signal view_changed()
+## Sitting yielded tu vi (`amount` > 0, accepted by the service).
+signal gathered(amount: int)
 
 const LADDER_PATH := "res://data/progression/realm_ladder.tres"
 const CULTIVATE_ACTION := &"cultivate"
@@ -355,6 +357,8 @@ func _gather(delta: float) -> void:
 	var result := _service.gather(_character, whole)
 	if not result.accepted:
 		_carry = 0.0  # a full step wastes the surplus: sitting longer is not a shortcut
+	else:
+		gathered.emit(whole)
 
 
 func _begin_breakthrough() -> void:

@@ -545,3 +545,26 @@ DLG_TE_CHOICE_LEDGER,Look at the waybill,Nhìn tờ phiếu hàng
 DLG_TE_LEDGER,(Old survey notation — a hand only your master and a few others still write.) I cannot read. I carry what I am handed.,"(Lối ghi sổ khảo cũ — thứ chữ chỉ thầy ngươi và vài người còn viết.) Ta không biết chữ. Người ta đưa gì, ta cầm nấy."
 DLG_TE_CHOICE_SEATS,Ask about Cloud Vale,Hỏi chuyện Vân Cốc
 DLG_TE_SEATS,"(He looks at you a long while.) Every year, crates, before the trial. Every year the board is written before the candidates arrive.","(Lão nhìn ngươi rất lâu.) Năm nào cũng chở hòm tới, trước kỳ khảo hạch. Năm nào bảng tên cũng viết xong trước khi thí sinh tới."
+STORY_SCENE_WARNING_TIME,Dusk,Chạng vạng
+STORY_SCENE_WARNING_1,"The spring misses a beat. Then another. The water stands flat, as if listening.","Suối hụt một nhịp. Rồi một nhịp nữa. Mặt nước phẳng lặng, như đang nghe ngóng."
+STORY_SCENE_WARNING_2,"On the east road the lanterns gutter with no wind. Old Qi's cart is gone — into the woods, for the last load.","Trên đường phía đông, đèn chập chờn dù không có gió. Xe lão Tề đã đi — vào rừng, lấy chuyến cuối."
+STORY_SCENE_WARNING_3,Nobody in Lạc Hà says anything. Everyone is looking east.,Ở Lạc Hà không ai nói gì. Ai cũng nhìn về phía đông.
+STORY_SCENE_RUPTURE_PLACE,Riftvein Woods,Rừng Vỡ Mạch
+STORY_SCENE_RUPTURE_TIME,Night,Đêm
+STORY_SCENE_RUPTURE_1,The ground exhales. Under the pines the vein gives way like a rope that has carried too much for too long.,"Mặt đất thở hắt ra. Dưới rặng thông, mạch đứt như sợi thừng đã gánh quá nặng quá lâu."
+STORY_SCENE_RUPTURE_2,"A cart stands abandoned among the trees, its crates split open. What spills from them is not pine.","Một chiếc xe bị bỏ lại giữa rừng, hòm vỡ toang. Thứ tràn ra không phải gỗ thông."
+STORY_SCENE_RUPTURE_3,The mist wolves that drank from this vein are still here. They are not themselves. The way back to the village is open.,Bầy Vụ Lang từng uống ở mạch này vẫn còn đây. Chúng không còn là chúng nữa. Lối về làng vẫn mở.
+STORY_SCENE_MORNING_TIME,The next morning,Sáng hôm sau
+STORY_SCENE_MORNING_1,"By dawn the outpost has an account of the night, and riders have already left with it.","Tới rạng đông, tiền đồn đã có lời giải thích cho đêm qua, và người đưa tin đã lên đường cùng nó."
+STORY_SCENE_MORNING_2,The survey stake that stood in the woods is gone. The hole it left has been raked over.,Cọc khảo mạch từng đứng trong rừng đã biến mất. Cái lỗ nó để lại đã bị cào bằng.
+DLG_SHEN_NIGHT,"Heterodox cultivators broke the vein. That is what was seen, and that is what has been sent up. You were there. You will say the same.","Tà tu đã phá mạch. Đó là điều người ta thấy, và là điều đã báo lên trên. Ngươi có mặt ở đó. Ngươi cũng sẽ nói như vậy."
+DLG_SHEN_CHOICE_NIGHT_STAKE,Ask about the survey stake,Hỏi về cọc khảo mạch
+DLG_SHEN_CHOICE_NIGHT_NOD,Say nothing,Không nói gì
+DLG_SHEN_NIGHT_STAKE,There was never a stake in those woods. You are tired. Sit by the spring and settle your breath — that much the outpost still owes you.,Trong rừng ấy chưa từng có cọc nào. Ngươi mệt rồi. Ra suối tĩnh tọa cho yên hơi thở — chừng ấy tiền đồn còn nợ ngươi.
+DLG_SHEN_NIGHT_NOD,Good. Sit by the spring and settle your breath. The qi of a broken vein does not leave a body by itself.,Tốt. Ra suối tĩnh tọa cho yên hơi thở. Khí của mạch vỡ không tự rời khỏi người đâu.
+DLG_LIN_MORNING_KEPT,They took the stake before dawn. They did not take everything. Look under the foot of the stele — and do not read it where he can see.,Họ nhổ cọc trước rạng đông. Nhưng chưa lấy hết. Xem dưới chân bia — và đừng đọc ở chỗ người thấy được.
+DLG_LIN_MORNING_TOLD,"My rod is gone, and so is the stake. I have nothing to say to you. …Something was hidden in a hurry last night. I did not see where.","Thước của ta mất rồi, cọc cũng mất. Ta không có gì để nói với ngươi. …Đêm qua có thứ bị giấu vội. Ta không thấy ở đâu."
+DLG_KO_NIGHT_STOOD,"You stayed. I have watched this path nine years and counted the ones who stay on one hand. Next time you buy, ask my price again.","Ngươi đã trụ lại. Ta gác lối này chín năm, số kẻ trụ lại đếm chưa hết một bàn tay. Lần tới mua hàng, cứ hỏi lại giá."
+DLG_KO_NIGHT_LEFT,"You ran. Sensible. I was paid to stay, and I am wondering this morning who was paying.","Ngươi bỏ chạy. Khôn đấy. Ta thì được trả tiền để ở lại, và sáng nay ta đang tự hỏi ai là kẻ trả."
+SOURCE_SURVEY_SHEET_NAME,A torn sheet under the stele,Mảnh giấy rách dưới chân bia
+UI_PICKUP_HELD_WRECK,It is nailed shut.,Hòm còn đóng đinh.

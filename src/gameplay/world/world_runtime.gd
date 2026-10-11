@@ -86,6 +86,10 @@ var _player_character: CharacterState = null  # the player's ONE authoritative s
 var _characters: CharacterRegistry = null
 var _active_map: Node = null         # the currently loaded map scene (owned by SceneRouter)
 var _session_active: bool = false
+## The beat whose encounter is in the active map right now ("" = none), and the instance-id
+## prefix of its creatures. Runtime only: an encounter is not resumed, it is re-met.
+var _encounter_beat_id: StringName = &""
+var _encounter_prefix: String = ""
 
 
 func _ready() -> void:
@@ -127,6 +131,8 @@ func start_session(player_template: CharacterTemplateData = null,
 ## Safe to call more than once.
 func end_session() -> void:
 	_session_active = false
+	_encounter_beat_id = &""
+	_encounter_prefix = ""
 	_detach_player()
 	if _player != null and is_instance_valid(_player):
 		_player.queue_free()
@@ -312,6 +318,7 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	if _player is Node2D:
 		prev_position = (_player as Node2D).global_position
 
+	_leave_story_encounter()
 	active_map_leaving.emit()
 	# Park the player under WorldRuntime BEFORE the router frees the old map scene, so the
 	# persistent player is never freed with the content scene.
@@ -387,6 +394,8 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# Last of all: the map is whole, so what follows the player into it (Phase 16) may appear.
 	active_map_ready.emit()
 	_push_pet_view_to_active_map()
+	# The story may have moved on arrival (a beat that waited for this place).
+	_push_story_scene_to_active_map()
 	return true
 
 
@@ -1233,6 +1242,9 @@ func refresh_active_map_story_view() -> void:
 		return
 	if not story.scene_changed.is_connected(_push_story_scene_to_active_map):
 		story.scene_changed.connect(_push_story_scene_to_active_map)
+	# What is in the map because of the story follows the story, not only its scenes.
+	if not story.view_changed.is_connected(_push_story_scene_to_active_map):
+		story.view_changed.connect(_push_story_scene_to_active_map)
 	_push_story_scene_to_active_map()
 
 
@@ -1243,6 +1255,94 @@ func _push_story_scene_to_active_map() -> void:
 	if story == null or not story.is_session_active():
 		return
 	_active_map.call("set_story_scene_view", story.build_scene_view())
+	_apply_story_presence(story)
+	_begin_story_encounter(story)
+
+
+# --- The story's part of the world (Phase 20, D-072 §6) ---------------------------
+
+## Show or remove what is in this map because of the story (`StoryPresence`).
+func _apply_story_presence(story: StoryRuntime) -> void:
+	if _active_map == null or not is_inside_tree():
+		return
+	var service := story.get_service()
+	var asked := func(flag_id: StringName) -> bool:
+		return service != null and service.flag_at_least(flag_id, 1)
+	for node in get_tree().get_nodes_in_group(StoryPresence.GROUP):
+		if _active_map.is_ancestor_of(node):
+			(node as StoryPresence).apply(asked)
+
+
+## The current beat's encounter, if it has one and the player is where it happens: spawned
+## ONCE, through the combat owner's own seam, only after the beat's scene has ended (nothing
+## hostile moves while a scene holds the player).
+func _begin_story_encounter(story: StoryRuntime) -> void:
+	var beat := story.get_service().current_beat() if story.get_service() != null else null
+	if beat == null or not beat.has_encounter() or story.is_scene_playing() \
+			or _encounter_beat_id == beat.id:
+		return
+	var table := load("%s/spawn_table_%s.tres" % [SPAWN_TABLE_DIR, beat.encounter_id]) \
+		as EnemySpawnTableData
+	if table == null or table.tag == &"" or table.map_id != get_current_map_id():
+		return  # not here (or not loadable: the story's content check reports that)
+	var combat := _find_sibling_of(CombatRuntime) as CombatRuntime
+	if combat == null or not combat.is_session_active():
+		return
+	var host := _active_map.get_node_or_null("CombatTargets")
+	if combat.spawn_from_table(table, host if host != null else _active_map) <= 0:
+		push_error("[world] the encounter of beat '%s' spawned nothing" % beat.id)
+		return
+	_encounter_beat_id = beat.id
+	_encounter_prefix = table.instance_prefix()
+	if beat.encounter_flag_id != &"":
+		story.set_flag(beat.encounter_flag_id, 1)
+		_apply_story_presence(story)
+	if not combat.enemy_defeated.is_connected(_on_encounter_enemy_defeated):
+		combat.enemy_defeated.connect(_on_encounter_enemy_defeated)
+
+
+func is_story_encounter_live() -> bool:
+	return _encounter_beat_id != &""
+
+
+## How many of the encounter's creatures still stand.
+func story_encounter_remaining() -> int:
+	var combat := _find_sibling_of(CombatRuntime) as CombatRuntime
+	if combat == null or _encounter_beat_id == &"":
+		return 0
+	var standing := 0
+	for enemy in combat.enemies():
+		if is_instance_valid(enemy) and String(enemy.name).begins_with(_encounter_prefix) \
+				and not enemy.is_dead():
+			standing += 1
+	return standing
+
+
+func _on_encounter_enemy_defeated(_reward_id: StringName, _xp: int) -> void:
+	if _encounter_beat_id != &"" and story_encounter_remaining() == 0:
+		_answer_story_encounter(true)
+
+
+## The player is leaving the map with the encounter unfinished: that is an answer too.
+func _leave_story_encounter() -> void:
+	if _encounter_beat_id != &"":
+		_answer_story_encounter(false)
+
+
+func _answer_story_encounter(cleared: bool) -> void:
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	var combat := _find_sibling_of(CombatRuntime) as CombatRuntime
+	if combat != null and combat.enemy_defeated.is_connected(_on_encounter_enemy_defeated):
+		combat.enemy_defeated.disconnect(_on_encounter_enemy_defeated)
+	var beat_id := _encounter_beat_id
+	_encounter_beat_id = &""
+	_encounter_prefix = ""
+	var beat := story.get_service().catalog().beat(beat_id) \
+		if story != null and story.get_service() != null else null
+	if beat == null:
+		return
+	story.choose(beat.encounter_choice_id,
+		beat.encounter_cleared_option if cleared else beat.encounter_left_option)
 
 
 func _on_story_scene_advance_requested() -> void:
