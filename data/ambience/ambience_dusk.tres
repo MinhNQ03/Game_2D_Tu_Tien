@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AmbienceProfileData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/ambient/ambience_profile_data.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+id = &"dusk"
+tint = Color(0.7843, 0.6627, 0.5843, 1)
+lantern_color = Color(1, 0.7608, 0.4784, 1)
+lantern_energy = 0.55
+lantern_flicker = 0.55
+vein_color = Color(0.5216, 0.8, 0.9176, 1)
+vein_energy = 0.0
+vein_pulse = 0.0
+transition_seconds = 1.4

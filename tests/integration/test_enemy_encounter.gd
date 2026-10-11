@@ -167,6 +167,76 @@ func test_spawning_populates_arms_and_registers_every_row() -> void:
 	free_node(runtime)
 
 
+# === An event's creatures: the same rules under their own look (D-073 §3) ====================
+
+const NIGHT_TABLE_PATH := "res://data/enemies/spawn_table_field_night.tres"
+const VEIN_LOOK_PATH := "res://data/characters/visual/vein_wolf_visual.tres"
+
+
+## The Night's wave is the shipped wolf — its stats, AI, bite and hitbox — drawn differently,
+## and the difference is the ENCOUNTER's data: nothing branches on a creature's name.
+func test_the_nights_creatures_are_the_wolf_under_another_look() -> void:
+	var night := load(NIGHT_TABLE_PATH) as EnemySpawnTableData
+	var woods := load(FIELD_TABLE_PATH) as EnemySpawnTableData
+	assert_true(night.is_valid(), "the Night's table is valid")
+	assert_not_null(night.visual_profile, "and names a look of its own")
+	assert_null(woods.visual_profile, "the woods' own wolves keep theirs")
+	assert_eq(night.visual_profile.resource_path, VEIN_LOOK_PATH, "the vein-touched look")
+	var runtime := _runtime()
+	assert_eq(runtime.spawn_from_table(night, runtime), night.size(), "the wave spawns")
+	assert_eq(runtime.spawn_from_table(woods, runtime), woods.size(), "beside the woods' own")
+	var own := _enemy_data()
+	var touched := 0
+	for enemy in runtime.enemies():
+		var of_the_night := String(enemy.name).begins_with(night.instance_prefix())
+		assert_eq(enemy.data(), own, "'%s' is the mist wolf's data: one set of rules" % enemy.name)
+		assert_eq(enemy.get_max_health(), own.stats.max_hp, "'%s' has its health" % enemy.name)
+		assert_true(runtime.get_registry().has(enemy.instance_id()),
+			"'%s' is a combat target like any other" % enemy.name)
+		assert_eq(enemy.ai().is_armed(), true, "'%s' thinks with the wolf's AI" % enemy.name)
+		assert_eq(enemy.look() == night.visual_profile, of_the_night,
+			"'%s' is drawn %s" % [enemy.name, "vein-touched" if of_the_night else "as itself"])
+		touched += int(of_the_night)
+	assert_eq(touched, night.size(), "every creature of the wave, and only those")
+	free_node(runtime)
+
+
+## The cue is not colour alone: the two looks differ in SILHOUETTE (which pixels are opaque)
+## in every facing, on the same grid and with the same frame counts — so the bite's timing,
+## its telegraph and the hit frames line up exactly.
+func test_the_vein_touched_look_differs_in_shape_on_the_same_grid() -> void:
+	var touched := load(VEIN_LOOK_PATH) as CharacterVisualProfileData
+	var own := _enemy_data().visual_profile
+	assert_eq(touched.frame_size, own.frame_size, "the same cell")
+	assert_eq(touched.frame_duration, own.frame_duration, "the same frame time")
+	for pair: Array in [[touched.idle_sheet, own.idle_sheet, "idle"],
+			[touched.walk_sheet, own.walk_sheet, "walk"],
+			[touched.attack_sheet, own.attack_sheet, "attack"]]:
+		var a: Image = (pair[0] as Texture2D).get_image()
+		var b: Image = (pair[1] as Texture2D).get_image()
+		assert_eq(a.get_size(), b.get_size(), "%s: the same sheet size (frames and facings)"
+			% pair[2])
+		for facing in 4:
+			var differing := 0
+			for y in own.frame_size.y:
+				for x in own.frame_size.x:
+					var at := Vector2i(x, facing * own.frame_size.y + y)
+					if (a.get_pixelv(at).a > 0.5) != (b.get_pixelv(at).a > 0.5):
+						differing += 1
+			assert_true(differing >= 12, "%s, facing %d: the outline itself differs (%d px)"
+				% [pair[2], facing, differing])
+
+
+func test_a_table_whose_look_is_on_another_grid_is_refused() -> void:
+	var table := _table(Vector2(400, 300))
+	var wrong := (load(VEIN_LOOK_PATH) as CharacterVisualProfileData).duplicate()
+	wrong.frame_size = Vector2i(32, 48)
+	table.visual_profile = wrong
+	assert_false(table.is_valid(), "a look that would not fit the creature's cell is refused")
+	table.visual_profile = load(VEIN_LOOK_PATH) as CharacterVisualProfileData
+	assert_true(table.is_valid(), "the same table with a look on the creature's grid is fine")
+
+
 func test_spawning_outside_a_session_is_refused() -> void:
 	var runtime: CombatRuntime = CombatRuntimeScript.new()
 	add_to_tree(runtime)

@@ -26,6 +26,13 @@ class_name EnemySpawnTableData
 ## Creatures to spawn, index-aligned with `positions`.
 @export var enemies: Array[EnemyData] = []
 
+## What THIS table's creatures look like, instead of their own `EnemyData.visual_profile`
+## (D-073 §3): an event's wave may be the same creature — same stats, AI, bite and hitbox —
+## seen differently, because of what happened to it. The look belongs to the encounter's
+## data, so no renderer ever branches on a creature's name. Null = each creature's own look.
+## It must be drawn on the same grid as the look it replaces (checked by `is_valid`).
+@export var visual_profile: CharacterVisualProfileData = null
+
 ## World positions, index-aligned with `enemies`.
 ##
 ## A `PackedVector2Array`, not an `Array[Vector2]`: packed storage avoids a Variant per entry,
@@ -56,6 +63,14 @@ func is_valid() -> bool:
 			problems.append("row %d has a null EnemyData" % i)
 		elif not enemies[i].is_valid():
 			problems.append("row %d ('%s') is an invalid EnemyData" % [i, enemies[i].id])
+		elif visual_profile != null and enemies[i].visual_profile != null \
+				and visual_profile.frame_size != enemies[i].visual_profile.frame_size:
+			problems.append("the table's look is drawn at %s but row %d ('%s') is %s"
+				% [visual_profile.frame_size, i, enemies[i].id,
+					enemies[i].visual_profile.frame_size])
+	if visual_profile != null and (visual_profile.idle_sheet == null
+			or visual_profile.walk_sheet == null or visual_profile.attack_sheet == null):
+		problems.append("the table's look is missing an idle, walk or attack sheet")
 	if problems.is_empty():
 		return true
 	push_error("[spawn-table] '%s' is invalid: %s" % [map_id, "; ".join(problems)])

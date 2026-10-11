@@ -53,6 +53,11 @@ palette:
   wood:           {hex: "#5c3e2a", role: "timber"}
   roof_tile:      {hex: "#3a4250", role: "fired roof tile (cool slate)"}
   water:          {hex: "#1f5680", role: "still water"}
+  # Light in the air (D-073): what the WHOLE playfield is multiplied by at an hour that is not
+  # day, and the two things that burn in it. Never a fill, never drawn over a figure.
+  dusk_air:       {hex: "#c8a995", role: "ambient tint at dusk: warm-grey, the day going out"}
+  night_air:      {hex: "#7389c6", role: "ambient tint at night: cool, value-compressed, NOT black"}
+  lantern_glow:   {hex: "#ffc27a", role: "a lantern's pool of light"}
 
 # Warm/cool relationship (measured on a gameplay frame, `style_check.py frame`):
 temperature:
@@ -170,6 +175,28 @@ world:
   pixel_density: "1 art px = 1 world px for every sprite; never scale a sprite to fit"
   hoang_vuc: "frontier: timber-and-slate village, paddies, broken veins, mist; NOT floating palaces (R-9)"
   edge_density_target: [0.10, 0.28]   # share of strong-edge pixels in a gameplay frame (richness without noise)
+
+# ----------------------------------------------------------------------------------------------
+# 9b. AMBIENCE — how a map is lit at an hour that is not day (D-073 §3)
+# ----------------------------------------------------------------------------------------------
+# One entry per named state of light. `build.py ambience` writes each to
+# data/ambience/ambience_<id>.tres; a map's MapAmbience applies it. Day is the absence of one.
+# Rules: the tint is a MULTIPLY (never an overlay); its mean level stays >= tint_level_min so
+# a figure, a wind-up and an exit still read at 1x; light is banded (three flat rings); the
+# only warm light is a lantern, the only cool emissive a vein that carries force (§5 spirit).
+ambience:
+  tint_level_min: 0.42
+  states:
+    dusk:
+      tint_role: dusk_air
+      lantern: {role: lantern_glow, energy: 0.55, flicker: 0.55}   # "the lanterns gutter with no wind"
+      vein: {role: qi, energy: 0.0, pulse: 0.0}
+      transition_seconds: 1.4
+    night:
+      tint_role: night_air
+      lantern: {role: lantern_glow, energy: 0.8, flicker: 0.12}
+      vein: {role: qi, energy: 0.5, pulse: 0.3}                    # the broken vein, breathing
+      transition_seconds: 0.9
 
 # ----------------------------------------------------------------------------------------------
 # 10. PIXEL ADAPTATION (Blender render → gameplay sprite)

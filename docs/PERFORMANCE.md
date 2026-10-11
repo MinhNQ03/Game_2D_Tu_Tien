@@ -301,6 +301,17 @@ Template:
 
 
 
+### PERF-NOTE-21 — what the Night's light added  (2026-10-11, D-073; COUNTED, not profiled)
+
+Each shipped map gained `Visual/Ambience`: one `CanvasModulate` and two or three
+`PointLight2D` (`AmbienceLight`) sharing ONE 96×96 banded gradient texture. By day — every
+beat but two — the lights are disabled at energy 0 and `MapAmbience._process` is off, so the
+day path costs a white canvas modulate. During `beat_warning` (dusk) and `beat_night` the
+node processes each frame: one sine pair per lantern, one per vein. No shadows are cast
+(`shadow_enabled = false`), no light is created or freed during play, and the ambience is
+applied on events (map entry, the story moving), never polled. No frame-time measurement was
+taken; if a 2D light pass shows up on the target hardware, Phase 29 owns the profiler run.
+
 ### PERF-NOTE-20 — what the story added to the frame  (2026-10-11)
 
 Phase 20 added no node that processes. The one per-frame cost is inside the pickup loop

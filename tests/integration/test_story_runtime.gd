@@ -250,6 +250,40 @@ func test_content_that_names_a_missing_scene_refuses_the_start() -> void:
 	_free(rig)
 
 
+## D-073 §3: how a beat is LIT is content like its scene. A beat that names a light no map can
+## wear stops the session, rather than leaving the Night in daylight without a word.
+func test_a_beat_lit_by_an_ambience_nobody_made_refuses_the_start() -> void:
+	var rig := _rig()
+	var catalog := (load(StoryRuntime.CATALOG_PATH) as StoryCatalogData).duplicate(true) \
+		as StoryCatalogData
+	assert_eq(catalog.beat(&"beat_night").ambience_id, &"night", "the Night is lit as night")
+	assert_eq(catalog.beat(&"beat_warning").ambience_id, &"dusk", "its warning as dusk")
+	assert_eq(catalog.beat(&"beat_aftermath").ambience_id, &"", "and the morning as authored")
+	catalog.beat(&"beat_night").ambience_id = &"eclipse"
+	assert_false(rig.story.start_session(rig.world, rig.knowledge, rig.relationship,
+		rig.inventory, &"origin_ho_tieu", catalog), "an unknown ambience fails closed")
+	assert_true(_untouched(rig), "and nothing was given")
+	assert_true(_start(rig, &"origin_ho_tieu"), "the shipped catalog starts")
+	var service := rig.story.get_service()
+	assert_eq(rig.story.ambience_id(), &"", "a run begins by day")
+	_skip_all(rig)
+	for who: StringName in [SHEN, LIN, KO]:
+		rig.story.meet(who)
+	rig.story.set_flag(&"flag_heard_village_business")
+	rig.story.choose(&"choice_lam_readings", &"kept")
+	assert_eq(rig.story.ambience_id(), &"dusk", "the decision made, it is dusk")
+	rig.world.map_id = &"map_field"
+	rig.world.active_map_ready.emit()
+	assert_eq(rig.story.ambience_id(), &"night", "in the woods, night")
+	var record := rig.story.to_dict()
+	assert_false(str(record).contains("night") and str(record).contains("ambience"),
+		"and the record does not store the light: it is derived from the beat")
+	rig.story.choose(&"choice_night_stand", &"stood")
+	assert_eq([service.state().beat_id, rig.story.ambience_id()], [&"beat_aftermath", &""],
+		"answered, it is morning")
+	_free(rig)
+
+
 func test_a_second_start_is_refused_and_gives_nothing_twice() -> void:
 	var rig := _rig()
 	assert_true(_start(rig, &"origin_lang_y"), "started")

@@ -454,6 +454,7 @@ entry_scene_id = &"scene_night_warning"
 plays_origin_vignette = false
 trigger = SubResource("T_beat_warning")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_warning_0")])
+ambience_id = &"dusk"
 
 [sub_resource type="Resource" id="T_beat_night"]
 script = ExtResource("s_story_trigger_data")
@@ -478,6 +479,7 @@ entry_scene_id = &"scene_night_rupture"
 plays_origin_vignette = false
 trigger = SubResource("T_beat_night")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_night_0")])
+ambience_id = &"night"
 encounter_id = &"field_night"
 encounter_choice_id = &"choice_night_stand"
 encounter_cleared_option = &"stood"

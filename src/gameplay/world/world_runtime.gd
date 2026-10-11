@@ -1265,6 +1265,7 @@ func _push_story_scene_to_active_map() -> void:
 	_active_map.call("set_story_scene_view", story.build_scene_view())
 	_push_chronicle_view_to_active_map()
 	_apply_story_presence(story)
+	_apply_story_ambience(story)
 	_begin_story_encounter(story)
 
 
@@ -1330,6 +1331,13 @@ func _apply_story_presence(story: StoryRuntime) -> void:
 			(node as StoryPresence).apply(asked)
 
 
+## Light the map as the story's current beat says (D-073 §3): asked of the story every time,
+## handed to the map's presentation, stored nowhere.
+func _apply_story_ambience(story: StoryRuntime) -> void:
+	if _active_map != null and _active_map.has_method("set_ambience"):
+		_active_map.call("set_ambience", story.ambience_id())
+
+
 ## The current beat's encounter, if it has one and the player is where it happens: spawned
 ## ONCE, through the combat owner's own seam, only after the beat's scene has ended (nothing
 ## hostile moves while a scene holds the player).
@@ -1354,6 +1362,9 @@ func _begin_story_encounter(story: StoryRuntime) -> void:
 	if beat.encounter_flag_id != &"":
 		story.set_flag(beat.encounter_flag_id, 1)
 		_apply_story_presence(story)
+	# What the encounter is an answer to, shown as it begins (the vein giving way).
+	if _active_map.has_method("pulse_ambience"):
+		_active_map.call("pulse_ambience")
 	if not combat.enemy_defeated.is_connected(_on_encounter_enemy_defeated):
 		combat.enemy_defeated.connect(_on_encounter_enemy_defeated)
 

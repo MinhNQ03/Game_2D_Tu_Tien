@@ -50,6 +50,7 @@ python3 tools/aetheria_art_pipeline/build.py icons | props                 # pix
 python3 tools/aetheria_art_pipeline/world/ground.py lac_ha                  # paint a floor
 python3 tools/aetheria_art_pipeline/world/sync_scene.py lac_ha src/gameplay/maps/hub_map.tscn
 python3 tools/aetheria_art_pipeline/ui/ui_kit.py                            # the UI kit
+python3 tools/aetheria_art_pipeline/build.py ambience                       # style -> data/ambience
 python3 tools/aetheria_art_pipeline/validate/visual_benchmark.py <golden_combat.png> --out <file>
 ```
 

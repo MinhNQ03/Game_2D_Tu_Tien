@@ -1,5 +1,7 @@
-[gd_scene load_steps=47 format=3]
+[gd_scene load_steps=49 format=3]
 
+[ext_resource type="Script" path="res://src/presentation/ambient/map_ambience.gd" id="am_map"]
+[ext_resource type="Script" path="res://src/presentation/ambient/ambience_light.gd" id="am_light"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
 
@@ -586,6 +588,27 @@ offset_left = 8.0
 offset_top = 8.0
 offset_right = 460.0
 offset_bottom = 60.0
+
+[node name="Ambience" type="Node2D" parent="Visual"]
+script = ExtResource("am_map")
+
+[node name="LanternN" type="PointLight2D" parent="Visual/Ambience"]
+position = Vector2(102, 238)
+script = ExtResource("am_light")
+role = &"lantern"
+radius_px = 70.0
+
+[node name="LanternS" type="PointLight2D" parent="Visual/Ambience"]
+position = Vector2(102, 312)
+script = ExtResource("am_light")
+role = &"lantern"
+radius_px = 70.0
+
+[node name="Vein" type="PointLight2D" parent="Visual/Ambience"]
+position = Vector2(616, 470)
+script = ExtResource("am_light")
+role = &"vein"
+radius_px = 92.0
 
 [node name="WindField" type="Node" parent="Visual"]
 script = ExtResource("40_wind")

@@ -117,6 +117,10 @@ ENTRY_SCENES = {"beat_road": ORIGIN_VIGNETTE, "beat_arrival": "scene_arrival",
 ENCOUNTERS = {"beat_night": ("field_night", "choice_night_stand", "stood", "withdrew",
                              "flag_vein_broke")}
 # (the fifth entry is the flag raised when the encounter begins)
+# How the maps are LIT while a beat is current (D-073 §3): beat -> an ambience id that
+# `tools/aetheria_art_pipeline/build.py ambience` writes from the Visual DNA. The Night is the
+# evening it becomes due and the dark it happens in; every other beat is the map as authored.
+AMBIENCE = {"beat_warning": "dusk", "beat_night": "night"}
 
 
 
@@ -341,6 +345,7 @@ def story_catalog():
             ("plays_origin_vignette", "true" if entry == ORIGIN_VIGNETTE else "false"),
             ("trigger", trigger),
             ("branches", doc.array("story_branch_data", branch_refs))]
+            + ([("ambience_id", sn(AMBIENCE[bid]))] if bid in AMBIENCE else [])
             + ([("encounter_id", sn(ENCOUNTERS[bid][0])),
                 ("encounter_choice_id", sn(ENCOUNTERS[bid][1])),
                 ("encounter_cleared_option", sn(ENCOUNTERS[bid][2])),

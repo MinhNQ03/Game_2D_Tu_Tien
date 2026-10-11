@@ -769,3 +769,39 @@ func test_pipeline_sprites_stand_on_their_measured_origin() -> void:
 				scene_path.get_file(), sprite.name])
 		root.free()
 	assert_true(checked >= 3, "the post, the stele and the spring were checked (%d)" % checked)
+
+
+## D-073 §3: what the story puts in a map is drawn as what the story says it is. The cart
+## WAITING on the east road is the whole cart, there until the vein breaks; the cart LEFT in
+## the woods is the wreck, there once it has — a wheel off, crates split — and never the same
+## picture as the one that was standing. Each is solid exactly where its own art says.
+func test_the_cart_that_waits_is_whole_and_the_cart_that_was_left_is_a_wreck() -> void:
+	var hub: Node = HubScene.instantiate()
+	var field: Node = FieldScene.instantiate()
+	var waiting := hub.get_node_or_null("Visual/Decor/CarterCart/Prop_CarterCart") as WorldProp
+	var left := field.get_node_or_null("Visual/Decor/CartWreck/Prop_CartWreck") as WorldProp
+	assert_not_null(waiting, "the village has the carter's cart")
+	assert_not_null(left, "the woods have what was left of it")
+	if waiting == null or left == null:
+		hub.free()
+		field.free()
+		return
+	assert_eq(waiting.prop.id, &"cart", "the cart that waits is the whole cart")
+	assert_eq(left.prop.id, &"cart_wreck", "the cart that was left is drawn BROKEN")
+	assert_ne(left.prop.texture, waiting.prop.texture, "never the standing cart's picture")
+	var there_until := hub.get_node("Visual/Decor/CarterCart/Presence") as StoryPresence
+	var there_after := field.get_node("Visual/Decor/CartWreck/Presence") as StoryPresence
+	assert_eq([there_until.flag_id, there_until.present_when_set], [&"flag_vein_broke", false],
+		"the whole cart is there UNTIL the vein breaks")
+	assert_eq([there_after.flag_id, there_after.present_when_set], [&"flag_vein_broke", true],
+		"the wreck is there ONCE it has: the two are never in the world together")
+	# The wreck's body is the canted bed, inside its own picture; the litter round it is not.
+	var size := Vector2(left.prop.texture.get_size())
+	var drawn := Rect2(-left.prop.origin, size)
+	assert_true(drawn.encloses(left.prop.footprint),
+		"the wreck is solid only where it is drawn (%s in %s)" % [left.prop.footprint, drawn])
+	assert_true(left.prop.footprint.size.x < size.x * 0.7,
+		"and the wheel, the lid and the spill round it are walked over, not walls")
+	hub.free()
+	field.free()
+

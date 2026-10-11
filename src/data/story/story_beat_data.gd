@@ -38,6 +38,12 @@ class_name StoryBeatData
 @export var encounter_flag_id: StringName = &""
 
 
+## How the maps are LIT while this beat is current (D-073 §3): the id of an ambience
+## ("dusk", "night"), or empty for the maps as authored. Presentation derives the light from
+## this every time; nothing stores "it is night" and no rule reads it.
+@export var ambience_id: StringName = &""
+
+
 func has_encounter() -> bool:
 	return encounter_id != &""
 

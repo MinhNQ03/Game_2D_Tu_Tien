@@ -1,5 +1,7 @@
-[gd_scene load_steps=60 format=3]
+[gd_scene load_steps=62 format=3]
 
+[ext_resource type="Script" path="res://src/presentation/ambient/map_ambience.gd" id="am_map"]
+[ext_resource type="Script" path="res://src/presentation/ambient/ambience_light.gd" id="am_light"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
 [ext_resource type="Script" path="res://src/gameplay/maps/water_blockers.gd" id="5_water"]
@@ -615,6 +617,21 @@ offset_left = 8.0
 offset_top = 8.0
 offset_right = 460.0
 offset_bottom = 60.0
+
+[node name="Ambience" type="Node2D" parent="Visual"]
+script = ExtResource("am_map")
+
+[node name="LanternN" type="PointLight2D" parent="Visual/Ambience"]
+position = Vector2(938, 212)
+script = ExtResource("am_light")
+role = &"lantern"
+radius_px = 70.0
+
+[node name="LanternS" type="PointLight2D" parent="Visual/Ambience"]
+position = Vector2(938, 348)
+script = ExtResource("am_light")
+role = &"lantern"
+radius_px = 70.0
 
 [node name="WindField" type="Node" parent="Visual"]
 script = ExtResource("40_wind")

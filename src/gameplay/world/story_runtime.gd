@@ -32,6 +32,9 @@ signal choice_recorded(choice_id: StringName, option_id: StringName)
 const CATALOG_PATH := "res://data/story/story_catalog.tres"
 const ORIGINS_PATH := "res://data/story/origin_catalog.tres"
 const SCENES_PATH := "res://data/story/story_scene_catalog.tres"
+## Where an ambience a beat names must exist (the profile presentation applies — D-073 §3).
+## Only its EXISTENCE is asked here, as for a map or a scene: the story never loads it.
+const AMBIENCE_PATH := "res://data/ambience/ambience_%s.tres"
 ## The cause recorded on a relationship edge the story moves.
 const REGARD_CAUSE := &"story"
 
@@ -216,7 +219,9 @@ func _content_errors(service: StoryService, scenes: StorySceneCatalogData,
 		func(dimension: StringName) -> bool: return graph.has_dimension(dimension),
 		func(item_id: StringName) -> bool: return items.entry(item_id) != null,
 		func(map_id: StringName) -> bool: return maps.has(map_id),
-		func(scene_id: StringName) -> bool: return scenes.has(scene_id))
+		func(scene_id: StringName) -> bool: return scenes.has(scene_id),
+		func(ambience: StringName) -> bool:
+			return ResourceLoader.exists(AMBIENCE_PATH % ambience))
 	for scene in scenes.entries:
 		if has_text.is_valid():
 			for key in scene.text_keys():
@@ -338,6 +343,11 @@ func _end_scene() -> void:
 	_step = 0
 	scene_changed.emit()
 	_apply(_service.note(StoryTriggerData.Kind.SCENE_ENDED, ended))
+
+
+## How the maps are lit while the current beat lasts ("" = as authored). Derived each time.
+func ambience_id() -> StringName:
+	return _service.ambience_id() if _session_active else &""
 
 
 ## The step now on screen, or null when no scene is playing.

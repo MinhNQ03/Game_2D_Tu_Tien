@@ -1,6 +1,6 @@
 # Handoff — Post-Phase-20 experience hardening / pre-Phase-21 gate (D-073)
 
-> **Status: IN PROGRESS — Checkpoint 1 built (the bridge and the choice transaction).** This is a bounded quality pass
+> **Status: IN PROGRESS — Checkpoints 1–2 built (the bridge, the choice transaction, the Night shown).** This is a bounded quality pass
 > between two phases. **It is not a phase.** Phase 20 (Story) is and stays **DONE** under D-072;
 > Phase 21 (Dungeon) and Phase 22 (Boss) are **NOT STARTED** and nothing here builds them.
 > A section marked *planned* is what Gate A decided and has not been built yet; *built* means
@@ -304,8 +304,8 @@ until a person has played it.
 | # | Scope | Commit | CI on that exact SHA |
 |---|---|---|---|
 | 0 | Audit, Gate A, D-073, status drift corrected. No gameplay code | `1fa3011` | 38134053360 — success, `head_sha` `1fa3011e53ddfe1fb7e88fafd24b3727a67bd71d` |
-| 1 | The Act-I bridge and the choice transaction | *(this commit)* | recorded by the next commit |
-| 2 | The Night: ambience, the wreck, the socket and ruts, the creatures | | |
+| 1 | The Act-I bridge and the choice transaction | `7f900c9` | 38135850806 — success, `head_sha` `7f900c9b075e487def943e1d07016631dbbd7f48` |
+| 2 | The Night: ambience, the wreck, the socket and track, the creatures | *(this commit)* | recorded by the next commit |
 | 3 | The Chronicle and the cultivate / recovery rule | | |
 | 4 | Full regression, the capture matrix, docs, debt register, Phase-21 handoff | | |
 
@@ -346,6 +346,94 @@ repository root (no exported build exists yet). Start from New Game; no test-onl
    about the survey. Time to first control, to first fight, to first mystery.
 
 ## 12. Evidence
+
+### Checkpoint 2 — the Night is shown (*built*)
+
+**What a player sees now, stage by stage** (H21-03 … H21-06):
+
+| Stage | Before this pass | Now | Derived from |
+|---|---|---|---|
+| warning (village) | daylight, a caption | the village at DUSK: a warm-grey, dimmer playfield; the east road's lanterns lit and guttering | `beat_warning.ambience_id = dusk` |
+| arrival in the woods | daylight | the player walks in at dusk and the dark comes down over 0.9 s as the rupture is told | `beat_night.ambience_id = night` |
+| the wave | grey wolves in a sunlit wood | NIGHT: a cool, value-compressed wood; warm banded pools at the treeline lanterns; the broken vein lit in qi, flaring once as the wave comes and pushing the grass flat in a ring; the Night's two creatures with a dark crest of raised hackles and the vein's light in flank and eye, beside the woods' own plain wolf | the same beat; `spawn_table_field_night.visual_profile`; `pulse_ambience` when the encounter begins |
+| the wreck | the cart standing, load roped | the cart on one wheel, the other lying off, a crate burst, pale shards of vein stone on the ground | story presence → the `cart_wreck` prop |
+| morning | daylight, the stake gone, nothing where it stood | the maps as authored again; a raked socket with its stone collar where the stake stood | `beat_aftermath.ambience_id = ""`; `StakeSocket` presence |
+
+**Ownership.** Nothing stores "it is night". `StoryService.ambience_id()` reads the current
+beat; `WorldRuntime` hands it to the map where it already applies story presence; the map's
+`Visual/Ambience` (`MapAmbience`, presentation) wears it. The simulation's calendar is not
+read or written. Colours live only in `style/aetheria_style.yaml` (roles `dusk_air`,
+`night_air`, `lantern_glow`, and `qi`) and are written into `data/ambience/*.tres` by
+`build.py ambience`; no gameplay, domain or story file names a colour. The Night's creatures
+are `enemy_mist_wolf` — one `EnemyData`, its stats, AI, bite, telegraph and hitbox — under a
+look that the ENCOUNTER's spawn table names; no code branches on a creature's id.
+
+**Readability, held as a rule.** The tint is a `CanvasModulate` (a multiply of the world
+canvas; the HUD is its own layer and is untouched). A profile whose mean tint level is under
+0.42 is refused by the generator AND by `MapAmbience`; night is 0.59. Light is banded (three
+flat rings). The creature cue is a SILHOUETTE change in all four facings (≥ 12 pixels of
+outline differ per facing, asserted), so it does not depend on colour.
+
+**Three things found by looking, not by testing.**
+1. *The first vein pulse burned out to white* over about a sixth of the 1280×720 frame
+   (energy 1.05 × a 2.6× flare, additive). Now 0.5 × at most 1.9×, radius 92 px: a banded
+   pool that stays qi-coloured.
+2. *The first vein-touched coat was charcoal* and sank into the night floor at 4× and at 1×.
+   The body keeps the wolf's value now and the CREST is what is dark.
+3. *The first stake socket was darker than the leaf litter* and could not be found (already
+   recorded under Checkpoint 1).
+
+**Tests.** Suite **1216** (was 1202): +9 `test_map_ambience` (day costs nothing; night tints
+and lights; dusk lights lanterns and not the vein; a change in place eases and day returns
+whole; an unknown ambience is not worn; a pulse flares and settles, stepped by exact deltas;
+every shipped profile keeps the floor; the maps' lights are at their lanterns), +3 on the
+Night's creatures (same data, registry and AI under another look; shape differs on the same
+grid; a look on another grid is refused), +1 story (a beat lit by an ambience nobody made
+refuses the start; dusk → night → morning follow the beats; the record stores no light), +1
+map (the cart that waits is whole, the cart that was left is the wreck, never together, solid
+only where drawn). Story E2E asserts dusk at 8c, night + the lit vein + the flare at 8d, day
+again at 8e. All eight E2E flows pass; 0 `SCRIPT ERROR`; 0 leak lines.
+
+**Mutations: 15 applied, 15 red — after one survived.** N14 (*the wreck is the standing cart
+again*) was ALIVE on its first run: nothing pinned which prop the woods' story cart is. The
+map test above was written for it; N14 and a sibling (N15, *the wreck is there before the
+vein breaks*) are red against it.
+
+| # | What was broken | Red in |
+|---|---|---|
+| N1 | the map is never told how it is lit | Story E2E 8c, 8d |
+| N2 / N3 | the Night beat names no ambience / an unknown one is accepted | story runtime |
+| N4 | night does not tint | ambience |
+| N5 | lights burn by day | ambience ×3 |
+| N6 | an unknown ambience darkens the map anyway | ambience |
+| N7 | a pulse never settles | ambience |
+| N8 | the vein is lit at dusk too | ambience |
+| N9 | a profile too dark to play in is accepted | ambience ×3 |
+| N10 | the rupture is not shown as the wave comes | Story E2E 8d |
+| N11 / N12 | the wave wears the ordinary look / the table names none | enemy encounter |
+| N13 | a look on another grid is accepted | enemy encounter |
+| N14 / N15 | the wreck is the standing cart / is there before the vein breaks | map scenes |
+
+**Real window (opened and looked at, 1280×720 vi; scratch path, not committed).**
+
+| Frame | What is in it |
+|---|---|
+| `21_night_warning_caption` | the village under a dim warm-grey light, visibly duller than the morning frame of the same place; the caption band; the HUD at full brightness |
+| `22_night_rupture_caption` | the treeline at night: two lanterns each in a warm pool of three rings, Kha Thản readable in the dark between them, the vein's stone lit cyan at the frame's corner |
+| `23_night_wave_and_wreck` | the wave: a cool dark wood; the player's pale robe and silver hair the brightest thing in it; two wolves with spiked ruffs beside and below the player and one plain wolf up by the cairn; the wreck with its wheel off and a spill of pale shards; a soft banded pool of qi light at the vein |
+| `25_morning_sheet_under_the_stele` | the village as authored, bright; the strip offers *E Xem xét* at the weighted sheet |
+| wolves at ×6, day and night (composed from the shipped sheets) | row by row: plain wolf / vein-touched wolf — the crest reads as a dark saw-edge along the back in profile and as two raised wings of fur from the front and from behind |
+
+**Not verified at this checkpoint (CHƯA VERIFY).** (1) The wolf's WIND-UP and telegraph under
+the night tint were not captured as a motion strip; the bite's data is unchanged and its
+telegraph is drawn in the world canvas, so it is tinted like everything else — Checkpoint 4
+captures it. (2) en and 1280×800. (3) No frame-time measurement of the lights was taken.
+
+**Cost added (counted, not profiled).** Per map: one `CanvasModulate` and 2–3
+`PointLight2D` that are DISABLED by day (energy 0); one shared 96×96 gradient texture. At
+dusk and at night `MapAmbience._process` runs to gutter the lanterns and pulse the vein
+(a few sines); by day it is off. Three new 32×32-cell sheets (1.7–2.5 KB each), two props
+(106×48, 108×63), one decal (32×18). See `PERFORMANCE.md` PERF-NOTE-21.
 
 ### Checkpoint 1 — the Act-I bridge and the choice transaction (*built*)
 

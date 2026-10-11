@@ -38,6 +38,8 @@ const VisualComponentScript := preload(
 
 var _data: EnemyData = null
 var _instance_id: StringName = &""
+## How this one is drawn: its own look, or the one its spawn table gave it (D-073 §3).
+var _look: CharacterVisualProfileData = null
 var _visual: CharacterVisualComponent = null
 var _dead := false
 
@@ -65,7 +67,11 @@ func _ready() -> void:
 ## Returns false (loud) on invalid data, leaving the entity inert rather than half-built: a
 ## creature with no stats that still walks around is worse than one that never spawned, because
 ## it looks like content and behaves like a bug (fail closed, `04-coding-standards.md`).
-func setup(data: EnemyData, instance_id: StringName) -> bool:
+##
+## `look` (optional) is how THIS one is drawn instead of `data.visual_profile` — the spawn
+## table's, for an event's creatures (D-073 §3). It changes nothing but the picture.
+func setup(data: EnemyData, instance_id: StringName,
+		look: CharacterVisualProfileData = null) -> bool:
 	if data == null or not data.is_valid():
 		push_error("[enemy] setup refused: invalid EnemyData")
 		return false
@@ -74,6 +80,7 @@ func setup(data: EnemyData, instance_id: StringName) -> bool:
 		return false
 	_data = data
 	_instance_id = instance_id
+	_look = look if look != null else data.visual_profile
 	# Already in the tree (a rebuild/retune): apply now. Otherwise `_ready()` applies it, which
 	# is the normal path — the spawner configures before `add_child` so `_ready` sees final
 	# data, exactly as the player's `bind_character_state` does (D-026).
@@ -99,15 +106,20 @@ func _apply() -> bool:
 ## Attach the data-driven visual. A missing profile is reported and leaves the entity
 ## invisible-but-functional rather than crashing — presentation degrades, gameplay does not.
 func _apply_visual() -> void:
-	if _data.visual_profile == null or _visual != null:
+	if _look == null or _visual != null:
 		return
 	_visual = VisualComponentScript.new() as CharacterVisualComponent
 	_visual.name = "CharacterVisualComponent"
 	add_child(_visual)
-	if not _visual.setup(_data.visual_profile):
+	if not _visual.setup(_look):
 		push_error("[enemy] '%s' has an unusable visual profile" % _data.id)
 		_visual.queue_free()
 		_visual = null
+
+
+## The look this one is drawn with (its own, or its spawn table's).
+func look() -> CharacterVisualProfileData:
+	return _look
 
 
 func data() -> EnemyData:

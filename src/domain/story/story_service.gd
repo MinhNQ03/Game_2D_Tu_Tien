@@ -128,6 +128,13 @@ func entry_scene_id() -> StringName:
 	return beat.entry_scene_id
 
 
+## How the maps are lit while the current beat lasts: an ambience id, or empty (as authored).
+## A fact about where the story stands, for presentation to derive from; never stored.
+func ambience_id() -> StringName:
+	var beat := current_beat()
+	return beat.ambience_id if beat != null else &""
+
+
 ## The current beat's objective key, or empty before a run begins.
 func objective_key() -> StringName:
 	var beat := current_beat()
@@ -518,11 +525,11 @@ func load_state(data: Dictionary) -> bool:
 ## catalogs' own `validation_errors`; this is the cross-owner half. Each seam is optional (an
 ## invalid Callable skips that check): `has_text(key)`, `has_knowledge(id)`,
 ## `resolve_character(instance_id) -> CharacterState`, `has_dimension(dimension)`,
-## `has_item(item_id)`, `has_map(map_id)`, `has_scene(scene_id)`.
+## `has_item(item_id)`, `has_map(map_id)`, `has_scene(scene_id)`, `has_ambience(ambience_id)`.
 func content_errors(has_text: Callable = Callable(), has_knowledge: Callable = Callable(),
 		resolve_character: Callable = Callable(), has_dimension: Callable = Callable(),
 		has_item: Callable = Callable(), has_map: Callable = Callable(),
-		has_scene: Callable = Callable()) -> Array[String]:
+		has_scene: Callable = Callable(), has_ambience: Callable = Callable()) -> Array[String]:
 	var errors: Array[String] = []
 	if not is_ready():
 		errors.append("the story service is not ready")
@@ -538,6 +545,9 @@ func content_errors(has_text: Callable = Callable(), has_knowledge: Callable = C
 		if beat.entry_scene_id != &"":
 			_ask(errors, has_scene, beat.entry_scene_id,
 				"%s: '%s' is not a story scene" % [beat.id, "%s"])
+		if beat.ambience_id != &"":
+			_ask(errors, has_ambience, beat.ambience_id,
+				"%s: '%s' is not an ambience any map can wear" % [beat.id, "%s"])
 		if beat.trigger != null:
 			errors.append_array(_trigger_content_errors(beat, has_knowledge,
 				resolve_character, has_map, has_scene))

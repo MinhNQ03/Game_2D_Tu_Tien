@@ -8,6 +8,19 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 2: the Night is shown (D-073 §3)
+
+- **Ambience.** `StoryBeatData.ambience_id` → `MapAmbience` (presentation, `Visual/Ambience`):
+  a `CanvasModulate` tint and banded `AmbienceLight`s at the lanterns and the broken vein.
+  Dusk in the village for the warning, night in the woods for the wave, day again by morning —
+  derived from the beat, stored nowhere. Colours are Visual-DNA roles written by
+  `build.py ambience`. A pulse flares the vein and flattens the grass as the wave comes.
+- **The Night's creatures** are the mist wolf under their own sheets (`vein_wolf_*`): raised
+  hackles, the vein's light. `EnemySpawnTableData.visual_profile` names the look; rules,
+  timing and hitbox are untouched.
+- **The wreck is a wreck**, the removed stake leaves a socket (art landed in Checkpoint 1).
+- Suite 1216; 15 mutations red (one survived first and got its test).
+
 ### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 1: the Act-I bridge; a choice is all or nothing (D-073)
 
 - **A story choice can no longer be half-applied.** `StoryOwners` gains prepare seams

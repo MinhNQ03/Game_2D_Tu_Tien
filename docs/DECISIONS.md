@@ -6027,3 +6027,23 @@ stands, whether or not the story decides if it is there.
 
 **E. The door stands where the HUD does not.** See the handoff §5, "Placement, as seen".
 
+### D-073 addendum (Checkpoint 2) — how the Night came to be shown
+
+**F. Night falls on the way in.** A map shows its light at once when entered, and eases a
+change that happens while the player stands in it. Arriving in the woods the beat is still the
+warning (dusk) for one call and becomes the Night on the same arrival, so the woods are seen
+at dusk and go dark over 0.9 s while the rupture is told. That was not designed; it was seen,
+and kept: it is the anticipation the rupture lacked.
+
+**G. The look of an event's creatures is the encounter's data.** `EnemySpawnTableData`
+already carried a `tag` so an event's creatures have their own ids (D-072 addendum F); it now
+also carries an optional `visual_profile`. Rejected: a second `EnemyData` for "the mad wolf"
+(a second set of rules to keep equal by hand, and a different name on the target frame for
+what canon says is the same animal); a shader or a modulate on the sprite (colour only, and
+invisible under a night tint).
+
+**H. Three numbers were set by looking.** The vein's light (0.5, flare ≤ 1.9×, radius 92 px),
+the vein-touched coat (the wolf's own value, with a dark crest) and the socket (paler than the
+litter) each failed in the real window first. They are recorded in the handoff §12 because a
+later reader will otherwise "fix" them back.
+

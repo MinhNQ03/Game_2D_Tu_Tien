@@ -50,6 +50,57 @@ HOUND_PAL = {
 }
 
 
+# Vụ Lang that drank from the vein the night it broke (D-073 §3): the SAME skeleton, gaits and
+# bite as the mist wolf — the rules are the wolf's — told apart by SILHOUETTE first and light
+# second, so the cue survives a dark map and does not depend on colour: the hackles stand in a
+# ragged crest from skull to haunch, the coat has gone to cold ash, and the vein's qi shows
+# where it should not — in the eyes, along a crack down the flank, in sparks that RISE off the
+# crest instead of mist trailing behind.
+VEIN_PAL = {
+    # Pale, not dark: seen in a night-tinted frame the first (charcoal) coat sank into the
+    # forest floor. The body keeps the wolf's value; the CREST is what is dark.
+    "coat": (156, 168, 192, 255),
+    "coat_hi": (204, 214, 232, 255),
+    "coat_dk": (92, 102, 128, 255),
+    "belly": (124, 134, 160, 255),
+    "far": (76, 84, 108, 255),
+    "crest": (34, 38, 56, 255),
+    "nose": (30, 30, 40, 255),
+    "maw": (58, 96, 124, 255),
+    "fang": (236, 244, 248, 255),
+    "eye": (234, 248, 253, 255),
+    "mist": None,
+    "hackles": True,
+    "vein": (133, 204, 234, 255),
+    "vein_hot": (234, 248, 253, 255),
+    "spark": (191, 232, 246, 200),
+}
+
+
+def _crest_side(px, x0, x1, y, pal):
+    """Raised hackles seen from the side: a ragged row of spikes along the spine (drawn before
+    the outline, so they change the SILHOUETTE)."""
+    if not pal.get("hackles"):
+        return
+    for i, x in enumerate(range(int(x0), int(x1) + 1, 3)):
+        h = 5 if i % 2 == 0 else 3
+        raster.polygon(px, [(x - 1, y + 1), (x + 1, y - h), (x + 2, y + 1)], pal["crest"])
+
+
+def _veins_side(px, x0, x1, y, phase, pal):
+    """The vein's light in the flank: a broken crack of qi, one pixel wide, and sparks rising
+    off the crest. Drawn AFTER the outline: light, not fur."""
+    if not pal.get("vein"):
+        return
+    mid = int((x0 + x1) / 2)
+    for dx, dy in ((-3, 0), (-2, 1), (-1, 1), (0, 2), (1, 2), (2, 1), (3, 2)):
+        raster.put(px, mid + dx, y + dy, pal["vein"])
+    raster.put(px, mid, y + 2, pal["vein_hot"])
+    for k in range(2):
+        sx = int(x0) + 2 + 5 * k + (phase + k) % 3
+        raster.put(px, sx, y - 6 - (phase + 2 * k) % 4, pal["spark"])
+
+
 def pose(body=0, reach=0, head=0, tail=0, jaw=0, legs=(0.0, 0.0, 0.0, 0.0), lift=(0, 0, 0, 0),
          crouch=0, mist=0):
     """body   vertical offset of the trunk (+ = lower)
@@ -186,6 +237,7 @@ def _side(p, pal):
     raster.oval(px, hip_x, trunk_y - 0.5, 4, 3.6, pal["coat"])
     raster.rect(px, shoulder_x - 2, trunk_y + 1, hip_x + 2, trunk_y + 3, pal["belly"])
     raster.oval(px, (shoulder_x + hip_x) / 2.0, trunk_y - 3, 6, 1.2, pal["coat_hi"])   # spine
+    _crest_side(px, shoulder_x - 1, hip_x + 2, trunk_y - 4, pal)
     # Neck and head, forward and LOW: the two cues that read as canine, not as livestock.
     # The head is carried LOW, about level with the back: an upright neck read as a horse.
     hx, hy = shoulder_x - 5, trunk_y - 5 + p["head"]
@@ -215,6 +267,7 @@ def _side(p, pal):
         raster.line(px, shoulder_x - 2, trunk_y - 5, shoulder_x - 1, trunk_y - 1, pal["collar"])
     _mist(px, hip_x + 9, trunk_y + t, p["mist"], pal)
     _mist(px, (shoulder_x + hip_x) // 2 + 3, trunk_y - 5, p["mist"] + 1, pal)
+    _veins_side(px, shoulder_x, hip_x, trunk_y - 1, p["mist"], pal)
     return px, (hx - 5, hy + 2)
 
 
@@ -243,6 +296,13 @@ def _front(p, pal):
                    pal["belly"])
     raster.line(px, 10, hy + 3, 12, hy + 7, pal["coat"])
     raster.line(px, 22, hy + 3, 20, hy + 7, pal["coat"])
+    if pal.get("hackles"):
+        # the ruff stands out in spikes either side of the head, and the crest rises behind it
+        for (x, dx) in ((8, -3), (9, -2), (24, 3), (23, 2)):
+            raster.polygon(px, [(x, hy + 1), (x + dx, hy - 2), (x, hy + 6)], pal["crest"])
+        for x in (12, 16, 20):
+            raster.polygon(px, [(x - 1, 15 + b), (x, 7 + b + (x % 3)), (x + 1, 15 + b)],
+                           pal["crest"])
     # The HEAD is a WEDGE: broad across the ears, tapering to a long muzzle that points at the
     # viewer, so the face reads as a snout coming forward rather than a flat disc.
     raster.polygon(px, [(10, hy - 3), (22, hy - 3), (20, hy + 2), (18, hy + 6), (14, hy + 6),
@@ -278,6 +338,11 @@ def _front(p, pal):
         raster.line(px, 12, hy + 8, 20, hy + 8, pal["collar"])
         raster.put(px, 16, hy + 9, pal["collar"])
     _mist(px, 22, 18 + b, p["mist"] + 1, pal)
+    if pal.get("vein"):
+        for (x, y) in ((16, hy - 2), (15, hy - 1), (16, hy), (17, hy + 1)):   # a crack down the brow
+            raster.put(px, x, y, pal["vein"])
+        raster.put(px, 11 + p["mist"] % 3, hy - 9 - p["mist"] % 3, pal["spark"])
+        raster.put(px, 20 - p["mist"] % 2, hy - 10 - (p["mist"] + 1) % 3, pal["spark"])
     return px, (16, hy + 7)
 
 
@@ -304,6 +369,12 @@ def _back(p, pal):
     raster.oval(px, 16, 17 + b, 5, 5, pal["coat"])                           # shoulders
     raster.oval(px, 16, 22 + b, 7, 4.5, pal["coat"])                         # haunches
     raster.line(px, 16, 13 + b, 16, 24 + b, pal["coat_hi"])                  # spine
+    if pal.get("hackles"):
+        for i, y in enumerate(range(13 + b, 25 + b, 3)):
+            w = 3 if i % 2 == 0 else 2
+            raster.polygon(px, [(16 - w, y + 1), (16, y - 3), (16 + w, y + 1)], pal["crest"])
+        for (x, dx) in ((10, -4), (22, 4)):
+            raster.polygon(px, [(x, 19 + b), (x + dx, 17 + b), (x, 24 + b)], pal["crest"])
     for (x, fwd, li) in ((11, nh, lf[2]), (21, fh, lf[3])):
         raster.limb(px, x, 23 + b, x, 29 - li - int(fwd) // 3, 3, 2.4, pal["coat_dk"])
         raster.rect(px, x - 1, 29 - li, x + 2, 30 - li, pal["coat_dk"])
@@ -319,6 +390,10 @@ def _back(p, pal):
     if pal.get("collar"):
         raster.line(px, 14, hy + 4, 18, hy + 4, pal["collar"])
     _mist(px, 15 + t, 30, p["mist"], pal)
+    if pal.get("vein"):
+        for y in range(14 + b, 24 + b, 2):
+            raster.put(px, 16 + (1 if (y // 2) % 2 else 0), y, pal["vein"])
+        raster.put(px, 14 + p["mist"] % 4, 11 + b - p["mist"] % 3, pal["spark"])
     return px, (16, hy - 3)
 
 

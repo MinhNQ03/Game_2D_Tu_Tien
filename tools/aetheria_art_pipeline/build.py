@@ -10,6 +10,8 @@
   build.py icons                   Blender icon passes (work/icons) -> the 32x32 icons
   build.py props-spec              designs/props.yaml -> work/props/spec.json
   build.py props                   Blender prop passes (work/props) -> world prop sprites + data
+  build.py ambience                style `ambience` -> data/ambience/ambience_<id>.tres
+  build.py ambience-check          exit 1 if those files differ from the style
 
 Blender is a BUILD tool here, never a runtime dependency: it renders controlled passes into
 work/ (gitignored); this side turns them into the committed 32x48 sheets.
@@ -200,10 +202,63 @@ def write_spec(actor_id):
     return path
 
 
+def ambience_resources():
+    """style `ambience.states` -> {relative path: .tres text}. Colours are palette ROLES."""
+    st = style.load()
+    section = st["ambience"]
+    floor = float(section["tint_level_min"])
+
+    def colour(name):
+        r, g, b = style.role(name, st)
+        return "Color(%s, %s, %s, 1)" % tuple("%.4g" % round(c / 255.0, 4) for c in (r, g, b))
+
+    out = {}
+    for state_id in sorted(section["states"]):
+        state = section["states"][state_id]
+        level = sum(style.role(state["tint_role"], st)) / 765.0
+        if level < floor:
+            raise SystemExit("ambience '%s': tint level %.2f is below the floor %.2f"
+                             % (state_id, level, floor))
+        text = "\n".join([
+            '[gd_resource type="Resource" script_class="AmbienceProfileData" load_steps=2 '
+            'format=3]', "",
+            '[ext_resource type="Script" '
+            'path="res://src/presentation/ambient/ambience_profile_data.gd" id="1_profile"]',
+            "", "[resource]", 'script = ExtResource("1_profile")',
+            'id = &"%s"' % state_id,
+            "tint = %s" % colour(state["tint_role"]),
+            "lantern_color = %s" % colour(state["lantern"]["role"]),
+            "lantern_energy = %s" % float(state["lantern"]["energy"]),
+            "lantern_flicker = %s" % float(state["lantern"]["flicker"]),
+            "vein_color = %s" % colour(state["vein"]["role"]),
+            "vein_energy = %s" % float(state["vein"]["energy"]),
+            "vein_pulse = %s" % float(state["vein"]["pulse"]),
+            "transition_seconds = %s" % float(state["transition_seconds"]), ""])
+        out["data/ambience/ambience_%s.tres" % state_id] = text
+    return out
+
+
+def write_ambience(check=False):
+    stale = []
+    for rel, text in ambience_resources().items():
+        path = os.path.join(ROOT, rel)
+        if check:
+            if not os.path.exists(path) or open(path, encoding="utf-8").read() != text:
+                stale.append(rel)
+            continue
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        print("wrote", rel)
+    if stale:
+        raise SystemExit("STALE ambience (run build.py ambience): %s" % ", ".join(stale))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("cmd", choices=["resolve", "design-sheet", "pixel", "all-pixel", "review",
-                                       "icons-spec", "icons", "props-spec", "props"])
+                                       "icons-spec", "icons", "props-spec", "props",
+                                       "ambience", "ambience-check"])
     ap.add_argument("actor", nargs="?")
     args = ap.parse_args(argv)
     if args.cmd == "resolve":
@@ -226,6 +281,11 @@ def main(argv=None):
         sys.path.insert(0, os.path.join(PIPE, "validate"))
         import review_sheet
         print(review_sheet.build_icons(resolve_icons(), ROOT, os.path.join(WORK, "icons")))
+    elif args.cmd == "ambience":
+        write_ambience()
+    elif args.cmd == "ambience-check":
+        write_ambience(check=True)
+        print("ambience up to date")
     elif args.cmd == "props-spec":
         print(write_prop_spec())
     elif args.cmd == "props":

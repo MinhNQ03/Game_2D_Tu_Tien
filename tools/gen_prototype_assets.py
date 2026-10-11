@@ -23,7 +23,7 @@ reproducible and provably self-made (`.kiro/steering/06-art-assets.md`). Standar
                  sect emblems
 
 Outputs:
-  assets/sprites/enemies/mist_wolf_<anim>.png
+  assets/sprites/enemies/mist_wolf_<anim>.png, vein_wolf_<anim>.png
   assets/sprites/pets/hoang_khuyen_<anim>.png
   data/characters/visual/anchors/*.tres              per-frame anchor points (palm, core, jaw)
   assets/sprites/props/*.png, assets/sprites/sects/*.png, the training post
@@ -78,6 +78,11 @@ def gen_mist_wolf():
     gen_beast("mist_wolf", "assets/sprites/enemies", beast.PAL)
 
 
+def gen_vein_wolf():
+    """The Night's Vụ Lang (D-073): the mist wolf's skeleton in the vein-touched variant."""
+    gen_beast("vein_wolf", "assets/sprites/enemies", beast.VEIN_PAL)
+
+
 def gen_hoang_khuyen():
     gen_beast("hoang_khuyen", "assets/sprites/pets", beast.HOUND_PAL)
 
@@ -96,6 +101,7 @@ def gen_props():
 
 if __name__ == "__main__":
     gen_mist_wolf()
+    gen_vein_wolf()
     gen_hoang_khuyen()
     gen_props()
     print("done")

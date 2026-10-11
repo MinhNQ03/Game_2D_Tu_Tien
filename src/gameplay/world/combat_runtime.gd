@@ -329,22 +329,23 @@ func spawn_from_table(table: EnemySpawnTableData, host: Node) -> int:
 		return 0
 	var spawned := 0
 	for i in table.size():
-		if _spawn_one(table.enemies[i], table.positions[i], table.instance_id_for(i), host):
+		if _spawn_one(table.enemies[i], table.positions[i], table.instance_id_for(i), host,
+				table.visual_profile):
 			spawned += 1
 	# The tick only runs while there is something to tick, so an empty map costs nothing.
 	_refresh_tick()
 	return spawned
 
 
-func _spawn_one(
-		data: EnemyData, position: Vector2, instance_id: StringName, host: Node) -> bool:
+func _spawn_one(data: EnemyData, position: Vector2, instance_id: StringName, host: Node,
+		look: CharacterVisualProfileData = null) -> bool:
 	var enemy := EnemyScene.instantiate() as Enemy
 	if enemy == null:
 		push_error("[combat-rt] the enemy scene did not instantiate as an Enemy")
 		return false
 	# Configure BEFORE entering the tree, so `_ready` sees final data — the same ordering the
 	# player uses for `bind_character_state` (D-026).
-	if not enemy.setup(data, instance_id):
+	if not enemy.setup(data, instance_id, look):
 		enemy.free()
 		return false
 	enemy.name = String(instance_id)

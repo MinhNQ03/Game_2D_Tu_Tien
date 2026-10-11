@@ -360,6 +360,10 @@ func test_real_story_flow() -> void:
 	assert_false(_panel.choice_ids().has(&"lin_press"), "and does not ask twice")
 	await _say(&"lin_leave", &"")
 	assert_eq(_count_players(main), 1, "one player throughout")
+	var hub_light := hub.get_node(MapBase.AMBIENCE_PATH) as MapAmbience
+	assert_eq(hub_light.ambience_id(), &"dusk", "and the village is at dusk: the warning is SEEN")
+	assert_true((hub_light.get_node("LanternN") as AmbienceLight).enabled,
+		"the east road's lanterns are lit")
 	_step("8c. heard the village's business; kept Lâm Nguyệt's confidence; the Night is due")
 
 	# --- 8d. the Night: arrival in the woods, the rupture, creatures only after the scene -----
@@ -392,6 +396,18 @@ func test_real_story_flow() -> void:
 	assert_eq(night_wolves.size(), 2, "they are the Night's own, apart from the woods' wolves")
 	assert_true(night_wolves[0].global_position.distance_to(player.global_position) > 300.0,
 		"and they begin far from where the player came in: there is room to choose")
+	# The Night LOOKS like night (D-073 §3): derived from the beat, worn by the map.
+	var field_light := field.get_node(MapBase.AMBIENCE_PATH) as MapAmbience
+	assert_eq(field_light.ambience_id(), &"night", "the woods wear the night")
+	# The player walked in at dusk; the dark comes down as the vein gives way (it eases).
+	var night_tint := (load(MapAmbience.PROFILE_PATH % "night") as AmbienceProfileData).tint
+	await _wait_until(func() -> bool: return field_light.tint().is_equal_approx(night_tint), 180)
+	assert_true(field_light.tint().get_luminance() < 0.75 and field_light.tint().b
+		> field_light.tint().r, "a cool, darker playfield (tint %s)" % str(field_light.tint()))
+	var vein_light := field_light.get_node("Vein") as AmbienceLight
+	assert_true(vein_light.enabled and vein_light.energy > 0.0, "the broken vein gives light")
+	assert_true(field_light.is_pulsing(), "and it flared as the wave came: the rupture is SEEN")
+	assert_true(hud is CanvasLayer, "the HUD is its own layer: the tint is not drawn over it")
 	_step("8d. the vein broke on arrival; the wave came only after the scene; the way back is open")
 
 	# --- 8e. standing: real attack keys, until the last of the Night's creatures is down ------
@@ -421,6 +437,9 @@ func test_real_story_flow() -> void:
 		"told over a covered map: time has passed")
 	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
 	assert_false(stake.visible, "by morning the survey stake is gone")
+	assert_eq(field_light.ambience_id(), &"", "and it is day again: no night is left behind")
+	assert_true(field_light.tint().is_equal_approx(Color.WHITE) or field_light.is_processing(),
+		"the woods are as authored (or easing back to it)")
 	assert_true(wreck.visible, "and the wreck is not")
 	_step("8e. stood through the Night with real keys; morning came; the stake was removed")
 

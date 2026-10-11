@@ -52,6 +52,8 @@ signal story_scene_skip_requested()
 signal return_to_menu_requested()
 
 const INTERACT_ACTION := &"interact"
+## Where a map keeps its light (`MapAmbience`, presentation), if it has one.
+const AMBIENCE_PATH := ^"Visual/Ambience"
 
 const GameplayHUDScript := preload("res://src/presentation/hud/gameplay_hud.gd")
 
@@ -336,6 +338,21 @@ func set_skill_view(view: SkillView) -> void:
 func close_reading_panels() -> void:
 	if _hud != null:
 		_hud.close_reading_panels()
+
+
+## Light this map as `ambience_id` says ("" = as authored). The map's `Visual/Ambience` is
+## presentation; a map without one simply stays as it is.
+func set_ambience(ambience_id: StringName) -> void:
+	var ambience := get_node_or_null(AMBIENCE_PATH)
+	if ambience != null and ambience.has_method("apply"):
+		ambience.call("apply", ambience_id)
+
+
+## Something in this map gives way (a vein): its light flares once. Presentation only.
+func pulse_ambience() -> void:
+	var ambience := get_node_or_null(AMBIENCE_PATH)
+	if ambience != null and ambience.has_method("pulse"):
+		ambience.call("pulse")
 
 
 ## The player has fallen: the HUD shows the defeat box.
