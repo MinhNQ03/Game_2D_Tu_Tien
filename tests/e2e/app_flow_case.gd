@@ -78,8 +78,9 @@ func test_real_application_flow() -> void:
 	assert_true(menu.has_signal("new_game_pressed"), "menu exposes new_game_pressed")
 
 	# --- 4. drive the REAL player intent (menu signal), not the services ------
-	menu.emit_signal("new_game_pressed")
-	await scene_tree.process_frame  # let the first gameplay scene's _ready() run
+	# Since Phase 20 that intent opens the identity screen; the run starts when it is
+	# confirmed, and opens on a vignette (their own E2E: story_flow_case.gd).
+	assert_true(await RunKit.begin_run(main, scene_tree), "the identity screen was confirmed")
 
 	# --- 5. the whole chain wired itself --------------------------------------
 	assert_true(gs.is_session_active(), "session active after New Game")

@@ -45,6 +45,9 @@ signal shop_close_requested()
 signal dialogue_choice_requested(node_id: StringName, choice_id: StringName)
 signal dialogue_advance_requested()
 signal dialogue_close_requested()
+## Story-scene intents from the HUD (Phase 20); `StoryRuntime` decides.
+signal story_scene_advance_requested()
+signal story_scene_skip_requested()
 ## Intent to leave the world back to the menu (same contract the sandbox/prologue used).
 signal return_to_menu_requested()
 
@@ -67,6 +70,8 @@ var _skill_view: SkillView = null  # cached read-only skill dock view (Phase 15)
 var _pet_view: PetView = null  # cached read-only linh thú view (Phase 16)
 var _shop_view: ShopView = null  # cached read-only shop view (Phase 17)
 var _dialogue_view: DialogueView = null  # cached read-only conversation view (Phase 18)
+var _story_scene_view: StorySceneView = null  # the story-scene step on screen (Phase 20)
+var _player_portrait_path: String = ""  # the chosen look's portrait (Phase 20)
 var _quest_view: QuestJournalView = null  # cached read-only quest view (Phase 19)
 ## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
 var _active_source: KnowledgeSource = null
@@ -131,6 +136,13 @@ func get_map_data() -> MapData:
 ## (apply_map_data runs before the player is placed, so the HUD can't read it there).
 func refresh_hud() -> void:
 	_refresh_hud()
+
+
+## The player's portrait (Phase 20): the look they chose. Forwarded to the HUD's plaque.
+func set_player_portrait(portrait_path: String) -> void:
+	_player_portrait_path = portrait_path
+	if _hud != null:
+		_hud.set_player_portrait(portrait_path)
 
 
 ## Push the player's read-only sect membership view into the HUD (Phase 06). Called by
@@ -332,6 +344,13 @@ func set_quest_view(view: QuestJournalView) -> void:
 	_quest_view = view
 	if _hud != null:
 		_hud.set_quest_view(view)
+
+
+## Push the story-scene step (Phase 20): a view shows the band, null hides it.
+func set_story_scene_view(view: StorySceneView) -> void:
+	_story_scene_view = view
+	if _hud != null:
+		_hud.set_story_scene_view(view)
 
 
 ## Push the conversation view (Phase 18): an open view opens the box, a closed one closes it.
@@ -616,6 +635,9 @@ func _setup_hud() -> void:
 		dialogue_choice_requested.emit(node_id, id))
 	_hud.dialogue_advance_requested.connect(func() -> void: dialogue_advance_requested.emit())
 	_hud.dialogue_close_requested.connect(func() -> void: dialogue_close_requested.emit())
+	_hud.story_scene_advance_requested.connect(func() -> void:
+		story_scene_advance_requested.emit())
+	_hud.story_scene_skip_requested.connect(func() -> void: story_scene_skip_requested.emit())
 	# Emitting can synchronously unload this scene (L-013): nothing may follow it.
 	_hud.leave_session_requested.connect(func() -> void: return_to_menu_requested.emit())
 
@@ -659,6 +681,10 @@ func _refresh_hud() -> void:
 		_hud.set_shop_view(_shop_view)
 	if _dialogue_view != null:
 		_hud.set_dialogue_view(_dialogue_view)
+	if _story_scene_view != null:
+		_hud.set_story_scene_view(_story_scene_view)
+	if _player_portrait_path != "":
+		_hud.set_player_portrait(_player_portrait_path)
 	if _quest_view != null:
 		_hud.set_quest_view(_quest_view)
 	# And the world-simulation view (Phase 08).

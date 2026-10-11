@@ -118,6 +118,8 @@ objective_key = &"STORY_BEAT_ROAD_OBJECTIVE"
 record_key = &"STORY_BEAT_ROAD_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 2"
+entry_scene_id = &""
+plays_origin_vignette = true
 trigger = SubResource("T_beat_road")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_road_0")])
 
@@ -140,6 +142,8 @@ objective_key = &"STORY_BEAT_ARRIVAL_OBJECTIVE"
 record_key = &"STORY_BEAT_ARRIVAL_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 3"
+entry_scene_id = &"scene_arrival"
+plays_origin_vignette = false
 trigger = SubResource("T_beat_arrival")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_arrival_0")])
 
@@ -162,6 +166,8 @@ objective_key = &"STORY_BEAT_CONTACTS_OBJECTIVE"
 record_key = &"STORY_BEAT_CONTACTS_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 4"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_contacts")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_contacts_0")])
 
@@ -184,6 +190,8 @@ objective_key = &"STORY_BEAT_BUSINESS_OBJECTIVE"
 record_key = &"STORY_BEAT_BUSINESS_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 5"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_village_business")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_village_business_0")])
 
@@ -206,6 +214,8 @@ objective_key = &"STORY_BEAT_CONFIDENCE_OBJECTIVE"
 record_key = &"STORY_BEAT_CONFIDENCE_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 6"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_confidence")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_confidence_0")])
 
@@ -228,6 +238,8 @@ objective_key = &"STORY_BEAT_WARNING_OBJECTIVE"
 record_key = &"STORY_BEAT_WARNING_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 7; §4 TRIGGER"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_warning")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_warning_0")])
 
@@ -250,6 +262,8 @@ objective_key = &"STORY_BEAT_NIGHT_OBJECTIVE"
 record_key = &"STORY_BEAT_NIGHT_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 8; §4 IMMEDIATE RESULT"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_night")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_night_0")])
 
@@ -272,6 +286,8 @@ objective_key = &"STORY_BEAT_AFTERMATH_OBJECTIVE"
 record_key = &"STORY_BEAT_AFTERMATH_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 9; §4 SOCIAL CONSEQUENCE"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_aftermath")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_aftermath_0")])
 
@@ -305,6 +321,8 @@ objective_key = &"STORY_BEAT_SETTLE_OBJECTIVE"
 record_key = &"STORY_BEAT_SETTLE_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 10"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_settle")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_settle_0"), SubResource("B_beat_settle_1")])
 
@@ -327,6 +345,8 @@ objective_key = &"STORY_BEAT_SHEET_TOLD_OBJECTIVE"
 record_key = &"STORY_BEAT_SHEET_TOLD_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 11; §4 FUTURE PAYOFF; D-072 §5"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_sheet_told")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_sheet_told_0")])
 
@@ -349,6 +369,8 @@ objective_key = &"STORY_BEAT_SHEET_FOUND_OBJECTIVE"
 record_key = &"STORY_BEAT_SHEET_FOUND_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 11; §4 FUTURE PAYOFF; D-072 §5"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_sheet_found")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_sheet_found_0")])
 
@@ -371,6 +393,8 @@ objective_key = &"STORY_BEAT_LEAVING_OBJECTIVE"
 record_key = &"STORY_BEAT_LEAVING_RECORD"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §5 beat 12; §4 WORLD CONSEQUENCE"
+entry_scene_id = &""
+plays_origin_vignette = false
 trigger = SubResource("T_beat_leaving")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_leaving_0")])
 

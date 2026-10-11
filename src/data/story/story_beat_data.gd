@@ -17,6 +17,10 @@ class_name StoryBeatData
 @export_range(1, 9) var reveal_layer: int = 1
 ## Where in canon this beat comes from — for the author and the traceability table.
 @export var source: String = ""
+## The scene shown when this beat is ENTERED (presentation only; it changes nothing).
+@export var entry_scene_id: StringName = &""
+## Enter by showing the run's ORIGIN vignette instead of a scene named here.
+@export var plays_origin_vignette: bool = false
 @export var trigger: StoryTriggerData = null
 @export var branches: Array[StoryBranchData] = []
 ## The story rests here: nothing completes it yet (the standing purpose at the end of what is
@@ -40,6 +44,8 @@ func validation_errors() -> Array[String]:
 		errors.append("states no objective: the purpose line would be blank")
 	if source.strip_edges() == "":
 		errors.append("names no source in canon")
+	if plays_origin_vignette and entry_scene_id != &"":
+		errors.append("plays the Origin's vignette AND names a scene of its own")
 	if terminal:
 		if trigger != null or not branches.is_empty():
 			errors.append("is terminal but has a trigger or a way on")

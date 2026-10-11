@@ -1,0 +1,206 @@
+[gd_resource type="Resource" script_class="StorySceneCatalogData" load_steps=33 format=3]
+
+[ext_resource type="Script" path="res://src/data/story/story_scene_catalog_data.gd" id="s_story_scene_catalog_data"]
+[ext_resource type="Script" path="res://src/data/story/story_scene_data.gd" id="s_story_scene_data"]
+[ext_resource type="Script" path="res://src/data/story/story_scene_step_data.gd" id="s_story_scene_step_data"]
+
+[sub_resource type="Resource" id="STEP_scene_arrival_0"]
+script = ExtResource("s_story_scene_step_data")
+kind = 0
+text_key = &"STORY_SCENE_ARRIVAL_PLACE"
+sub_key = &"STORY_SCENE_ARRIVAL_TIME"
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_arrival_1"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_ARRIVAL_1"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_arrival_2"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_ARRIVAL_2"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="SCENE_scene_arrival"]
+script = ExtResource("s_story_scene_data")
+id = &"scene_arrival"
+elsewhere = false
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_arrival_0"), SubResource("STEP_scene_arrival_1"), SubResource("STEP_scene_arrival_2")])
+
+[sub_resource type="Resource" id="STEP_scene_vignette_de_tu_bi_loai_0"]
+script = ExtResource("s_story_scene_step_data")
+kind = 0
+text_key = &"STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_PLACE"
+sub_key = &"STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_TIME"
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_de_tu_bi_loai_1"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_1"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_de_tu_bi_loai_2"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_2"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_de_tu_bi_loai_3"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_3"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="SCENE_scene_vignette_de_tu_bi_loai"]
+script = ExtResource("s_story_scene_data")
+id = &"scene_vignette_de_tu_bi_loai"
+elsewhere = true
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_de_tu_bi_loai_0"), SubResource("STEP_scene_vignette_de_tu_bi_loai_1"), SubResource("STEP_scene_vignette_de_tu_bi_loai_2"), SubResource("STEP_scene_vignette_de_tu_bi_loai_3")])
+
+[sub_resource type="Resource" id="STEP_scene_vignette_ho_tieu_0"]
+script = ExtResource("s_story_scene_step_data")
+kind = 0
+text_key = &"STORY_SCENE_VIGNETTE_HO_TIEU_PLACE"
+sub_key = &"STORY_SCENE_VIGNETTE_HO_TIEU_TIME"
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_ho_tieu_1"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_HO_TIEU_1"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_ho_tieu_2"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_HO_TIEU_2"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_ho_tieu_3"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_HO_TIEU_3"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="SCENE_scene_vignette_ho_tieu"]
+script = ExtResource("s_story_scene_data")
+id = &"scene_vignette_ho_tieu"
+elsewhere = true
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_ho_tieu_0"), SubResource("STEP_scene_vignette_ho_tieu_1"), SubResource("STEP_scene_vignette_ho_tieu_2"), SubResource("STEP_scene_vignette_ho_tieu_3")])
+
+[sub_resource type="Resource" id="STEP_scene_vignette_lang_y_0"]
+script = ExtResource("s_story_scene_step_data")
+kind = 0
+text_key = &"STORY_SCENE_VIGNETTE_LANG_Y_PLACE"
+sub_key = &"STORY_SCENE_VIGNETTE_LANG_Y_TIME"
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_lang_y_1"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_LANG_Y_1"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_lang_y_2"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_LANG_Y_2"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_lang_y_3"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_LANG_Y_3"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="SCENE_scene_vignette_lang_y"]
+script = ExtResource("s_story_scene_data")
+id = &"scene_vignette_lang_y"
+elsewhere = true
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_lang_y_0"), SubResource("STEP_scene_vignette_lang_y_1"), SubResource("STEP_scene_vignette_lang_y_2"), SubResource("STEP_scene_vignette_lang_y_3")])
+
+[sub_resource type="Resource" id="STEP_scene_vignette_nghe_nhan_0"]
+script = ExtResource("s_story_scene_step_data")
+kind = 0
+text_key = &"STORY_SCENE_VIGNETTE_NGHE_NHAN_PLACE"
+sub_key = &"STORY_SCENE_VIGNETTE_NGHE_NHAN_TIME"
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_nghe_nhan_1"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_NGHE_NHAN_1"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_nghe_nhan_2"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_NGHE_NHAN_2"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_nghe_nhan_3"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_NGHE_NHAN_3"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="SCENE_scene_vignette_nghe_nhan"]
+script = ExtResource("s_story_scene_data")
+id = &"scene_vignette_nghe_nhan"
+elsewhere = true
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_nghe_nhan_0"), SubResource("STEP_scene_vignette_nghe_nhan_1"), SubResource("STEP_scene_vignette_nghe_nhan_2"), SubResource("STEP_scene_vignette_nghe_nhan_3")])
+
+[sub_resource type="Resource" id="STEP_scene_vignette_thu_thu_0"]
+script = ExtResource("s_story_scene_step_data")
+kind = 0
+text_key = &"STORY_SCENE_VIGNETTE_THU_THU_PLACE"
+sub_key = &"STORY_SCENE_VIGNETTE_THU_THU_TIME"
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_thu_thu_1"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_THU_THU_1"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_thu_thu_2"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_THU_THU_2"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_vignette_thu_thu_3"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_THU_THU_3"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="SCENE_scene_vignette_thu_thu"]
+script = ExtResource("s_story_scene_data")
+id = &"scene_vignette_thu_thu"
+elsewhere = true
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_thu_thu_0"), SubResource("STEP_scene_vignette_thu_thu_1"), SubResource("STEP_scene_vignette_thu_thu_2"), SubResource("STEP_scene_vignette_thu_thu_3")])
+
+[resource]
+script = ExtResource("s_story_scene_catalog_data")
+entries = Array[ExtResource("s_story_scene_data")]([SubResource("SCENE_scene_arrival"), SubResource("SCENE_scene_vignette_de_tu_bi_loai"), SubResource("SCENE_scene_vignette_ho_tieu"), SubResource("SCENE_scene_vignette_lang_y"), SubResource("SCENE_scene_vignette_nghe_nhan"), SubResource("SCENE_scene_vignette_thu_thu")])

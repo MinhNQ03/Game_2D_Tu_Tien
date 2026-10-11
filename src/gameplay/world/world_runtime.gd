@@ -65,6 +65,10 @@ signal active_map_ready()
 
 var _router: Node = null
 var _game_state: Node = null
+## The template the player's character was built from this session (the look they chose).
+## PRESENTATION refs only are read from it after the build (the portrait); the character's
+## truth is `_player_character`.
+var _player_template: CharacterTemplateData = null
 var _catalog: Dictionary = {}        # map_id(StringName) -> MapData
 var _start_map_id: StringName = &""  # data-driven start map, read from the catalog (D-023)
 var _player: Node = null             # the persistent per-session Player
@@ -92,7 +96,11 @@ func _ready() -> void:
 ## Begin a world session: load + validate the catalog, register scenes with the router,
 ## spawn the persistent player, and enter the start map. Returns false (loudly) on any
 ## required failure so the caller (Main) can recover rather than limp on half-wired.
-func start_session() -> bool:
+##
+## `player_template` is the look the player chose on the identity screen (Phase 20): the
+## `CharacterTemplateData` their `CharacterState` and body are built from. Null uses the
+## default template, which is what a harness with no identity screen gets.
+func start_session(player_template: CharacterTemplateData = null) -> bool:
 	if _router == null:
 		push_error("[world] cannot start session: SceneRouter missing")
 		return false
@@ -100,7 +108,7 @@ func start_session() -> bool:
 		return false
 	_register_scenes()
 	_characters = CharacterRegistry.new()
-	if not _spawn_player():
+	if not _spawn_player(player_template):
 		push_error("[world] failed to spawn player; aborting session")
 		end_session()
 		return false
@@ -125,6 +133,7 @@ func end_session() -> void:
 	# BEFORE end_session; the runtime reference is cleared here (RefCounted is freed when the
 	# last reference goes).
 	_player_character = null
+	_player_template = null
 	if _characters != null:
 		_characters.clear()
 	_characters = null
@@ -217,14 +226,17 @@ func _register_scenes() -> void:
 ## Returns false (loud) on a missing/invalid template so the session fails closed rather than
 ## spawning a player with no authoritative state. Idempotent: a second call with a live player
 ## is a no-op.
-func _spawn_player() -> bool:
+func _spawn_player(chosen: CharacterTemplateData = null) -> bool:
 	if _player != null and is_instance_valid(_player):
 		return true
 
-	var template := load(PLAYER_TEMPLATE_PATH) as CharacterTemplateData
-	if template == null:
-		push_error("[world] player template missing/invalid: %s" % PLAYER_TEMPLATE_PATH)
+	var template := chosen if chosen != null \
+		else load(PLAYER_TEMPLATE_PATH) as CharacterTemplateData
+	if template == null or not template.is_valid():
+		push_error("[world] player template missing/invalid: %s"
+			% (PLAYER_TEMPLATE_PATH if chosen == null else String(chosen.id)))
 		return false
+	_player_template = template
 	_player_character = CharacterState.create_from_template(template, PLAYER_INSTANCE_ID)
 	if _player_character == null:
 		push_error("[world] failed to build player CharacterState from template")
@@ -322,6 +334,11 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# into the map, so the identity plate reflects the live character (D-023).
 	if _active_map != null and _active_map.has_method("refresh_hud"):
 		_active_map.call("refresh_hud")
+	# The face in the plaque is the look the player chose (Phase 20): the template's own
+	# portrait, the same presentation ref every other character's portrait comes from.
+	if _active_map != null and _active_map.has_method("set_player_portrait") \
+			and _player_template != null:
+		_active_map.call("set_player_portrait", _player_template.portrait_ref)
 	# Push the player's sect membership view into the new map's HUD (Phase 06). Read from the
 	# SectRuntime sibling (optional, null-safe) so a fresh HUD on each map still shows the
 	# player's sect. WorldRuntime stays sect-agnostic beyond forwarding a read-only view.
@@ -349,6 +366,8 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# The quest view is the player's, not the map's: the new map's HUD shows it at once.
 	_connect_quest_signals()
 	_push_quest_view_to_active_map()
+	# And whatever story scene is showing (Phase 20): the new map's HUD takes it over.
+	refresh_active_map_story_view()
 	# THE WORLD-SIMULATION BEAT (Phase 08). Arriving in a map is the one explicit beat on
 	# which simulated time passes, and it is announced from here because this is where "the
 	# player is now in map X" becomes true. Done AFTER the views above so the sim view pushed
@@ -409,6 +428,11 @@ func _on_hostile_engaged() -> void:
 
 
 func _yield_surfaces() -> void:
+	# A story scene yields first: it changes nothing, so stopping it loses nothing, and the
+	# player must never be held under a scene while something is hurting them (D-072 §6).
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	if story != null and story.is_session_active():
+		story.skip_scene()
 	var dialogue := _find_sibling_of(DialogueRuntime) as DialogueRuntime
 	if dialogue != null and dialogue.is_session_active():
 		dialogue.leave()
@@ -768,7 +792,13 @@ func _on_cultivation_refused(reason_key: StringName) -> void:
 
 ## Something new was learned: say WHAT, by its name. Learning is the RESULT of the player's own
 ## act (reading a stele or a manual, sitting at a vein that teaches), so it is shown at once.
-func _on_knowledge_gained(knowledge_id: StringName, _source_id: StringName) -> void:
+##
+## What an ORIGIN starts with is the exception: it was not gained, it is who the player
+## already was, and the identity screen said so before the run began. Announcing it would put
+## a "learned" notice over the opening vignette for something nobody just did.
+func _on_knowledge_gained(knowledge_id: StringName, source_id: StringName) -> void:
+	if StoryService.is_origin_source(source_id):
+		return
 	var knowledge := _find_sibling_of(KnowledgeRuntime) as KnowledgeRuntime
 	if knowledge == null:
 		return
@@ -1184,6 +1214,40 @@ func refresh_active_map_dialogue_view() -> void:
 	_push_dialogue_view_to_active_map()
 
 
+# --- The story (Phase 20) --------------------------------------------------------
+
+## Push what the story shows into the active map's HUD. Called by Main once the story session
+## is live, after every map entry, and whenever the story owner says something changed.
+func refresh_active_map_story_view() -> void:
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	if story == null:
+		return
+	if not story.scene_changed.is_connected(_push_story_scene_to_active_map):
+		story.scene_changed.connect(_push_story_scene_to_active_map)
+	_push_story_scene_to_active_map()
+
+
+func _push_story_scene_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_story_scene_view"):
+		return
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	if story == null or not story.is_session_active():
+		return
+	_active_map.call("set_story_scene_view", story.build_scene_view())
+
+
+func _on_story_scene_advance_requested() -> void:
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	if story != null and story.is_session_active():
+		story.advance_scene()
+
+
+func _on_story_scene_skip_requested() -> void:
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	if story != null and story.is_session_active():
+		story.skip_scene()
+
+
 func _push_dialogue_view_to_active_map() -> void:
 	if _active_map == null or not _active_map.has_method("set_dialogue_view"):
 		return
@@ -1385,6 +1449,10 @@ func _wire_active_map() -> void:
 		_active_map.connect("dialogue_choice_requested", _on_dialogue_choice_requested)
 		_active_map.connect("dialogue_advance_requested", _on_dialogue_advance_requested)
 		_active_map.connect("dialogue_close_requested", _on_dialogue_close_requested)
+	if _active_map.has_signal("story_scene_advance_requested") and not _active_map.is_connected(
+			"story_scene_advance_requested", _on_story_scene_advance_requested):
+		_active_map.connect("story_scene_advance_requested", _on_story_scene_advance_requested)
+		_active_map.connect("story_scene_skip_requested", _on_story_scene_skip_requested)
 
 
 func _on_map_exit_requested(to_map_id: StringName, entry_point: StringName) -> void:

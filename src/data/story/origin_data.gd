@@ -19,6 +19,8 @@ class_name OriginData
 @export var cost_key: StringName = &""
 ## The personal goal the Chronicle keeps in view for the whole run.
 @export var goal_key: StringName = &""
+## The short scene that opens a run as this Origin: where they were, and what went wrong.
+@export var vignette_scene_id: StringName = &""
 @export var grants: Array[OriginGrantData] = []
 
 
@@ -35,6 +37,8 @@ func validation_errors() -> Array[String]:
 		if key == &"":
 			errors.append("origin '%s' leaves a text key empty" % id)
 			break
+	if vignette_scene_id == &"":
+		errors.append("origin '%s' has no vignette" % id)
 	var targets := {}
 	for i in grants.size():
 		var grant := grants[i]

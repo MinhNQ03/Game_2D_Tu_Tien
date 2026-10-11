@@ -96,7 +96,33 @@ here · what the player does with it · owner of what it changes · `vi` / `en` 
 
 | Id | Kind | Source | Reason to exist here | Player use | State owner | Keys | Payoff |
 |---|---|---|---|---|---|---|---|
-| `origin_ho_tieu` … `origin_thu_thu` | Origin ×5 | master plan §6, CL-09 | the run's personal problem | chosen once at creation | Story | *(CP 2)* | long-term callback per §6 |
+| `origin_ho_tieu` | Origin | master plan §6, CL-09 | a caravan lost under the player's guard | chosen on the identity screen | Story (`origin_id`) | `ORIGIN_HO_TIEU_*`, `STORY_SCENE_VIGNETTE_HO_TIEU_*` | who destroyed the caravan, and why the records disagree |
+| `origin_de_tu_bi_loai` | Origin | §6, CL-09 | an examination failed that should not have been | 〃 | Story | `ORIGIN_DE_TU_BI_LOAI_*`, vignette | how the examination was really decided |
+| `origin_lang_y` | Origin | §6, CL-09 | a patient dead of something that was not a sickness | 〃 | Story | `ORIGIN_LANG_Y_*`, vignette | the "disease" was vein corruption, and someone knew |
+| `origin_nghe_nhan` | Origin | §6, CL-09 | a workshop closed by a patron's accusation | 〃 | Story | `ORIGIN_NGHE_NHAN_*`, vignette | the material should not have existed |
+| `origin_thu_thu` | Origin | §6, CL-09 | a mentor vanished, the records unfinished | 〃 | Story | `ORIGIN_THU_THU_*`, vignette | the mentor was tracing an edited chronology |
+| ho_tieu → `item_kiem_thanh_thiet` ×1 | Origin grant (item) | §6 "combat footing" | an escort keeps their blade | equip it from the bag (teaches equipping) | Inventory (the bag's exchange) | the item's own | the blade is the same one the yard's rack offers: no stronger kit |
+| ho_tieu → Thẩm Bất Kỳ `affinity` −10 | Origin grant (regard) | §6 "a damaged name" | word of the lost caravan reached the outpost first | read in how the elder treats the player; shop/regard gates | Relationship | — | the name is cleared or confirmed in Act I |
+| de_tu_bi_loai → `know_dan_khi_quyet` | Origin grant (knowledge) | §6 "formal cultivation grounding" | a candidate is drilled in the first breathing method | can cultivate without first reading the stele | Knowledge Core | `KNOW_DAN_KHI_QUYET_*` (shipped P-12) | — |
+| de_tu_bi_loai → Lâm Nguyệt `rivalry` +15 | Origin grant (regard) | §6 "a rival who passed" | she passed the examination the player did not | colours her lines; the first decision is about HER | Relationship | — | the examination's truth |
+| lang_y → `item_bo_huyet_dan` ×2 | Origin grant (item) | §6 "herbal knowledge" | a healer carries what they compound | heal; or hand the watch his two pills at once | Inventory | the item's own | treating the Night's casualty |
+| nghe_nhan → `know_vein_stone_grades` | Origin grant (knowledge) | §6 "can read materials" | an artisan reads a stone's cut and seal | *(a line with the carter that only this knowledge opens — CP 3)* | Knowledge Core | `KNOW_VEIN_STONE_GRADES_*` | the caravan's stones are uncounted |
+| thu_thu → `know_survey_notation` | Origin grant (knowledge) | §6 "literacy in records" | a keeper knows how a survey is set down | *(reads the survey mark and the sheet more fully — CP 4)* | Knowledge Core | `KNOW_SURVEY_NOTATION_*` | the two columns that should agree |
+| thu_thu → Thẩm Bất Kỳ `affinity` −15 | Origin grant (regard) | §6 "watched" | the outpost was told to watch for such a person | as above | Relationship | — | who asked the outpost to watch |
+| `appearance_wanderer_m` / `_f` | player look ×2 | prologue beat 1; master plan §12; `CHARACTER_ART_BIBLE` §5 | identity is the player's | chosen on the identity screen; drawn everywhere | the player's `CharacterState` (built from the look's template) | `APPEARANCE_WANDERER_*_NAME` | every Origin is open to both |
+| `scene_vignette_*` ×5, `scene_arrival` | story scene | prologue beats 2–3 | where the player was, and where they now are | read (`interact`) or skipped (Esc) | none — a scene changes nothing | `STORY_SCENE_*` | — |
+
+**Numbers introduced so far, each with its one home and its reason.**
+
+| Value | Where it lives | Why this value | Boundary tested |
+|---|---|---|---|
+| Origin item grant 1..3 | `OriginGrantData.MAX_ITEMS` | "small starting resources" (§6) — a kit, not a stack | 4 is refused |
+| Origin regard grant ≤ 20 either way | `OriginGrantData.MAX_REGARD` | a first impression, not a history (a dimension spans 100–200) | 25 is refused |
+| a decision's regard move ≤ 50 | `StoryConsequenceData.MAX_DELTA` | the dialogue seam's own ceiling (D-066): one decision does not carry someone end to end | 51 is refused |
+| the authored moves: ±10, ±15, −5 | `data/story/*.tres` (from `tools/author_story_data.py`) | a real but recoverable step on a 100-point dimension; a fall is on `affinity`, the only dimension that goes below zero | every falling regard is on a dimension that can fall |
+| a scene has at most 6 steps | `StorySceneData.MAX_STEPS` | every step is a key press spent watching instead of playing | 7 is refused |
+| the veil over a scene that is here: 35 % | `StoryScenePanel.VEIL_HERE` | enough to seat the band, not enough to hide who is standing where | a scene that is elsewhere is opaque (alpha 1), asserted |
+| preview scale ×3 | `IdentityScreen.PREVIEW_SCALE` | pixel art is shown at an integer scale or not at all | asserted |
 
 *(rows are added with the checkpoint that authors the thing)*
 
@@ -132,8 +158,8 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 | # | Scope | Commit | CI run on that exact SHA |
 |---|---|---|---|
 | 0 | Gate A: D-072, this file, CL-09 id fix, save-format and character-system reconciliation | `89dec88` | 38113654836 — success, `head_sha` `89dec88513e63394d1573ec263e91f2c45af7735` |
-| 1 | Story / Origin domain and data | *(this commit)* | *(recorded by the next)* |
-| 2 | Real New Game, identity, Origins, the sectless start | | |
+| 1 | Story / Origin domain and data | `d8edcf7` | 38114604673 — success, `head_sha` `d8edcf7…` |
+| 2 | Real New Game, identity, Origins, the sectless start | *(this commit)* | *(recorded by the next)* |
 | 3 | Arrival, contacts, the small problem, the first decision | | |
 | 4 | The Night, the encounter, the aftermath, cultivation, the sheet | | |
 | 5 | Chronicle, purpose arbitration, the way out | | |
@@ -146,6 +172,90 @@ manager · save file, slots, autosave, Continue · loot or drops · dungeon, bos
 a sect join · per-Origin campaigns · an audio system · anything Phase 21 owns.
 
 ## 11. Evidence
+
+### Checkpoint 2 — the real New Game, identity, the sectless start (built)
+
+**What changed for the player.** New Game → *Ngươi là ai?* (a look, an Origin, what each
+Origin gives and costs) → *Lên đường* → the Origin's vignette on the ink ground → the arrival
+in Lạc Hà → control, as a nobody: the plaque reads *Chưa có tông môn* and the strip offers
+only what a nobody can do.
+
+**Owner changes.** `Main`: New Game opens the identity screen and starts nothing;
+`_start_run(template, origin)` is the old start, taking who the player is. `WorldRuntime`
+builds the player from the chosen template. `SectRuntime`: a content seam, and the player's
+sect is READ from the rosters (the remembered `_player_sect_id` is gone — it would have gone
+on saying "none" after a later join). `StoryRuntime`: the 18th per-session node, between
+`QuestRuntime` and `DialogueRuntime`. `EquipmentData.body_visuals_by_base`: a garment per
+body. HUD: one more surface (the scene band) registered the way the conversation is.
+
+**Three defects found by running it, not by reading it.**
+1. *The identity screen chose by moving the cursor.* Reaching "Set out" walked through the
+   Origins below and changed the choice. The E2E's second run started as the wrong person.
+   Now the cursor looks and accept chooses (L-052).
+2. *A memory was shown over the village.* The 90 % veil let the plaza and the HUD show
+   through in the real window. A scene that is elsewhere is now on the opaque ink ground.
+3. *The menu ignored Enter after a covering screen closed* (identity and settings).
+
+**Sectless, verified three ways.** The rosters hold no player (unit + world E2E + story
+E2E); the derived cache on the character is empty; the HUD says so in words and sells no
+sect key. A later join through `SectService.join_member` is followed by the runtime.
+
+**Art.** `player_f_proto`, `player_f_daobao` (design YAML → Blender 5.2 headless → pixel):
+12 sheets, 2 anchor files, 2 profiles, 1 medallion; `style_check.py sheet` passes on the
+four sheets checked. Opened at ×3 beside `player_proto` and `cultivator_f_proto`: the same
+wanderer (silver hair, grey-blue robe, jade sash), a narrower cut, hair up; black-haired
+rose-robed Lâm Nguyệt is not mistaken for her. Honest limit: from the FRONT at 1× the two
+looks differ mostly by hair and build — they read apart more clearly in profile and in the
+portrait. Provenance: `ASSET_LICENSES.md` P58, P59, K9.
+
+**Real window (opened and looked at; all 1280 × 720 PNG, vi):**
+
+| Frame | What is in it |
+|---|---|
+| `cp2b/…04c_identity_look_2.png` | *Ngươi là ai?* — the woman's look on the stage with her own medallion, ◆ on the chosen look and Origin, the Origin's problem / gives / costs at the right, nothing clipped |
+| `cp2b/…04e_opening_step_02.png` | the vignette on the ink painting, the band centred, no village or HUD behind it, `2 / 4`, `E Tiếp · Esc Bỏ qua` |
+| `cp2a/…04e_opening_step_06.png` | the arrival over the live village, band in the lower third, HUD present, strip stood down |
+| `pt/cp2_vi/…03b_identity_chosen.png` | after real keys: ◆ Lữ khách · nữ, ◆ Lang Y Du Phương, *Đã chọn: …* above the buttons, focus on *Lên đường* |
+| `pt/cp2_vi/…04_hub.png` | in play as the woman's look: her portrait in the plaque, *Chưa có tông môn*, the strip shows only Attack and Menu |
+
+`tools/playtest_flow.gd -- vi <dir>` at 1280×720: **34 / 34** (three new real-key steps for
+the identity screen and the opening; every older step, including D-071's
+`17b_hunt_round_obstacle`, unchanged and green).
+
+**Mutations: 26 applied, 26 red** (20 unit / integration, 6 on the real-app E2Es).
+
+| # | What was broken | Red in |
+|---|---|---|
+| R1 | the shipped start enrols the player again | sect runtime ×2 |
+| R2 | the player's sect remembered, not read | sect runtime ×3 |
+| R3 | confirm can fire twice | identity ×2 |
+| R4 | looking chooses an Origin | identity ×2 |
+| R5 | the choice marked by colour only | identity |
+| R6 | skipping a scene does not end its beat | story runtime ×4 |
+| R7 | the story keeps listening after its session | story runtime |
+| R8 | an Origin's kit given item by item | story runtime (kit that does not fit) |
+| R9 | a failed start stays wired | story runtime |
+| R10 | a choice announced before it is committed | story runtime |
+| R11 | a memory shown over the village | scene band |
+| R12 / R13 | a scene takes no modal context / one per step | scene band |
+| R14 | the strip stays up under a scene | scene band |
+| R15 | the sect advertised to a nobody | HUD |
+| R16 | a garment drawn on the wrong body | looks |
+| R17 / R18 | two looks one body / a look that starts in a sect, accepted | looks |
+| R19 | an Origin with no vignette accepted | story runtime |
+| R20 | arriving anywhere is the rupture | story runtime |
+| E1 | the menu loses focus after backing out | story E2E (steps 3→4) |
+| E2 | Esc in a scene also asks to leave | story E2E (the run never completes) |
+| E3 | an Origin's knowledge announced as just learned | story E2E step 6 |
+| E4 | backing out starts a run | story E2E step 3 |
+| E5 / E6 | the player is enrolled again | world E2E (30 assertions), story E2E steps 5 and 8 |
+
+**A tooling defect, recorded because it touched content.** The mutation helper backed a file
+up once per replacement, so a two-replacement mutation of ONE file saved the half-mutated
+copy and "restored" to it: after R1 the sect catalog had the start sect back. It was caught
+by the post-run check that the catalog still said what it should, the catalog was repaired
+(its diff against the base is exactly the intended two lines), the helper now backs each file
+up once, and every result produced while the catalog was wrong was re-run.
 
 ### Checkpoint 1 — the story and origin foundation (built)
 
@@ -218,5 +328,6 @@ pacing are added by the checkpoints that produce them)*
 
 ## 12. Status
 
-Checkpoint 1 built: the story and origin foundation, with no runtime and no change to play.
+Checkpoint 2 built: New Game is the identity screen, the player is a nobody with an Origin,
+and the run opens on its vignette and the arrival. Beats 4–12 are not built.
 **Phase 20 is NOT DONE.**

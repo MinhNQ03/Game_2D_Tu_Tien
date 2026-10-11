@@ -457,7 +457,9 @@ KIT = {
 # the HUD references ships; another actor gets a medallion when a screen shows it.
 MEDALLIONS = {"player_proto": "player_proto", "cultivator_f_proto": "lin_yue",
               # Phase 18: the dialogue panel shows who is speaking.
-              "merchant_proto": "ko_than", "elder_proto": "shen_buqi"}
+              "merchant_proto": "ko_than", "elder_proto": "shen_buqi",
+              # Phase 20: the identity screen and the HUD show the look the player chose.
+              "player_f_proto": "player_f_proto"}
 
 
 def build():

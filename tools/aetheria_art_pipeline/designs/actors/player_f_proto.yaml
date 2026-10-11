@@ -1,0 +1,69 @@
+# The protagonist as a PHÀM wanderer, the woman's look (Phase 20, D-072 §2).
+#
+# THE SAME PERSON AS player_proto, not a second character: the wanderer's identity is the
+# silver-white hair, the pale layered robe and the one jade accent (D-046, CHARACTER_ART_BIBLE
+# §5), and all three are kept. What changes is the CUT — the narrower shoulders, the flaring
+# hem and the close sleeves the cultivator already knows how to draw (they were authored for
+# lin_yue) — and the hair, worn up in a bun with two front locks.
+#
+# What it deliberately does NOT take from lin_yue: the 披帛 stole (her signature, and the only
+# rose in the cast), her black hair and her rose robe. At 32x48 the two read apart by VALUE
+# first — white hair over grey-blue against black hair over rose — so the player is never
+# mistaken for the disciple standing next to her.
+id: player_f_proto
+extends: cultivator
+role: "protagonist, PHÀM wanderer (woman's look)"
+pieces: [pendant]
+
+body:
+  scale: 0.94
+  shoulder_x: 5.2
+  hip_x: 2.1
+garment:
+  bodice:
+    - [25.0, 4.1, 3.1]
+    - [29.0, 4.8, 3.5]
+    - [32.2, 5.3, 3.6]
+    - [33.9, 4.5, 3.1]
+    - [34.8, 2.4, 2.2]
+  skirt:
+    - [25.4, 4.3, 3.3]
+    - [19.0, 5.4, 4.1]
+    - [10.0, 6.9, 5.1]
+    - [3.0, 8.0, 5.9]
+    - [1.1, 8.3, 6.1]
+  sleeve:
+    profile: [[0.0, 1.9], [0.35, 2.0], [0.62, 2.2], [0.85, 2.5], [1.0, 2.6]]
+    droop: 2.2
+hair:
+  back: {top_z: 46.4, bottom_z: 24.5, width: [7.6, 6.4, 1.8], thickness: 2.0, flare: 0.6}
+  locks: {from: [4.2, 0.8, 41.6], to_z: 33.5, width: 1.0}
+  bun: {centre: [0.0, 2.6, 47.6], radius: 2.2}
+  pin: {length: 6.0, radius: 0.4}
+
+# Ramps are [deep, shadow, base, light] — the wanderer's own (player_proto), unchanged.
+materials:
+  skin:       {ramp: ["#a8705f", "#d4a088", "#f0cdb6", "#fbe6d6"], min_tone: 2}
+  hair:       {ramp: ["#7b7f98", "#b2b7cb", "#dde1ed", "#f6f7fb"], highlight: true}
+  robe:       {ramp: ["#3f4a66", "#6e7c9c", "#9eabc6", "#c6cfe1"], highlight: true}
+  robe_inner: {ramp: ["#9298a8", "#c9ced8", "#eceef3", "#ffffff"]}
+  trim:       {ramp: ["#242b3d", "#323b53", "#45516c", "#5c6987"], priority: 1.6, flat: true}
+  sash:       {ramp: ["#164638", "#215f4e", "#2d7c64", "#4ca383"], priority: 1.3, flat: true}
+  trousers:   {ramp: ["#1e232e", "#2a303e", "#384052", "#4a5366"]}
+  shoe:       {ramp: ["#13151c", "#1d2029", "#2a2e3a", "#3a3f4e"]}
+  eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
+  pin:        {ramp: ["#5b4524", "#86683a", "#c9a865", "#e6cf93"], priority: 2.0, flat: true}
+  pendant:    {ramp: ["#1d5847", "#2a7660", "#5cc79e", "#a3e6c8"], priority: 2.5, flat: true}
+
+outputs:
+  sheet_prefix: player_f_proto
+  anchors: player_f_proto_anchors
+  profile: player_f_visual                 # data/characters/visual/<profile>.tres (checked: anchor_offset)
+  portrait: player_f_proto
+
+# The jian's cut (D-063 A3): the player's looks wield a sword, so they carry the SLASH action
+# and the `blade` anchor — the same as player_proto.
+animations:
+  slash: {frames: 8, loops: false}
+anchors:
+  blade: {bone: hand.R, along: 20.0, depth: true}

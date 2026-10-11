@@ -25,8 +25,6 @@ var _service: SectService = null
 var _catalog: SectCatalog = null
 var _session_active: bool = false
 
-## The player's sect id this session (derived at join time; &"" if the player has no sect).
-var _player_sect_id: StringName = &""
 ## The player's instance id (so the membership view resolves the player's rank). Set at start.
 var _player_instance_id: StringName = &""
 
@@ -56,12 +54,19 @@ var _player_instance_id: StringName = &""
 func start_session(
 		relationship_service: RelationshipService,
 		character_resolver: Callable,
-		player_instance_id: StringName) -> bool:
+		player_instance_id: StringName,
+		catalog: SectCatalog = null) -> bool:
 	if _session_active and _service != null:
 		return true
 
-	# 1. Catalog (boundary-validated).
-	var catalog := _load_catalog()
+	# 1. Catalog (boundary-validated). `catalog` is the content seam (null = the shipped one):
+	#    the shipped catalog names NO player start sect since D-072 — the player begins as
+	#    nobody — so the enrolment path below is exercised through this seam.
+	if catalog == null:
+		catalog = _load_catalog()
+	elif not catalog.is_valid():
+		push_error("[sect] invalid sect catalog: %s" % str(catalog.validation_errors()))
+		catalog = null
 	if catalog == null:
 		return _fail_start("catalog missing, unloadable or invalid")
 
@@ -149,7 +154,6 @@ func start_session(
 	_store = store
 	_service = service
 	_player_instance_id = player_instance_id
-	_player_sect_id = resolved_sect_id
 	_session_active = true
 	return true
 
@@ -162,7 +166,6 @@ func _fail_start(reason: String) -> bool:
 	_service = null
 	_store = null
 	_catalog = null
-	_player_sect_id = &""
 	_player_instance_id = &""
 	return false
 
@@ -186,7 +189,6 @@ func end_session() -> void:
 	_service = null
 	_store = null
 	_catalog = null
-	_player_sect_id = &""
 	_player_instance_id = &""
 
 
@@ -202,16 +204,26 @@ func get_store() -> SectStore:
 	return _store
 
 
-## The player's current sect id (&"" if none).
+## The player's current sect id (&"" if none) — READ FROM THE ROSTERS, never remembered.
+##
+## This used to be a field written once at session start, which was correct only while every
+## run began enrolled. A run now begins with no sect (D-072 §3) and may join one later through
+## `SectService.join_member`; a remembered id would have gone on saying "none" afterwards. The
+## roster is the authority (D-015), so the answer is asked of it each time.
 func get_player_sect_id() -> StringName:
-	return _player_sect_id
+	if _store == null or _catalog == null or _player_instance_id == &"":
+		return &""
+	for template in _catalog.sects:
+		var sect := _store.get_sect(template.id)
+		if sect != null and sect.is_member(_player_instance_id):
+			return template.id
+	return &""
 
 
 ## The player's authoritative SectState (or null if the player has no sect / no session).
 func get_player_sect() -> SectState:
-	if _store == null or _player_sect_id == &"":
-		return null
-	return _store.get_sect(_player_sect_id)
+	var sect_id := get_player_sect_id()
+	return _store.get_sect(sect_id) if sect_id != &"" else null
 
 
 ## Build the read-only presentation view of the player's membership (§21). Always returns a
@@ -222,7 +234,7 @@ func get_player_membership_view() -> SectMembershipView:
 	var sect := get_player_sect()
 	if sect == null or _catalog == null:
 		return SectMembershipView.make_empty()
-	var template := _catalog.find_sect(_player_sect_id)
+	var template := _catalog.find_sect(get_player_sect_id())
 	if template == null:
 		return SectMembershipView.make_empty()
 	return SectMembershipView.make(sect, template, sect.rank_of(_player_instance_id))

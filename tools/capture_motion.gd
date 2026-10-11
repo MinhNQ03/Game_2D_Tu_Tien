@@ -72,7 +72,12 @@ func _run() -> void:
 			_fail("could not switch to language '%s'" % _language)
 			_finish()
 			return
-	menu.emit_signal("new_game_pressed")
+	# Past the identity screen and the opening scenes (Phase 20) by the one sanctioned setup:
+	# these scenarios are about motion, not about who the player is.
+	if not await RunKit.begin_run(_main, self):
+		_fail("the identity screen did not open")
+		_finish()
+		return
 	await _settle()
 	await _settle()
 

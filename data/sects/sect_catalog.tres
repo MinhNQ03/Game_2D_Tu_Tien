@@ -7,5 +7,5 @@
 [resource]
 script = ExtResource("1_cat")
 sects = [ExtResource("2_azure"), ExtResource("3_crimson")]
-player_start_sect_id = &"sect_azure_cloud"
-player_start_rank_id = &"rank_outer"
+player_start_sect_id = &""
+player_start_rank_id = &""

@@ -15,7 +15,6 @@ var knows: Callable = Callable()
 var teach: Callable = Callable()
 ## `move_regard.call(character_id, dimension, delta) -> bool`.
 var move_regard: Callable = Callable()
-## `can_hold.call({item_id: count}) -> bool` — would the bag take ALL of these.
-var can_hold: Callable = Callable()
-## `give.call(item_id, count) -> bool`.
-var give: Callable = Callable()
+## `give_all.call({item_id: count}) -> bool` — put ALL of these in the bag, or none of them.
+## The bag's own all-or-nothing exchange; false means nothing was given.
+var give_all: Callable = Callable()

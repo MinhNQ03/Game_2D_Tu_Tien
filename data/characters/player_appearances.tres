@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="PlayerAppearanceCatalogData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/data/characters/player_appearance_catalog_data.gd" id="1_cat"]
+[ext_resource type="Script" path="res://src/data/characters/player_appearance_data.gd" id="2_look"]
+[ext_resource type="Resource" path="res://data/characters/player_default.tres" id="3_m"]
+[ext_resource type="Resource" path="res://data/characters/player_f.tres" id="4_f"]
+
+[sub_resource type="Resource" id="LOOK_m"]
+script = ExtResource("2_look")
+id = &"appearance_wanderer_m"
+name_key = &"APPEARANCE_WANDERER_M_NAME"
+template = ExtResource("3_m")
+
+[sub_resource type="Resource" id="LOOK_f"]
+script = ExtResource("2_look")
+id = &"appearance_wanderer_f"
+name_key = &"APPEARANCE_WANDERER_F_NAME"
+template = ExtResource("4_f")
+
+[resource]
+script = ExtResource("1_cat")
+entries = Array[ExtResource("2_look")]([SubResource("LOOK_m"), SubResource("LOOK_f")])

@@ -27,6 +27,7 @@ problem_key = &"ORIGIN_HO_TIEU_PROBLEM"
 edge_key = &"ORIGIN_HO_TIEU_EDGE"
 cost_key = &"ORIGIN_HO_TIEU_COST"
 goal_key = &"ORIGIN_HO_TIEU_GOAL"
+vignette_scene_id = &"scene_vignette_ho_tieu"
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_ho_tieu_0"), SubResource("G_origin_ho_tieu_1")])
 
 [sub_resource type="Resource" id="G_origin_de_tu_bi_loai_0"]
@@ -51,6 +52,7 @@ problem_key = &"ORIGIN_DE_TU_BI_LOAI_PROBLEM"
 edge_key = &"ORIGIN_DE_TU_BI_LOAI_EDGE"
 cost_key = &"ORIGIN_DE_TU_BI_LOAI_COST"
 goal_key = &"ORIGIN_DE_TU_BI_LOAI_GOAL"
+vignette_scene_id = &"scene_vignette_de_tu_bi_loai"
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_de_tu_bi_loai_0"), SubResource("G_origin_de_tu_bi_loai_1")])
 
 [sub_resource type="Resource" id="G_origin_lang_y_0"]
@@ -68,6 +70,7 @@ problem_key = &"ORIGIN_LANG_Y_PROBLEM"
 edge_key = &"ORIGIN_LANG_Y_EDGE"
 cost_key = &"ORIGIN_LANG_Y_COST"
 goal_key = &"ORIGIN_LANG_Y_GOAL"
+vignette_scene_id = &"scene_vignette_lang_y"
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_lang_y_0")])
 
 [sub_resource type="Resource" id="G_origin_nghe_nhan_0"]
@@ -84,6 +87,7 @@ problem_key = &"ORIGIN_NGHE_NHAN_PROBLEM"
 edge_key = &"ORIGIN_NGHE_NHAN_EDGE"
 cost_key = &"ORIGIN_NGHE_NHAN_COST"
 goal_key = &"ORIGIN_NGHE_NHAN_GOAL"
+vignette_scene_id = &"scene_vignette_nghe_nhan"
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_nghe_nhan_0")])
 
 [sub_resource type="Resource" id="G_origin_thu_thu_0"]
@@ -108,6 +112,7 @@ problem_key = &"ORIGIN_THU_THU_PROBLEM"
 edge_key = &"ORIGIN_THU_THU_EDGE"
 cost_key = &"ORIGIN_THU_THU_COST"
 goal_key = &"ORIGIN_THU_THU_GOAL"
+vignette_scene_id = &"scene_vignette_thu_thu"
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_thu_thu_0"), SubResource("G_origin_thu_thu_1")])
 
 [resource]

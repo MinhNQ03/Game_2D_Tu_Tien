@@ -65,15 +65,22 @@
 > - A failure of ANY per-session runtime ABORTS New Game and unwinds back to the menu
 >   (D-037/D-047/D-054) rather than entering a half-wired world.
 >
+> - **Phase 20 (D-072, IN PROGRESS) — what is live so far:** New Game opens the IDENTITY
+>   SCREEN (a look and one of the five Origins, chosen before a run exists; backing out starts
+>   nothing). Confirming starts ONE run as that look and that Origin: the player belongs to
+>   NO sect (C-003 is finally true in the authoritative state), the Origin's small starting
+>   kit is handed over once through its owners, and the run opens on that Origin's vignette
+>   and then the arrival in Lạc Hà — short scenes that can be read step by step or skipped,
+>   and change nothing either way. The story's record (Origin, chapter, beat, choices) and
+>   its one store of flags exist; the beats after the arrival are being built
+>   (`docs/handoff/phase-20-story.md`).
+>
 > **② FUTURE — design target, NOT implemented.**
-> - **The story / chapter / flag engine (20), dungeons (21), bosses (22) and file-level save
->   (23) do not exist.** Nothing sets or reads a story flag: a conversation branches on
->   knowledge, regard and a quest's phase only, and remembers nothing itself (D-066, D-070).
->   Quest progress is per session — it has an in-memory `to_dict()` / `from_dict()` boundary
->   and no file. There are no loot tables or drops: a wolf still pays XP only.
-> - The branching-story / quest flow below is the design target for those phases. The
->   "PROLOGUE" box in §1 is a future story scene, **not** the current first gameplay scene — it
->   is specified beat-by-beat in `docs/NARRATIVE_MASTER_PLAN.md` §5 (D-039).
+> - **Dungeons (21), bosses (22) and file-level save (23) do not exist.** The story's record
+>   is per session — it has an in-memory `to_dict()` / `from_dict()` boundary and no file —
+>   and so is quest progress. There are no loot tables or drops: a wolf still pays XP only.
+> - The rest of the prologue (`docs/NARRATIVE_MASTER_PLAN.md` §5, beats 4–12) and every act
+>   after it are the design target; the branching flow below describes them.
 > - Crafting, professions, a regional market and the wider economy are design only
 >   (`docs/ECONOMY_CRAFTING_DESIGN.md`); the one shop is the only trade that exists.
 > - `dodge` has a keyboard binding and no consumer — **a binding is not a system**.
@@ -113,8 +120,10 @@ MAIN MENU                                                           [LIVE]
 NEW GAME                                                            [LIVE]
   ↓  ╌╌╌╌► LOAD GAME → resume at saved state                        [FUTURE, Phase 23]
   ↓        (no save exists: the menu entry is shown DISABLED)
-PROLOGUE                                                            [FUTURE, story — Phase 20+]
-  ↓        (today New Game opens straight into the hub map)
+IDENTITY (look + Origin; back = nothing started)                    [LIVE, Phase 20]
+  ↓
+PROLOGUE: Origin vignette → arrival in Lạc Hà                       [LIVE, Phase 20]
+  ↓        (beats 4–12: IN PROGRESS, Phase 20)
 VILLAGE  ◄──────────────┐                                           [LIVE — the hub map]
   ↓                     │
 QUEST                   │                                           [LIVE, Phase 19]
@@ -236,24 +245,38 @@ Events/Signals**. Layer names refer to `.kiro/steering/03-architecture.md`.
   Load Game stays disabled until SaveService (Phase 23).
 - **State:** menu selection. *(Design target, Phase 23: the list of existing save slots, from
   SaveService.)*
-- **Processing:** on New Game → initialize a fresh run. *(Design target, Phase 23: on Load →
+- **Processing:** on New Game → open the identity screen (§3.3); the run is initialized
+  when it is confirmed. *(Design target, Phase 23: on Load →
   ask SaveService to load a slot and hydrate GameState. No load path exists today.)*
-- **Output:** transition into the world session (new; the Prologue is §3.3's design target).
+- **Output:** the identity screen, then the world session on the prologue's first beat.
   *(Design target, Phase 23: or to the saved scene/state.)*
 - **Dependencies:** presentation (UI) → gameplay (new-run init) → persistence (load),
   infrastructure (Localization, SceneRouter).
 - **Events:** `new_game_requested`, `load_game_requested(slot)`, `language_changed`.
 
-### 3.3 NEW GAME → PROLOGUE
-- **Input:** `new_game_requested`.
-- **State:** fresh GameState — chapter = prologue, empty inventory, base stats, level 1,
-  starting cảnh giới, empty quest log, story flags cleared.
-- **Processing:** create the run from starting data (a `NewGameConfig` Resource), load
-  the Prologue scene via SceneRouter, play intro story beats.
-- **Output:** player in the Prologue; first dialogue/tutorial beats.
-- **Dependencies:** gameplay, domain (initial progression), data (starting config),
-  infrastructure.
-- **Events:** `run_started`, `chapter_entered(chapter_id)`, `story_beat(id)`.
+### 3.3 NEW GAME → IDENTITY → PROLOGUE  *(LIVE, Phase 20 — D-072)*
+- **Input:** `new_game_pressed` (the menu's intent).
+- **Identity screen** (`IdentityScreen`, menu UI — `GameState` stays in `MENU`): the looks of
+  `data/characters/player_appearances.tres` (each a `CharacterTemplateData` whose body and
+  portrait exist) and the five Origins of `data/story/origin_catalog.tres`, with each
+  Origin's problem, what it gives and what it costs. The cursor LOOKS; `ui_accept` CHOOSES;
+  one line states the current choice. `ui_cancel` or Back returns to the menu — no run, no
+  session, no character was created, so there is nothing to unwind.
+- **Confirm** (once: the screen locks itself, and `GameState.start_new_game` refuses a second
+  start): `Main` starts the session stack in `SESSION_START_ORDER` with the player's
+  `CharacterState` built from the chosen look's template, then `StoryRuntime` begins the run
+  as the chosen Origin. A failure anywhere — including an Origin whose kit cannot be handed
+  over — unwinds the whole stack back to the menu.
+- **State after it:** level 1, PHÀM, **no sect, no rank, no faction**; the Origin's kit
+  (`OriginData.grants`: at most a few items, one piece of knowledge, one first impression) in
+  the bag / the Knowledge Core / the relationship graph; `StoryState` on `beat_road`; no
+  story flag set.
+- **Output:** the Origin's vignette (a scene that is somewhere else: the map is covered),
+  then the arrival (a scene that is here), then control. `interact` shows the next step;
+  `open_menu` skips the scene — never the session.
+- **Events (local signals, no EventBus event has a consumer yet):**
+  `StoryRuntime.beat_completed(id)`, `chapter_entered(id)`, `choice_recorded(choice, option)`
+  — each emitted AFTER the record is committed.
 - **Design (D-039):** the prologue's twelve beats, its causal chain (`ĐÊM VỠ MẠCH`), the five
   Origins and the five things the player must leave holding are specified in
   `docs/NARRATIVE_MASTER_PLAN.md` §4–§6. New Game also selects an `origin_id` (run-scoped data,

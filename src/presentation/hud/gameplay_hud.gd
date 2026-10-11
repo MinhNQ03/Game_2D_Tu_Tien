@@ -75,6 +75,10 @@ signal shop_close_requested()
 signal dialogue_choice_requested(node_id: StringName, choice_id: StringName)
 signal dialogue_advance_requested()
 signal dialogue_close_requested()
+## Story-scene intents (Phase 20): show the next step / stop showing the scene. `StoryRuntime`
+## decides; a scene changes nothing, so neither request can change anything but the screen.
+signal story_scene_advance_requested()
+signal story_scene_skip_requested()
 ## The player CONFIRMED leaving the session (or acknowledged a defeat). Never emitted by a
 ## single Esc: see `_unhandled_input`.
 signal leave_session_requested()
@@ -215,6 +219,11 @@ var _shop_modal: bool = false
 ## context. While it is open the prompt strip and the technique dock stand down (none of their
 ## keys act) and the announcement band rides above the box.
 var _dialogue_panel: DialoguePanel
+## The story-scene band (Phase 20) and whether it holds a UI_MODAL context. Registered the way
+## the conversation is (show takes the context, hide gives it back, `_refresh_focus` stands
+## the strip down) — the same three calls, not a new pattern (AUD-15).
+var _story_panel: StoryScenePanel
+var _story_modal: bool = false
 var _dialogue_modal: bool = false
 var _prompt_strip: Control
 ## The session prompt (D-068): the one centred box for "leave?" and "you have fallen". Holds a
@@ -779,6 +788,11 @@ func _build_ui() -> void:
 		dialogue_advance_requested.emit())
 	_dialogue_panel.resized.connect(_place_notice_band)
 	root.add_child(_dialogue_panel)
+	_story_panel = StoryScenePanel.new()
+	_story_panel.name = "StoryScenePanel"
+	_story_panel.advance_requested.connect(func() -> void:
+		story_scene_advance_requested.emit())
+	root.add_child(_story_panel)
 
 	# The session prompt (D-068): centred, above everything — the only box that may take the
 	# middle of the screen, because while it is shown nothing else can be done.
@@ -1475,6 +1489,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 		else:
 			_hide_session_prompt()
 		return
+	# A story scene owns the keys while it is showing: Esc ASKS to skip it (never the game).
+	if _story_modal:
+		if _input.call("is_system_action_just_pressed", &"open_menu"):
+			story_scene_skip_requested.emit()
+			var scene_vp := get_viewport()
+			if scene_vp != null:
+				scene_vp.set_input_as_handled()
+		return
 	# A conversation owns the keys while it is open: Esc ASKS to leave it (never the game).
 	if _dialogue_modal:
 		if _input.call("is_system_action_just_pressed", &"open_menu"):
@@ -1701,6 +1723,64 @@ func set_dialogue_view(view: DialogueView) -> void:
 		_hide_dialogue()
 
 
+## Show the player's own portrait in the identity plaque (Phase 20): the medallion of the look
+## they chose. A missing file leaves the plaque as it was rather than showing a broken image.
+func set_player_portrait(portrait_path: String) -> void:
+	if _portrait == null or portrait_path == "" or not ResourceLoader.exists(portrait_path):
+		return
+	_portrait.texture = load(portrait_path) as Texture2D
+	_portrait.visible = _portrait.texture != null
+
+
+## The texture path of the portrait now in the plaque ("" when none) — for tests.
+func player_portrait_path() -> String:
+	return _portrait.texture.resource_path if _portrait != null \
+		and _portrait.texture != null else ""
+
+
+## Push the story-scene view (Phase 20): a step shows the band and takes a UI_MODAL context;
+## null hides it and gives the context back. Idempotent both ways.
+func set_story_scene_view(view: StorySceneView) -> void:
+	if _story_panel == null:
+		return
+	_story_panel.set_view(view)
+	if view != null:
+		_show_story_scene()
+	else:
+		_hide_story_scene()
+
+
+func _show_story_scene() -> void:
+	if _story_panel.visible:
+		return
+	_close_side_panels()
+	close_inventory()
+	_story_panel.visible = true
+	_story_panel.set_process(true)
+	if _input != null and not _story_modal:
+		_input.call("push_modal_context")
+		_story_modal = true
+	_refresh_focus()
+
+
+func _hide_story_scene() -> void:
+	if _story_panel != null:
+		_story_panel.visible = false
+		_story_panel.set_process(false)
+	if _input != null and _story_modal:
+		_input.call("pop_context")
+		_story_modal = false
+		_refresh_focus()
+
+
+func is_story_scene_open() -> bool:
+	return _story_panel != null and _story_panel.visible
+
+
+func story_scene_panel() -> StoryScenePanel:
+	return _story_panel
+
+
 func _show_dialogue() -> void:
 	if _dialogue_panel.visible:
 		return
@@ -1727,7 +1807,7 @@ func _hide_dialogue() -> void:
 ## cannot act stand down (the prompt strip, the technique dock) and come back, untouched,
 ## afterwards. A strip that advertises "attack" under a defeat box promises nothing.
 func _refresh_focus() -> void:
-	var focused := _dialogue_modal or _prompt_kind != PROMPT_NONE
+	var focused := _dialogue_modal or _story_modal or _prompt_kind != PROMPT_NONE
 	if _prompt_strip != null:
 		# The strip is nothing but key prompts, so it stands down under EVERY surface that
 		# holds the keys (PX-4): with the shop or the satchel open none of them acts either,
@@ -1976,15 +2056,22 @@ func _refresh_prompts() -> void:
 		_interact_row.set_prompt(interact_key, _interact_text())
 	_refresh_cultivate_prompt()
 	_refresh_pet_prompt()
-	# Sect panel prompt: always available (the player can always inspect their sect, §19).
+	# Sect and politics prompts: ADVERTISED ONLY TO A MEMBER (D-072 §3). The player begins
+	# with no sect, and a strip that offered "Sect" and "Politics" to a nobody would be
+	# offering two panels whose whole content is "you do not belong". The panels themselves
+	# stay honest if opened; the strip just does not sell them. A member can still read a
+	# sect's internal argument without belonging to a faction — that is how a side is chosen.
+	var is_member := _sect_view != null and _sect_view.is_member
 	if _sect_row != null:
-		var sect_key := _display_label(SECT_PANEL_ACTION)
-		_sect_row.set_prompt(sect_key, _text("UI_SECT_PANEL_TOGGLE"))
-	# Politics prompt: also always available. The player can read a sect's internal argument
-	# without belonging to a faction — that is how they decide whether to take a side at all.
+		_sect_row.visible = is_member
+		if is_member:
+			_sect_row.set_prompt(_display_label(SECT_PANEL_ACTION),
+				_text("UI_SECT_PANEL_TOGGLE"))
 	if _faction_row != null:
-		var faction_key := _display_label(FACTION_PANEL_ACTION)
-		_faction_row.set_prompt(faction_key, _text("UI_FACTION_PANEL_TOGGLE"))
+		_faction_row.visible = is_member
+		if is_member:
+			_faction_row.set_prompt(_display_label(FACTION_PANEL_ACTION),
+				_text("UI_FACTION_PANEL_TOGGLE"))
 
 
 ## The interact prompt's text: the verb, naming its target when the interactable gives one

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Author the story catalog and the origin catalog as Godot .tres resources (Phase 20, D-072).
 
-ONE source for two generated files: `data/story/story_catalog.tres` and
-`data/story/origin_catalog.tres` are written by this script and by nothing else. Edit the
+ONE source for three generated files: `data/story/story_catalog.tres`,
+`data/story/origin_catalog.tres` and `data/story/story_scene_catalog.tres` are written by
+this script and by nothing else. Edit the
 tables below and re-run; do not hand-edit the .tres (the next run would silently undo it).
 
     python3 tools/author_story_data.py            # write both files
@@ -21,6 +22,8 @@ SCENE_ENDED, ARRIVED, CULTIVATED, FLAG, MET, CHOICE, KNOWS = range(7)
 C_FLAG, C_ORIGIN, C_CHOICE, C_KNOWS = range(4)
 Q_SET_FLAG, Q_REGARD, Q_KNOWLEDGE = range(3)
 G_ITEM, G_KNOWLEDGE, G_REGARD = range(3)
+
+S_CARD, S_CAPTION, S_LINE = range(3)
 
 SHEN, LIN, KO = "actor_elder_shen", "actor_disciple_lin", "actor_scout_ko"
 PEOPLE = [SHEN, LIN, KO]
@@ -46,6 +49,26 @@ CHOICES = [
         ("withdrew", "STORY_CHOICE_NIGHT_STAND_WITHDREW", [(Q_REGARD, KO, "affinity", -5)]),
     ]),
 ]
+
+# Beats entered with a scene: beat -> scene id, or ORIGIN_VIGNETTE for the run's own.
+ORIGIN_VIGNETTE = "<origin>"
+ENTRY_SCENES = {"beat_road": ORIGIN_VIGNETTE, "beat_arrival": "scene_arrival"}
+
+
+def vignette(stem):
+    key = "STORY_SCENE_VIGNETTE_%s_" % stem
+    return [(S_CARD, key + "PLACE", key + "TIME", "")] + [
+        (S_CAPTION, key + str(i), "", "") for i in (1, 2, 3)]
+
+
+# scene id -> [(kind, text_key, sub_key, speaker_id)]
+SCENES = {
+    "scene_arrival": [
+        (S_CARD, "STORY_SCENE_ARRIVAL_PLACE", "STORY_SCENE_ARRIVAL_TIME", ""),
+        (S_CAPTION, "STORY_SCENE_ARRIVAL_1", "", ""),
+        (S_CAPTION, "STORY_SCENE_ARRIVAL_2", "", ""),
+    ],
+}
 
 M5 = "NARRATIVE_MASTER_PLAN.md §5 beat %d"
 # (id, key stem, source, trigger, branches); a branch is ([conditions], next)
@@ -106,6 +129,13 @@ ORIGINS = [
          "The outpost was told to watch for a keeper of proscribed records (§6: watched)."),
     ]),
 ]
+
+
+# Scenes that happen somewhere else (the map behind them is covered): every vignette.
+ELSEWHERE = set()
+for _oid, _stem, _grants in ORIGINS:
+    SCENES["scene_vignette_%s" % _oid[len("origin_"):]] = vignette(_stem)
+    ELSEWHERE.add("scene_vignette_%s" % _oid[len("origin_"):])
 
 
 def sn(value):
@@ -186,10 +216,14 @@ def story_catalog():
             branch_refs.append(doc.sub("story_branch_data", "B_%s_%d" % (bid, i), [
                 ("conditions", doc.array("story_condition_data", cond_refs)),
                 ("next_beat_id", sn(nxt))]))
+        entry = ENTRY_SCENES.get(bid, "")
         beats.append(doc.sub("story_beat_data", "BEAT_%s" % bid, [
             ("id", sn(bid)), ("objective_key", sn("STORY_BEAT_%s_OBJECTIVE" % stem)),
             ("record_key", sn("STORY_BEAT_%s_RECORD" % stem)), ("reveal_layer", 1),
-            ("source", '"%s"' % source), ("trigger", trigger),
+            ("source", '"%s"' % source),
+            ("entry_scene_id", sn("" if entry == ORIGIN_VIGNETTE else entry)),
+            ("plays_origin_vignette", "true" if entry == ORIGIN_VIGNETTE else "false"),
+            ("trigger", trigger),
             ("branches", doc.array("story_branch_data", branch_refs))]))
     prologue = doc.sub("story_chapter_data", "CH_prologue", [
         ("id", sn("chapter_prologue")), ("title_key", sn("STORY_CHAPTER_PROLOGUE_TITLE")),
@@ -232,15 +266,34 @@ def origin_catalog():
             ("id", sn(oid)), ("name_key", sn(key + "NAME")),
             ("problem_key", sn(key + "PROBLEM")), ("edge_key", sn(key + "EDGE")),
             ("cost_key", sn(key + "COST")), ("goal_key", sn(key + "GOAL")),
+            ("vignette_scene_id", sn("scene_vignette_%s" % oid[len("origin_"):])),
             ("grants", doc.array("origin_grant_data", refs))]))
     return doc.render("origin_catalog_data",
                       [("entries", doc.array("origin_data", entries))])
+
+
+def scene_catalog():
+    doc = Doc("StorySceneCatalogData",
+              ["story_scene_catalog_data", "story_scene_data", "story_scene_step_data"])
+    entries = []
+    for scene_id in sorted(SCENES):
+        refs = [doc.sub("story_scene_step_data", "STEP_%s_%d" % (scene_id, i), [
+            ("kind", kind), ("text_key", sn(text)), ("sub_key", sn(sub)),
+            ("speaker_id", sn(speaker))])
+            for i, (kind, text, sub, speaker) in enumerate(SCENES[scene_id])]
+        entries.append(doc.sub("story_scene_data", "SCENE_%s" % scene_id, [
+            ("id", sn(scene_id)),
+            ("elsewhere", "true" if scene_id in ELSEWHERE else "false"),
+            ("steps", doc.array("story_scene_step_data", refs))]))
+    return doc.render("story_scene_catalog_data",
+                      [("entries", doc.array("story_scene_data", entries))])
 
 
 def main():
     outputs = {
         ROOT / "data/story/story_catalog.tres": story_catalog(),
         ROOT / "data/story/origin_catalog.tres": origin_catalog(),
+        ROOT / "data/story/story_scene_catalog.tres": scene_catalog(),
     }
     if "--check" in sys.argv:
         stale = [str(p.relative_to(ROOT)) for p, text in outputs.items()

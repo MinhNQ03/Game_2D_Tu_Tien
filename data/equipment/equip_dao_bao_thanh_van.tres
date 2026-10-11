@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="EquipmentData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="EquipmentData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/data/equipment/equipment_data.gd" id="1_equip"]
 [ext_resource type="Resource" path="res://data/characters/visual/player_daobao_visual.tres" id="2_visual"]
+[ext_resource type="Resource" path="res://data/characters/visual/player_f_daobao_visual.tres" id="3_visual_f"]
 
 [resource]
 script = ExtResource("1_equip")
@@ -9,4 +10,7 @@ id = &"equip_dao_bao_thanh_van"
 name_key = &"ITEM_DAO_BAO_THANH_VAN_NAME"
 slot = 1
 defense_bonus = 4
-body_visual = ExtResource("2_visual")
+body_visuals_by_base = {
+&"vis_player": ExtResource("2_visual"),
+&"vis_player_f": ExtResource("3_visual_f")
+}

@@ -37,9 +37,7 @@ func test_real_pet_flow() -> void:
 	var main: Node = (load(MAIN_SCENE_PATH) as PackedScene).instantiate()
 	scene_tree.root.add_child(main)
 	await scene_tree.process_frame
-	var menu: Node = main.get_node("UI").get_child(0)
-	menu.emit_signal("new_game_pressed")
-	await scene_tree.process_frame
+	assert_true(await RunKit.begin_run(main, scene_tree), "a run began past the identity screen")
 	assert_eq(router.call("get_current_key"), "map_hub", "New Game loads the hub")
 
 	var pets := main.get_node_or_null("Systems/PetRuntime") as PetRuntime

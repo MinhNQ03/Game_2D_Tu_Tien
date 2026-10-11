@@ -75,6 +75,11 @@ const PET_RUNTIME_SCRIPT := "res://src/gameplay/world/pet_runtime.gd"
 const NPC_RUNTIME_SCRIPT := "res://src/gameplay/world/npc_runtime.gd"
 const QUEST_RUNTIME_SCRIPT := "res://src/gameplay/world/quest_runtime.gd"
 const DIALOGUE_RUNTIME_SCRIPT := "res://src/gameplay/world/dialogue_runtime.gd"
+const STORY_RUNTIME_SCRIPT := "res://src/gameplay/world/story_runtime.gd"
+## The identity screen (Phase 20, D-072): who the player is, chosen BEFORE a run exists.
+const IDENTITY_SCRIPT := "res://src/presentation/menus/identity_screen.gd"
+const APPEARANCES_PATH := "res://data/characters/player_appearances.tres"
+const ORIGINS_PATH := "res://data/story/origin_catalog.tres"
 
 ## The five Phase-01 infrastructure autoloads the running application REQUIRES (D-017).
 ## Main boots the real application; all five are declared in `project.godot [autoload]` and
@@ -120,6 +125,11 @@ const REQUIRED_AUTOLOADS := [
 ## all of them, and BEFORE DialogueRuntime, which dispatches a quest answer into it. Ending
 ## in reverse, an open conversation closes first and the quest session stops listening before
 ## anything it listens to is gone.
+## StoryRuntime (Phase 20, D-072) asks the Knowledge Core, the relationship graph and the bag
+## to carry out what an Origin starts with and what a decision changes, so it starts after
+## all three; and BEFORE DialogueRuntime, which puts a story choice, a flag and an Origin
+## question to it. Ending in reverse, the conversation closes before the story it asks, and
+## the story stops listening to knowledge before the Knowledge Core is gone.
 ## RewardRuntime (Phase 19, D-070) holds the session's ONE reward ledger. It needs nothing,
 ## and it sits immediately before the first runtime that pays — ProgressionRuntime, which
 ## claims each defeat in that ledger — so it ends after every runtime that records a payment.
@@ -127,7 +137,8 @@ const SESSION_START_ORDER := [
 	&"WorldRuntime", &"RelationshipRuntime", &"SectRuntime", &"FactionRuntime",
 	&"WorldSimulationRuntime", &"CombatRuntime", &"RewardRuntime", &"ProgressionRuntime",
 	&"KnowledgeRuntime", &"CultivationRuntime", &"InventoryRuntime", &"EquipmentRuntime",
-	&"SkillRuntime", &"PetRuntime", &"NpcRuntime", &"QuestRuntime", &"DialogueRuntime",
+	&"SkillRuntime", &"PetRuntime", &"NpcRuntime", &"QuestRuntime", &"StoryRuntime",
+	&"DialogueRuntime",
 ]
 
 ## The lifecycle step that owns the session itself. It is ended AFTER every subsystem, because
@@ -180,6 +191,14 @@ var _quests: Node = null
 # graph, grants through KnowledgeRuntime — after all three, so it is the FIRST session ended
 # and an open conversation closes before anything it points at is gone.
 var _dialogue: Node = null
+## The session's story (Phase 20): the run's Origin, chapter and beat, the choice record, and
+## the one writer of story flags. Started as the Origin the player chose.
+var _story: Node = null
+## The identity screen while open; null otherwise. Like settings, it is pure menu UI: nothing
+## about a run exists until it is CONFIRMED.
+var _identity: Control = null
+## The Origin the run being started was confirmed with. Read once, by the story session.
+var _run_origin_id: StringName = &""
 
 ## What the LAST teardown actually ended, in the order it ended it (D-047). Written only by
 ## `_end_session_stack()`, which is the one path both the failed-start unwind and the normal
@@ -271,6 +290,7 @@ func _boot() -> void:
 	_pets = _create_runtime(PET_RUNTIME_SCRIPT, "PetRuntime")
 	_npcs = _create_runtime(NPC_RUNTIME_SCRIPT, "NpcRuntime")
 	_quests = _create_runtime(QUEST_RUNTIME_SCRIPT, "QuestRuntime")
+	_story = _create_runtime(STORY_RUNTIME_SCRIPT, "StoryRuntime")
 	_dialogue = _create_runtime(DIALOGUE_RUNTIME_SCRIPT, "DialogueRuntime")
 
 	if not bool(gs.call("mark_ready")):
@@ -449,14 +469,83 @@ func _hide_menu() -> void:
 	if _settings != null and is_instance_valid(_settings):
 		_settings.queue_free()
 	_settings = null
+	_close_identity()
 	if _menu != null and is_instance_valid(_menu):
 		_menu.queue_free()
 	_menu = null
 
 
-## New Game intent from the menu: start the session, load the first scene via the router,
-## confirm the session is running. The menu decided nothing about how this happens.
+## New Game intent from the menu (Phase 20, D-072): ask WHO the player is.
+##
+## Nothing about a run exists yet and nothing is created here: `GameState` stays in MENU, no
+## runtime starts, no character is built. The identity screen is menu UI, exactly as settings
+## is. Backing out of it therefore has nothing to undo; confirming it is what starts the run.
 func _on_new_game_pressed() -> void:
+	if _identity != null and is_instance_valid(_identity):
+		return  # already open
+	var appearances := load(APPEARANCES_PATH) as PlayerAppearanceCatalogData
+	var origins := load(ORIGINS_PATH) as OriginCatalogData
+	if appearances == null or not appearances.is_valid() \
+			or origins == null or not origins.is_valid():
+		push_error("[main] cannot open the identity screen: its catalogs are missing or "
+			+ "invalid, so there is nothing truthful to choose from")
+		return
+	var script: GDScript = load(IDENTITY_SCRIPT) as GDScript
+	var screen: Control = script.new() as Control if script != null else null
+	if screen == null or not screen.has_method("setup"):
+		push_error("[main] failed to build the identity screen: %s" % IDENTITY_SCRIPT)
+		return
+	screen.call("setup", appearances, origins)
+	_identity = screen
+	get_node(CONTAINER_UI).add_child(_identity)
+	_identity.connect("confirmed", _on_identity_confirmed)
+	_identity.connect("cancelled", _on_identity_cancelled)
+	# Hidden, not dimmed: the identity screen composes its own backdrop (the settings rule).
+	if _menu != null and is_instance_valid(_menu):
+		_menu.visible = false
+
+
+## Back from the identity screen: drop it and show the menu again. No lifecycle change — no
+## run was ever started, so there is no session, runtime or character to unwind.
+func _on_identity_cancelled() -> void:
+	_close_identity()
+	if _menu != null and is_instance_valid(_menu):
+		_menu.visible = true
+		if _menu.has_method("focus_primary"):
+			_menu.call("focus_primary")
+	else:
+		_show_menu()
+
+
+func _close_identity() -> void:
+	if _identity != null and is_instance_valid(_identity):
+		_identity.queue_free()
+	_identity = null
+
+
+## Is the identity screen currently open? (for tests)
+func is_identity_open() -> bool:
+	return _identity != null and is_instance_valid(_identity)
+
+
+## The identity screen was confirmed: start THE run, as that look and that Origin.
+##
+## Exactly once per confirmation: the screen emits `confirmed` once (it locks itself), and
+## `GameState.start_new_game` refuses a second start, so a repeated key cannot begin two
+## sessions or hand an Origin's kit over twice.
+func _on_identity_confirmed(appearance_id: StringName, origin_id: StringName) -> void:
+	var appearances := load(APPEARANCES_PATH) as PlayerAppearanceCatalogData
+	var look := appearances.entry(appearance_id) if appearances != null else null
+	if look == null or look.template == null:
+		push_error("[main] cannot start: '%s' is not an offered appearance" % appearance_id)
+		return
+	_start_run(look.template, origin_id)
+
+
+## Start the session as a character built from `player_template`, with Origin `origin_id`:
+## load the first scene via the router, start every runtime in dependency order, confirm the
+## session is running. On ANY failure, unwind to a usable menu.
+func _start_run(player_template: CharacterTemplateData, origin_id: StringName) -> void:
 	var gs := _game_state()
 
 	if _world == null or not is_instance_valid(_world):
@@ -467,12 +556,13 @@ func _on_new_game_pressed() -> void:
 		push_error("[main] start_new_game rejected from current phase")
 		return
 
+	_run_origin_id = origin_id
 	_hide_menu()
 
 	# WorldRuntime registers the map catalog, spawns the persistent player, and loads the
 	# first map (the hub) through SceneRouter. It owns the "why/when"; the router owns the
 	# "how". On any failure, unwind to a usable menu rather than a half-started session.
-	if not bool(_world.call("start_session")):
+	if not bool(_world.call("start_session", player_template)):
 		push_error("[main] world session failed to start; returning to menu")
 		_unwind_failed_session()
 		return
@@ -640,6 +730,8 @@ func _session_node(subsystem: StringName) -> Node:
 			return _npcs
 		&"QuestRuntime":
 			return _quests
+		&"StoryRuntime":
+			return _story
 		&"DialogueRuntime":
 			return _dialogue
 	push_error("[main] SESSION_START_ORDER names '%s', which Main owns no node for; its "
@@ -973,6 +1065,15 @@ func _start_cultivation_sessions() -> bool:
 		return false
 	if _world.has_method("refresh_active_map_quest_view"):
 		_world.call("refresh_active_map_quest_view")
+	# The story (Phase 20), as the Origin the player confirmed. FATAL like the rest: a run
+	# whose story did not begin has no purpose to show and no beat to complete, and one whose
+	# Origin kit was half handed over is exactly the state "fail closed" exists to prevent —
+	# the whole session is discarded instead.
+	if _story == null or not bool(_story.call("start_session", _world, _knowledge,
+			_relationship, _inventory, _run_origin_id)):
+		return false
+	if _world.has_method("refresh_active_map_story_view"):
+		_world.call("refresh_active_map_story_view")
 	if _dialogue == null or not bool(_dialogue.call("start_session", _world, _npcs,
 			_knowledge, _relationship, null, _quests)):
 		return false
@@ -1051,6 +1152,10 @@ func _on_settings_closed() -> void:
 	_settings = null
 	if _menu != null and is_instance_valid(_menu):
 		_menu.visible = true
+		# The back button that had focus is gone with the screen; without this a keyboard
+		# user comes back to a menu that ignores Enter.
+		if _menu.has_method("focus_primary"):
+			_menu.call("focus_primary")
 	else:
 		# The menu went away while settings was open (not expected) — rebuild it properly.
 		_show_menu()

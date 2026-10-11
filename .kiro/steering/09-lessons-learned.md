@@ -1479,3 +1479,30 @@
 - **Guards:** the widened pattern in `.github/workflows/ci.yml` (suite and four E2E gates);
   `test_quest_runtime.gd` frees the node.
 
+## L-052 — "Chosen by moving" makes the way to the confirm button a choice, and 90 % dark is not covered
+
+- **Context:** Phase 20 (D-072), Checkpoint 2: the identity screen and the first story scenes.
+- **What happened:**
+  - *Selection followed focus.* It looked efficient (one press fewer) and passed its unit
+    tests, which moved focus onto an option and checked it was chosen. Reaching "Set out"
+    from the Origin column meant walking the cursor down through every Origin below — each
+    of which became the choice in passing. The story E2E's second run began as the wrong
+    person; nothing else noticed, because the FIRST run had happened to want the last Origin.
+  - *A veil was called a cover.* A scene set "somewhere else" drew a 90 % dark rectangle over
+    the map. In the real window the plaza and the HUD plaques were plainly visible through
+    it, under a caption saying "forty days ago, in the record hall".
+  - *A covering screen took focus with it.* Closing the identity screen (or settings) freed
+    the control that had focus; the menu underneath then ignored Enter.
+- **Rules:**
+  - A cursor and a choice are two things. If moving the cursor can change state, the path to
+    every other control on the screen is a state change — test the walk to the confirm
+    button, not only the option.
+  - A real-input flow is run at least TWICE with different choices in one process. A first
+    run cannot tell a default from a leftover.
+  - "Covered" is asserted as opaque (alpha 1) and LOOKED AT in the real window; a darkness
+    percentage is a guess about a monitor.
+  - When a screen that took focus closes, something is given focus explicitly.
+- **Guards:** `test_walking_the_cursor_to_the_buttons_changes_no_choice`; story E2E step 10
+  (a second run through five downs); `test_a_scene_that_is_elsewhere_covers_the_map…`;
+  story E2E step 3 → 4 (Enter on the menu after backing out).
+

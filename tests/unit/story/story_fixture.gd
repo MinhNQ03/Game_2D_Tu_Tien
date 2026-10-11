@@ -217,6 +217,7 @@ static func origin(id: StringName, grants: Array[OriginGrantData] = []) -> Origi
 	out.edge_key = StringName(stem + "_EDGE")
 	out.cost_key = StringName(stem + "_COST")
 	out.goal_key = StringName(stem + "_GOAL")
+	out.vignette_scene_id = StringName("scene_%s" % id)
 	out.grants = grants
 	return out
 
@@ -253,8 +254,7 @@ class Owners extends RefCounted:
 		seams.knows = _knows
 		seams.teach = _teach
 		seams.move_regard = _move_regard
-		seams.can_hold = _can_hold
-		seams.give = _give
+		seams.give_all = _give_all
 
 	func _knows(id: StringName) -> bool:
 		return known.has(id)
@@ -270,9 +270,9 @@ class Owners extends RefCounted:
 		regards.append([who, dimension, delta])
 		return true
 
-	func _can_hold(_items: Dictionary) -> bool:
-		return bag_has_room
-
-	func _give(item_id: StringName, count: int) -> bool:
-		given.append([item_id, count])
+	func _give_all(items: Dictionary) -> bool:
+		if not bag_has_room:
+			return false
+		for item_id: StringName in items:
+			given.append([item_id, items[item_id]])
 		return true

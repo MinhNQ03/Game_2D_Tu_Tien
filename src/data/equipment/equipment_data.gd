@@ -8,9 +8,9 @@ class_name EquipmentData
 ##     `StatsComponent` (the attacker's attack, the target's defense), never a second formula;
 ##   * the ATTACK itself — a weapon brings its own `AttackData` (`attack`), so a Kiếm swings with
 ##     a Kiếm's reach, arc and timing; its `weapon_family` is canon (CL-10).
-## And one thing it changes in presentation only: a garment may name the visual profile the
-## body is drawn with (`body_visual`) — a whole drawn set, so the robe is pixel-exact on every
-## frame, facing and action rather than a tint over the old one.
+## And one thing it changes in presentation only: a garment may name the visual profile each
+## body is drawn with (`body_visuals_by_base`) — a whole drawn set, so the robe is pixel-exact
+## on every frame, facing and action rather than a tint over the old one.
 
 enum Slot { WEAPON, BODY }
 
@@ -21,10 +21,20 @@ enum Slot { WEAPON, BODY }
 @export var defense_bonus: int = 0
 ## WEAPON: the attack this weapon swings with (its `weapon_family` must be canon).
 @export var attack: AttackData = null
-## BODY: the visual profile the wearer is drawn with (presentation only).
-@export var body_visual: CharacterVisualProfileData = null
+## BODY: the garment as drawn on each body that may wear it —
+## `{ base visual id (StringName) -> CharacterVisualProfileData }` (presentation only). A
+## garment is a whole drawn set per body, so every look the player may choose has its own
+## entry (Phase 20: the player is no longer one body).
+@export var body_visuals_by_base: Dictionary = {}
 @export var required_realm: StringName = &""
 @export var required_layer: int = 0
+
+
+## The profile `base_id`'s body is drawn with while wearing this, or null when this garment
+## was never drawn on that body — the wearer then keeps their own look rather than being
+## redrawn as someone else.
+func body_visual_for(base_id: StringName) -> CharacterVisualProfileData:
+	return body_visuals_by_base.get(base_id) as CharacterVisualProfileData
 
 
 func is_valid() -> bool:
@@ -44,6 +54,8 @@ func validation_errors() -> Array[String]:
 			errors.append("a weapon needs a valid AttackData")
 		elif not AttackData.WEAPON_FAMILIES.has(attack.weapon_family):
 			errors.append("weapon family '%s' is not canon (CL-10)" % attack.weapon_family)
-	if slot == Slot.BODY and body_visual != null and not body_visual.is_valid():
-		errors.append("body_visual is invalid")
+	for base_id: Variant in body_visuals_by_base:
+		var drawn := body_visuals_by_base[base_id] as CharacterVisualProfileData
+		if not (base_id is StringName) or drawn == null or not drawn.is_valid():
+			errors.append("body_visuals_by_base['%s'] is not a valid visual profile" % base_id)
 	return errors

@@ -460,3 +460,44 @@ KNOW_VEIN_STONE_GRADES_NAME,Reading a Spirit Stone,Cách đọc linh thạch
 KNOW_VEIN_STONE_GRADES_DESC,A surveyed stone carries the outpost's seal-cut on its base. A stone with a raw base was never counted by anyone.,Linh thạch qua khảo mạch có vết ấn của tiền đồn dưới đáy. Viên nào đáy còn thô thì chưa từng được ai kiểm đếm.
 KNOW_SURVEY_NOTATION_NAME,How a Vein Survey Is Set Down,Lối ghi sổ khảo mạch
 KNOW_SURVEY_NOTATION_DESC,"A survey keeps two columns: what the surveyor read at the vein, and what the outpost reports. They are meant to agree.","Sổ khảo mạch có hai cột: số người đo đọc được tại mạch, và số tiền đồn báo lên. Hai cột ấy vốn phải khớp nhau."
+STORY_SCENE_ARRIVAL_PLACE,Lạc Hà Village,Thôn Lạc Hà
+STORY_SCENE_ARRIVAL_TIME,Late afternoon,Chiều muộn
+STORY_SCENE_ARRIVAL_1,"One village, one outpost flying the Azure Cloud banner, and a road that goes on toward the woods.","Một ngôi làng, một tiền đồn treo cờ Thanh Vân, và con đường đi tiếp về phía rừng."
+STORY_SCENE_ARRIVAL_2,Nobody here knows you. Find someone to ask.,Ở đây không ai biết ngươi. Hãy tìm người mà hỏi.
+STORY_SCENE_VIGNETTE_HO_TIEU_PLACE,The Hoang Vực post road,Đường quan Hoang Vực
+STORY_SCENE_VIGNETTE_HO_TIEU_TIME,Three months ago,Ba tháng trước
+STORY_SCENE_VIGNETTE_HO_TIEU_1,"Twelve wagons, and one escort's tally with your name on it.","Mười hai cỗ xe, và một tấm thẻ áp tiêu mang tên ngươi."
+STORY_SCENE_VIGNETTE_HO_TIEU_2,By morning there was ash and wheel-ruts. You do not remember falling asleep.,Sáng ra chỉ còn tro và vết bánh xe. Ngươi không nhớ mình đã thiếp đi lúc nào.
+STORY_SCENE_VIGNETTE_HO_TIEU_3,The escort house's ledger says the guard left the post. That debt has followed you to the frontier.,Sổ của tiêu cục ghi: hộ tiêu bỏ vị trí. Món nợ ấy theo ngươi tới tận biên thùy.
+STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_PLACE,The gate of the Azure Cloud Sect,Sơn môn Thanh Vân Tông
+STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_TIME,Last season,Mùa trước
+STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_1,You carried the breath through all three circuits without a fault.,"Ngươi dẫn khí trọn ba vòng, không sai một nhịp."
+STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_2,The list went up. The name of the one behind you was on it. Yours was not.,Bảng treo lên. Tên kẻ đứng sau ngươi có trên đó. Tên ngươi thì không.
+STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_3,Nobody said why. The road home runs through the Hoang Vực.,Không ai nói vì sao. Đường về quê đi ngang Hoang Vực.
+STORY_SCENE_VIGNETTE_LANG_Y_PLACE,A hamlet on the frontier's edge,Một xóm ven Hoang Vực
+STORY_SCENE_VIGNETTE_LANG_Y_TIME,Early this season,Đầu mùa này
+STORY_SCENE_VIGNETTE_LANG_Y_1,Three times you brought the old man's fever down.,Ngươi đã hạ sốt cho ông lão ấy ba lần.
+STORY_SCENE_VIGNETTE_LANG_Y_2,The fourth time his pulse ran as if something were drawing it away — and stopped.,"Lần thứ tư, mạch của ông chạy như có thứ gì kéo nó đi — rồi ngừng."
+STORY_SCENE_VIGNETTE_LANG_Y_3,That was no sickness. You have followed cases like it east.,"Đó không phải bệnh. Ngươi lần theo những ca giống thế, về phía đông."
+STORY_SCENE_VIGNETTE_NGHE_NHAN_PLACE,Your workshop,Xưởng của ngươi
+STORY_SCENE_VIGNETTE_NGHE_NHAN_TIME,Last year,Năm ngoái
+STORY_SCENE_VIGNETTE_NGHE_NHAN_1,"The patron brought the spirit stone himself, seal and all.","Viên linh thạch ấy do chính kẻ bảo trợ mang tới, ấn tín đủ cả."
+STORY_SCENE_VIGNETTE_NGHE_NHAN_2,"It broke in the kiln. He said your craft was poor, and the guild believed him.","Nó vỡ trong lò. Hắn nói tay nghề ngươi kém, và phường hội tin hắn."
+STORY_SCENE_VIGNETTE_NGHE_NHAN_3,You know the stone was wrong at the root. They say stones like it come out of the frontier.,Ngươi biết viên đá ấy sai từ gốc. Người ta bảo đá kiểu đó tuôn ra từ biên thùy.
+STORY_SCENE_VIGNETTE_THU_THU_PLACE,The record hall,Tàng thư các
+STORY_SCENE_VIGNETTE_THU_THU_TIME,Forty days ago,Bốn mươi ngày trước
+STORY_SCENE_VIGNETTE_THU_THU_1,Your mentor left half a ledger and a lamp still warm.,Thầy ngươi để lại nửa cuốn sổ và một ngọn đèn còn ấm.
+STORY_SCENE_VIGNETTE_THU_THU_2,The last pages were torn out. What remains copies one survey mark again and again.,Những trang cuối đã bị xé. Phần còn lại chép đi chép lại một ký hiệu khảo mạch.
+STORY_SCENE_VIGNETTE_THU_THU_3,Someone was asking for you at the gate. You went where the mark pointed: the Hoang Vực.,Có người hỏi thăm ngươi ở cổng. Ngươi đi về nơi ký hiệu ấy chỉ: Hoang Vực.
+UI_IDENTITY_TITLE,Who are you?,Ngươi là ai?
+UI_IDENTITY_LOOK,Appearance,Dung mạo
+UI_IDENTITY_ORIGIN,Origin,Xuất thân
+UI_IDENTITY_EDGE,What it gives you,Điều ngươi có
+UI_IDENTITY_COST,What it costs you,Điều ngươi mang
+UI_IDENTITY_HINT,"Every origin is open to every appearance. Neither decides your sect, your path or your ending.","Xuất thân nào cũng hợp với dung mạo nào. Cả hai đều không định sẵn tông môn, đường tu hay kết cục."
+UI_IDENTITY_BEGIN,Set out,Lên đường
+UI_IDENTITY_BACK,Back,Quay lại
+APPEARANCE_WANDERER_M_NAME,Wanderer · man,Lữ khách · nam
+APPEARANCE_WANDERER_F_NAME,Wanderer · woman,Lữ khách · nữ
+UI_STORY_SCENE_KEYS,{next} Continue · {skip} Skip,{next} Tiếp · {skip} Bỏ qua
+UI_IDENTITY_SUMMARY,Chosen: {look} · {origin},Đã chọn: {look} · {origin}

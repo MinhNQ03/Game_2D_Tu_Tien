@@ -57,8 +57,7 @@ func test_real_quest_flow() -> void:
 	var main: Node = (load(MAIN_SCENE_PATH) as PackedScene).instantiate()
 	scene_tree.root.add_child(main)
 	await scene_tree.process_frame
-	main.get_node("UI").get_child(0).emit_signal("new_game_pressed")
-	await scene_tree.process_frame
+	assert_true(await RunKit.begin_run(main, scene_tree), "a run began past the identity screen")
 	assert_eq(router.call("get_current_key"), "map_hub", "New Game loads the hub")
 
 	var quests := main.get_node_or_null("Systems/QuestRuntime") as QuestRuntime
@@ -401,8 +400,9 @@ func test_real_quest_flow() -> void:
 	assert_false(quests.is_session_active() or rewards.is_session_active(),
 		"the quest and reward sessions ended")
 	var trace: Array = main.call("get_last_teardown_order")
-	assert_eq([trace[0], trace[1]], [&"DialogueRuntime", &"QuestRuntime"],
-		"conversations ended first, then quests (%s)" % str(trace))
+	assert_eq([trace[0], trace[1], trace[2]],
+		[&"DialogueRuntime", &"StoryRuntime", &"QuestRuntime"],
+		"conversations ended first, then the story, then quests (%s)" % str(trace))
 	assert_true(trace.find(&"RewardRuntime") > trace.find(&"ProgressionRuntime"),
 		"and the ledger outlived progression, which records in it")
 	assert_eq(int(input.call("current_context")), int(input.Context.MENU),

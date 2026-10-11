@@ -51,11 +51,22 @@ func _rel_service() -> RelationshipService:
 ## Start a sect session on a fresh runtime Node, with a player-only resolver and a real
 ## relationship service for the declared-diplomacy mirror.
 func _start(runtime: Node, player: CharacterState,
-		rel: RelationshipService = null) -> bool:
+		rel: RelationshipService = null, catalog: SectCatalog = null) -> bool:
 	var resolver := func(cid: StringName) -> CharacterState:
 		return player if cid == PLAYER else null
 	var service := rel if rel != null else _rel_service()
-	return bool(runtime.call("start_session", service, resolver, PLAYER))
+	return bool(runtime.call("start_session", service, resolver, PLAYER, catalog))
+
+
+## The shipped catalog with a player start sect AUTHORED — the Phase-06 arrangement, which
+## the shipped data no longer has (the player begins with no sect, D-072 §3). The enrolment
+## path is still the owner's, still fail-closed, and is pinned here through the content seam.
+func _enrolling_catalog() -> SectCatalog:
+	var catalog := (load("res://data/sects/sect_catalog.tres") as SectCatalog).duplicate() \
+		as SectCatalog
+	catalog.player_start_sect_id = &"sect_azure_cloud"
+	catalog.player_start_rank_id = &"rank_outer"
+	return catalog
 
 
 ## Assert the runtime exposes NO session state at all (used after a failed start and after
@@ -83,13 +94,62 @@ func test_runtime_is_a_node_not_autoload() -> void:
 	free_node(runtime)
 
 
+## THE SHIPPED START (D-072 §3): a nobody. No sect, no rank, on no roster — in the authority
+## (the rosters), in the derived cache (`CharacterState`) and in the view the HUD reads.
+func test_the_shipped_session_starts_the_player_with_no_sect() -> void:
+	var shipped := load("res://data/sects/sect_catalog.tres") as SectCatalog
+	assert_eq(shipped.player_start_sect_id, &"", "the shipped catalog names no start sect")
+	assert_eq(shipped.player_start_rank_id, &"", "and no start rank")
+	var runtime: Node = SectRuntimeScript.new()
+	add_to_tree(runtime)
+	var player := _player_state()
+	assert_true(_start(runtime, player), "the session starts with nobody to enrol")
+	assert_true(runtime.call("is_session_active"), "and is active")
+	assert_eq(runtime.call("get_player_sect_id"), &"", "the player has no sect")
+	assert_null(runtime.call("get_player_sect"), "and no sect state")
+	assert_eq(player.sect_id, &"", "the derived cache agrees: no sect")
+	assert_eq(player.sect_rank, &"", "and no rank")
+	var store: SectStore = runtime.call("get_store")
+	var sects_seen := 0
+	for template in shipped.sects:
+		sects_seen += 1
+		assert_false(store.get_sect(template.id).is_member(PLAYER),
+			"the player is on no roster (%s)" % template.id)
+	assert_true(sects_seen >= 2, "the sect world itself is there (%d sects)" % sects_seen)
+	var view: SectMembershipView = runtime.call("get_player_membership_view")
+	assert_not_null(view, "a view is always returned")
+	assert_false(view.is_member, "and it says: not a member")
+	free_node(runtime)
+
+
+## Unaffiliated is a state, not a dead end: joining later goes through the sect owner's real
+## API, and the runtime's answer follows the ROSTER (it is not remembered from the start).
+func test_an_unaffiliated_player_can_join_later_through_the_sect_owner() -> void:
+	var runtime: Node = SectRuntimeScript.new()
+	add_to_tree(runtime)
+	var player := _player_state()
+	_start(runtime, player)
+	var service: SectService = runtime.call("get_service")
+	assert_true(service.join_member(&"sect_azure_cloud", PLAYER, &"rank_outer"),
+		"the sect owner accepts the join")
+	assert_eq(runtime.call("get_player_sect_id"), &"sect_azure_cloud",
+		"the runtime now answers from the roster")
+	assert_eq(player.sect_id, &"sect_azure_cloud", "the derived cache was written by the owner")
+	var view: SectMembershipView = runtime.call("get_player_membership_view")
+	assert_true(view.is_member, "and the view says: a member")
+	assert_true(service.leave_member(&"sect_azure_cloud", PLAYER), "leaving goes the same way")
+	assert_eq(runtime.call("get_player_sect_id"), &"", "and is followed too")
+	free_node(runtime)
+
+
 func test_session_loads_authored_sect_and_enrolls_player() -> void:
 	var runtime: Node = SectRuntimeScript.new()
 	add_to_tree(runtime)
 	var player := _player_state()
-	assert_true(_start(runtime, player), "session starts from the authored catalog")
+	assert_true(_start(runtime, player, null, _enrolling_catalog()),
+		"session starts from a catalog that names a start sect")
 	assert_true(runtime.call("is_session_active"), "session active")
-	# The authored catalog enrolls the player into sect_azure_cloud at rank_outer.
+	# That catalog enrolls the player into sect_azure_cloud at rank_outer.
 	assert_eq(runtime.call("get_player_sect_id"), &"sect_azure_cloud", "player joined start sect")
 	var sect: SectState = runtime.call("get_player_sect")
 	assert_not_null(sect, "player's SectState resolves")
@@ -141,7 +201,8 @@ func test_start_fails_closed_without_a_relationship_service() -> void:
 func test_start_fails_closed_without_a_player_to_enroll() -> void:
 	var runtime: Node = SectRuntimeScript.new()
 	add_to_tree(runtime)
-	assert_false(bool(runtime.call("start_session", _rel_service(), Callable(), &"")),
+	assert_false(bool(runtime.call("start_session", _rel_service(), Callable(), &"",
+		_enrolling_catalog())),
 		"a catalog naming a start sect cannot start with no player instance id")
 	_assert_no_session(runtime, "after a start with no player")
 	free_node(runtime)
@@ -156,7 +217,8 @@ func test_start_fails_closed_without_a_working_character_resolver() -> void:
 	# (a) An INVALID resolver (never set) with a real player id.
 	var runtime: Node = SectRuntimeScript.new()
 	add_to_tree(runtime)
-	assert_false(bool(runtime.call("start_session", _rel_service(), Callable(), PLAYER)),
+	assert_false(bool(runtime.call("start_session", _rel_service(), Callable(), PLAYER,
+		_enrolling_catalog())),
 		"a non-empty player id with an invalid resolver is rejected")
 	_assert_no_session(runtime, "after a start with an invalid resolver")
 	free_node(runtime)
@@ -169,7 +231,8 @@ func test_start_fails_closed_without_a_working_character_resolver() -> void:
 	assert_eq(player.sect_id, &"", "the player starts with no cached sect")
 	var blind := func(_cid: StringName) -> CharacterState:
 		return null
-	assert_false(bool(runtime_b.call("start_session", _rel_service(), blind, PLAYER)),
+	assert_false(bool(runtime_b.call("start_session", _rel_service(), blind, PLAYER,
+		_enrolling_catalog())),
 		"a resolver that cannot resolve the player id is rejected")
 	_assert_no_session(runtime_b, "after a start with a non-resolving resolver")
 	assert_eq(player.sect_id, &"", "the aborted start left sect_id untouched")
@@ -181,7 +244,7 @@ func test_membership_view_is_populated_and_localizable() -> void:
 	var runtime: Node = SectRuntimeScript.new()
 	add_to_tree(runtime)
 	var player := _player_state()
-	_start(runtime, player)
+	_start(runtime, player, null, _enrolling_catalog())
 	var view: SectMembershipView = runtime.call("get_player_membership_view")
 	assert_not_null(view, "a membership view is always returned")
 	assert_true(view.is_member, "view marks the player as a member")

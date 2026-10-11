@@ -14,6 +14,11 @@ const RngServiceScript := preload("res://src/domain/worldsim/rng_service.gd")
 
 class StubPlayer extends Node2D:
 	var applied: Array = []
+	## The look this body was built with (the garment is drawn per body since Phase 20).
+	var base_visual_id: StringName = &"vis_player"
+
+	func get_base_visual_id() -> StringName:
+		return base_visual_id
 
 	func apply_equipment(attack_bonus: int, defense_bonus: int, attack: AttackData,
 			body_visual: CharacterVisualProfileData) -> bool:

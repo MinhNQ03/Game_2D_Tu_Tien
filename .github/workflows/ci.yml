@@ -20,6 +20,7 @@ name: CI
 #  12. NPC / interaction / shop E2E flow (dedicated isolated process — Phase 17)
 #  13. dialogue E2E flow (dedicated isolated process — Phase 18)
 #  14. quest E2E flow (dedicated isolated process — Phase 19)
+#  15. story E2E flow (dedicated isolated process — Phase 20: identity, Origin, the opening)
 #
 # NOTE: authored while the agent could not run Godot/Actions locally (D-009). All
 # scripts were statically validated via the GDScript language server. The first real
@@ -381,5 +382,38 @@ jobs:
           if grep -E 'SCRIPT ERROR:|ObjectDB instances? (was|were) leaked|resources still in use' \
               _e2e_quest.log; then
             echo "::error::[e2e-quest] the run printed a script error or a leak line"
+            exit 1
+          fi
+
+      - name: Story E2E flow (Phase 20)
+        run: |
+          set -uo pipefail
+          # Dedicated, ISOLATED process (D-019): boots the real app and plays the opening with
+          # REAL key events — New Game, the identity screen (looked through, backed out of,
+          # reopened, confirmed with a doubled press), the run that starts as the chosen
+          # Origin and look with NO sect, the Origin's vignette and the arrival (one step per
+          # press; Esc skips the scene, never the session), a walk, leaving through the real
+          # prompt, and a second run as someone else with nothing of the first left behind.
+          # A `SCRIPT ERROR:` or a leak line fails the gate even when the runner exits 0: a VM
+          # error aborts the case mid-way, which an exit code cannot distinguish from a pass.
+          set +e
+          ./${GODOT_BIN} --headless --path . -s res://tests/e2e/run_story_flow.gd 2>&1 \
+            | tee _e2e_story.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### Story E2E (rc=$rc)"
+            echo '```'
+            tail -n 60 _e2e_story.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            grep -E 'FAIL|ERROR|RESULT' _e2e_story.log | tail -n 40 \
+              | while IFS= read -r line; do echo "::error::[e2e-story] ${line}"; done
+            exit "$rc"
+          fi
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances? (was|were) leaked|resources still in use' \
+              _e2e_story.log; then
+            echo "::error::[e2e-story] the run printed a script error or a leak line"
             exit 1
           fi

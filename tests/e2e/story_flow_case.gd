@@ -1,0 +1,392 @@
+extends TestCase
+## Real-application STORY E2E (Phase 20, D-072) — its own Godot process (D-019).
+##
+## Boots the real `main.tscn` against the live autoloads and plays the opening with REAL key
+## events: the menu's New Game, the identity screen (moved through, backed out of, reopened,
+## confirmed with a doubled press), the run that starts, the vignette and the arrival, a walk,
+## leaving, and a second run as someone else.
+##
+## NOTHING HERE REACHES PAST THE PLAYER'S BOUNDARY. No story flag is set, no knowledge
+## granted, no session started and no scene skipped by calling an owner: every state change
+## below is the consequence of a key. What IS read directly is the authoritative state, to
+## check that what the screen says is what the owners hold.
+
+const MAIN_SCENE_PATH := "res://main.tscn"
+const UI_ACCEPT := &"ui_accept"
+const UI_CANCEL := &"ui_cancel"
+const UI_UP := &"ui_up"
+const UI_DOWN := &"ui_down"
+const UI_LEFT := &"ui_left"
+const UI_RIGHT := &"ui_right"
+const INTERACT := &"interact"
+const OPEN_MENU := &"open_menu"
+const MOVE_RIGHT := &"move_right"
+const SHEN := &"actor_elder_shen"
+
+var _passed: int = 0
+
+
+func test_real_story_flow() -> void:
+	var gs: Node = scene_tree.root.get_node_or_null("GameState")
+	var router: Node = scene_tree.root.get_node_or_null("SceneRouter")
+	var input: Node = scene_tree.root.get_node_or_null("InputService")
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	if gs == null or router == null or input == null or loc == null:
+		assert_true(false, "core autoloads missing")
+		return
+	loc.call("set_language", "vi")
+
+	var main: Node = (load(MAIN_SCENE_PATH) as PackedScene).instantiate()
+	scene_tree.root.add_child(main)
+	await scene_tree.process_frame
+	var world: Node = main.get_node("Systems/WorldRuntime")
+	var story := main.get_node("Systems/StoryRuntime") as StoryRuntime
+	var sects: Node = main.get_node("Systems/SectRuntime")
+	var knowledge := main.get_node("Systems/KnowledgeRuntime") as KnowledgeRuntime
+	var inventory := main.get_node("Systems/InventoryRuntime") as InventoryRuntime
+	var relationship := main.get_node("Systems/RelationshipRuntime") as RelationshipRuntime
+
+	# --- 1. the menu's New Game opens the identity screen — and starts nothing ----------------
+	assert_not_null(RunKit.menu_of(main), "the menu is up")
+	await _press_until(UI_ACCEPT, func() -> bool: return RunKit.identity_of(main) != null)
+	var identity := RunKit.identity_of(main) as IdentityScreen
+	assert_not_null(identity, "a real accept on New Game opened the identity screen")
+	if identity == null:
+		_teardown(main)
+		return
+	assert_false(RunKit.menu_of(main).visible, "the menu stands aside for it")
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "the lifecycle is still MENU: no run exists")
+	assert_false(gs.is_session_active() or bool(world.call("is_session_active"))
+		or story.is_session_active(), "no session of any kind has started")
+	assert_null(world.call("get_player"), "and there is no player")
+	_step("1. New Game opened the identity screen; nothing was started")
+
+	# --- 2. move through it with real keys; the screen says what is being chosen --------------
+	assert_eq(identity.selected_origin_id(), &"origin_ho_tieu", "it opens on the first Origin")
+	await _fire_action(UI_DOWN)
+	await _fire_action(UI_DOWN)
+	assert_eq(identity.shown_origin_id(), &"origin_lang_y", "two downs: the cursor is on the third")
+	assert_eq((identity.find_child("OriginProblem", true, false) as Label).text,
+		String(loc.call("t", "ORIGIN_LANG_Y_PROBLEM")), "whose problem is described")
+	assert_eq(identity.selected_origin_id(), &"origin_ho_tieu",
+		"but LOOKING chose nothing: the first Origin is still the chosen one")
+	await _fire_action(UI_ACCEPT)
+	assert_eq(identity.selected_origin_id(), &"origin_lang_y", "accept chose it")
+	await _fire_action(UI_LEFT)
+	assert_eq(identity.shown_appearance_id(), &"appearance_wanderer_m",
+		"left: the cursor lands on the look already chosen")
+	await _fire_action(UI_DOWN)
+	assert_eq(identity.shown_appearance_id(), &"appearance_wanderer_f", "down: the next look")
+	assert_true((identity.find_child("Portrait", true, false) as TextureRect).texture
+		.resource_path.ends_with("medallion_player_f_proto.png"), "which is on the stage")
+	assert_eq(identity.selected_appearance_id(), &"appearance_wanderer_m", "and not yet chosen")
+	await _fire_action(UI_ACCEPT)
+	assert_eq(identity.selected_appearance_id(), &"appearance_wanderer_f", "accept chose it")
+	await _fire_action(UI_RIGHT)
+	assert_eq(identity.shown_origin_id(), &"origin_lang_y",
+		"right: back on the Origin that was chosen, still chosen")
+	var summary := (identity.find_child("Summary", true, false) as Label).text
+	assert_true(summary.contains(String(loc.call("t", "ORIGIN_LANG_Y_NAME")))
+		and summary.contains(String(loc.call("t", "APPEARANCE_WANDERER_F_NAME"))),
+		"and the choice is stated in words above the buttons ('%s')" % summary)
+	_step("2. the cursor looked, accept chose; the stage, detail and summary followed")
+
+	# --- 3. Esc backs out: the menu again, and STILL nothing started --------------------------
+	await _press_until(UI_CANCEL, func() -> bool: return RunKit.identity_of(main) == null)
+	assert_null(RunKit.identity_of(main), "a real Esc closed the identity screen")
+	assert_true(RunKit.menu_of(main) != null and RunKit.menu_of(main).visible,
+		"the menu is back")
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "still MENU")
+	assert_false(gs.is_session_active() or bool(world.call("is_session_active"))
+		or story.is_session_active() or knowledge.is_session_active(),
+		"backing out left no session behind")
+	assert_null(world.call("get_player"), "and no player")
+	assert_eq(int(input.call("current_context")), int(input.Context.MENU), "input is the menu's")
+	_step("3. Esc backed out: no run, no session, no player")
+
+	# --- 4. reopen, choose, and confirm with a DOUBLED press: exactly one run ----------------
+	await scene_tree.process_frame
+	await _press_until(UI_ACCEPT, func() -> bool: return RunKit.identity_of(main) != null)
+	identity = RunKit.identity_of(main) as IdentityScreen
+	assert_not_null(identity, "New Game opens it again")
+	if identity == null:
+		_teardown(main)
+		return
+	assert_eq([identity.selected_appearance_id(), identity.selected_origin_id()],
+		[&"appearance_wanderer_m", &"origin_ho_tieu"],
+		"a fresh screen: what was moved to last time was never committed")
+	for _i in 4:
+		await _fire_action(UI_DOWN)
+	await _fire_action(UI_ACCEPT)
+	assert_eq(identity.selected_origin_id(), &"origin_thu_thu", "the fifth Origin, chosen")
+	await _fire_action(UI_LEFT)
+	await _fire_action(UI_DOWN)
+	await _fire_action(UI_ACCEPT)
+	assert_eq(identity.selected_appearance_id(), &"appearance_wanderer_f", "the woman's look")
+	await _fire_action(UI_RIGHT)
+	await _fire_action(UI_DOWN)
+	assert_true((identity.find_child("Begin", true, false) as Button).has_focus(),
+		"down from the last Origin is the Begin button")
+	# Two accepts in consecutive frames: a held key, a double tap.
+	var first := _key_event_for(UI_ACCEPT, true)
+	Input.parse_input_event(first)
+	Input.flush_buffered_events()
+	await scene_tree.process_frame
+	Input.parse_input_event(_key_event_for(UI_ACCEPT, false))
+	Input.parse_input_event(_key_event_for(UI_ACCEPT, true))
+	Input.flush_buffered_events()
+	await scene_tree.process_frame
+	Input.parse_input_event(_key_event_for(UI_ACCEPT, false))
+	Input.flush_buffered_events()
+	await _wait_until(func() -> bool: return gs.get_phase() == gs.Phase.RUNNING, 30)
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "the run started")
+	assert_eq(router.call("get_current_key"), "map_hub", "in the village")
+	assert_null(RunKit.identity_of(main), "the identity screen is gone")
+	assert_eq(_count_players(main), 1, "ONE player exists: the doubled press started one run")
+	_step("4. confirmed with a doubled press: one run, in the hub")
+
+	# --- 5. the run is what was chosen — in the OWNERS, not just on screen -------------------
+	var character: CharacterState = world.call("get_player_character")
+	var player := world.call("get_player") as Node2D
+	assert_true(story.is_session_active(), "the story session is live")
+	assert_true(story.get_service().origin_is(&"origin_thu_thu"), "as the Origin confirmed")
+	assert_eq(character.gender, int(CharacterTemplateData.Gender.FEMALE),
+		"the character is the look confirmed")
+	assert_eq(player.call("get_base_visual_id"), &"vis_player_f", "and is DRAWN as it")
+	assert_true(knowledge.get_service().knows(&"know_survey_notation"),
+		"the Origin's knowledge is held, in the Knowledge Core")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), SHEN,
+		character.instance_id, &"affinity"), -15,
+		"its first impression is in the relationship graph, once")
+	assert_eq(inventory.get_bag().stack_count(), 0, "and this Origin carries nothing")
+	assert_eq(sects.call("get_player_sect_id"), &"", "the player belongs to no sect")
+	assert_eq([character.sect_id, character.sect_rank, character.faction_id], [&"", &"", &""],
+		"and the character's own record agrees")
+	var hub: Node = router.call("get_current_scene")
+	var hud := _find_hud(hub)
+	assert_not_null(hud, "the hub has its HUD")
+	if hud == null:
+		_teardown(main)
+		return
+	assert_true(hud.player_portrait_path().ends_with("medallion_player_f_proto.png"),
+		"the plaque shows the chosen look's own portrait")
+	var hud_text := _all_label_text(hud)
+	assert_true(String(loc.call("t", "UI_HUD_SECT_NONE")) in hud_text,
+		"and says, in words, that the player has no sect")
+	_step("5. Origin, look, kit and NO sect are what the owners hold")
+
+	# --- 6. the run opens on the Origin's vignette, over a covered map ------------------------
+	var panel := hud.story_scene_panel()
+	assert_true(hud.is_story_scene_open(), "a scene is on screen")
+	assert_eq(int(input.call("current_context")), int(input.Context.UI_MODAL),
+		"and holds the keys")
+	assert_true(panel.covers_the_map(), "it is somewhere else: the village is covered")
+	assert_eq(panel.place_text(), String(loc.call("t", "STORY_SCENE_VIGNETTE_THU_THU_PLACE")),
+		"it is THIS Origin's vignette, opening on where and when")
+	assert_eq(panel.pips_text(), "1 / 4", "step 1 of 4")
+	assert_eq(hud.notice_text(), "",
+		"what the Origin already knew is not announced as something just learned")
+	var at := player.global_position
+	await _fire_action(MOVE_RIGHT)
+	await scene_tree.physics_frame
+	assert_eq(player.global_position, at, "the player cannot walk under a scene")
+	await _press_until(INTERACT, func() -> bool: return panel.pips_text() != "1 / 4")
+	assert_eq(panel.pips_text(), "2 / 4", "ONE real interact showed ONE more step")
+	assert_eq(panel.body_text(), String(loc.call("t", "STORY_SCENE_VIGNETTE_THU_THU_1")),
+		"the first line of the memory")
+	assert_eq(story.get_service().state().beat_id, &"beat_road", "the beat has not moved yet")
+	_step("6. the vignette opened, modal, over a covered map; interact showed one step")
+
+	# --- 7. Esc SKIPS the scene (never leaves the game); the arrival follows ------------------
+	await _press_until(OPEN_MENU, func() -> bool:
+		return story.get_service().state().beat_id != &"beat_road")
+	assert_eq(story.get_service().state().beat_id, &"beat_arrival",
+		"skipping the vignette completed its beat exactly as watching it would")
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "Esc skipped the SCENE, not the session")
+	assert_eq(hud.session_prompt_kind(), GameplayHUD.PROMPT_NONE,
+		"and the same press asked no question about leaving")
+	assert_true(hud.is_story_scene_open(), "the arrival scene follows")
+	assert_false(panel.covers_the_map(), "it is here: the village shows behind it")
+	assert_eq(panel.place_text(), String(loc.call("t", "STORY_SCENE_ARRIVAL_PLACE")),
+		"it names the village")
+	for expected: String in ["2 / 3", "3 / 3"]:
+		await _press_until(INTERACT, func() -> bool: return panel.pips_text() == expected)
+		assert_eq(panel.pips_text(), expected, "one step per press")
+	await _press_until(INTERACT, func() -> bool: return not hud.is_story_scene_open())
+	assert_false(hud.is_story_scene_open(), "the last step's interact ended the scene")
+	assert_true(bool(input.call("is_gameplay_active")), "and control is the player's")
+	assert_eq(story.get_service().state().beat_id, &"beat_arrival", "on the arrival beat")
+	assert_eq(story.get_service().state().completed_beats, [&"beat_road"] as Array[StringName],
+		"with exactly one beat completed: no step, skipped or watched, completed another")
+	_step("7. Esc skipped the vignette; the arrival was read through; control returned")
+
+	# --- 8. the player walks; the strip sells no sect to a nobody -----------------------------
+	var before := player.global_position
+	Input.parse_input_event(_key_event_for(MOVE_RIGHT, true))
+	Input.flush_buffered_events()
+	await _wait_until(func() -> bool: return player.global_position.x > before.x + 4.0, 60)
+	Input.parse_input_event(_key_event_for(MOVE_RIGHT, false))
+	Input.flush_buffered_events()
+	assert_true(player.global_position.x > before.x + 4.0, "a real move key walks the player")
+	var strip := hud.find_child("PromptStrip", true, false) as Control
+	assert_true(strip.visible, "the prompt strip is back")
+	for row_name: String in ["SectPrompt", "PoliticsPrompt"]:
+		assert_false((hud.find_child(row_name, true, false) as Control).visible,
+			"and does not advertise '%s' to someone with no sect" % row_name)
+	_step("8. the player walks with real keys; no sect is advertised")
+
+	# --- 9. leave through the real question; everything is torn down --------------------------
+	await _press_until(OPEN_MENU, func() -> bool:
+		return hud.session_prompt_kind() == GameplayHUD.PROMPT_LEAVE)
+	assert_eq(hud.session_prompt_kind(), GameplayHUD.PROMPT_LEAVE,
+		"with nothing open, Esc ASKS whether to leave")
+	await _press_until(INTERACT, func() -> bool: return gs.get_phase() == gs.Phase.MENU)
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "the confirm key returned to the menu")
+	assert_false(story.is_session_active() or bool(world.call("is_session_active")),
+		"the story and world sessions ended")
+	assert_null(story.get_service(), "the story keeps no record of the run that ended")
+	var trace: Array = main.call("get_last_teardown_order")
+	assert_eq(trace.slice(0, 3), [&"DialogueRuntime", &"StoryRuntime", &"QuestRuntime"],
+		"conversations ended first, then the story, then quests (%s)" % str(trace))
+	for connection: Dictionary in knowledge.knowledge_gained.get_connections():
+		assert_ne((connection["callable"] as Callable).get_object(), story,
+			"the story is no longer listening to the Knowledge Core")
+	assert_eq(int(input.call("current_context")), int(input.Context.MENU),
+		"no modal context survived")
+	_step("9. left through the real prompt; the story ended second and stopped listening")
+
+	# --- 10. a SECOND run, as someone else: nothing of the first survives ---------------------
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	await _press_until(UI_ACCEPT, func() -> bool: return RunKit.identity_of(main) != null)
+	identity = RunKit.identity_of(main) as IdentityScreen
+	assert_not_null(identity, "New Game opens the identity screen again")
+	if identity == null:
+		_teardown(main)
+		return
+	assert_eq([identity.selected_appearance_id(), identity.selected_origin_id()],
+		[&"appearance_wanderer_m", &"origin_ho_tieu"], "fresh, on its defaults")
+	# THE REGRESSION: walking the cursor down THROUGH every Origin to reach Begin must not
+	# change the choice. (The first build chose by moving; this run began as the last Origin.)
+	for _i in 5:
+		await _fire_action(UI_DOWN)
+	assert_true((identity.find_child("Begin", true, false) as Button).has_focus(),
+		"five downs reach Begin")
+	assert_eq(identity.selected_origin_id(), &"origin_ho_tieu",
+		"and passing over four other Origins on the way chose none of them")
+	await _press_until(UI_ACCEPT, func() -> bool: return gs.get_phase() == gs.Phase.RUNNING)
+	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "a second run started")
+	character = world.call("get_player_character")
+	assert_true(story.get_service().origin_is(&"origin_ho_tieu"), "as the escort")
+	assert_eq(character.gender, int(CharacterTemplateData.Gender.MALE), "in the man's look")
+	assert_eq(inventory.count_of(&"item_kiem_thanh_thiet"), 1, "with ONE blade")
+	assert_false(knowledge.get_service().knows(&"know_survey_notation"),
+		"and none of the first run's knowledge")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), SHEN,
+		character.instance_id, &"affinity"), -10,
+		"the elder's first impression is THIS Origin's (-10), not the last one's on top")
+	assert_true(character.story_flags.is_empty(), "no flag carried over")
+	assert_eq(story.get_service().state().beat_id, &"beat_road", "and the story starts over")
+	assert_eq(_count_players(main), 1, "one player")
+	_step("10. a second run as another Origin: nothing of the first survived")
+
+	var last_map: Node = router.call("get_current_scene")
+	last_map.emit_signal("return_to_menu_requested")
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "back at the menu")
+	_teardown(main)
+	await scene_tree.process_frame
+
+
+func _step(step_name: String) -> void:
+	var failed := get_failures().size()
+	print("[e2e-story] [%s] %s" % ["PASS" if failed == _passed else "FAIL", step_name])
+	_passed = failed
+
+
+func _count_players(main: Node) -> int:
+	var count := 0
+	for node in main.find_children("*", "CharacterBody2D", true, false):
+		if node is Player:
+			count += 1
+	return count
+
+
+func _find_hud(node: Node) -> GameplayHUD:
+	if node == null:
+		return null
+	if node is GameplayHUD:
+		return node as GameplayHUD
+	for child in node.get_children():
+		var found: GameplayHUD = _find_hud(child)
+		if found != null:
+			return found
+	return null
+
+
+func _all_label_text(node: Node) -> Array:
+	var out: Array = []
+	if node is Label and (node as Label).is_visible_in_tree():
+		out.append((node as Label).text)
+	for child in node.get_children():
+		out.append_array(_all_label_text(child))
+	return out
+
+
+func _wait_until(predicate: Callable, frames: int) -> void:
+	for _i in frames:
+		if predicate.call():
+			return
+		await scene_tree.physics_frame
+
+
+## Press `action` ONCE through the real input pipeline and wait for `done`. Only if nothing at
+## all changed is the press repeated (bounded): a synthetic press can be lost between two
+## reads (L-016), but a press that landed is never sent twice.
+func _press_until(action: StringName, done: Callable) -> void:
+	for _attempt in 6:
+		if done.call():
+			return
+		await _fire_action(action)
+		for _i in 3:
+			if done.call():
+				return
+			await scene_tree.process_frame
+	assert_true(done.call(), "pressing '%s' had its effect" % action)
+
+
+func _fire_action(action: StringName) -> void:
+	var press := _key_event_for(action, true)
+	if press == null:
+		assert_true(false, "action '%s' has no key to press" % action)
+		return
+	Input.parse_input_event(press)
+	Input.flush_buffered_events()
+	await scene_tree.process_frame
+	Input.parse_input_event(_key_event_for(action, false))
+	Input.flush_buffered_events()
+	await scene_tree.process_frame
+
+
+func _key_event_for(action: StringName, pressed: bool) -> InputEventKey:
+	for e in InputMap.action_get_events(action):
+		if e is InputEventKey:
+			var k := InputEventKey.new()
+			k.physical_keycode = (e as InputEventKey).physical_keycode
+			k.keycode = (e as InputEventKey).keycode
+			k.pressed = pressed
+			return k
+	return null
+
+
+func _teardown(main: Node) -> void:
+	for a in [MOVE_RIGHT, INTERACT, OPEN_MENU, UI_ACCEPT, UI_CANCEL, UI_DOWN, UI_LEFT,
+			UI_RIGHT, UI_UP]:
+		if Input.is_action_pressed(a):
+			Input.action_release(a)
+	if main == null or not is_instance_valid(main):
+		return
+	if main.get_parent() != null:
+		main.get_parent().remove_child(main)
+	main.queue_free()

@@ -38,6 +38,8 @@ const REFUSE_NOBODY := &"story_nobody"
 
 ## The source id the Knowledge Core records for what the story teaches.
 const KNOWLEDGE_SOURCE_FORMAT := "story:%s"
+## ...and the prefix of the ones that came with an Origin (`story:origin_*`).
+const ORIGIN_SOURCE_PREFIX := "story:origin_"
 
 var _catalog: StoryCatalogData = null
 var _origins: OriginCatalogData = null
@@ -85,6 +87,12 @@ func state() -> StoryState:
 	return _state
 
 
+## Did `source_id` come from an Origin's starting kit (rather than from something the player
+## did)? Presentation asks, so that what a character already knew is not announced as learned.
+static func is_origin_source(source_id: StringName) -> bool:
+	return String(source_id).begins_with(ORIGIN_SOURCE_PREFIX)
+
+
 # --- Reading -------------------------------------------------------------------
 
 func has_begun() -> bool:
@@ -105,6 +113,16 @@ func current_beat() -> StoryBeatData:
 
 func current_chapter() -> StoryChapterData:
 	return _catalog.chapter(_state.chapter_id) if has_begun() else null
+
+
+## The scene the current beat is entered with, or empty: its own, or the Origin's vignette.
+func entry_scene_id() -> StringName:
+	var beat := current_beat()
+	if beat == null:
+		return &""
+	if beat.plays_origin_vignette:
+		return _origins.entry(_state.origin_id).vignette_scene_id
+	return beat.entry_scene_id
 
 
 ## The current beat's objective key, or empty before a run begins.
@@ -148,11 +166,12 @@ func condition_holds(condition: StoryConditionData) -> bool:
 ## Begin the run as `origin_id`: hand over that Origin's starting kit through its owners,
 ## enter the first beat, and settle.
 ##
-## Checked whole before anything is given: the Origin exists, the story has not begun, every
-## owner a grant needs is present, and the bag takes ALL the items. If an owner still says no
-## part-way (it cannot, after those checks, unless the owners are inconsistent) the story is
-## left NOT begun and the refusal says so — the caller's only correct answer is to discard
-## the session, which is what `StoryRuntime` does.
+## Checked whole before anything is given: the Origin exists, the story has not begun and
+## every owner a grant needs is present. Then the ITEMS go first, as one all-or-nothing ask of
+## the bag — the only grant that can be refused for a reason of state (no room) — so a refusal
+## there has given nothing at all. What follows (knowledge, a first impression) cannot be
+## refused by an owner that is present; if one is anyway, the story is left NOT begun and says
+## so, and the caller's only correct answer is to discard the session (`StoryRuntime` does).
 func begin(origin_id: StringName) -> StoryOutcome:
 	if not is_ready():
 		return StoryOutcome.refused(REFUSE_NOT_READY)
@@ -167,10 +186,10 @@ func begin(origin_id: StringName) -> StoryOutcome:
 			return StoryOutcome.refused(REFUSE_OWNER)
 		if grant.kind == OriginGrantData.Kind.ITEM:
 			items[grant.item_id] = grant.count
-	if not items.is_empty() and not bool(_owners.can_hold.call(items)):
+	if not items.is_empty() and not bool(_owners.give_all.call(items)):
 		return StoryOutcome.refused(REFUSE_NO_ROOM)
 	for grant in chosen.grants:
-		if not _carry_out_grant(chosen.id, grant):
+		if grant.kind != OriginGrantData.Kind.ITEM and not _carry_out_grant(chosen.id, grant):
 			push_error("[story] origin '%s': an owner refused '%s' after agreeing to it"
 				% [chosen.id, grant.target_key()])
 			return StoryOutcome.refused(REFUSE_OWNER)
@@ -184,7 +203,7 @@ func begin(origin_id: StringName) -> StoryOutcome:
 func _can_carry_out_grant(grant: OriginGrantData) -> bool:
 	match grant.kind:
 		OriginGrantData.Kind.ITEM:
-			return _owners.can_hold.is_valid() and _owners.give.is_valid()
+			return _owners.give_all.is_valid()
 		OriginGrantData.Kind.KNOWLEDGE:
 			return _owners.teach.is_valid()
 		OriginGrantData.Kind.REGARD:
@@ -194,8 +213,6 @@ func _can_carry_out_grant(grant: OriginGrantData) -> bool:
 
 func _carry_out_grant(origin_id: StringName, grant: OriginGrantData) -> bool:
 	match grant.kind:
-		OriginGrantData.Kind.ITEM:
-			return bool(_owners.give.call(grant.item_id, grant.count))
 		OriginGrantData.Kind.KNOWLEDGE:
 			return bool(_owners.teach.call(grant.knowledge_id,
 				StringName(KNOWLEDGE_SOURCE_FORMAT % origin_id)))
@@ -457,6 +474,9 @@ func content_errors(has_text: Callable = Callable(), has_knowledge: Callable = C
 			if not bool(has_text.call(key)):
 				errors.append("text '%s' has no translation in every language" % key)
 	for beat in _catalog.all_beats():
+		if beat.entry_scene_id != &"":
+			_ask(errors, has_scene, beat.entry_scene_id,
+				"%s: '%s' is not a story scene" % [beat.id, "%s"])
 		if beat.trigger != null:
 			errors.append_array(_trigger_content_errors(beat, has_knowledge,
 				resolve_character, has_map, has_scene))
@@ -481,6 +501,8 @@ func content_errors(has_text: Callable = Callable(), has_knowledge: Callable = C
 					_ask(errors, has_dimension, consequence.dimension,
 						"%s: '%s' is not a relationship dimension" % [where, "%s"])
 	for origin_entry in _origins.entries:
+		_ask(errors, has_scene, origin_entry.vignette_scene_id,
+			"%s: vignette '%s' is not a story scene" % [origin_entry.id, "%s"])
 		for grant in origin_entry.grants:
 			var where := String(origin_entry.id)
 			match grant.kind:

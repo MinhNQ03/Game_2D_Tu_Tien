@@ -38,8 +38,7 @@ func test_real_npc_shop_flow() -> void:
 	var main: Node = (load(MAIN_SCENE_PATH) as PackedScene).instantiate()
 	scene_tree.root.add_child(main)
 	await scene_tree.process_frame
-	main.get_node("UI").get_child(0).emit_signal("new_game_pressed")
-	await scene_tree.process_frame
+	assert_true(await RunKit.begin_run(main, scene_tree), "a run began past the identity screen")
 	assert_eq(router.call("get_current_key"), "map_hub", "New Game loads the hub")
 
 	var npcs := main.get_node_or_null("Systems/NpcRuntime") as NpcRuntime
@@ -276,8 +275,11 @@ func test_real_npc_shop_flow() -> void:
 	var trace: Array = main.call("get_last_teardown_order")
 	# Since Phase 19 the quest session sits between them: it is dispatched to by a
 	# conversation (so it ends after Dialogue) and names people (so it ends before them).
-	assert_eq(trace.slice(0, 3), [&"DialogueRuntime", &"QuestRuntime", &"NpcRuntime"],
-		"conversations, then quests, then people were torn down first (%s)" % str(trace))
+	# Since Phase 20 the story sits just after Dialogue for the same reason.
+	assert_eq(trace.slice(0, 4),
+		[&"DialogueRuntime", &"StoryRuntime", &"QuestRuntime", &"NpcRuntime"],
+		"conversations, then the story, then quests, then people were torn down first (%s)"
+		% str(trace))
 
 	_teardown(main)
 	await scene_tree.process_frame

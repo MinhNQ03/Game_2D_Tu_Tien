@@ -1348,3 +1348,60 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
   `story_flags`.**
 - Mutation-checked: see the handoff.
 
+### Checkpoint 2 — the real New Game, identity, the sectless start, the opening scenes
+
+- `tests/integration/test_story_runtime.gd` (14) — REAL Knowledge / relationship / bag
+  sessions. Each of the five Origins hands over exactly its own kit and nothing else; an
+  unknown Origin (and the Cyrillic look-alike), an inactive dependency, **a kit that does not
+  fit (nothing given to ANY owner)** and content naming a missing scene each refuse the
+  start, give nothing and leave nothing listening; a second start gives nothing twice; a run
+  opens on its Origin's vignette then the arrival; **skipping a scene leaves exactly the
+  record that watching it does**; announcements are heard after the record is committed;
+  arriving in the woods matters only once the Night is due, and once; knowledge gained
+  anywhere moves a beat that waits for it; a mid-run record round-trips; ending the session
+  stops listening.
+- `tests/unit/story/test_story_scenes.gd` (7) — a step shows only what its kind shows; a
+  scene is short and opens with its card; every Origin has its OWN vignette; every scene line
+  exists in both languages; **every look offered can do everything the player does** (six
+  action sheets, a portrait) and both genders are offered; two looks that draw one body, or a
+  look that would start in a sect, are refused; every look has its own drawing of every
+  garment, and a body a garment was never drawn for keeps its own look.
+- `tests/unit/presentation/test_story_surfaces.gd` (14) — the identity screen offers every
+  look and the five Origins; the cursor looks and accept chooses, and the choice is marked in
+  words; **walking the cursor to the buttons changes no choice** (the bug the E2E found);
+  crossing columns lands on the chosen option; confirming emits once and locks; backing out
+  emits once; the plaque fits 1280×720 for every Origin in vi and en, measured as laid out; a
+  scene step takes ONE modal context however many steps follow, and gives it back; the
+  prompt strip stands down under a scene; the band shows a card, a caption and the real keys;
+  **a scene that is elsewhere covers the map** (opaque ground), one that is here does not;
+  every shipped step fits the screen in both languages; the strip advertises the sect only
+  to a member; the plaque shows the chosen look's portrait.
+- `tests/unit/sect/test_sect_runtime.gd` (+2, 4 re-pinned) — **the shipped session starts the
+  player with no sect** (rosters, derived cache and view all agree); an unaffiliated player
+  can join later through the sect owner and the runtime follows the roster; the enrolment
+  path's fail-closed tests now run on a catalog that authors a start sect, through the new
+  content seam — the same invariants, on the arrangement that still has them.
+- `tests/unit/bootstrap/test_session_lifecycle.gd`, the world / NPC / quest E2Es — the
+  session order re-pinned with `StoryRuntime` (18 nodes; teardown Dialogue → Story → Quest).
+- `tests/e2e/world_flow_case.gd` — re-pinned on the nobody: no sect in the rosters, the cache
+  or the HUD, the strip offers neither sect key, and the player is still unaffiliated after
+  twenty map swaps.
+- **E2E gate 15** `tests/e2e/run_story_flow.gd` — isolated process, real app, REAL keys, 10
+  steps: New Game opens the identity screen and starts nothing; the cursor looks and accept
+  chooses; Esc backs out to a menu that still answers Enter, with no session or player;
+  reopen, choose, confirm with a DOUBLED press → exactly one run; Origin, look, kit and NO
+  sect are what the owners hold; the vignette is modal over a covered map and what the
+  Origin already knew is not announced; one interact shows one step; Esc skips the scene and
+  asks nothing about leaving; the arrival is read through and control returns; a real walk;
+  leaving through the real prompt (teardown Dialogue → Story → Quest, the story no longer
+  listening); **a second run as another Origin with nothing of the first left behind**.
+- `tests/framework/run_kit.gd` — the ONE sanctioned setup for older flows to get past the
+  identity screen and the opening (the menu's own intent, the screen's own `confirmed`, the
+  story owner's own `skip_scene`); its default Origin has no item and no first impression,
+  so flows that count bag items and read prices measure what they did before.
+- Real window: `tools/playtest_flow.gd` gains three steps with real keys (`03a` the identity
+  screen opens and no run starts, `03b` look and Origin chosen and the cursor walked to "Set
+  out", `03c` the vignette and arrival read one press per step) — 34 steps.
+  `tools/capture_ui.gd` captures the identity screen for every Origin and look and each
+  opening step.
+

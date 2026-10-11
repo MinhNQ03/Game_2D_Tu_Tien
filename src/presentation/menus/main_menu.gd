@@ -156,6 +156,14 @@ func _make_menu_button(role: String) -> Button:
 
 
 
+## Put keyboard focus back on the primary action. Called by the coordinator when the menu
+## is shown again after a screen that covered it (identity, settings): the control that had
+## focus was freed with that screen, and a menu with nothing focused ignores Enter.
+func focus_primary() -> void:
+	if _new_game_button != null and is_inside_tree() and visible:
+		_new_game_button.grab_focus()
+
+
 func _refresh_text() -> void:
 	var loc := get_node_or_null("/root/Localization")
 	if loc == null:

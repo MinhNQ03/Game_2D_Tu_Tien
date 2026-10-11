@@ -392,6 +392,24 @@ OriginGrantData    kind ITEM | KNOWLEDGE | REGARD, payload, reason
                    (an item grant is 1..3; a regard grant is at most 20 either way)
 ```
 
+```
+StorySceneCatalogData   data/story/story_scene_catalog.tres   (the same generator)
+StorySceneData     id, elsewhere (the map behind it is covered), steps: Array[StorySceneStepData]   # at most 6
+StorySceneStepData kind CARD (place + time) | CAPTION | LINE (speaker_id), text_key, sub_key
+StoryBeatData      + entry_scene_id | plays_origin_vignette      OriginData  + vignette_scene_id
+
+PlayerAppearanceCatalogData   data/characters/player_appearances.tres
+PlayerAppearanceData   id, name_key, template: CharacterTemplateData
+                       (valid only if the template has a gender, a body and a portrait that
+                        exist, and no default sect; two looks may not draw the same body)
+
+EquipmentData      body_visuals_by_base: { base visual id -> CharacterVisualProfileData }
+                   (replaces the single `body_visual`: a garment is drawn per BODY)
+```
+
+A scene is PRESENTATION data: it says what is shown and changes nothing. The beat that plays
+it was committed first.
+
 The catalog checks what no entry can check alone: unique ids, every reference resolving,
 every beat reachable from the start, no loop (a beat is entered once), a last branch that
 always applies, no beat above its chapter's reveal layer, no two consequences of one answer

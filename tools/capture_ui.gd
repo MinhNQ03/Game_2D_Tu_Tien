@@ -117,6 +117,7 @@ func _run() -> void:
 	if menu.has_signal("new_game_pressed"):
 		menu.emit_signal("new_game_pressed")
 		await _settle()
+		await _capture_identity_and_opening(main)
 		await _settle()
 		await _shot("05_hub_gameplay")
 
@@ -159,6 +160,41 @@ func _run() -> void:
 ## the same concession the E2E flows make — because walking to every pickup would turn a
 ## screenshot into a playthrough. A state that could not be reached writes NO file and fails
 ## the run: a capture named after a state it is not in is the lie this tool exists to prevent.
+## The identity screen (Phase 20) with each look and each Origin chosen, then the run it starts:
+## the Origin's vignette, step by step, and the arrival. The LAST Origin and the SECOND look
+## are the ones confirmed, so the captures that follow show a non-default run.
+func _capture_identity_and_opening(main: Node) -> void:
+	var identity := RunKit.identity_of(main)
+	if identity == null:
+		push_error("[capture] the identity screen did not open")
+		return
+	await _shot("04a_identity_default")
+	var looks := identity.find_children("Look_*", "Button", true, false)
+	var origins := identity.find_children("Origin_*", "Button", true, false)
+	for i in origins.size():
+		(origins[i] as Button).grab_focus()
+		await _settle()
+		await _shot("04b_identity_origin_%d" % (i + 1))
+	for i in looks.size():
+		(looks[i] as Button).grab_focus()
+		await _settle()
+		await _shot("04c_identity_look_%d" % (i + 1))
+	(identity.find_child("Begin", true, false) as Button).grab_focus()
+	await _settle()
+	await _shot("04d_identity_begin_focused")
+	identity.emit_signal("confirmed", identity.call("selected_appearance_id"),
+		identity.call("selected_origin_id"))
+	await _settle()
+	var story := RunKit.story_of(main)
+	var step := 0
+	while story != null and story.is_scene_playing() and step < 12:
+		step += 1
+		await _settle()
+		await _shot("04e_opening_step_%02d" % step)
+		story.advance_scene()
+	await _settle()
+
+
 func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:
 	var inventory := main.get_node_or_null("Systems/InventoryRuntime")
 	var equipment := main.get_node_or_null("Systems/EquipmentRuntime")

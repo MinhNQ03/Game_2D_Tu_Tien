@@ -21,9 +21,20 @@
 > (Skill/Technique) is **IMPLEMENTED** (D-061), on the D-057B visual foundation (gait, anchors,
 > causal strike, hit reaction, ambient motion). **Phase 16 (Pet) is DONE (D-064); Phase 17 (NPC / Shop) is DONE (D-065); Phase 18 (Dialogue) is DONE (D-066).**
 > The per-session runtimes under `Main/Systems` now start in this order (and end in reverse):
-> World → Relationship → Sect → Faction → WorldSimulation → Combat → Progression → Knowledge →
-> Cultivation → Inventory → Equipment → Skill → Pet → Npc → Dialogue (`main.gd`
-> `SESSION_START_ORDER`, 15 entries). Still five autoloads; no manager.
+> World → Relationship → Sect → Faction → WorldSimulation → Combat → Reward → Progression →
+> Knowledge → Cultivation → Inventory → Equipment → Skill → Pet → Npc → Quest → **Story** →
+> Dialogue (`main.gd` `SESSION_START_ORDER`, **18 entries** — this list said 15 until Phase
+> 20 found it two phases stale; the order is pinned by `test_session_lifecycle.gd`, which is
+> the authority). Still five autoloads; no manager.
+> **Story (Phase 20, D-072) by layer:** data `src/data/story/` (catalog, beats, triggers,
+> choices, flags' DECLARATIONS, origins, scenes) → domain `src/domain/story/`
+> (`StoryService`: the one writer of `StoryState` and of story flags, whose one store is the
+> player's `CharacterState.story_flags`; it reaches knowledge, regard and the bag only
+> through `StoryOwners`) → gameplay `StoryRuntime` (starts the run as the chosen Origin,
+> turns session facts into what the service understands, plays scenes) → presentation
+> (`IdentityScreen` in the menu flow; `StoryScenePanel` in the HUD). The player's look is a
+> `CharacterTemplateData` chosen from `PlayerAppearanceCatalogData`; the player begins with
+> no sect.
 > **Dialogue (Phase 18) by layer:** data `src/data/dialogue/` (six resources, structural
 > validation) → domain `src/domain/dialogue/` (`DialogueService`: eligibility, re-validation,
 > one effect through its owner; no cursor, no state) → gameplay

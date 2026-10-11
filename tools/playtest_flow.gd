@@ -151,6 +151,35 @@ func _step_new_game(main: Node) -> void:
 	# navigation boundary, not a call into Main.
 	menu.emit_signal("new_game_pressed")
 	var gs := root.get_node_or_null("GameState")
+	await _settle()
+
+	# --- WHO THE PLAYER IS (Phase 20): the identity screen, with REAL keys ---
+	var identity := RunKit.identity_of(main)
+	var opened_without_a_run := identity != null and gs != null \
+		and not bool(gs.call("is_session_active"))
+	_record("03a_identity_opens", "New Game opens the identity screen and starts no run yet",
+		"identity=%s session_active=%s" % [identity != null,
+			gs != null and bool(gs.call("is_session_active"))],
+		opened_without_a_run, started, await _shot("03a_identity"))
+	if identity == null:
+		return
+	# Look at the third Origin, choose it; cross to the looks, choose the second; walk the
+	# cursor back and down to "Set out". Every key is a real key event.
+	started = Time.get_ticks_msec()
+	for action: StringName in [&"ui_down", &"ui_down", &"ui_accept", &"ui_left", &"ui_down",
+			&"ui_accept", &"ui_right", &"ui_down", &"ui_down", &"ui_down"]:
+		await _tap(action)
+	var chosen := "%s + %s" % [identity.call("selected_appearance_id"),
+		identity.call("selected_origin_id")]
+	var begin := identity.find_child("Begin", true, false) as Button
+	_record("03b_identity_chosen", "a look and an Origin are chosen with real keys, and "
+		+ "walking the cursor to 'Set out' changes neither",
+		"chosen=%s begin_focused=%s" % [chosen, begin != null and begin.has_focus()],
+		chosen == "appearance_wanderer_f + origin_lang_y" and begin != null
+			and begin.has_focus(),
+		started, await _shot("03b_identity_chosen"))
+	started = Time.get_ticks_msec()
+	await _tap(&"ui_accept")
 	var running := false
 	for _i in POLL_FRAMES:
 		await process_frame
@@ -158,6 +187,42 @@ func _step_new_game(main: Node) -> void:
 			running = true
 			break
 	_record("03_new_game", "session_active=true", "session_active=%s" % running, running, started)
+	if not running:
+		return
+
+	# --- THE OPENING (Phase 20): the Origin's vignette, then the arrival, READ with real keys ---
+	started = Time.get_ticks_msec()
+	await _settle()
+	var story := RunKit.story_of(main)
+	var steps := 0
+	var first_shot := ""
+	var covered := false
+	while story != null and story.is_scene_playing() and steps < 16:
+		var router := root.get_node_or_null("SceneRouter")
+		var map: Node = router.call("get_current_scene") if router != null else null
+		var hud := map.get_node_or_null("GameplayHUD") if map != null else null
+		var panel: Node = hud.call("story_scene_panel") if hud != null else null
+		if steps == 0:
+			covered = panel != null and bool(panel.call("covers_the_map"))
+			first_shot = await _shot("03c_vignette")
+		elif steps == 4:
+			await _shot("03d_arrival")
+		var before := String(panel.call("pips_text")) + String(story.build_scene_view().scene_id)
+		await _tap(&"interact")
+		for _i in SETTLE_FRAMES:
+			await process_frame
+			if not story.is_scene_playing() or String(panel.call("pips_text")) \
+					+ String(story.build_scene_view().scene_id) != before:
+				break
+		steps += 1
+	var input := root.get_node_or_null("InputService")
+	var control_back := input != null and bool(input.call("is_gameplay_active"))
+	_record("03c_opening_read", "the vignette covers the map, every step answers ONE real "
+		+ "interact, and control returns when the arrival ends",
+		"steps_pressed=%d vignette_covers_map=%s scene_still_playing=%s gameplay_input=%s" % [
+			steps, covered, story != null and story.is_scene_playing(), control_back],
+		steps == 7 and covered and story != null and not story.is_scene_playing()
+			and control_back, started, first_shot)
 
 
 func _step_world_ready() -> Node:
@@ -1293,6 +1358,14 @@ func _hold_action(action: StringName, is_done: Callable) -> bool:
 ## Feed a real `InputEventKey` for the first physical key bound to `action`, through the engine,
 ## so the InputMap action state updates and `_input`/`_unhandled_input` dispatch exactly as a
 ## real key press does.
+## One real press-and-release of `action`, a frame apart.
+func _tap(action: StringName) -> void:
+	_send_key(action, true)
+	await process_frame
+	_send_key(action, false)
+	await process_frame
+
+
 func _send_key(action: StringName, pressed: bool) -> void:
 	for event in InputMap.action_get_events(action):
 		var key := event as InputEventKey

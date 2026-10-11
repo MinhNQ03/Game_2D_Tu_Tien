@@ -131,8 +131,11 @@ func _apply() -> void:
 		"res://data/combat/attack_player_basic.tres")
 	var player: Node = _world.call("get_player")
 	if player != null and player.has_method("apply_equipment"):
+		# The garment as drawn on THIS body: the player may be any of the offered looks.
+		var base_id: StringName = player.call("get_base_visual_id") \
+			if player.has_method("get_base_visual_id") else &""
 		player.call("apply_equipment", attack_bonus, defense_bonus, attack,
-			body.body_visual if body != null else null)
+			body.body_visual_for(base_id) if body != null else null)
 	equipment_changed.emit()
 
 

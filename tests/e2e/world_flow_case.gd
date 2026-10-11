@@ -49,7 +49,7 @@ const REQUIRED_AUTOLOADS := [
 ## The frozen reverse-dependency teardown order (D-047), as a literal — so this file states
 ## the contract rather than only restating whatever the bootstrap currently does.
 const EXPECTED_TEARDOWN_ORDER := [
-	&"DialogueRuntime", &"QuestRuntime",
+	&"DialogueRuntime", &"StoryRuntime", &"QuestRuntime",
 	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
 	&"CultivationRuntime",
 	&"KnowledgeRuntime",
@@ -89,8 +89,7 @@ func test_real_world_map_flow() -> void:
 		return
 	var menu: Node = ui.get_child(0)
 	assert_true(menu.has_signal("new_game_pressed"), "menu exposes new_game_pressed")
-	menu.emit_signal("new_game_pressed")
-	await scene_tree.process_frame
+	assert_true(await RunKit.begin_run(main, scene_tree), "a run began past the identity screen")
 
 	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "running after New Game")
 	assert_eq(router.get_current_key(), "map_hub", "New Game loads the hub map first (Phase 03)")
@@ -127,8 +126,8 @@ func test_real_world_map_flow() -> void:
 			"SectRuntime session active after New Game")
 		assert_eq(_count_named("SectRuntime"), 0,
 			"SectRuntime is NOT an autoload (not under /root)")
-		assert_eq(sect_runtime.call("get_player_sect_id"), &"sect_azure_cloud",
-			"player enrolled in the authored start sect")
+		assert_eq(sect_runtime.call("get_player_sect_id"), &"",
+			"the sect session runs, and the player was enrolled in nothing (D-072 §3)")
 
 	# Phase 07 (Faction): a FactionRuntime sibling must exist under Main/Systems, be a
 	# non-autoload node and run a session. It is started LAST (it reads the sect store + the
@@ -226,17 +225,20 @@ func test_real_world_map_flow() -> void:
 		character_id = character.get_instance_id()
 		assert_eq(String(character.instance_id), "player", "player state has the stable id")
 		assert_true(character.is_alive(), "player starts ALIVE")
-		# Phase 06 / D-015: the player's DERIVED cache matches the authoritative sect roster.
+		# Phase 20 / D-072 §3: the player begins as NOBODY. The authority (the rosters), the
+		# derived cache on the character (D-015) and the faction side all say so — the same
+		# three-way agreement the enrolled start used to be held to, on its opposite.
 		if sect_runtime != null:
-			var player_sect: SectState = sect_runtime.call("get_player_sect")
-			assert_not_null(player_sect, "player's authoritative SectState resolves")
-			if player_sect != null:
-				assert_true(player_sect.is_member(character.instance_id),
-					"player is on the authoritative sect roster")
-				assert_eq(character.sect_id, player_sect.id,
-					"CharacterState.sect_id matches the roster sect")
-				assert_eq(character.sect_rank, player_sect.rank_of(character.instance_id),
-					"CharacterState.sect_rank matches the roster rank")
+			assert_eq(sect_runtime.call("get_player_sect_id"), &"",
+				"the player belongs to no sect, by the rosters")
+			assert_null(sect_runtime.call("get_player_sect"), "and has no SectState")
+			var sect_store: SectStore = sect_runtime.call("get_store")
+			for sect_id: StringName in [&"sect_azure_cloud", &"sect_crimson_flame"]:
+				assert_false(sect_store.get_sect(sect_id).is_member(character.instance_id),
+					"the player is on no roster (%s)" % sect_id)
+			assert_eq(character.sect_id, &"", "CharacterState.sect_id agrees: none")
+			assert_eq(character.sect_rank, &"", "CharacterState.sect_rank agrees: none")
+			assert_eq(character.faction_id, &"", "and no faction")
 
 	var hub_map: Node = router.get_current_scene()
 	assert_true(_player_is_in_map(player, hub_map), "player is parented inside the hub map")
@@ -248,13 +250,20 @@ func test_real_world_map_flow() -> void:
 	var hud := _find_gameplay_hud(hub_map)
 	assert_not_null(hud, "the hub map owns a GameplayHUD")
 	if hud != null:
-		# The HUD renders the player's sect: the localized name appears somewhere, and NO raw
-		# sect id leaks into any label.
+		# The HUD says the truth about the player's sect — that there is none — in words, and
+		# NO raw sect id leaks into any label.
 		var hud_text := _all_label_text(hud)
 		var loc: Node = scene_tree.root.get_node_or_null("Localization")
+		var no_sect := String(loc.call("t", "UI_HUD_SECT_NONE")) if loc != null else ""
+		assert_true(no_sect != "" and (no_sect in hud_text),
+			"the identity plaque says the player has no sect")
 		var sect_name := String(loc.call("t", "SECT_AZURE_CLOUD_NAME")) if loc != null else ""
-		assert_true(sect_name != "" and (sect_name in hud_text),
-			"HUD shows the localized sect name")
+		assert_false(sect_name in hud_text,
+			"and does not show a sect the player never joined")
+		for row_name: String in ["SectPrompt", "PoliticsPrompt"]:
+			var row := hud.find_child(row_name, true, false) as Control
+			assert_true(row != null and not row.visible,
+				"the prompt strip does not advertise '%s' to someone with no sect" % row_name)
 		for t in hud_text:
 			assert_false(t.contains("sect_azure_cloud"),
 				"no raw sect id leaks into the HUD (%s)" % t)
@@ -267,8 +276,11 @@ func test_real_world_map_flow() -> void:
 		var sect_panels := hud.find_children("*", "SectPanel", true, false)
 		assert_eq(sect_panels.size(), 1, "the HUD owns one sect panel")
 		var sect_text := _all_label_text(sect_panels[0]) if not sect_panels.is_empty() else []
-		assert_true(sect_text.size() >= 4,
-			"the sect panel's labels were read (%d)" % sect_text.size())
+		# For a player with no sect the panel holds its honest empty state (a member's rows
+		# are measured in the HUD unit tests, where a member's view can be given).
+		var not_member := String(loc.call("t", "UI_SECT_PANEL_NONE")) if loc != null else ""
+		assert_true(not_member != "" and (not_member in sect_text),
+			"the sect panel says the player does not belong to one (%s)" % str(sect_text))
 		for t in sect_text:
 			for raw_resource_id in ["spirit_stones", "pills", "manpower"]:
 				assert_false(t.contains(raw_resource_id),
@@ -342,8 +354,8 @@ func test_real_world_map_flow() -> void:
 		assert_true(round_sect != null and round_sect.get_instance_id() == sect_runtime_id,
 			"round %d: SAME SectRuntime instance (survives map swap)" % i)
 		if round_sect != null:
-			assert_eq(round_sect.call("get_player_sect_id"), &"sect_azure_cloud",
-				"round %d: player's sect membership persists across the swap" % i)
+			assert_eq(round_sect.call("get_player_sect_id"), &"",
+				"round %d: the player is still unaffiliated after the swap" % i)
 		assert_eq(_count_player_instances(scene_tree.root), 1, "round %d: exactly one Player" % i)
 		var active: Node = router.get_current_scene()
 		assert_true(_player_is_in_map(player, active), "round %d: player in active map" % i)

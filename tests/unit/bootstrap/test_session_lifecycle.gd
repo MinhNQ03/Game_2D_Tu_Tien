@@ -32,7 +32,7 @@ const MAIN_SOURCE_PATH := "res://src/bootstrap/main.gd"
 ## The frozen teardown order, written out as a literal rather than derived, so this file says
 ## what the contract IS instead of only saying "the reverse of whatever start happens to be".
 const EXPECTED_TEARDOWN := [
-	&"DialogueRuntime", &"QuestRuntime",
+	&"DialogueRuntime", &"StoryRuntime", &"QuestRuntime",
 	&"NpcRuntime", &"PetRuntime", &"SkillRuntime", &"EquipmentRuntime", &"InventoryRuntime",
 	&"CultivationRuntime",
 	&"KnowledgeRuntime",
@@ -60,6 +60,7 @@ const SUBSYSTEM_SCRIPTS := {
 	"PetRuntime": "res://src/gameplay/world/pet_runtime.gd",
 	"NpcRuntime": "res://src/gameplay/world/npc_runtime.gd",
 	"QuestRuntime": "res://src/gameplay/world/quest_runtime.gd",
+	"StoryRuntime": "res://src/gameplay/world/story_runtime.gd",
 	"DialogueRuntime": "res://src/gameplay/world/dialogue_runtime.gd",
 }
 
@@ -74,11 +75,17 @@ const END_SESSION_CALL := 'call("end_session")'
 ## the wrong place, or quietly reordering two of them, fails here.
 func test_01_start_order_is_the_frozen_dependency_order() -> void:
 	var order: Array = MainScript.SESSION_START_ORDER
-	assert_eq(order.size(), 17, "seventeen per-session subsystems (got %s)" % str(order))
-	assert_eq(order[16], &"DialogueRuntime",
+	assert_eq(order.size(), 18, "eighteen per-session subsystems (got %s)" % str(order))
+	assert_eq(order[17], &"DialogueRuntime",
 		"conversations are LAST: they ask NpcRuntime who is in reach, move the relationship "
-		+ "graph, grant through the Knowledge Core and dispatch quest answers, so an open "
-		+ "conversation is closed before any of the four is torn down (Phase 18, Phase 19)")
+		+ "graph, grant through the Knowledge Core, dispatch quest answers and put story "
+		+ "choices to the story, so an open conversation is closed before any of the five is "
+		+ "torn down (Phase 18, Phase 19, Phase 20)")
+	assert_eq(order[16], &"StoryRuntime",
+		"the story comes just before conversations: it asks the Knowledge Core, the "
+		+ "relationship graph and the bag to carry out what an Origin starts with and what a "
+		+ "decision changes, so it starts after all three and stops listening before they "
+		+ "are gone (Phase 20, D-072)")
 	assert_eq(order[15], &"QuestRuntime",
 		"quests come just before conversations: they pay through the bag, progression, the "
 		+ "relationship graph and the reward ledger and listen to knowledge, the bag and "

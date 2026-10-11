@@ -97,6 +97,15 @@ func set_visual_profile_from_ref(profile_path: String) -> void:
 		_apply_visual_profile()
 
 
+## The id of the visual profile this body is drawn with when it wears nothing that redraws it
+## (the look the player chose). Equipment asks, to pick the garment drawn for THIS body.
+func get_base_visual_id() -> StringName:
+	if _visual_profile_path == "" or not ResourceLoader.exists(_visual_profile_path):
+		return &""
+	var profile := load(_visual_profile_path) as CharacterVisualProfileData
+	return profile.id if profile != null else &""
+
+
 ## The CharacterVisualComponent (or null if no profile was applied). For tests/debug.
 func get_visual_component() -> CharacterVisualComponent:
 	return _visual

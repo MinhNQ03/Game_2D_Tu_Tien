@@ -8,6 +8,28 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Phase 20, Checkpoint 2: who the player is, and the nobody's start (D-072)
+
+- **Changed (the default flow).** New Game opens the IDENTITY SCREEN: a look and one of the
+  five Origins, chosen before a run exists. Backing out starts nothing; confirming starts one
+  run. The cursor looks, `ui_accept` chooses, and one line states the choice.
+- **Changed (canon made true).** The player begins with NO sect: the sect catalog authors no
+  start sect, `SectRuntime` reads the player's sect from the rosters instead of remembering
+  it, and the prompt strip no longer advertises "Sect" / "Politics" to someone with neither.
+- **Added.** `StoryRuntime` (18th per-session node, before `DialogueRuntime`): starts the run
+  as the chosen Origin — its small kit handed over once, through the Knowledge Core, the
+  relationship graph and the bag's all-or-nothing exchange — and plays story scenes. A scene
+  is data on one contract (card / caption / line), is read with `interact` or skipped with
+  Esc, and changes nothing either way. Five Origin vignettes and the arrival in Lạc Hà.
+- **Added (art, the project's own pipeline).** The protagonist's woman's look
+  (`player_f_proto`, and in the Thanh Vân robe `player_f_daobao`): six action sheets each,
+  anchors, profile, portrait medallion. A garment is now drawn per body
+  (`EquipmentData.body_visuals_by_base`).
+- **Fixed (found by the new E2E).** After a screen that covered the menu closed, the menu had
+  no focused button and ignored Enter (identity and settings).
+- **CI gate 15:** the story E2E — real keys from the menu to the arrival, leaving, and a
+  second run as someone else. 1137 → 1174 tests.
+
 ### 2026-10-11 — Phase 20, Checkpoint 1: the story and origin foundation (D-072)
 
 - **Added (domain + data, no runtime).** `StoryService` — the one writer of the story record
