@@ -266,10 +266,11 @@ class Owners extends RefCounted:
 		seams = StoryOwners.new()
 		seams.knows = _knows
 		seams.can_teach = _can_teach
-		seams.teach = _teach
+		seams.teach_all = _teach_all
 		seams.can_move_regard = _can_move_regard
 		seams.move_regard = _move_regard
 		seams.give_all = _give_all
+		seams.take_all = _take_all
 
 	func _knows(id: StringName) -> bool:
 		return known.has(id)
@@ -277,12 +278,16 @@ class Owners extends RefCounted:
 	func _can_teach(id: StringName) -> bool:
 		return not decline_teach.has(id)
 
-	func _teach(id: StringName, source: StringName) -> bool:
+	## The Knowledge owner's ATOMIC batch: every id, or none (closeout of D-073 §2). A fake of
+	## the real contract — `KnowledgeService.grant_all`, which has its own test.
+	func _teach_all(ids: Array, source: StringName) -> bool:
 		teach_calls += 1
-		if decline_teach.has(id) or breach_teach.has(id):
-			return false
-		taught.append([id, source])
-		known[id] = true
+		for id: StringName in ids:
+			if decline_teach.has(id) or breach_teach.has(id):
+				return false
+		for id: StringName in ids:
+			taught.append([id, source])
+			known[id] = true
 		return true
 
 	func _can_move_regard(who: StringName, _dimension: StringName, _delta: int) -> bool:
@@ -306,4 +311,13 @@ class Owners extends RefCounted:
 			return false
 		for item_id: StringName in items:
 			given.append([item_id, items[item_id]])
+		return true
+
+	## The bag's own all-or-nothing exchange, the other way: take these back out.
+	func _take_all(items: Dictionary) -> bool:
+		for item_id: StringName in items:
+			if not given.has([item_id, items[item_id]]):
+				return false
+		for item_id: StringName in items:
+			given.erase([item_id, items[item_id]])
 		return true

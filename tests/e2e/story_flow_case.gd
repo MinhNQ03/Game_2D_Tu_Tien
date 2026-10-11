@@ -764,8 +764,21 @@ func test_real_story_flow() -> void:
 	assert_true(service.flag_at_least(&"flag_trail_origin_said", 1), "noticed, on the record")
 	await _advance_to(&"shen_trail")
 	assert_false(_panel.choice_ids().has(&"shen_trail_hand"), "and noticed once")
+	await _say(&"shen_shaft", &"shen_shaft_line")  # and he is told of the door
+	await _advance_to(&"shen_trail")
 	await _say(&"shen_trail_back", &"shen_hub")
 	await _say(&"shen_leave", &"")
+	# H21-15: with NOTHING left to say about it, a real interact opens each of them on their
+	# ordinary hub — not on the sheet with one dead answer — however often they are asked.
+	for _again in 2:
+		await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+		assert_eq(_dialogue.current_node_id(), &"lin_hub",
+			"she has said all she will about the sheet: she is simply herself again")
+		assert_false(_panel.choice_ids().has(&"lin_trail_back"), "no dead 'something else' line")
+		await _say(&"lin_leave", &"")
+		await _talk_to(player, hub, shen, Vector2(30, 0))
+		assert_eq(_dialogue.current_node_id(), &"shen_hub", "and so is the elder")
+		await _say(&"shen_leave", &"")
 	_step("8j. the door was brought back to those it concerns; the Origin's line was said once")
 
 	# --- 9. leave through the real question; everything is torn down --------------------------

@@ -210,12 +210,15 @@ func condition_holds(condition: StoryConditionData) -> bool:
 ## enter the first beat, and settle.
 ##
 ## Checked whole before anything is given: the Origin exists, the story has not begun and
-## every owner a grant needs says it CAN carry it out. Then the ITEMS go first, as one
-## all-or-nothing ask of the bag — the only grant that can be refused for a reason of state
-## (no room) — so a refusal there has given nothing at all. What follows (knowledge, a first
-## impression) was agreed to; if an owner breaks that word the story is left NOT begun and
-## says so, and the caller's only correct answer is to discard the session (`StoryRuntime`
-## does).
+## every owner a grant needs says it CAN carry it out. Then, in the order that lets every
+## step be undone (D-073 follow-up):
+##   1. the ITEMS, as one all-or-nothing ask of the bag — the only grant that can be refused
+##      for a reason of state (no room) — so a refusal there has given nothing at all;
+##   2. the REGARDS, each of which can be put back by exactly what its owner reports;
+##   3. the KNOWLEDGE, last and as ONE atomic ask of its owner, because it cannot be untaught.
+## An owner that agreed and then does not has broken its contract: what this call did is
+## undone — regards put back, the items taken out of the bag again — and the story is left NOT
+## begun. `begin` is whole by itself; the caller (`StoryRuntime`) also discards the session.
 func begin(origin_id: StringName) -> StoryOutcome:
 	if not is_ready():
 		return StoryOutcome.refused(REFUSE_NOT_READY)
@@ -225,18 +228,39 @@ func begin(origin_id: StringName) -> StoryOutcome:
 	if chosen == null:
 		return StoryOutcome.refused(REFUSE_UNKNOWN_ORIGIN)
 	var items := {}
+	var lessons: Array[StringName] = []
 	for grant in chosen.grants:
 		if not _can_carry_out_grant(grant):
 			return StoryOutcome.refused(REFUSE_OWNER)
 		if grant.kind == OriginGrantData.Kind.ITEM:
 			items[grant.item_id] = grant.count
+		elif grant.kind == OriginGrantData.Kind.KNOWLEDGE:
+			lessons.append(grant.knowledge_id)
+	# A kit that has items can only be undone by an owner that can take them back.
+	if not items.is_empty() and not _owners.take_all.is_valid():
+		return StoryOutcome.refused(REFUSE_OWNER)
 	if not items.is_empty() and not bool(_owners.give_all.call(items)):
 		return StoryOutcome.refused(REFUSE_NO_ROOM)
+	var moved: Array = []
+	var failed := ""
 	for grant in chosen.grants:
-		if grant.kind != OriginGrantData.Kind.ITEM and not _carry_out_grant(chosen.id, grant):
-			push_error("[story] origin '%s': an owner refused '%s' after agreeing to it"
-				% [chosen.id, grant.target_key()])
-			return StoryOutcome.refused(REFUSE_OWNER)
+		if grant.kind != OriginGrantData.Kind.REGARD:
+			continue
+		var result := _move_regard(grant.character_id, grant.dimension, grant.delta)
+		if not bool(result["ok"]):
+			failed = grant.target_key()
+			break
+		moved.append([grant.character_id, grant.dimension, result])
+	if failed == "" and not lessons.is_empty() and not bool(_owners.teach_all.call(lessons,
+			StringName(KNOWLEDGE_SOURCE_FORMAT % chosen.id))):
+		failed = "knowledge %s" % str(lessons)
+	if failed != "":
+		push_error("[story] origin '%s': an owner refused '%s' after agreeing to it; undoing"
+			% [chosen.id, failed])
+		_put_regards_back(moved)
+		if not items.is_empty() and not bool(_owners.take_all.call(items)):
+			push_error("[story] origin '%s': the bag would not give its kit back" % chosen.id)
+		return StoryOutcome.refused(REFUSE_OWNER)
 	var first := _catalog.beat(_catalog.start_beat_id)
 	_state.origin_id = chosen.id
 	_state.chapter_id = _catalog.chapter_of(first.id).id
@@ -255,21 +279,21 @@ func _can_carry_out_grant(grant: OriginGrantData) -> bool:
 	return false
 
 
-func _carry_out_grant(origin_id: StringName, grant: OriginGrantData) -> bool:
-	match grant.kind:
-		OriginGrantData.Kind.KNOWLEDGE:
-			return bool(_owners.teach.call(grant.knowledge_id,
-				StringName(KNOWLEDGE_SOURCE_FORMAT % origin_id)))
-		OriginGrantData.Kind.REGARD:
-			return bool(_move_regard(grant.character_id, grant.dimension, grant.delta)["ok"])
-	return false
+## Put back regards this call moved — newest first, each by exactly what its owner reported.
+## `moved` rows are `[character_id, dimension, { ok, old_value, new_value }]`.
+func _put_regards_back(moved: Array) -> void:
+	for i in range(moved.size() - 1, -1, -1):
+		var result: Dictionary = moved[i][2]
+		var applied := int(result["new_value"]) - int(result["old_value"])
+		if applied != 0:
+			_move_regard(moved[i][0], moved[i][1], -applied)
 
 
 # --- Asking the owners (prepare, then commit) ---------------------------------
 
 ## Does the Knowledge owner say it can teach this? No seam to ask, or no seam to do it, is no.
 func _can_teach(knowledge_id: StringName) -> bool:
-	return _owners.teach.is_valid() and _owners.can_teach.is_valid() \
+	return _owners.teach_all.is_valid() and _owners.can_teach.is_valid() \
 		and bool(_owners.can_teach.call(knowledge_id))
 
 
@@ -390,37 +414,37 @@ func _can_carry_out(consequence: StoryConsequenceData) -> bool:
 
 ## COMMIT what `answer` asks of OTHER owners. True when every one of them did its part. On a
 ## breach nothing of this call is left standing: see `choose`.
+##
+## Regards first (each can be put back exactly), then ALL the knowledge the answer teaches as
+## ONE atomic ask of its owner. Knowledge cannot be untaught, so it is never taught one piece
+## at a time: a second lesson failing after a first had been recorded is not a state this
+## call can produce (D-073 follow-up).
 func _commit_to_owners(choice_id: StringName, answer: StoryOptionData) -> bool:
-	# [consequence, the owner's answer] for each regard that has moved, in order.
 	var moved: Array = []
+	var lessons: Array[StringName] = []
 	for consequence in answer.consequences:
+		if consequence.kind == StoryConsequenceData.Kind.GRANT_KNOWLEDGE:
+			lessons.append(consequence.knowledge_id)
 		if consequence.kind != StoryConsequenceData.Kind.REGARD:
 			continue
 		var result := _move_regard(consequence.character_id, consequence.dimension,
 			consequence.delta)
 		if not bool(result["ok"]):
-			return _breach(choice_id, consequence, moved)
-		moved.append([consequence, result])
-	for consequence in answer.consequences:
-		if consequence.kind == StoryConsequenceData.Kind.GRANT_KNOWLEDGE \
-				and not bool(_owners.teach.call(consequence.knowledge_id,
-					StringName(KNOWLEDGE_SOURCE_FORMAT % choice_id))):
-			return _breach(choice_id, consequence, moved)
+			return _breach(choice_id, consequence.target_key(), moved)
+		moved.append([consequence.character_id, consequence.dimension, result])
+	if not lessons.is_empty() and not bool(_owners.teach_all.call(lessons,
+			StringName(KNOWLEDGE_SOURCE_FORMAT % choice_id))):
+		return _breach(choice_id, "knowledge %s" % str(lessons), moved)
 	return true
 
 
 ## An owner refused at the commit what it agreed to at the prepare. Put back the regards this
-## call moved — newest first, each by exactly what its owner reported — and say so loudly:
-## this is a defect in an owner's contract, never a state of the world.
-func _breach(choice_id: StringName, failed: StoryConsequenceData, moved: Array) -> bool:
+## call moved and say so loudly: this is a defect in an owner's contract, never a state of
+## the world.
+func _breach(choice_id: StringName, failed: String, moved: Array) -> bool:
 	push_error("[story] choice '%s': an owner refused '%s' after agreeing to it; undoing %d"
-		% [choice_id, failed.target_key(), moved.size()])
-	for i in range(moved.size() - 1, -1, -1):
-		var done: StoryConsequenceData = moved[i][0]
-		var result: Dictionary = moved[i][1]
-		var applied := int(result["new_value"]) - int(result["old_value"])
-		if applied != 0:
-			_move_regard(done.character_id, done.dimension, -applied)
+		% [choice_id, failed, moved.size()])
+	_put_regards_back(moved)
 	return false
 
 

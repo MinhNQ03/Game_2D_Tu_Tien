@@ -84,10 +84,11 @@ func _begin_story(origin_id: StringName) -> void:
 	var owners := StoryOwners.new()
 	owners.knows = _knowledge.knows
 	owners.can_teach = _knowledge.can_grant
-	owners.teach = _teach
+	owners.teach_all = _knowledge_batch
 	owners.can_move_regard = _can_move_regard
 	owners.move_regard = _move_regard
 	owners.give_all = _give_all
+	owners.take_all = _give_all  # this rig's bag is a stand-in that accepts both ways
 	_story = StoryService.new(load(STORY_PATH) as StoryCatalogData,
 		load(ORIGINS_PATH) as OriginCatalogData, StoryState.new(), _player, owners)
 	assert_true(_story.begin(origin_id).ok, "the story begins as %s" % origin_id)
@@ -95,9 +96,8 @@ func _begin_story(origin_id: StringName) -> void:
 		_relationship, _config, _quests, _story)
 
 
-func _teach(knowledge_id: StringName, source_id: StringName) -> bool:
-	var result := _knowledge.grant(knowledge_id, source_id)
-	return result == KnowledgeService.GRANTED or result == KnowledgeService.ALREADY_KNOWN
+func _knowledge_batch(knowledge_ids: Array[StringName], source_id: StringName) -> bool:
+	return _knowledge.grant_all(knowledge_ids, source_id) != null
 
 
 func _can_move_regard(character_id: StringName, dimension: StringName, delta: int) -> bool:
@@ -476,4 +476,41 @@ func test_the_door_is_answered_by_each_person_once_and_by_her_in_two_ways() -> v
 				[DLG_SHEN, &"shen_trail", &"shen_shaft"]]:
 			assert_true(_choose(triple[0], triple[1], triple[2]).ok, "%s is said" % triple[2])
 			assert_false(_ids(triple[0], triple[1]).has(triple[2]), "%s is said once" % triple[2])
+
+
+## H21-15: a person who has NOTHING LEFT to say about the sheet does not greet the player on
+## it. Each of the three opens on the trail line only while that line has an answer other
+## than "speak of something else", and on their ordinary hub once it has none — whichever
+## order the lines were said in, and for every Origin's extra line.
+func test_someone_with_no_trail_line_left_opens_on_their_hub() -> void:
+	var hubs := {DLG_LIN: &"lin_hub", DLG_KO: &"ko_hub", DLG_SHEN: &"shen_hub"}
+	for origin_id: StringName in [&"origin_lang_y", &"origin_thu_thu", &"origin_nghe_nhan",
+			&"origin_ho_tieu", &"origin_de_tu_bi_loai"]:
+		for readings: StringName in [&"kept", &"told"]:
+			_to_act_one(origin_id, readings, &"stood")
+			_end_prologue()
+			var run := "%s/%s" % [origin_id, readings]
+			for stage: String in ["sheet in hand", "door found"]:
+				if stage == "door found":
+					_knowledge.grant(SHAFT, &"source_shaft_seal")
+				# Say everything each person has to say, checking the opening before each line.
+				for pair: Array in TRAILS:
+					for _line in 8:
+						var real: Array[StringName] = []
+						for id in _ids(pair[0], pair[1]):
+							if not String(id).ends_with("_trail_back"):
+								real.append(id)
+						var opens_on := _service.opening_node_id(pair[0], PLAYER)
+						assert_eq(opens_on == pair[1], not real.is_empty(),
+							"%s, %s: %s opens on '%s' with %d line(s) left to say"
+							% [run, stage, pair[0], opens_on, real.size()])
+						if real.is_empty():
+							assert_eq(opens_on, hubs[pair[0]],
+								"%s, %s: with nothing left, %s opens on the hub itself"
+								% [run, stage, pair[0]])
+							break
+						assert_true(_choose(pair[0], pair[1], real[0]).ok,
+							"%s, %s: '%s' is said" % [run, stage, real[0]])
+	# The hub she opens on offers its ordinary answers and no dead line.
+	assert_true(_ids(DLG_LIN, &"lin_hub").has(&"lin_leave"), "a hub always has a way out")
 

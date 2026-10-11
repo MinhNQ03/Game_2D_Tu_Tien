@@ -3,15 +3,23 @@
 > **Status: DONE — all five checkpoints built, every local gate green, the capture matrix
 > opened.** This was a bounded quality pass between two phases. **It is not a phase.**
 > Phase 20 (Story) is and stays **DONE** under D-072; Phase 21 (Dungeon) and Phase 22 (Boss)
-> are **NOT STARTED** and nothing here builds them. Not merged: integration is the owner's
-> (§14). **No person has played this build** — see H21-14 and the checklist in §11.
+> are **NOT STARTED** and nothing here builds them. **No person has played this build** —
+> see H21-14 and the checklist in §11.
+>
+> **Integration, as it stands (corrected by the follow-up, §15).** When this pass closed the
+> branch was pushed and unmerged and `origin/main` was still its base, `4dd38ec`. The owner
+> then fast-forwarded `main`: `main` and `hardening/pre-phase21-experience` are both
+> `4358c78d6d29fec259d342b1005ba627bcc0a34d` (CI run 38149535941 on `main`, success, checked
+> with `gh` after a fresh fetch on 2026-10-11). `4dd38ec` remains the historical BASE of the
+> pass. A follow-up close-out on `hardening/pre-phase21-closeout` continues from `4358c78`
+> and is recorded in §15.
 
 ## 1. Baseline (verified, not assumed)
 
 | | |
 |---|---|
 | Branch | `hardening/pre-phase21-experience` — the ONE branch of this task |
-| Base | `4dd38ec4d35650c35f69be93c234f9db1ca1fcf6` = `origin/main` = `origin/feature/phase-20-story` at preflight (2026-10-11, after `git fetch --prune`) |
+| Base (HISTORICAL: true at this pass's preflight, not now) | `4dd38ec4d35650c35f69be93c234f9db1ca1fcf6` = `origin/main` = `origin/feature/phase-20-story` at preflight (2026-10-11, after `git fetch --prune`). `main` has since been fast-forwarded to `4358c78` |
 | CI on the base | run 38132418506, branch `main`, `head_sha` `4dd38ec…`, success (read back with `gh run view`) |
 | Other refs at preflight | local `main` `4420eae` (8 behind `origin/main`, untouched); `origin/feature/phase-19-quest` `b768935`; `origin/d063/phase-a` `8f3ccbd`; `origin/fix/pre-phase20-readiness` `4420eae`; no tags; one workflow (`ci.yml`) |
 | Phase state on the base | `ROADMAP.md`: Phase 20 DONE, Phase 21+ NOT STARTED. No dungeon / boss code or data in the tree |
@@ -745,7 +753,7 @@ anything left". (2) The wreck's standing wheel reads as a dark slab, like the wh
 | ID | Symptom and cost | Why not now | Owner | Closes when | Makes later work harder? |
 |---|---|---|---|---|---|
 | H21-14 | nobody but tools has played the opening: "engaging", pacing, attachment are UNPROVEN | it needs a person, not a tool | the project owner (checklist §11) | the owner has played it and written down the first point of confusion, any ignored key, and the three timings | yes if skipped: Phase 21 would build on an opening nobody has felt |
-| H21-15 | after all of a person's trail lines are said they still open on the trail line with only *Nói chuyện khác*: one wasted press per talk | an opening's conditions are AND-only; "any line left" needs an OR or a derived flag — a dialogue-data change with its own tests | Dialogue data; Phase 21 (the first phase that adds the next lines to these three people) | a test opens each of the three with every trail flag set and lands on the hub | no |
+| H21-15 — **CLOSED** (follow-up §15.1) | after all of a person's trail lines are said they still open on the trail line with only *Nói chuyện khác*: one wasted press per talk | an opening's conditions are AND-only; "any line left" needs an OR or a derived flag — a dialogue-data change with its own tests | Dialogue data; Phase 21 (the first phase that adds the next lines to these three people) | a test opens each of the three with every trail flag set and lands on the hub | no |
 | H21-16 | the old cart track passes within the cairn wolf's 170 px detect radius: reaching the door usually means a fight or a detour (seen in the real-window playtest: the wolf follows the player to the door) | it is the shipped creature in its shipped territory; moving either changes Phase-19 quest content and the Night's staging | Map / encounter design; Phase 21 (which authors the approach to its own entrance) | Phase 21's Gate A states whether the approach is meant to be contested and places the wolf or the track accordingly | no |
 | H21-17 | the wreck's standing wheel reads as a dark slab (as the whole cart's wheels do, seen edge-on by the top-down camera) | a wheel that reads as a wheel from this camera is a cart re-model, shared by the standing cart | art pipeline (`props3d.cart`, `cart_wreck`); Phase 25 (production polish) | both carts' wheels are judged readable at 1× in a real capture | no |
 | H21-18 | the wolf's wind-up under the night tint was looked at in stills, not as a motion strip | `capture_motion.gd` has no night scenario | presentation; Phase 22 (whose contract requires each telegraph in a motion strip) | a motion strip of the bite under `night` is opened and the wind-up frame is named | no |
@@ -773,9 +781,66 @@ Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
 9. Six debts are recorded with owners (§13); no claim of human-tested fun.
 10. **Phase 21 and Phase 22 have not started.** §10 is what they are authored against.
 
-**Integration.** The branch `hardening/pre-phase21-experience` is pushed and NOT merged.
-`origin/main` was `4dd38ec` at the start and is not touched by this task; fast-forwarding
-`main` is the owner's step (the project's flow: the owner fast-forwards after closure).
+**Integration.** *As written at close:* the branch was pushed and not merged, and
+`origin/main` (`4dd38ec`) was not touched by the task. *Now:* the owner has fast-forwarded
+`main` to `4358c78` — the branch's tip — with no merge commit; CI run 38149535941 is green on
+`main` at that SHA. Nothing was rewritten. See §15 for what was done after that.
 
 **The next action is a person's, not a tool's:** play §11's checklist once. Then author the
 Phase-21 Gate A against §10.
+
+## 15. Follow-up close-out (`hardening/pre-phase21-closeout`, from `4358c78`)
+
+> **Not a phase.** It closes the debts §13 left where a tool can close them, reviews the
+> surfaces the first pass did not open, and stops before Phase 21. Status and the remaining
+> debts are at the end of this section; H21-14 stays OPEN / OWNER REQUIRED throughout.
+
+### 15.1 Checkpoint A — the commit-breach boundary, re-audited; exhausted dialogue (H21-15)
+
+**The transaction edge (new finding, reproduced before it was fixed).** With the seam shapes
+changed and the OLD sequential logic kept, two new tests were red:
+
+| Case | What the old code left behind |
+|---|---|
+| an answer that teaches TWO things, the second failing at the commit | the FIRST lesson recorded on its own (`_breach` put regards back; nothing can un-teach) |
+| an Origin's start, an owner breaking its word after the bag accepted the kit | the blade still in the bag and the drilled knowledge taught, with the story "not begun" — and a retry on the same owners handed over a SECOND blade |
+
+Is a multi-lesson answer possible? Yes: `StoryOptionData` refuses only two writes to the same
+target. No shipped option has two (each `choice_sheet_shown` option teaches one), and the
+real `KnowledgeService.grant` cannot refuse what `can_grant` allowed — so this was not a
+player-facing exploit. It was one content edit away from one.
+
+**Closed by making the owner atomic, not by forbidding the content.**
+- `KnowledgeService.grant_all(ids, source)`: checks every id with the rule `grant` refuses
+  by, then records; all or none. `KnowledgeRuntime.grant_all` announces each NEW one after
+  all are held. `StoryOwners.teach` is replaced by `teach_all`: the story never teaches one
+  thing at a time, and asks LAST (after the regards, which can be put back exactly).
+- `StoryService.begin`: items (the bag's atomic exchange) → regards → knowledge (one batch).
+  On a breach the regards are put back and the items are TAKEN BACK through
+  `StoryOwners.take_all` (the same exchange the other way). `begin` is whole by itself; the
+  caller still discards the session.
+- The story still touches no other owner's store.
+
+Tests (+4; suite **1229**): two unit tests on the service (both-or-neither with ONE ask of
+the owner; an Origin broken at the regard and at the knowledge), the real Knowledge owner's
+batch (an unknown id in the MIDDLE leaves the ones before and after it unrecorded and
+unannounced; what was already known is not announced again), and a `StoryRuntime` with an
+injected breach over the REAL bag, Knowledge Core and graph (the blade is out of the bag
+again, nothing known, no edge, no flag, nothing listening; the same rig then starts with one
+blade).
+
+**H21-15 — closed.** An opening's conditions are AND-only, so "is any line left?" is asked
+as ONE OPENING PER LINE THAT CAN STILL BE SAID, each on the flags and knowledge the line
+itself is gated by (Lâm Nguyệt 2, Thẩm Bất Kỳ 3, Kha Thản 6), followed by a *settled*
+opening that goes straight to the person's hub. No new flag. A person opens on the sheet
+only while it has an answer other than *Nói chuyện khác*; with none left they are simply
+themselves again — and Lâm Nguyệt no longer falls back to "look under the stele" after the
+sheet was found. Test: every Origin × kept / told × (sheet in hand, door found), each
+person's lines said one by one with the opening checked before each (red on the old data:
+all three opened on the trail with nothing to say). Story E2E 8j asks each of them twice
+with real keys.
+
+**Mutations: 8 applied, 8 red** (the batch records before checking · lessons one at a time
+again · a broken start keeps its items · keeps its first impressions · knowledge no longer
+last · no settled opening · an opening ignores "already said" · the door line opens the
+trail before the door is found).

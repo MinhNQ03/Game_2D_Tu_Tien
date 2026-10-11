@@ -89,6 +89,20 @@ func grant(knowledge_id: StringName, source_id: StringName) -> StringName:
 	return outcome
 
 
+## Grant EVERY id, or none (the service's atomic batch), announcing each one that was new
+## AFTER all of them are held. False when the batch was refused: nothing changed, nothing said.
+func grant_all(knowledge_ids: Array[StringName], source_id: StringName) -> bool:
+	if not _session_active:
+		push_error("[knowledge-rt] a batch grant arrived with no active session")
+		return false
+	var gained: Variant = _service.grant_all(knowledge_ids, source_id)
+	if gained == null:
+		return false
+	for knowledge_id: StringName in gained:
+		knowledge_gained.emit(knowledge_id, source_id)
+	return true
+
+
 ## Grant every id `source` teaches, in order. Returns the ids that were NEW.
 func read_source(source_id: StringName, grants: Array[StringName]) -> Array[StringName]:
 	var learned: Array[StringName] = []

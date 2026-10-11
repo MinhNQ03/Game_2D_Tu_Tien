@@ -98,7 +98,7 @@ func test_a_refused_begin_gives_nothing_and_begins_nothing() -> void:
 	assert_false(rig.service.has_begun(), "the story has not begun")
 
 	rig = _rig(&"")
-	rig.owners.seams.teach = Callable()
+	rig.owners.seams.teach_all = Callable()
 	before = _snapshot(rig)
 	assert_eq(rig.service.begin(&"origin_ho_tieu").reason, StoryService.REFUSE_OWNER,
 		"an owner the kit needs is missing")
@@ -301,7 +301,7 @@ func test_a_choice_outside_its_beat_or_unknown_is_refused_whole() -> void:
 func test_a_choice_whose_owner_is_missing_is_refused_before_anything_is_written() -> void:
 	var rig := _rig()
 	rig.service.set_flag(&"f_heard", 1)
-	rig.owners.seams.teach = Callable()
+	rig.owners.seams.teach_all = Callable()
 	var before := _snapshot(rig)
 	assert_eq(rig.service.choose(&"c_side", &"right").reason, StoryService.REFUSE_OWNER,
 		"'right' teaches something and nothing can teach")
@@ -389,6 +389,82 @@ func test_an_origin_whose_grant_an_owner_declines_begins_nothing_and_gives_nothi
 		"an Origin's start is refused before its items are handed over")
 	assert_eq(_snapshot(rig), before, "nothing given, nothing taught, not begun")
 	assert_eq(rig.owners.given, [], "the bag was not asked")
+
+
+# --- The commit-breach boundary, re-audited (D-073 follow-up) -------------------
+#
+# Regards can be put back; knowledge cannot be un-taught. So the story never teaches one
+# thing at a time: an answer's knowledge is ONE ask of its owner, all or none, made LAST.
+
+## A catalog whose `right` answer teaches TWO things after moving a regard (the schema allows
+## it: only two writes to the SAME target are refused).
+func _two_lessons_rig() -> Rig:
+	var rig := Rig.new()
+	rig.state = StoryState.new()
+	rig.player = CharacterState.create_from_template(
+		load(PLAYER_TEMPLATE) as CharacterTemplateData, &"player_test")
+	rig.owners = StoryFixture.Owners.new()
+	var catalog := StoryFixture.catalog()
+	var lessons: Array[StoryConsequenceData] = [
+		StoryFixture.regard(&"actor_b", &"trust", 10), StoryFixture.teach(&"know_first"),
+		StoryFixture.set_flag(&"f_count", 2), StoryFixture.teach(&"know_second")]
+	catalog.choices[0].options[1].consequences = lessons
+	assert_true(catalog.is_valid(), "two lessons in one answer is valid content (%s)"
+		% str(catalog.validation_errors()))
+	rig.service = StoryService.new(catalog, StoryFixture.origins(), rig.state, rig.player,
+		rig.owners.seams)
+	assert_true(rig.service.begin(&"origin_lang_y").ok, "the run begins")
+	rig.service.set_flag(&"f_heard", 1)
+	return rig
+
+
+func test_an_answer_that_teaches_two_things_teaches_both_or_neither() -> void:
+	var rig := _two_lessons_rig()
+	rig.owners.breach_teach = [&"know_second"]  # the SECOND lesson fails at the commit
+	var before := _snapshot(rig)
+	var outcome := rig.service.choose(&"c_side", &"right")
+	assert_false(outcome.ok, "refused")
+	assert_eq(outcome.reason, StoryService.REFUSE_OWNER, "as an owner's refusal")
+	assert_eq(rig.owners.taught, [], "the FIRST lesson was not left taught on its own")
+	assert_false(rig.owners.known.has(&"know_first"), "the Knowledge owner holds neither")
+	assert_eq(rig.owners.regards, [], "the regard that had moved was put back")
+	assert_false(rig.state.has_chosen(&"c_side"), "no record")
+	assert_eq(rig.service.flag_value(&"f_count"), 0, "no flag")
+	assert_eq(_snapshot(rig), before, "the run is exactly as it was")
+	assert_eq(rig.owners.teach_calls, 1,
+		"the owner was asked ONCE for both: never one lesson, then the other")
+	rig.owners.breach_teach = []
+	assert_true(rig.service.choose(&"c_side", &"right").ok, "and the answer can still be given")
+	assert_eq(rig.owners.taught, [[&"know_first", &"story:c_side"],
+		[&"know_second", &"story:c_side"]], "both, once, in the order authored")
+
+
+## An Origin's kit: the bag accepts the items FIRST (it is the only owner that can refuse for
+## a reason of state). If a later owner then breaks its word, the items come back OUT, the
+## regards go back, nothing is taught and the run has not begun — begin itself is whole, not
+## only "the caller will throw the session away".
+func test_an_origin_whose_owner_breaks_its_word_after_the_bag_accepted_gives_nothing() -> void:
+	for broken: String in ["regard", "knowledge"]:
+		var rig := _rig(&"")
+		if broken == "regard":
+			rig.owners.breach_regard_for = [&"actor_a"]
+		else:
+			rig.owners.breach_teach = [&"know_drill"]
+		var before := _snapshot(rig)
+		var outcome := rig.service.begin(&"origin_ho_tieu")
+		assert_false(outcome.ok, "[%s] the run does not begin" % broken)
+		assert_eq(outcome.reason, StoryService.REFUSE_OWNER, "[%s] an owner's refusal" % broken)
+		assert_eq(rig.owners.given, [], "[%s] the blade the bag had accepted was taken back"
+			% broken)
+		assert_eq(rig.owners.taught, [], "[%s] nothing is left taught" % broken)
+		assert_eq(rig.owners.regards, [], "[%s] no first impression is left behind" % broken)
+		assert_false(rig.service.has_begun(), "[%s] and the story has not begun" % broken)
+		assert_eq(_snapshot(rig), before, "[%s] exactly as it was" % broken)
+		rig.owners.breach_regard_for = []
+		rig.owners.breach_teach = []
+		assert_true(rig.service.begin(&"origin_ho_tieu").ok, "[%s] and it can begin, once" % broken)
+		assert_eq(rig.owners.given, [[&"item_blade", 1]], "[%s] with the kit handed over once"
+			% broken)
 
 
 ## THE EXIT CRITERION: a prior decision shapes a later branch through a stored fact, and the

@@ -522,6 +522,71 @@ func test_what_a_real_owner_says_it_can_do_it_does() -> void:
 	_free(rig)
 
 
+## The Knowledge owner's batch is ATOMIC on the real service: one id it cannot grant and
+## none of the others is recorded or announced; all grantable and all are, each announced once.
+func test_the_knowledge_owner_teaches_a_batch_whole_or_not_at_all() -> void:
+	var rig := _rig()
+	var heard: Array[StringName] = []
+	var on_gained := func(id: StringName, _source: StringName) -> void: heard.append(id)
+	rig.knowledge.knowledge_gained.connect(on_gained)
+	var core := rig.knowledge.get_service()
+	var bad: Array[StringName] = [&"know_survey_fragment", &"know_no_such", &"know_stake_socket"]
+	assert_false(rig.knowledge.grant_all(bad, &"test"), "a batch with one unknown id is refused")
+	assert_false(core.knows(&"know_survey_fragment") or core.knows(&"know_stake_socket"),
+		"and the ones BEFORE and AFTER the bad one were not recorded")
+	assert_eq(heard, [] as Array[StringName], "nor announced")
+	var good: Array[StringName] = [&"know_survey_fragment", &"know_stake_socket"]
+	rig.knowledge.grant(&"know_stake_socket", &"earlier")
+	heard.clear()
+	assert_true(rig.knowledge.grant_all(good, &"test"), "a batch it can grant is granted")
+	assert_true(core.knows(&"know_survey_fragment") and core.knows(&"know_stake_socket"),
+		"every one of them is held")
+	assert_eq(heard, [&"know_survey_fragment"] as Array[StringName],
+		"and only what was NEW is announced: what was already known is not learned twice")
+	rig.knowledge.knowledge_gained.disconnect(on_gained)
+	_free(rig)
+
+
+## A StoryRuntime whose relationship owner agrees and then fails (a contract breach, injected).
+class BreakingStory extends "res://src/gameplay/world/story_runtime.gd":
+	var break_regard := true
+
+	func _move_regard(character_id: StringName, dimension: StringName, delta: int) -> Dictionary:
+		if break_regard:
+			return {"ok": false, "old_value": 0, "new_value": 0}
+		return super._move_regard(character_id, dimension, delta)
+
+
+## AN ORIGIN'S START, BROKEN AFTER THE REAL BAG ACCEPTED ITS KIT (D-073 follow-up). The escort
+## is handed a blade, then the elder's first impression is moved — and that owner breaks its
+## word. The blade must be OUT of the real bag again, nothing known, no edge, no flag, no
+## session, nothing listening; and the same rig then starts cleanly with ONE blade.
+func test_an_origin_start_that_breaks_after_the_bag_accepted_leaves_the_real_owners_clean() -> void:
+	var rig := _rig()
+	rig.story.beat_completed.disconnect(rig.on_beat)
+	rig.story.chapter_entered.disconnect(rig.on_chapter)
+	rig.story.choice_recorded.disconnect(rig.on_choice)
+	free_node(rig.story)
+	var breaking := BreakingStory.new()
+	add_to_tree(breaking)
+	rig.story = breaking
+	rig.story.beat_completed.connect(rig.on_beat)
+	rig.story.chapter_entered.connect(rig.on_chapter)
+	rig.story.choice_recorded.connect(rig.on_choice)
+	assert_false(_start(rig, &"origin_ho_tieu"), "the run does not start")
+	assert_false(rig.story.is_session_active(), "no session")
+	assert_eq(rig.inventory.count_of(&"item_kiem_thanh_thiet"), 0,
+		"the blade the bag had accepted was taken out again")
+	assert_true(_untouched(rig), "bag empty, nothing known, no edge, no flag")
+	assert_eq(rig.knowledge.knowledge_gained.get_connections().size(), 0,
+		"and the story is not left listening")
+	breaking.break_regard = false
+	assert_true(_start(rig, &"origin_ho_tieu"), "the same rig then starts")
+	assert_eq(rig.inventory.count_of(&"item_kiem_thanh_thiet"), 1, "with ONE blade, not two")
+	assert_eq(_regard(rig, SHEN, &"affinity"), -10, "and one first impression")
+	_free(rig)
+
+
 ## THE DEFECT (handoff H21-02), on the shipped content and the real owners: telling the elder
 ## moves his trust, THEN lowers Lâm Nguyệt's affinity, THEN sets a flag. When the second owner
 ## cannot, the first must not have been asked, the choice must not be recorded, nobody must be

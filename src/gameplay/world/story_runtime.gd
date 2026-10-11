@@ -155,10 +155,11 @@ func _owners() -> StoryOwners:
 	var owners := StoryOwners.new()
 	owners.knows = _knows
 	owners.can_teach = _can_teach
-	owners.teach = _teach
+	owners.teach_all = _teach_all
 	owners.can_move_regard = _can_move_regard
 	owners.move_regard = _move_regard
 	owners.give_all = _give_all
+	owners.take_all = _take_all
 	return owners
 
 
@@ -172,11 +173,10 @@ func _can_teach(knowledge_id: StringName) -> bool:
 		and _knowledge.get_service().can_grant(knowledge_id)
 
 
-func _teach(knowledge_id: StringName, source_id: StringName) -> bool:
-	if _knowledge == null:
-		return false
-	_knowledge.grant(knowledge_id, source_id)
-	return _knowledge.get_service().knows(knowledge_id)
+## Everything an answer or an Origin teaches, as the Knowledge owner's ONE atomic batch.
+func _teach_all(knowledge_ids: Array[StringName], source_id: StringName) -> bool:
+	return _knowledge != null and _knowledge.is_session_active() \
+		and _knowledge.grant_all(knowledge_ids, source_id)
 
 
 func _player_id() -> StringName:
@@ -204,6 +204,11 @@ func _move_regard(character_id: StringName, dimension: StringName, delta: int) -
 ## ALL of `items` into the bag, or none (the bag's own all-or-nothing exchange).
 func _give_all(items: Dictionary) -> bool:
 	return _inventory != null and _inventory.exchange({}, items)
+
+
+## The same exchange the other way (to undo `_give_all` when a later owner broke its word).
+func _take_all(items: Dictionary) -> bool:
+	return _inventory != null and _inventory.exchange(items, {})
 
 
 func _content_errors(service: StoryService, scenes: StorySceneCatalogData,

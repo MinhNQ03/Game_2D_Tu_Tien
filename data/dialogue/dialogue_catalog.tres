@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=327 format=3]
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=384 format=3]
 
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
@@ -118,22 +118,6 @@ id = &"ko_cart"
 text_key = &"DLG_KO_CART"
 mood = 3
 next_node_id = &"ko_price"
-
-[sub_resource type="Resource" id="C_ko_open_trail_0"]
-script = ExtResource("1_cond")
-kind = 0
-knowledge_id = &"know_survey_fragment"
-
-[sub_resource type="Resource" id="C_ko_open_trail_1"]
-script = ExtResource("1_cond")
-kind = 3
-value = 1
-flag_id = &"flag_heard_road_ahead"
-
-[sub_resource type="Resource" id="P_ko_trail"]
-script = ExtResource("7_open")
-conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_open_trail_0"), SubResource("C_ko_open_trail_1")])
-node_id = &"ko_trail"
 
 [sub_resource type="Resource" id="C_ko_show_stood_0"]
 script = ExtResource("1_cond")
@@ -688,13 +672,212 @@ text_key = &"DLG_KO_NIGHT_LEFT"
 mood = 3
 choices = Array[ExtResource("3_choice")]([SubResource("H_ko_night_ack2")])
 
+[sub_resource type="Resource" id="C_ko_trail_0_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_trail_0_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_ko_trail_0_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_ko_sheet_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_trail_0"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_0_0"), SubResource("C_ko_trail_0_1"), SubResource("C_ko_trail_0_2")])
+node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="C_ko_trail_1_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_trail_1_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_ko_trail_1_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_1_3"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_ko_shaft_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_trail_1"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_1_0"), SubResource("C_ko_trail_1_1"), SubResource("C_ko_trail_1_2"), SubResource("C_ko_trail_1_3")])
+node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="C_ko_trail_2_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_trail_2_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_ko_trail_2_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_2_3"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_vein_stone_grades"
+
+[sub_resource type="Resource" id="C_ko_trail_2_4"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_trail_2"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_2_0"), SubResource("C_ko_trail_2_1"), SubResource("C_ko_trail_2_2"), SubResource("C_ko_trail_2_3"), SubResource("C_ko_trail_2_4")])
+node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="C_ko_trail_3_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_trail_3_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_ko_trail_3_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_3_3"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_ho_tieu"
+
+[sub_resource type="Resource" id="C_ko_trail_3_4"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_trail_3"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_3_0"), SubResource("C_ko_trail_3_1"), SubResource("C_ko_trail_3_2"), SubResource("C_ko_trail_3_3"), SubResource("C_ko_trail_3_4")])
+node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="C_ko_trail_4_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_trail_4_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_ko_trail_4_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_4_3"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_lang_y"
+
+[sub_resource type="Resource" id="C_ko_trail_4_4"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_trail_4"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_4_0"), SubResource("C_ko_trail_4_1"), SubResource("C_ko_trail_4_2"), SubResource("C_ko_trail_4_3"), SubResource("C_ko_trail_4_4")])
+node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="C_ko_trail_5_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_trail_5_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_ko_trail_5_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_5_3"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_de_tu_bi_loai"
+
+[sub_resource type="Resource" id="C_ko_trail_5_4"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="P_ko_trail_5"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_5_0"), SubResource("C_ko_trail_5_1"), SubResource("C_ko_trail_5_2"), SubResource("C_ko_trail_5_3"), SubResource("C_ko_trail_5_4")])
+node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="C_ko_settled_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_settled_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="P_ko_settled"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_settled_0"), SubResource("C_ko_settled_1")])
+node_id = &"ko_hub"
+
 [sub_resource type="Resource" id="D_dlg_scout_ko"]
 script = ExtResource("5_dlg")
 id = &"dlg_scout_ko"
 speaker_id = &"actor_scout_ko"
 start_node_id = &"ko_greet"
 nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart"), SubResource("N_ko_night_stood"), SubResource("N_ko_night_left"), SubResource("N_ko_trail"), SubResource("N_ko_sheet_stood"), SubResource("N_ko_sheet_left"), SubResource("N_ko_sheet_late"), SubResource("N_ko_shaft_line"), SubResource("N_ko_stones_line"), SubResource("N_ko_ruts_line"), SubResource("N_ko_nails_line"), SubResource("N_ko_cord_line")])
-openings = Array[ExtResource("7_open")]([SubResource("P_ko_stood"), SubResource("P_ko_left"), SubResource("P_ko_trail")])
+openings = Array[ExtResource("7_open")]([SubResource("P_ko_stood"), SubResource("P_ko_left"), SubResource("P_ko_trail_0"), SubResource("P_ko_trail_1"), SubResource("P_ko_trail_2"), SubResource("P_ko_trail_3"), SubResource("P_ko_trail_4"), SubResource("P_ko_trail_5"), SubResource("P_ko_settled")])
 
 [sub_resource type="Resource" id="N_shen_greet"]
 script = ExtResource("4_node")
@@ -904,22 +1087,6 @@ id = &"shen_told"
 text_key = &"DLG_SHEN_TOLD"
 mood = 2
 next_node_id = &"shen_hub"
-
-[sub_resource type="Resource" id="C_shen_open_trail_0"]
-script = ExtResource("1_cond")
-kind = 0
-knowledge_id = &"know_survey_fragment"
-
-[sub_resource type="Resource" id="C_shen_open_trail_1"]
-script = ExtResource("1_cond")
-kind = 3
-value = 1
-flag_id = &"flag_heard_road_ahead"
-
-[sub_resource type="Resource" id="P_shen_trail"]
-script = ExtResource("7_open")
-conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_open_trail_0"), SubResource("C_shen_open_trail_1")])
-node_id = &"shen_trail"
 
 [sub_resource type="Resource" id="C_shen_show_0"]
 script = ExtResource("1_cond")
@@ -1252,13 +1419,113 @@ id = &"shen_night_nod_line"
 text_key = &"DLG_SHEN_NIGHT_NOD"
 mood = 0
 
+[sub_resource type="Resource" id="C_shen_trail_0_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_shen_trail_0_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_shen_trail_0_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_shen_sheet_said"
+negate = true
+
+[sub_resource type="Resource" id="P_shen_trail_0"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_trail_0_0"), SubResource("C_shen_trail_0_1"), SubResource("C_shen_trail_0_2")])
+node_id = &"shen_trail"
+
+[sub_resource type="Resource" id="C_shen_trail_1_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_shen_trail_1_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_shen_trail_1_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_shen_trail_1_3"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_shen_shaft_said"
+negate = true
+
+[sub_resource type="Resource" id="P_shen_trail_1"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_trail_1_0"), SubResource("C_shen_trail_1_1"), SubResource("C_shen_trail_1_2"), SubResource("C_shen_trail_1_3")])
+node_id = &"shen_trail"
+
+[sub_resource type="Resource" id="C_shen_trail_2_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_shen_trail_2_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_shen_trail_2_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_shen_trail_2_3"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_notation"
+
+[sub_resource type="Resource" id="C_shen_trail_2_4"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="P_shen_trail_2"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_trail_2_0"), SubResource("C_shen_trail_2_1"), SubResource("C_shen_trail_2_2"), SubResource("C_shen_trail_2_3"), SubResource("C_shen_trail_2_4")])
+node_id = &"shen_trail"
+
+[sub_resource type="Resource" id="C_shen_settled_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_shen_settled_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="P_shen_settled"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_settled_0"), SubResource("C_shen_settled_1")])
+node_id = &"shen_hub"
+
 [sub_resource type="Resource" id="D_dlg_elder_shen"]
 script = ExtResource("5_dlg")
 id = &"dlg_elder_shen"
 speaker_id = &"actor_elder_shen"
 start_node_id = &"shen_greet"
 nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight"), SubResource("N_shen_issue"), SubResource("N_shen_told"), SubResource("N_shen_night"), SubResource("N_shen_night_stake_line"), SubResource("N_shen_night_nod_line"), SubResource("N_shen_trail"), SubResource("N_shen_sheet_line"), SubResource("N_shen_sheet_late"), SubResource("N_shen_shaft_line"), SubResource("N_shen_hand_line")])
-openings = Array[ExtResource("7_open")]([SubResource("P_shen_night"), SubResource("P_shen_trail")])
+openings = Array[ExtResource("7_open")]([SubResource("P_shen_night"), SubResource("P_shen_trail_0"), SubResource("P_shen_trail_1"), SubResource("P_shen_trail_2"), SubResource("P_shen_settled")])
 
 [sub_resource type="Resource" id="H_lin_ask_measure"]
 script = ExtResource("3_choice")
@@ -1406,22 +1673,6 @@ id = &"lin_greet"
 text_key = &"DLG_LIN_GREET"
 mood = 3
 next_node_id = &"lin_hub"
-
-[sub_resource type="Resource" id="C_lin_open_trail_0"]
-script = ExtResource("1_cond")
-kind = 0
-knowledge_id = &"know_survey_fragment"
-
-[sub_resource type="Resource" id="C_lin_open_trail_1"]
-script = ExtResource("1_cond")
-kind = 3
-value = 1
-flag_id = &"flag_heard_road_ahead"
-
-[sub_resource type="Resource" id="P_lin_trail"]
-script = ExtResource("7_open")
-conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_open_trail_0"), SubResource("C_lin_open_trail_1")])
-node_id = &"lin_trail"
 
 [sub_resource type="Resource" id="C_lin_show_0"]
 script = ExtResource("1_cond")
@@ -1759,13 +2010,80 @@ text_key = &"DLG_LIN_MORNING_TOLD"
 mood = 2
 next_node_id = &"lin_hub"
 
+[sub_resource type="Resource" id="C_lin_trail_0_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_lin_trail_0_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_lin_trail_0_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_sheet_said"
+negate = true
+
+[sub_resource type="Resource" id="P_lin_trail_0"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_trail_0_0"), SubResource("C_lin_trail_0_1"), SubResource("C_lin_trail_0_2")])
+node_id = &"lin_trail"
+
+[sub_resource type="Resource" id="C_lin_trail_1_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_lin_trail_1_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="C_lin_trail_1_2"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_lin_trail_1_3"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_shaft_said"
+negate = true
+
+[sub_resource type="Resource" id="P_lin_trail_1"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_trail_1_0"), SubResource("C_lin_trail_1_1"), SubResource("C_lin_trail_1_2"), SubResource("C_lin_trail_1_3")])
+node_id = &"lin_trail"
+
+[sub_resource type="Resource" id="C_lin_settled_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_lin_settled_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="P_lin_settled"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_settled_0"), SubResource("C_lin_settled_1")])
+node_id = &"lin_hub"
+
 [sub_resource type="Resource" id="D_dlg_disciple_lin"]
 script = ExtResource("5_dlg")
 id = &"dlg_disciple_lin"
 speaker_id = &"actor_disciple_lin"
 start_node_id = &"lin_greet"
 nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told"), SubResource("N_lin_morning_kept"), SubResource("N_lin_morning_told"), SubResource("N_lin_trail"), SubResource("N_lin_sheet_read"), SubResource("N_lin_sheet_refuse"), SubResource("N_lin_sheet_late"), SubResource("N_lin_shaft_kept_line"), SubResource("N_lin_shaft_told_line")])
-openings = Array[ExtResource("7_open")]([SubResource("P_lin_trail"), SubResource("P_lin_morning_told"), SubResource("P_lin_morning_kept"), SubResource("P_lin_told"), SubResource("P_lin_kept")])
+openings = Array[ExtResource("7_open")]([SubResource("P_lin_trail_0"), SubResource("P_lin_trail_1"), SubResource("P_lin_settled"), SubResource("P_lin_morning_told"), SubResource("P_lin_morning_kept"), SubResource("P_lin_told"), SubResource("P_lin_kept")])
 
 [sub_resource type="Resource" id="E_te_ask_load"]
 script = ExtResource("2_effect")

@@ -53,6 +53,22 @@ func can_grant(knowledge_id: StringName) -> bool:
 	return is_ready() and _catalog.has(knowledge_id)
 
 
+## Grant EVERY id in `knowledge_ids`, or none (D-073 follow-up). The one way a caller teaches
+## several things as one act — a story decision, an Origin's kit — because knowledge cannot
+## be un-granted: checked whole first with the rule `grant` refuses by, then recorded. Returns
+## the ids that were NEW, in order; null when the batch was refused and nothing changed.
+func grant_all(knowledge_ids: Array[StringName], source_id: StringName) -> Variant:
+	for knowledge_id in knowledge_ids:
+		if not can_grant(knowledge_id):
+			return null
+	var gained: Array[StringName] = []
+	for knowledge_id in knowledge_ids:
+		if not _store.knows(knowledge_id):
+			_store.record(knowledge_id, source_id)
+			gained.append(knowledge_id)
+	return gained
+
+
 func grant(knowledge_id: StringName, source_id: StringName) -> StringName:
 	if not is_ready():
 		return NOT_READY
