@@ -74,7 +74,7 @@
 > companion) walks ROUND a solid prop on its line instead of resting against it (Q19-04), and
 > the world-simulation data no longer depends on its own domain (Q19-05). 1090 tests;
 > `docs/handoff/pre-phase-20-readiness.md`.
-> Phase 20 (Story) is built on `feature/phase-20-story` (D-072); Phase 21+ is NOT STARTED.
+> Phase 20 (Story) is DONE (D-072); Phase 21+ is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
 > contract (`MOTION_DESIGN_CONTRACT.md`) and corrected the HUD's composition by measurement;
@@ -551,8 +551,8 @@ Carried debt: CLV-01, Q19-01, Q19-02, Q19-03, NAV-01 (`docs/handoff/phase-19-que
 `docs/handoff/pre-phase-20-readiness.md`.
 
 ## Phase 20 — Story
-> **BUILT (D-072) on `feature/phase-20-story`, six checkpoints; closure recorded in
-> `docs/handoff/phase-20-story.md` §9 / §12.** Gate A decided: the story engine
+> **DONE (D-072), six checkpoints; evidence and limits in
+> `docs/handoff/phase-20-story.md` §9 / §11 / §12.** Gate A decided: the story engine
 > ships WITH the first authored story — identity and Origin at New Game, the twelve prologue
 > beats of `NARRATIVE_MASTER_PLAN.md` §5 as a playable flow, and a Chronicle — not as a flag
 > dictionary with two sample branches. Ownership (one store for flags, the run's Origin, the
@@ -651,7 +651,7 @@ authoritative-state seams. Domain rules remain transport-agnostic.
 
 Each phase below starts from its contract (`PLAYER_EXPERIENCE_STANDARD.md` §6) and may refine
 it at its own Gate A — it may not drop a line. The phase ORDER above is unchanged. **Phase 19
-is DONE (D-070); Phase 20 is built (D-072, see its section); Phase 21 and later are NOT STARTED.**
+is DONE (D-070); Phase 20 is DONE (D-072, see its section); Phase 21 and later are NOT STARTED.**
 
 **Phase 19 — Quest**
 - *Promise:* I always know what I am doing, for whom, and what it will earn.

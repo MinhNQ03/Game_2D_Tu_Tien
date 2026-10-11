@@ -166,7 +166,8 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 | 3 | Arrival, contacts, the small problem, the first decision | `d676f51` | 38129290085 — success, `head_sha` `d676f51f1c62f60352d9b432c6684d652b026893` (15 gates) |
 | 4 | The Night, the encounter, the aftermath, cultivation, the sheet | `7daa7f7` | 38130589579 — success, `head_sha` `7daa7f743658d55d202c6e55f0bf4c540c8f5c30` (15 gates) |
 | 5 | Chronicle, purpose arbitration, the way out | `7103d05` | 38131696310 — success, `head_sha` `7103d051b6e9651e0dff05477db25f65b4f7d98d` (15 gates) |
-| 6 | Audit, real app, close-out | *(this commit)* | *(recorded by the closing commit)* |
+| 6 | Audit, real app, close-out | `0bc5722` | 38132046760 — success, `head_sha` `0bc5722f9bc1ffb7e72e82e848cc42d0509a3367` (15 gates, 1188 tests) |
+| — | Closing record (docs only: this row, DONE) | *(this commit)* | verified with `gh` before `main` is fast-forwarded to it; the run id is in the phase report, not here (a commit cannot name its own run) |
 
 ## 10. Non-goals
 
@@ -499,8 +500,13 @@ pacing are added by the checkpoints that produce them)*
 ## 12. Status
 
 All six checkpoints are built: New Game → identity and Origin → vignette → the twelve prologue
-beats → open Act-I play, with the Chronicle and an arbitrated purpose line. Closure (DONE, the
-CI run on the close-out SHA, and integration into `main`) is recorded by the closing commit.
+beats → open Act-I play, with the Chronicle and an arbitrated purpose line.
+
+**Phase 20 is DONE** as scoped by D-072, with the limits listed per checkpoint above — in
+particular: the world's art was not reworked, and whether the opening is ENGAGING to a person
+has not been verified by anyone playing it. Integration: `main` is fast-forwarded to the
+closing commit after its CI run is green (no merge commit, no force). **Phase 21 (Dungeon) is
+NOT STARTED.**
 
 **What a successor should know.** Act I has a standing objective and nothing to do about it.
 Phase 21 (Dungeon) owns CLV-01 and NAV-01; Phase 25 owns Q19-01, Q19-02 and AUD-15; Phase 26
