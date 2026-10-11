@@ -570,16 +570,15 @@ SOURCE_SURVEY_SHEET_NAME,A torn sheet under the stele,Mảnh giấy rách dướ
 UI_PICKUP_HELD_WRECK,It is nailed shut.,Hòm còn đóng đinh.
 UI_CHRONICLE_TITLE,Chronicle,Sổ Ký Sự
 UI_CHRONICLE_PAGE_STORY,The road so far,Đường đã qua
-UI_CHRONICLE_PAGE_SELF,Who you were,Ngươi từng là ai
+UI_CHRONICLE_PAGE_SELF,Who you are,Ngươi là ai
 UI_CHRONICLE_PAGE_KNOWLEDGE,What you know,Điều ngươi biết
-UI_CHRONICLE_PAGE_PEOPLE,Whom you have met,Người ngươi đã gặp
+UI_CHRONICLE_PAGE_PEOPLE,People you met,Người đã gặp
 UI_CHRONICLE_KEYS,{key} Next page · Esc Close · {page}/{pages},{key} Trang sau · Esc Đóng · {page}/{pages}
 UI_CHRONICLE_EMPTY,Nothing is written yet.,Chưa có gì được ghi lại.
 UI_CHRONICLE_NOW,Now:,Trước mắt:
 UI_CHRONICLE_GOAL,What you came for:,Điều ngươi tìm:
 UI_CHRONICLE_NO_KNOWLEDGE,You have learned nothing worth writing down.,Ngươi chưa học được điều gì đáng chép lại.
 UI_CHRONICLE_NO_PEOPLE,You have spoken to no one here.,Ngươi chưa nói chuyện với ai ở đây.
-UI_CHRONICLE_REGARD,Affinity {affinity} · Trust {trust} · Respect {respect},Thiện cảm {affinity} · Tin cậy {trust} · Kính trọng {respect}
 UI_PURPOSE_OPEN,The road is open,Đường còn mở
 UI_ACTION_CHRONICLE,Chronicle,Sổ Ký Sự
 DLG_TE_MORNING,My cart stays in those woods. By tomorrow the province's men will come to count and to ask — and anyone seen near it will be asked.,"Xe ta nằm lại trong rừng rồi. Mai người của châu sẽ tới đếm, tới hỏi — và ai từng đứng gần cái xe ấy đều sẽ bị hỏi."
@@ -649,3 +648,65 @@ DLG_SHEN_SHEET_LATE,I hear a page is being passed about my village. There is no 
 DLG_SHEN_SHAFT,You went to the rocks. The seal on that door is the outpost's — and so is the right to break it. Stay away from it.,Ngươi đã lên bãi đá. Dấu niêm trên cửa ấy là của tiền đồn — quyền phá niêm cũng vậy. Tránh xa nó ra.
 DLG_SHEN_CHOICE_SECOND_HAND,Point at the word 'level',Chỉ vào chữ 'bình ổn'
 DLG_SHEN_SECOND_HAND,(The readings are in one hand. The word 'level' beside them is in another.) …You read the old notation. I was told to expect someone who could. Nobody told me you would be this quiet about it.,(Cột số đo là một nét chữ. Chữ 'bình ổn' bên cạnh là nét chữ khác.) …Ngươi đọc được lối ghi cũ. Ta đã được dặn chờ một kẻ đọc được. Chỉ không ai dặn rằng ngươi sẽ kín tiếng đến thế.
+UI_CULTIVATE_MID_SWING,Finish your strike before you sit.,Thu chiêu xong rồi hãy tọa thiền.
+STORY_NOTICED_CARTER_HO_TIEU,The knots on the carter's crates are tied the way your lost convoy tied its loads.,Nút buộc trên hòm của lão phu xe đúng kiểu đoàn hàng ngươi từng áp tải.
+STORY_NOTICED_CARTER_NGHE_NHAN,The three-notch stamp on the carter's crates is the one on the lot of spirit stone that cost you your workshop.,Dấu ấn ba khía trên hòm của lão phu xe chính là dấu trên lô linh thạch đã làm ngươi mất xưởng.
+STORY_NOTICED_CARTER_LANG_Y,The carter's nails are grey as ash — like the patient you could not save.,Móng tay lão phu xe xám như tro — như người bệnh ngươi không cứu được.
+STORY_NOTICED_CARTER_THU_THU,"The carter's waybill is written in old survey notation, a hand only your mentor and a few others still use.",Phiếu hàng của lão phu xe viết bằng lối ghi sổ khảo cũ — thứ chữ chỉ thầy ngươi và vài người còn dùng.
+STORY_NOTICED_CARTER_DE_TU_BI_LOAI,"Crates like the carter's reach Cloud Vale before every trial, and the board is written before the candidates arrive.","Những chiếc hòm như của lão phu xe tới Vân Cốc trước mỗi kỳ khảo hạch, và bảng tên được viết xong trước khi thí sinh tới."
+STORY_NOTICED_TRAIL_THU_THU,On the torn sheet the readings are in one hand and the word 'level' in another. The elder was told to expect someone who could see that.,"Trên mảnh sổ, cột số đo là một nét chữ, chữ 'bình ổn' là nét chữ khác. Trưởng lão đã được dặn chờ một kẻ nhìn ra điều đó."
+STORY_NOTICED_TRAIL_NGHE_NHAN,The stones the watchman is paid in have raw bases: nobody ever surveyed or counted them.,Linh thạch trả công cho người gác đều còn đáy thô: chưa ai từng khảo hay đếm chúng.
+STORY_NOTICED_TRAIL_HO_TIEU,The ruts to the shaft are shallow going up and deep coming down — as on the morning your convoy was gone.,"Vết xe lên hầm nông lúc lên, hằn sâu lúc xuống — y như buổi sáng đoàn hàng của ngươi biến mất."
+STORY_NOTICED_TRAIL_LANG_Y,"The watchman's nails are clean. Whatever greyed the carter's hands came from handling the load, not from the woods.","Móng tay người gác vẫn sạch. Thứ làm tay lão phu xe xám đi đến từ việc chạm vào hàng, không phải từ khu rừng."
+STORY_NOTICED_TRAIL_DE_TU_BI_LOAI,"The cord on the shaft's seal is tied in the examiners' knot, and comes up from Cloud Vale ready-tied.","Dây niêm trên cửa hầm thắt kiểu nút của giám khảo, và được gửi lên từ Vân Cốc đã thắt sẵn."
+UI_CHRONICLE_PAGE_BODY,Body and path,Thân và đạo
+UI_CHRONICLE_PAGE_HISTORY,The earlier road,Chặng trước đó
+UI_CHRONICLE_NOTICED,What only you noticed,Điều chỉ ngươi nhận ra
+UI_CHRONICLE_HEALTH,Health {current} / {max},Sinh lực {current} / {max}
+UI_CHRONICLE_LEVEL,Level {level} · experience {into} / {cost},Cấp {level} · kinh nghiệm {into} / {cost}
+UI_CHRONICLE_LEVEL_MAX,Level {level} · experience at its limit,Cấp {level} · kinh nghiệm đã tới giới hạn
+UI_CHRONICLE_REALM,"{realm}, layer {layer} · cultivation {progress} / {cost}",{realm} tầng {layer} · tu vi {progress} / {cost}
+UI_CHRONICLE_STATS,Attack {attack} · Defense {defense} · Speed {speed},Công {attack} · Thủ {defense} · Tốc độ {speed}
+UI_CHRONICLE_WORN,Worn and carried in hand,Đang mang trên người
+UI_CHRONICLE_WORN_NONE,Nothing but travelling clothes and bare hands.,Chỉ có áo đi đường và hai bàn tay không.
+UI_CHRONICLE_TECHNIQUES,Techniques,Công pháp
+UI_CHRONICLE_TECHNIQUE,{name} · {qi} qi · key {key},{name} · {qi} khí · phím {key}
+UI_CHRONICLE_TECHNIQUES_NONE,No technique learned yet.,Chưa học công pháp nào.
+UI_CHRONICLE_COMPANION,"Companion: {name}, level {level} — {state}","Linh thú: {name}, cấp {level} — {state}"
+UI_CHRONICLE_COMPANION_OUT,at your side,đang theo ngươi
+UI_CHRONICLE_COMPANION_AWAY,waiting to be called,chờ được gọi
+UI_CHRONICLE_COMPANION_RESTING,resting,đang dưỡng sức
+UI_CHRONICLE_COMPANION_NONE,No companion walks with you.,Chưa có linh thú nào đi cùng ngươi.
+UI_CHRONICLE_PLACE,You are in {place}.,Ngươi đang ở {place}.
+UI_CHRONICLE_REGARD_LINE,{dimension}: {band} ({value}),{dimension}: {band} ({value})
+UI_REL_BAND_AFFINITY_0,hostile,thù ghét
+UI_REL_BAND_AFFINITY_1,cold,lạnh nhạt
+UI_REL_BAND_AFFINITY_2,indifferent,dửng dưng
+UI_REL_BAND_AFFINITY_3,warm,có thiện cảm
+UI_REL_BAND_AFFINITY_4,fond,quý mến
+UI_REL_BAND_TRUST_0,none yet,chưa tin
+UI_REL_BAND_TRUST_1,a little,tin đôi chút
+UI_REL_BAND_TRUST_2,some,tin phần nào
+UI_REL_BAND_TRUST_3,trusted,tin cậy
+UI_REL_BAND_TRUST_4,trusted with anything,tin tuyệt đối
+UI_REL_BAND_RESPECT_0,none yet,chưa nể
+UI_REL_BAND_RESPECT_1,noticed,đã để mắt
+UI_REL_BAND_RESPECT_2,regarded,coi trọng
+UI_REL_BAND_RESPECT_3,respected,nể trọng
+UI_REL_BAND_RESPECT_4,revered,kính phục
+UI_REL_BAND_RIVALRY_0,none,không có
+UI_REL_BAND_RIVALRY_1,a spark,chớm ganh đua
+UI_REL_BAND_RIVALRY_2,a rival,đối thủ
+UI_REL_BAND_RIVALRY_3,a bitter rival,kình địch
+UI_REL_BAND_RIVALRY_4,sworn rivals,không đội trời chung
+UI_REL_BAND_FEAR_0,none,không sợ
+UI_REL_BAND_FEAR_1,uneasy,hơi e dè
+UI_REL_BAND_FEAR_2,wary,dè chừng
+UI_REL_BAND_FEAR_3,afraid,sợ
+UI_REL_BAND_FEAR_4,terrified,khiếp sợ
+UI_REL_BAND_DEBT_0,owes you much,nợ ngươi nhiều
+UI_REL_BAND_DEBT_1,owes you,nợ ngươi
+UI_REL_BAND_DEBT_2,nothing owed,không ai nợ ai
+UI_REL_BAND_DEBT_3,you owe them,ngươi nợ họ
+UI_REL_BAND_DEBT_4,you owe them much,ngươi nợ họ nhiều
+UI_CHRONICLE_HINT,Your road is being written down. {key}: open the Chronicle.,Đường ngươi đi đang được chép lại. {key}: mở Sổ Ký Sự.

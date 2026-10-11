@@ -44,6 +44,14 @@ class_name StoryBeatData
 @export var ambience_id: StringName = &""
 
 
+## A ONE-TIME HINT said when this beat completes (D-073 §4): a notice key and the input
+## action whose key it names ("{key}" in the text is that action's label, as `InputService`
+## reports it — never a hard-coded letter). Said once because a beat completes once: there is
+## no "hint shown" flag anywhere. Both or neither.
+@export var completion_hint_key: StringName = &""
+@export var completion_hint_action: StringName = &""
+
+
 func has_encounter() -> bool:
 	return encounter_id != &""
 
@@ -52,6 +60,8 @@ func text_keys() -> Array[StringName]:
 	var keys: Array[StringName] = [objective_key]
 	if record_key != &"":
 		keys.append(record_key)
+	if completion_hint_key != &"":
+		keys.append(completion_hint_key)
 	return keys
 
 
@@ -66,6 +76,8 @@ func validation_errors() -> Array[String]:
 		errors.append("names no source in canon")
 	if plays_origin_vignette and entry_scene_id != &"":
 		errors.append("plays the Origin's vignette AND names a scene of its own")
+	if (completion_hint_key == &"") != (completion_hint_action == &""):
+		errors.append("a completion hint needs both its text and the action it names")
 	if terminal:
 		if trigger != null or not branches.is_empty():
 			errors.append("is terminal but has a trigger or a way on")

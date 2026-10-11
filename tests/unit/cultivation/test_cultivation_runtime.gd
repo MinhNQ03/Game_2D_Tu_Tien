@@ -148,6 +148,73 @@ func test_sit_gather_break_through_and_keep_sitting() -> void:
 	_teardown()
 
 
+const AttackComponentScript := preload("res://src/gameplay/components/attack_component.gd")
+const RngServiceScript := preload("res://src/domain/worldsim/rng_service.gd")
+const PLAYER_ATTACK := "res://data/combat/attack_player_basic.tres"
+
+
+## Give the stub player a REAL, armed attack — the shipped basic swing.
+func _arm_player() -> AttackComponent:
+	var component: AttackComponent = AttackComponentScript.new()
+	component.name = "AttackComponent"
+	_player.add_child(component)
+	var rng: RngService = RngServiceScript.new(20261011)
+	assert_true(component.arm(load(PLAYER_ATTACK) as AttackData,
+		CombatService.new(rng.stream(RngService.STREAM_COMBAT)), CombatHurtboxRegistry.new(),
+		&"player"), "the player's swing is armed")
+	return component
+
+
+## THE DEFECT (D-073, handoff H21-12), measured in the real window before this test existed:
+## for the whole 0.4 s of a swing, `cultivate` made the character sit and stand in the same
+## tick, with no word said — a press that seemed to do nothing. A sitting may not START while
+## a swing is committed (the state machine's own rule: an attack ends a sitting); the press is
+## answered at once, in words, nothing starts, and the next press after the swing sits.
+func test_sitting_down_mid_swing_is_refused_in_words_and_the_next_press_sits() -> void:
+	_setup(SPRING)
+	_knowledge.grant(&"know_dan_khi_quyet", &"test")
+	var attack := _arm_player()
+	var said: Array = []
+	var sat: Array = []
+	var stood: Array = []
+	_cultivation.cultivation_refused.connect(func(key: StringName) -> void: said.append(key))
+	_cultivation.meditation_started.connect(func(id: StringName) -> void: sat.append(id))
+	_cultivation.meditation_ended.connect(func(why: StringName) -> void: stood.append(why))
+	var data := load(PLAYER_ATTACK) as AttackData
+	var whole := data.windup_seconds + data.active_seconds + data.recovery_seconds
+	# One press in each phase of ONE swing: wind-up, the hit window, the recovery.
+	assert_true(attack.request_attack(), "a swing begins")
+	var phases: Array[int] = []
+	for at: float in [0.0, data.windup_seconds + 0.01, data.active_seconds + 0.02]:
+		attack.advance(at)
+		phases.append(attack.state())
+		assert_ne(attack.state(), AttackStateMachine.State.READY, "the swing is in flight")
+		_cultivation.request_cultivate()
+		_cultivation.tick(1.0 / 60.0)
+		assert_eq(_cultivation.phase(), CultivationRuntime.Phase.IDLE,
+			"nobody sat down in attack state %d" % attack.state())
+	assert_eq(phases, [AttackStateMachine.State.WINDUP, AttackStateMachine.State.ACTIVE,
+		AttackStateMachine.State.RECOVERY], "the three phases were each tried")
+	assert_eq(said, [CultivationRuntime.REFUSE_MID_SWING, CultivationRuntime.REFUSE_MID_SWING,
+		CultivationRuntime.REFUSE_MID_SWING], "each press was answered, once, with the reason")
+	assert_eq(sat, [], "and no sitting was ever started")
+	assert_eq(stood, [], "so none was ended: no sit-and-stand flicker")
+	# The swing finishes; the SAME key now sits, once.
+	attack.advance(whole)
+	assert_eq(attack.state(), AttackStateMachine.State.READY, "the swing is over")
+	_cultivation.request_cultivate()
+	_run(CultivationRuntime.SETTLE_SECONDS + 0.2)
+	assert_eq(sat.size(), 1, "the next press sits")
+	assert_eq(_cultivation.phase(), CultivationRuntime.Phase.GATHERING, "and gathers")
+	assert_eq(said.size(), 3, "with no further refusal")
+	# Swinging while seated still ends the sitting, as before: that rule is unchanged.
+	assert_true(attack.request_attack(), "a swing from the seat")
+	_cultivation.tick(1.0 / 60.0)
+	assert_eq(stood, [CultivationRuntime.END_ATTACKED], "an attack ends a sitting")
+	attack.cancel()
+	_teardown()
+
+
 func test_a_blow_interrupts_and_an_unreleased_breakthrough_changes_nothing() -> void:
 	_setup(SPRING)
 	_knowledge.grant(&"know_dan_khi_quyet", &"t")

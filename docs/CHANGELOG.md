@@ -8,6 +8,22 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 3: the Chronicle explains; sitting mid-swing is answered (D-073 §4, §5)
+
+- **Chronicle.** People: each relationship dimension by name with a band word and its number
+  (`RegardBands`), the decision that moved it underneath, never a sum. *Who you are* and
+  *Body and path* (health, level, realm, combat stats, what is worn, techniques with cost and
+  key, companion, place) fed by the views the HUD already has. History is paged whole, older
+  records at the end. An Origin's observations are kept (`OriginData.observation_*`).
+- **The key is taught once**: `StoryBeatData.completion_hint_*`, said when the first
+  conversation closes, with the label `InputService` reports.
+- **`cultivate` during a swing** is refused in words (`UI_CULTIVATE_MID_SWING`) instead of
+  sitting and standing in one tick. Measured in the real window before and after.
+- Found by looking: a crash when paging in the real app (a panel rebuilt inside the layout
+  pass), half the page unused, a clipped line. Fixed; the layout test now measures what the
+  engine laid out.
+- Suite 1224; 18 mutations red (one survived first and got its test).
+
 ### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 2: the Night is shown (D-073 §3)
 
 - **Ambience.** `StoryBeatData.ambience_id` → `MapAmbience` (presentation, `Visual/Ambience`):

@@ -228,10 +228,15 @@ func _content_errors(service: StoryService, scenes: StorySceneCatalogData,
 				if not bool(has_text.call(key)):
 					errors.append("%s: text '%s' has no translation in every language"
 						% [scene.id, key])
-		for who in scene.speaker_ids():
+		for who in scene.speaker_ids():  # (a hint's action is checked below)
 			if registry.get_character(who) == null:
 				errors.append("%s: speaker '%s' is not a registered character"
 					% [scene.id, who])
+	for beat in service.catalog().all_beats():
+		if beat.completion_hint_action != &"" \
+				and not InputMap.has_action(beat.completion_hint_action):
+			errors.append("%s: hint action '%s' is not an input action"
+				% [beat.id, beat.completion_hint_action])
 	return errors
 
 
@@ -397,6 +402,9 @@ func build_view() -> StoryView:
 		if answer != null:
 			view.decisions.append(answer.record_key)
 	view.met = state.met.duplicate()
+	view.noticed = _service.noticed_keys()
+	for character_id in state.met:
+		view.decisions_about[character_id] = _service.decisions_about(character_id)
 	return view
 
 

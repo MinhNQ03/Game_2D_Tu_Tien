@@ -1532,3 +1532,44 @@
 - **Guards:** `CONTENT_BIBLE.md` §16 (worked entries); `WorldItem.held_by_flag` + story E2E
   step 8b; `test_each_origin_notices_its_own_thing_about_the_carters_load_once`; the
   side-by-side sheet opened for D-072 addendum.
+
+
+## L-054 — "The owner exists" is not "the owner can"; a harness can freeze a clock; a panel must not rebuild inside layout; an estimate cannot be its own witness
+
+- **What happened (post-Phase-20 hardening, D-073).** Four defects of one family — a check
+  that looked like the thing it stood for.
+  (a) `StoryService.choose` "validated every consequence before applying any": it checked
+  that each owner seam was a valid Callable, recorded the choice, then applied. An owner that
+  refused left a recorded decision with part of its effect, and the call returned `ok`.
+  (b) The story E2E "waited for the attack to be READY" before sitting. Traced: headless, the
+  E2E advances on process frames and almost no 60 Hz physics ticks elapse, so a 0.22 s
+  recovery stayed "in flight" across a scene, a map change and a conversation. The real
+  defect was elsewhere and smaller — `cultivate` inside a swing sat and stood in one tick,
+  silently — and the wait had hidden it.
+  (c) The Chronicle rebuilt its labels from the `resized` signal, which the engine emits
+  while still sorting containers; with a title that wrapped on some pages the body's height
+  changed per page, every turn re-packed, and the real application crashed (signal 11).
+  Headless never lays out a real frame.
+  (d) The layout test compared the packing estimate with the room — the same arithmetic that
+  had left out the Label's line spacing — and passed over a clipped line and a scrollbar.
+- **Why the tests missed it.** Each test asserted the check, not what the check was for.
+- **Rules.**
+  - A "can you?" is answered by the owner's OWN rule (the function its commit asks first),
+    and a test holds "can" and "does" together on the real owner. Presence is not consent.
+  - What a decision asks of others is done first; what is its own is written LAST.
+  - When a test waits for a state, ask what produces that state in the harness and in the
+    real window separately, and measure the real one before keeping the wait.
+  - A Control never frees or adds children inside `resized` / a sort; it defers. A title is
+    one fixed line or its height is part of the room.
+  - A layout test measures what the ENGINE laid out (`get_combined_minimum_size`, the
+    rendered rect), at the smallest supported window, in both languages — never the
+    estimate that produced the layout.
+  - Open the real window for anything that pages, scrolls or wraps. Three of these four were
+    found there.
+- **Guards:** `test_a_later_owner_declining_refuses_the_whole_choice_…`,
+  `test_what_a_real_owner_says_it_can_do_it_does`;
+  `test_sitting_down_mid_swing_is_refused_in_words_and_the_next_press_sits`, story E2E 8f;
+  `test_a_long_history_is_paged_whole_…` (rendered height at 1280×720 / 1280×800, vi / en),
+  `test_a_page_uses_the_room_it_has_at_the_smallest_window`; `tools/capture_ui.gd` pages the
+  book in the real window.
+

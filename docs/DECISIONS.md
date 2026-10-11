@@ -6047,3 +6047,32 @@ the vein-touched coat (the wolf's own value, with a dark crest) and the socket (
 litter) each failed in the real window first. They are recorded in the handoff §12 because a
 later reader will otherwise "fix" them back.
 
+### D-073 addendum (Checkpoint 3) — §5 decided; how the book is fed and laid out
+
+**I. Sitting down mid-swing is refused, in words (§5).** Reproduced in the real window: for
+the 0.4 s of a swing `cultivate` sat and stood in one tick with nothing said. The cultivation
+state machine already ends a sitting on an attack, so by its own contract a sitting cannot
+begin inside one; `_try_sit` says so (`UI_CULTIVATE_MID_SWING`) and starts nothing. Combat
+was not changed: the suspected "stuck recovery" was the headless harness, in which almost no
+physics time passes between process frames. Rejected: letting the sit cancel the swing (a
+cultivation key that cancels combat commitment is a combat rule change, and an exploit);
+queuing the press (one press, one action — a sit that fires 0.3 s later is a surprise).
+
+**J. One feed per fact.** The Chronicle's body page could have been one big view assembled by
+`WorldRuntime` from six runtimes. Instead the panel is handed the views the HUD already
+receives from those owners, by the HUD's own setters. Nothing is fetched twice, and a number
+on the book can never disagree with the same number on the plaque.
+
+**K. Words for a number are presentation; a sum is forbidden.** `RegardBands` turns a value
+into one of five bands on ITS dimension's range (about the middle if the dimension can go
+below zero, up from nothing if it cannot). The thresholds are constants in that one file and
+a test walks every value of every shipped dimension. Nothing adds dimensions together.
+
+**L. The hint is the beat's data and nobody remembers it was said.**
+`StoryBeatData.completion_hint_key` / `completion_hint_action`; `WorldRuntime` says it when
+the beat completes, or when the conversation it completed in closes. A beat completes once,
+so the hint is said once — with no "shown" flag in the story, the HUD or anywhere else.
+
+**M. A panel never rebuilds itself inside the layout pass.** Found as a crash in the real
+application (handoff §12). Recorded as L-054.
+

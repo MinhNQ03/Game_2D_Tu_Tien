@@ -261,9 +261,18 @@ func test_real_story_flow() -> void:
 		"the plaque says what the STORY asks next, not a quest nobody has taken on")
 	assert_false((hub.get_node("KnowledgeSources/SurveySheet") as Node2D).visible,
 		"nothing is hidden under the stele yet: the Night has not happened")
+	# The Chronicle's key is TAUGHT (D-073 §4, H21-10): once, when the book first has
+	# something in it, in the label InputService reports — and not before, and not while the
+	# player is reading someone's line.
+	var chronicle_hint := String(loc.call("t_args", "UI_CHRONICLE_HINT",
+		{"key": input.call("get_action_display_label", CHRONICLE)}))
+	assert_false(chronicle_hint.contains("{key}") or chronicle_hint.contains("chronicle"),
+		"the hint names a real key label ('%s')" % chronicle_hint)
+	assert_ne(hud.notice_text(), chronicle_hint, "nothing is taught before there is a book")
 	var lin := hub.get_node_or_null("Interactables/LinYue") as WorldNpc
 	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
 	assert_eq(_dialogue.current_node_id(), &"lin_greet", "a stranger's greeting")
+	assert_ne(hud.notice_text(), chronicle_hint, "nor over the line she is saying")
 	assert_true(service.state().has_met(LIN), "the story records the meeting")
 	assert_eq(service.state().beat_id, &"beat_contacts", "and the arrival beat is complete")
 	await _advance_to(&"lin_hub")
@@ -274,6 +283,12 @@ func test_real_story_flow() -> void:
 	assert_false(_panel.choice_ids().has(&"lin_notation"),
 		"a line said once is not offered again")
 	await _say(&"lin_leave", &"")
+	await _wait_until(func() -> bool: return hud.notice_text() == chronicle_hint, 600)
+	assert_eq(hud.notice_text(), chronicle_hint,
+		"when she has finished, the player is told the book exists and which key opens it")
+	assert_false(hud.is_chronicle_open(), "being told opens nothing")
+	assert_eq(int(input.call("current_context")), int(input.Context.GAMEPLAY),
+		"and takes no key from the player")
 	_step("8a. arrived by the road; met Lâm Nguyệt; this Origin's line was said once")
 
 	# --- 8b. nothing lies free: the outpost's blade is held until the elder issues it ---------
@@ -459,9 +474,33 @@ func test_real_story_flow() -> void:
 	var spring := hub.get_node("CultivationSites/LacHaSpring") as Node2D
 	player.global_position = spring.global_position + Vector2(0, 26)  # setup: at the spring
 	await scene_tree.physics_frame
-	# A swing still recovering would end the sitting as "attacked": let the body come to rest.
+	# THE RULE A PLAYER MEETS (D-073, H21-12): a swing is committed, so `cultivate` pressed
+	# inside one is answered in words and nothing starts — it used to sit and stand in one
+	# tick, silently. (This step used to WAIT for the swing to end, which hid exactly that.)
+	var cultivation := main.get_node("Systems/CultivationRuntime") as CultivationRuntime
 	await _wait_until(func() -> bool:
 		return attack.state() == AttackStateMachine.State.READY, 120)
+	var sittings: Array = []
+	var on_sat := func(site_id: StringName) -> void: sittings.append(site_id)
+	cultivation.meditation_started.connect(on_sat)
+	Input.action_press(ATTACK)  # held across a physics tick: the player reads it there
+	await _wait_until(func() -> bool:
+		return attack.state() != AttackStateMachine.State.READY, 30)
+	Input.action_release(ATTACK)
+	assert_ne(attack.state(), AttackStateMachine.State.READY, "a real swing is in flight")
+	Input.action_press(CULTIVATE)
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	Input.action_release(CULTIVATE)
+	await scene_tree.process_frame
+	assert_eq(sittings, [], "a real cultivate key mid-swing starts no sitting")
+	assert_eq(cultivation.phase(), CultivationRuntime.Phase.IDLE, "nobody sat")
+	assert_eq(hud.notice_text(), String(loc.call("t", "UI_CULTIVATE_MID_SWING")),
+		"and the player is told why, at once")
+	assert_eq(service.state().beat_id, &"beat_settle", "the story did not move")
+	await _wait_until(func() -> bool:
+		return attack.state() == AttackStateMachine.State.READY, 240)
+	assert_eq(attack.state(), AttackStateMachine.State.READY, "the swing ends by itself")
 	Input.action_press(CULTIVATE)
 	await scene_tree.physics_frame
 	await scene_tree.physics_frame
@@ -470,6 +509,8 @@ func test_real_story_flow() -> void:
 	assert_eq(service.state().beat_id, &"beat_sheet_told",
 		"tu vi gathered by sitting completes the beat; she kept faith, so she tells where to look")
 	assert_true(character.cultivation_progress > 0, "through the cultivation owner, for real")
+	assert_eq(sittings.size(), 1, "the next press, after the swing, sat — once")
+	cultivation.meditation_started.disconnect(on_sat)
 	Input.action_press(MOVE_RIGHT)  # moving is how one stands up
 	for _i in 6:
 		await scene_tree.physics_frame
@@ -502,20 +543,72 @@ func test_real_story_flow() -> void:
 	Input.action_release(MOVE_RIGHT)
 	assert_true(player.global_position.x > read_from.x + 4.0 and hud.is_chronicle_open(),
 		"the player walks with the book open")
-	await _fire_action(CHRONICLE)
-	assert_eq(book.page_id(), ChroniclePanel.PAGE_SELF, "the same key turns the page")
-	assert_true(book.page_lines().has(String(loc.call("t", "ORIGIN_THU_THU_NAME"))),
-		"who the player was")
-	await _fire_action(CHRONICLE)
-	assert_true(book.page_lines().has(String(loc.call("t", "KNOW_SURVEY_FRAGMENT_NAME"))),
-		"what they know now includes the sheet")
-	await _fire_action(CHRONICLE)
-	assert_eq(book.page_id(), ChroniclePanel.PAGE_PEOPLE, "the last page: whom they have met")
+	# The same real key turns every page and, after the last, closes the book. Each section
+	# says what its OWNER holds (D-073 §4), read here as the player would read it.
+	var read := {}
+	var turns := 0
+	while hud.is_chronicle_open() and turns < 24:
+		var section := book.page_id()
+		if not read.has(section):
+			read[section] = []
+		(read[section] as Array).append_array(book.page_lines())
+		await _fire_action(CHRONICLE)
+		turns += 1
+	assert_false(hud.is_chronicle_open(), "and after the last page the key closes the book")
+	assert_eq(turns, book.page_count(), "one press per page: no page was skipped or doubled")
+	for section: StringName in [ChroniclePanel.PAGE_STORY, ChroniclePanel.PAGE_SELF,
+			ChroniclePanel.PAGE_BODY, ChroniclePanel.PAGE_KNOWLEDGE, ChroniclePanel.PAGE_PEOPLE]:
+		assert_true(read.has(section), "the book has a '%s' page" % section)
+	assert_true((read[ChroniclePanel.PAGE_SELF] as Array).has(
+		String(loc.call("t", "ORIGIN_THU_THU_NAME"))), "who the player was")
+	assert_true((read[ChroniclePanel.PAGE_SELF] as Array).has(
+		"◆ " + String(loc.call("t", "STORY_NOTICED_CARTER_THU_THU"))),
+		"and what only a keeper of records noticed about the carter's load, kept (H21-11)")
+	assert_true((read[ChroniclePanel.PAGE_KNOWLEDGE] as Array).has(
+		String(loc.call("t", "KNOW_SURVEY_FRAGMENT_NAME"))), "what they know includes the sheet")
+	var body_page: Array = read[ChroniclePanel.PAGE_BODY]
+	assert_true(body_page.has(String(loc.call("t_args", "UI_CHRONICLE_HEALTH",
+		{"current": int(player.call("get_current_health")),
+			"max": int(player.call("get_max_health"))}))),
+		"body and path: the health the player really has (%s)" % str(body_page))
+	assert_true(body_page.has(String(loc.call("t_args", "UI_CHRONICLE_STATS", {
+		"attack": int(player.call("get_attack_power")),
+		"defense": int(player.call("get_defense")),
+		"speed": int(round(float(player.get_node("StatsComponent").call("get_move_speed"))))}))),
+		"the stats combat reads, from the player's own stat owner")
+	var equipment := main.get_node("Systems/EquipmentRuntime") as EquipmentRuntime
+	var worn_ids := equipment.get_state().worn_ids()
+	assert_eq(body_page.has(String(loc.call("t", "UI_CHRONICLE_WORN_NONE"))), worn_ids.is_empty(),
+		"what is worn is what the equipment owner says is worn (%s)" % str(worn_ids))
+	assert_eq(body_page.has(String(loc.call("t", "ITEM_KIEM_THANH_THIET_NAME"))),
+		worn_ids.has(&"item_kiem_thanh_thiet"),
+		"a blade in the BAG is not listed as worn: the book is not a second satchel")
+	var people_page: Array = read[ChroniclePanel.PAGE_PEOPLE]
 	var lin_row := "%s — %s" % [loc.call("t", "CHARACTER_DISCIPLE_LIN_NAME"),
 		loc.call("t", "CHARACTER_DISCIPLE_LIN_TITLE")]
-	assert_true(book.page_lines().has(lin_row), "Lâm Nguyệt is in it (%s)" % str(book.page_lines()))
-	await _fire_action(CHRONICLE)
-	assert_false(hud.is_chronicle_open(), "and after the last page the key closes the book")
+	assert_true(people_page.has(lin_row), "Lâm Nguyệt is in it (%s)" % str(people_page))
+	var trust_in_book := RegardRules.read(relationship.get_service(), relationship.get_config(),
+		LIN, character.instance_id, &"trust")
+	assert_true(people_page.has(String(loc.call("t_args", "UI_CHRONICLE_REGARD_LINE", {
+		"dimension": "Tin cậy" if String(loc.call("get_language")) == "vi" else "Trust",
+		"band": loc.call("t", RegardBands.key(&"trust", trust_in_book, 0, 100)),
+		"value": "+%d" % trust_in_book}))),
+		"her trust as the graph holds it (%d), named and in a word" % trust_in_book)
+	assert_true(people_page.has("◆ " + String(loc.call("t", "STORY_CHOICE_LAM_READINGS_KEPT"))),
+		"and the decision that earned it stands under her")
+	# The people page follows the GRAPH, not the story: a regard moved by anything else (an
+	# answer in a conversation, a quest's reward) shows without the story having moved.
+	var moved_line := String(loc.call("t_args", "UI_CHRONICLE_REGARD_LINE", {
+		"dimension": "Kính trọng" if String(loc.call("get_language")) == "vi" else "Respect",
+		"band": loc.call("t", RegardBands.key(&"respect", 7, 0, 100)), "value": "+7"}))
+	assert_false(book.all_lines().has(moved_line), "nobody respects the player at +7 yet")
+	var beat_before := service.state().beat_id
+	RegardRules.move(relationship.get_service(), relationship.get_config(), SHEN,
+		character.instance_id, &"respect", 7, &"test_outside_the_story")
+	await scene_tree.process_frame
+	assert_eq(service.state().beat_id, beat_before, "the story did not move")
+	assert_true(book.all_lines().has(moved_line),
+		"and the book already says so: it reads the relationship graph (%s)" % moved_line)
 	await _press_until(CHRONICLE, func() -> bool: return hud.is_chronicle_open())
 	await _fire_action(OPEN_MENU)
 	assert_false(hud.is_chronicle_open(), "Esc closes it like every reading surface")

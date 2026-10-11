@@ -358,6 +358,8 @@ entry_scene_id = &"scene_arrival"
 plays_origin_vignette = false
 trigger = SubResource("T_beat_arrival")
 branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_arrival_0")])
+completion_hint_key = &"UI_CHRONICLE_HINT"
+completion_hint_action = &"chronicle"
 
 [sub_resource type="Resource" id="T_beat_contacts"]
 script = ExtResource("s_story_trigger_data")

@@ -90,6 +90,9 @@ var _session_active: bool = false
 ## prefix of its creatures. Runtime only: an encounter is not resumed, it is re-met.
 var _encounter_beat_id: StringName = &""
 var _encounter_prefix: String = ""
+## A hint a completed beat asked for, waiting for the conversation it completed in to close.
+## Routing only (runtime, never saved): what was said is not remembered anywhere.
+var _pending_hint: Dictionary = {}
 
 
 func _ready() -> void:
@@ -133,6 +136,7 @@ func end_session() -> void:
 	_session_active = false
 	_encounter_beat_id = &""
 	_encounter_prefix = ""
+	_pending_hint = {}
 	_detach_player()
 	if _player != null and is_instance_valid(_player):
 		_player.queue_free()
@@ -747,6 +751,7 @@ func _on_xp_gained(_amount: int, _reward_id: StringName) -> void:
 ## is made in the gameplay layer.
 func _on_level_changed(_previous: int, current: int) -> void:
 	_push_progression_view_to_active_map()
+	_push_chronicle_view_to_active_map()  # a level changes the stats the book reads
 	if _active_map != null and _active_map.has_method("celebrate_level_up"):
 		_active_map.call("celebrate_level_up", current)
 	# The CHARACTER answers too (Phase 12 closes the D-057 §20 debt): a mid-scale response on
@@ -851,6 +856,7 @@ func _push_inventory_view_to_active_map() -> void:
 		return
 	_active_map.call("set_inventory_view", InventoryView.make(inventory,
 		_find_sibling_of(EquipmentRuntime) as EquipmentRuntime))
+	_push_chronicle_view_to_active_map()  # what is worn changes the stats the book reads
 
 
 func _connect_inventory_signals() -> void:
@@ -1250,10 +1256,55 @@ func refresh_active_map_story_view() -> void:
 		return
 	if not story.scene_changed.is_connected(_push_story_scene_to_active_map):
 		story.scene_changed.connect(_push_story_scene_to_active_map)
+	if not story.beat_completed.is_connected(_on_story_beat_completed):
+		story.beat_completed.connect(_on_story_beat_completed)
+	var talk := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if talk != null and not talk.dialogue_closed.is_connected(_on_dialogue_closed_for_hint):
+		talk.dialogue_closed.connect(_on_dialogue_closed_for_hint)
+	# How people regard the player moves outside the story too (an answer, a quest's reward):
+	# the book's people page follows the graph itself, on its own signal — never polled.
+	var relationship := _find_sibling_of(RelationshipRuntime) as RelationshipRuntime
+	if relationship != null and relationship.is_session_active():
+		var graph := relationship.get_service()
+		if not graph.relationship_changed.is_connected(_on_regard_changed):
+			graph.relationship_changed.connect(_on_regard_changed)
 	# What is in the map because of the story follows the story, not only its scenes.
 	if not story.view_changed.is_connected(_push_story_scene_to_active_map):
 		story.view_changed.connect(_push_story_scene_to_active_map)
 	_push_story_scene_to_active_map()
+
+
+## A beat that completes may teach ONE thing, once (D-073 §4) — the Chronicle's key. It is
+## said when the player can read it: at once, or when the conversation the beat completed in
+## has closed. Nothing remembers that it was said; the beat cannot complete twice.
+func _on_story_beat_completed(beat_id: StringName) -> void:
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	var beat := story.get_service().catalog().beat(beat_id) \
+		if story != null and story.get_service() != null else null
+	if beat == null or beat.completion_hint_key == &"":
+		return
+	_pending_hint = {"key": beat.completion_hint_key, "action": beat.completion_hint_action}
+	var talk := _find_sibling_of(DialogueRuntime) as DialogueRuntime
+	if talk == null or not talk.is_session_active() or not talk.is_open():
+		_say_pending_hint()
+
+
+func _on_dialogue_closed_for_hint(_dialogue_id: StringName, _reason: StringName) -> void:
+	_say_pending_hint()
+
+
+func _say_pending_hint() -> void:
+	if _pending_hint.is_empty():
+		return
+	var hint := _pending_hint
+	_pending_hint = {}
+	# The HUD resolves an action named under "key" to the label `InputService` reports.
+	_notify(&"announce", hint["key"], {"key": hint["action"]})
+
+
+func _on_regard_changed(_edge_id: StringName, _dimension: StringName, _old_value: int,
+		_new_value: int, _cause: StringName) -> void:
+	_push_chronicle_view_to_active_map()
 
 
 func _push_story_scene_to_active_map() -> void:
@@ -1292,6 +1343,15 @@ func _push_chronicle_view_to_active_map() -> void:
 	view.origin_edge_key = told.origin_edge_key
 	view.origin_cost_key = told.origin_cost_key
 	view.origin_goal_key = told.origin_goal_key
+	view.noticed = told.noticed
+	# The numbers combat itself reads, from the player's own stat owner (never recomputed).
+	if _player != null and is_instance_valid(_player) and _player.has_method("get_attack_power"):
+		view.stats_available = true
+		view.attack = int(_player.call("get_attack_power"))
+		view.defense = int(_player.call("get_defense"))
+		var stats := _player.get_node_or_null("StatsComponent")
+		if stats != null and stats.has_method("get_move_speed"):
+			view.move_speed = int(round(float(stats.call("get_move_speed"))))
 	var knowledge := _find_sibling_of(KnowledgeRuntime) as KnowledgeRuntime
 	if knowledge != null and knowledge.is_session_active():
 		var core := knowledge.get_service()
@@ -1307,13 +1367,23 @@ func _push_chronicle_view_to_active_map() -> void:
 			if registry != null else null
 		if person == null:
 			continue
-		var row := {"name_key": person.name_key, "title_key": person.title_key,
-			"affinity": 0, "trust": 0, "respect": 0}
+		var regard: Array[Dictionary] = []
 		if relationship != null and relationship.is_session_active():
-			for dimension: StringName in [&"affinity", &"trust", &"respect"]:
-				row[String(dimension)] = RegardRules.read(relationship.get_service(),
-					relationship.get_config(), character_id, me, dimension)
-		view.people.append(row)
+			var graph := relationship.get_service()
+			var config := relationship.get_config()
+			var shown: Array[StringName] = ChronicleView.SHOWN_DIMENSIONS.duplicate()
+			for dimension in ChronicleView.SHOWN_WHEN_SET:
+				if config.has_dimension(dimension) and RegardRules.read(graph, config,
+						character_id, me, dimension) != config.get_default(dimension):
+					shown.append(dimension)
+			for dimension in shown:
+				if config.has_dimension(dimension):
+					regard.append({"dimension": dimension,
+						"value": RegardRules.read(graph, config, character_id, me, dimension),
+						"minimum": config.get_min(dimension),
+						"maximum": config.get_max(dimension)})
+		view.people.append({"name_key": person.name_key, "title_key": person.title_key,
+			"regard": regard, "notes": told.decisions_about.get(character_id, [])})
 	_active_map.call("set_chronicle_view", view)
 
 

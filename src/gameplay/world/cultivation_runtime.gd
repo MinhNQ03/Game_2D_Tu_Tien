@@ -70,6 +70,8 @@ const REFUSE_NO_METHOD := &"UI_CULTIVATE_NO_METHOD"
 const REFUSE_TOO_STRONG := &"UI_CULTIVATE_SITE_TOO_STRONG"
 const REFUSE_MISSING_KNOWLEDGE := &"UI_CULTIVATE_MISSING_KNOWLEDGE"
 const REFUSE_CEILING := &"UI_CULTIVATE_CEILING"
+## A swing is committed (wind-up, hit window or recovery): the body is not free to sit.
+const REFUSE_MID_SWING := &"UI_CULTIVATE_MID_SWING"
 
 var _service: CultivationService = null
 var _character: CharacterState = null
@@ -317,9 +319,16 @@ func _interruption() -> StringName:
 		var intent: Vector2 = _input.call("get_move_vector")
 		if intent != Vector2.ZERO:
 			return END_MOVED
-	if _player_attack != null and _player_attack.state() != AttackStateMachine.State.READY:
+	if _swing_in_flight():
 		return END_ATTACKED
 	return &""
+
+
+## Is the player's swing committed right now? Asked of the combat owner's component; this
+## runtime never writes it.
+func _swing_in_flight() -> bool:
+	return _player_attack != null and is_instance_valid(_player_attack) \
+		and _player_attack.state() != AttackStateMachine.State.READY
 
 
 func _try_sit() -> void:
@@ -333,6 +342,14 @@ func _try_sit() -> void:
 		return
 	if not _service.meets(_character, data.required_realm, data.required_layer):
 		cultivation_refused.emit(REFUSE_TOO_STRONG)
+		return
+	# An attack ends a sitting (`_interruption`), so a sitting may not BEGIN inside one: it
+	# would start and end in the same tick and the press would seem to do nothing — measured
+	# in the real window for the whole 0.4 s of a swing (D-073, H21-12). Say why instead. The
+	# press is not queued: the next one, after the swing, sits. Asked LAST: a reason that
+	# will still be true after the swing (no method, a vein too strong) is the one to hear.
+	if _swing_in_flight():
+		cultivation_refused.emit(REFUSE_MID_SWING)
 		return
 	_site = site
 	_carry = 0.0

@@ -128,6 +128,39 @@ func entry_scene_id() -> StringName:
 	return beat.entry_scene_id
 
 
+## The record lines of what this run's Origin alone has noticed SO FAR (D-073): each of its
+## observations whose flag is set, in authored order. Read from the flags every time.
+func noticed_keys() -> Array[StringName]:
+	var keys: Array[StringName] = []
+	var who := origin()
+	if who == null:
+		return keys
+	for i in mini(who.observation_flags.size(), who.observation_keys.size()):
+		if flag_at_least(who.observation_flags[i], 1):
+			keys.append(who.observation_keys[i])
+	return keys
+
+
+## The record lines of the decisions made that moved `character_id`'s regard, oldest first —
+## the WHY behind a number on the people page. Read from the choice record every time.
+func decisions_about(character_id: StringName) -> Array[StringName]:
+	var keys: Array[StringName] = []
+	if not has_begun():
+		return keys
+	for entry: Dictionary in _state.choices:
+		var asked := _catalog.choice(StringName(String(entry["choice_id"])))
+		var answer := asked.option(StringName(String(entry["option_id"]))) \
+			if asked != null else null
+		if answer == null:
+			continue
+		for consequence in answer.consequences:
+			if consequence.kind == StoryConsequenceData.Kind.REGARD \
+					and consequence.character_id == character_id:
+				keys.append(answer.record_key)
+				break
+	return keys
+
+
 ## How the maps are lit while the current beat lasts: an ambience id, or empty (as authored).
 ## A fact about where the story stands, for presentation to derive from; never stored.
 func ambience_id() -> StringName:
@@ -572,6 +605,10 @@ func content_errors(has_text: Callable = Callable(), has_knowledge: Callable = C
 					_ask(errors, has_dimension, consequence.dimension,
 						"%s: '%s' is not a relationship dimension" % [where, "%s"])
 	for origin_entry in _origins.entries:
+		for flag_id in origin_entry.observation_flags:
+			if _catalog.flag(flag_id) == null:
+				errors.append("%s: observation flag '%s' is not declared"
+					% [origin_entry.id, flag_id])
 		_ask(errors, has_scene, origin_entry.vignette_scene_id,
 			"%s: vignette '%s' is not a story scene" % [origin_entry.id, "%s"])
 		for grant in origin_entry.grants:

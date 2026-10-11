@@ -251,10 +251,13 @@ func _capture_the_night(main: Node) -> void:
 		return
 	book.reset_page()
 	book.visible = true
-	for page in ChroniclePanel.PAGES.size():
+	await _settle()  # the book packs its pages for the room it is laid out in
+	book.reset_page()
+	for page in 30:
 		await _settle()
-		await _shot("26_chronicle_page_%d" % (page + 1))
-		book.advance_page()
+		await _shot("26_chronicle_page_%02d_%s" % [page + 1, book.page_id()])
+		if not book.advance_page():
+			break
 	book.visible = false
 	await _capture_the_bridge(main)
 

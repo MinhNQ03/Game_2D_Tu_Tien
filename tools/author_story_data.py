@@ -121,6 +121,10 @@ ENCOUNTERS = {"beat_night": ("field_night", "choice_night_stand", "stood", "with
 # `tools/aetheria_art_pipeline/build.py ambience` writes from the Visual DNA. The Night is the
 # evening it becomes due and the dark it happens in; every other beat is the map as authored.
 AMBIENCE = {"beat_warning": "dusk", "beat_night": "night"}
+# A one-time hint said when a beat completes (D-073 §4): beat -> (notice key, the action whose
+# key the notice names). The Chronicle's key is taught when the book first has something in it
+# worth opening - a record, and the first person met - and is never a permanent prompt.
+HINTS = {"beat_arrival": ("UI_CHRONICLE_HINT", "chronicle")}
 
 
 
@@ -239,6 +243,11 @@ ORIGINS = [
 ]
 
 
+# What an Origin alone notices, kept on the record (D-073): (the flag its once-only line
+# raises, the stem of its record key). Every Origin has one of each - which line that is
+# differs per Origin and lives in the conversations; the Chronicle shows the ones said.
+OBSERVATIONS = [("flag_te_origin_said", "CARTER"), ("flag_trail_origin_said", "TRAIL")]
+
 # Scenes that happen somewhere else (the map behind them is covered): every vignette.
 # Scenes that happen somewhere or somewhen else are drawn over an opaque ground.
 ELSEWHERE = {"scene_morning_after", "scene_road_ahead"}
@@ -346,6 +355,8 @@ def story_catalog():
             ("trigger", trigger),
             ("branches", doc.array("story_branch_data", branch_refs))]
             + ([("ambience_id", sn(AMBIENCE[bid]))] if bid in AMBIENCE else [])
+            + ([("completion_hint_key", sn(HINTS[bid][0])),
+                ("completion_hint_action", sn(HINTS[bid][1]))] if bid in HINTS else [])
             + ([("encounter_id", sn(ENCOUNTERS[bid][0])),
                 ("encounter_choice_id", sn(ENCOUNTERS[bid][1])),
                 ("encounter_cleared_option", sn(ENCOUNTERS[bid][2])),
@@ -396,6 +407,9 @@ def origin_catalog():
             ("problem_key", sn(key + "PROBLEM")), ("edge_key", sn(key + "EDGE")),
             ("cost_key", sn(key + "COST")), ("goal_key", sn(key + "GOAL")),
             ("vignette_scene_id", sn("scene_vignette_%s" % oid[len("origin_"):])),
+            ("observation_flags", names(flag for flag, _stem in OBSERVATIONS)),
+            ("observation_keys", names("STORY_NOTICED_%s_%s" % (place, stem)
+                                       for _flag, place in OBSERVATIONS)),
             ("grants", doc.array("origin_grant_data", refs))]))
     return doc.render("origin_catalog_data",
                       [("entries", doc.array("origin_data", entries))])

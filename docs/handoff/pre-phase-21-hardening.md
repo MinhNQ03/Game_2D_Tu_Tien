@@ -1,6 +1,6 @@
 # Handoff — Post-Phase-20 experience hardening / pre-Phase-21 gate (D-073)
 
-> **Status: IN PROGRESS — Checkpoints 1–2 built (the bridge, the choice transaction, the Night shown).** This is a bounded quality pass
+> **Status: IN PROGRESS — Checkpoints 1–3 built (the bridge, the choice transaction, the Night shown, the Chronicle, the cultivate rule).** This is a bounded quality pass
 > between two phases. **It is not a phase.** Phase 20 (Story) is and stays **DONE** under D-072;
 > Phase 21 (Dungeon) and Phase 22 (Boss) are **NOT STARTED** and nothing here builds them.
 > A section marked *planned* is what Gate A decided and has not been built yet; *built* means
@@ -305,8 +305,8 @@ until a person has played it.
 |---|---|---|---|
 | 0 | Audit, Gate A, D-073, status drift corrected. No gameplay code | `1fa3011` | 38134053360 — success, `head_sha` `1fa3011e53ddfe1fb7e88fafd24b3727a67bd71d` |
 | 1 | The Act-I bridge and the choice transaction | `7f900c9` | 38135850806 — success, `head_sha` `7f900c9b075e487def943e1d07016631dbbd7f48` |
-| 2 | The Night: ambience, the wreck, the socket and track, the creatures | *(this commit)* | recorded by the next commit |
-| 3 | The Chronicle and the cultivate / recovery rule | | |
+| 2 | The Night: ambience, the wreck, the socket and track, the creatures | `b857b4d` | 38146160332 — success, `head_sha` `b857b4d8187889ff9a61be11a05d295884e20186` |
+| 3 | The Chronicle and the cultivate / recovery rule | *(this commit)* | recorded by the next commit |
 | 4 | Full regression, the capture matrix, docs, debt register, Phase-21 handoff | | |
 
 ## 10. The Phase-21 handoff (*filled at close; the lead as designed*)
@@ -346,6 +346,116 @@ repository root (no exported build exists yet). Start from New Game; no test-onl
    about the survey. Time to first control, to first fight, to first mystery.
 
 ## 12. Evidence
+
+### Checkpoint 3 — the book that explains, and sitting down mid-swing (*built*)
+
+**H21-12, measured before it was touched.** Two questions, two answers.
+
+1. *Can a recovery hang?* The story E2E was instrumented (temporarily) to print the attack's
+   state from the last wolf to the spring: it read RECOVERY at six consecutive points —
+   through the morning scene, the map change and a whole conversation — with its physics
+   processing ON. That is a HARNESS effect: headless, the E2E waits on process frames and
+   only a handful of 60 Hz physics ticks elapse in that whole stretch, so 0.22 s of recovery
+   never runs out. In the real window a swing is READY 25 ticks after the press, every time.
+   **No recovery hangs; nothing in combat was changed.**
+2. *What does a player get?* Real window, real keys, 60 Hz, at the Lạc Hà spring: one attack,
+   then `cultivate` N physics ticks later.
+
+   | Ticks after the attack | Attack state at the press | Before | After |
+   |---|---|---|---|
+   | 0–6 | WINDUP | sat, stood `attacked` the same tick, no notice | refused, *Thu chiêu xong rồi hãy tọa thiền.*, 1 frame / 20 ms |
+   | 8–11 | ACTIVE | same | refused, same words, 1 frame / 17 ms |
+   | 14–22 | RECOVERY | same | refused, same words, 1 frame / 18 ms |
+   | 26+ | READY | sat and gathered | sat and gathered |
+
+   For 0.4 s after every swing the key appeared to do nothing. The cultivation state machine
+   already says an attack ends a sitting, so a sitting may not BEGIN inside one:
+   `CultivationRuntime._try_sit` now refuses with `UI_CULTIVATE_MID_SWING` and starts
+   nothing. Asked LAST, after "no method" and "too strong": a reason that will still be true
+   when the swing is over is the one to hear (the world E2E held that order). The press is not
+   queued; the next one sits. The E2E's wait-for-READY — which had hidden exactly this — is
+   replaced by the rule itself: a real swing, a real `cultivate` inside it, the notice
+   asserted, then the sitting.
+
+**The Chronicle (H21-07 … H21-11).**
+
+| Was | Now |
+|---|---|
+| `Thiện cảm -10 · Tin cậy 0 · Kính trọng 0` | per person, each dimension on its own line: *Thiện cảm: lạnh nhạt (-10)*, *Tin cậy: tin đôi chút (+15)*, *Kính trọng: chưa nể (0)* — a word for where the value stands on that dimension's own range (`RegardBands`), then the number; a rivalry, fear or debt only when it is not at its default; under the person, the recorded decision that moved their regard. Never a sum |
+| "Who you were": the Origin | **Ngươi là ai** (name, Origin, the problem, what you came for, its edge and cost, *what only you noticed*) and **Thân và đạo** (health, level and XP, realm / layer / tu vi, Attack · Defense · Speed, what is worn with the item's own account of what it changes, techniques with cost and the key bound to their slot, the companion, the place) |
+| newest six records, the rest unreachable | every record: the newest fill the first page, the rest are *Chặng trước đó* at the END of the book, reached with the same key |
+| the key printed only inside the book | said once — *Đường ngươi đi đang được chép lại. B: mở Sổ Ký Sự.* — when the first conversation closes (the beat `beat_arrival` names the hint and the action; the label is `InputService`'s) |
+| an Origin's observation said once and lost | on the *Ngươi là ai* page, both of them, once their flags are set |
+
+*One feed per fact.* Story, Origin, knowledge, people and the three combat stats arrive in
+`ChronicleView` from `WorldRuntime` (the stats from the player's own `StatsComponent`).
+Health, level, realm, bag, techniques, companion and place are the views the HUD is ALREADY
+handed by their owners, passed on to the panel by the HUD's own setters; nothing is asked
+twice and nothing is computed in the panel. The people page follows
+`RelationshipService.relationship_changed` itself, so a regard moved by a conversation or a
+quest shows without the story moving. The book offers no action on anything it lists.
+
+*Pages are packed, not cut.* A block (a person, a record) is never split; blocks are packed
+into as many pages as the room needs, measured with the font and the Label's own line
+spacing. A closed book lays nothing out.
+
+**Three defects the real window showed and no test had.**
+1. *Half the room unused.* The first capture had "Thân và đạo" as four lines over a page
+   two-thirds empty, on 14 pages: the room was estimated with a title measured before it had
+   a width (an autowrap label then reports a column one letter wide).
+2. **A crash (signal 11).** Turning pages in the real application aborted the process. The
+   panel rebuilt its labels inside `resized` — which the engine emits while it is still
+   sorting containers — and a title that wrapped on some pages changed the body's height
+   from page to page, so every turn re-packed the book. The title is one fixed line now and a
+   re-measure is deferred until the layout pass has finished. Headless tests never lay out a
+   real frame and never saw it.
+3. *A clipped last line and a scrollbar.* The estimate left out the Label's `line_spacing`
+   (3 px per wrapped row); the layout test passed because it used the same wrong estimate.
+   It now compares what the ENGINE laid out (`rendered_height`) with the room, page by page.
+
+**Tests.** Suite **1224** (was 1216): the Chronicle file is 10 tests (was 3) — pages in
+order; regard in words and why; a dimension never set is not listed; body and path from the
+owners' views (and NOT the bag); a 42-record history paged whole, newest first, every page
+fitting AS LAID OUT at 1280×720 and 1280×800 in vi and en, every title on one line; a page
+uses its room; a closed book is not rebuilt; an empty book shows no raw key; the bands follow
+each dimension's range and all 30 are named in both languages. +1 cultivation (mid-swing in
+each of the three phases; the next press sits; an attack still ends a sitting). Story E2E:
+the hint (8a: not before, not over a line, said when she finishes, opens nothing, takes no
+key), the mid-swing rule (8f), every page read with one real key per page and the people
+page following the graph (8g). All eight E2E flows pass; 0 `SCRIPT ERROR`; 0 leak lines.
+
+**Mutations: 18 applied, 18 red — after one survived.** K14 (*the people page is stale after
+a change outside the story*) was ALIVE: the E2E now moves a regard through the relationship
+owner and reads the book.
+
+| # | What was broken | Red in |
+|---|---|---|
+| F1 / F2 | sitting mid-swing allowed again / refused without a word | cultivation |
+| F3 | an attack no longer ends a sitting | cultivation |
+| F4 | mid-swing asked before the lasting reasons | World E2E |
+| K1 | the people page sums the dimensions | chronicle |
+| K2 | a regard as a bare number | chronicle ×2 |
+| K3 | no decision under a person | chronicle |
+| K4 | older records dropped instead of paged | chronicle |
+| K5 | line spacing left out of the height | chronicle (as laid out) |
+| K6 | a closed book rebuilt on every change | chronicle |
+| K7 | the whole bag listed as worn | chronicle |
+| K8 | the room estimated at half | chronicle |
+| K9 | what the Origin noticed is not kept | Story E2E 8g |
+| K10 | a signed band read like an unsigned one | chronicle ×2 |
+| K11 / K12 / K13 | the hint never said / said over a line / names a hard-coded letter | Story E2E 8a |
+| K14 | the people page stale after a change outside the story | Story E2E 8g |
+
+**Real window (opened and looked at, 1280×720 vi; scratch path, not committed).**
+
+| Frame | What is in it |
+|---|---|
+| `26_chronicle_page_01_story` | *Đường đã qua*: the chapter, *Trước mắt: …* in jade, the two decisions marked ◆, then records newest first; no scrollbar, the last line whole, footer *B Trang sau · Esc Đóng · 1/10* |
+| `26_chronicle_page_02_self` | *Ngươi là ai*: Lữ khách / Hộ Tiêu Thất Bại, the problem in three lines, *Điều ngươi tìm: …* in jade |
+| `26_chronicle_page_04_body` | *Thân và đạo*: Sinh lực 100 / 100 · Cấp 1 · kinh nghiệm 0 / 20 · Hậu Thiên tầng 1 · tu vi 0 / 40 · **Công 20 · Thủ 9 · Tốc độ 180** · *Đang mang trên người*: Đạo bào Thanh Vân with "Thủ +4" · *Công pháp*: Thanh Phong Chưởng · 10 khí · phím 1; Lôi Chỉ · 16 khí · phím 2 |
+| `26_chronicle_page_07_people` | *Người đã gặp*: Thẩm Bất Kỳ — *Thiện cảm: lạnh nhạt (-10)*, *Tin cậy: chưa tin (0)*, *Kính trọng: chưa nể (0)*; Lâm Nguyệt — *dửng dưng (0)*, *tin đôi chút (+15)*, *chưa nể (0)*, and under her *◆ Ngươi giữ kín việc Lâm Nguyệt tự ý đo mạch.* Two people to a page, each a tight group |
+
+Not yet done at this checkpoint: en and 1280×800 in the real window (Checkpoint 4).
 
 ### Checkpoint 2 — the Night is shown (*built*)
 

@@ -18,3 +18,7 @@ var records: Array[StringName] = []
 var decisions: Array[StringName] = []
 ## Who the player has spoken to, in the order they met.
 var met: Array[StringName] = []
+## Record keys of what this Origin alone has noticed so far (D-073).
+var noticed: Array[StringName] = []
+## `character_id -> [record_key]`: the decisions that moved that person's regard.
+var decisions_about: Dictionary = {}

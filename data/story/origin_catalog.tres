@@ -28,6 +28,8 @@ edge_key = &"ORIGIN_HO_TIEU_EDGE"
 cost_key = &"ORIGIN_HO_TIEU_COST"
 goal_key = &"ORIGIN_HO_TIEU_GOAL"
 vignette_scene_id = &"scene_vignette_ho_tieu"
+observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
+observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_HO_TIEU", &"STORY_NOTICED_TRAIL_HO_TIEU"])
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_ho_tieu_0"), SubResource("G_origin_ho_tieu_1")])
 
 [sub_resource type="Resource" id="G_origin_de_tu_bi_loai_0"]
@@ -53,6 +55,8 @@ edge_key = &"ORIGIN_DE_TU_BI_LOAI_EDGE"
 cost_key = &"ORIGIN_DE_TU_BI_LOAI_COST"
 goal_key = &"ORIGIN_DE_TU_BI_LOAI_GOAL"
 vignette_scene_id = &"scene_vignette_de_tu_bi_loai"
+observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
+observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_DE_TU_BI_LOAI", &"STORY_NOTICED_TRAIL_DE_TU_BI_LOAI"])
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_de_tu_bi_loai_0"), SubResource("G_origin_de_tu_bi_loai_1")])
 
 [sub_resource type="Resource" id="G_origin_lang_y_0"]
@@ -71,6 +75,8 @@ edge_key = &"ORIGIN_LANG_Y_EDGE"
 cost_key = &"ORIGIN_LANG_Y_COST"
 goal_key = &"ORIGIN_LANG_Y_GOAL"
 vignette_scene_id = &"scene_vignette_lang_y"
+observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
+observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_LANG_Y", &"STORY_NOTICED_TRAIL_LANG_Y"])
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_lang_y_0")])
 
 [sub_resource type="Resource" id="G_origin_nghe_nhan_0"]
@@ -88,6 +94,8 @@ edge_key = &"ORIGIN_NGHE_NHAN_EDGE"
 cost_key = &"ORIGIN_NGHE_NHAN_COST"
 goal_key = &"ORIGIN_NGHE_NHAN_GOAL"
 vignette_scene_id = &"scene_vignette_nghe_nhan"
+observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
+observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_NGHE_NHAN", &"STORY_NOTICED_TRAIL_NGHE_NHAN"])
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_nghe_nhan_0")])
 
 [sub_resource type="Resource" id="G_origin_thu_thu_0"]
@@ -113,6 +121,8 @@ edge_key = &"ORIGIN_THU_THU_EDGE"
 cost_key = &"ORIGIN_THU_THU_COST"
 goal_key = &"ORIGIN_THU_THU_GOAL"
 vignette_scene_id = &"scene_vignette_thu_thu"
+observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
+observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_THU_THU", &"STORY_NOTICED_TRAIL_THU_THU"])
 grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_thu_thu_0"), SubResource("G_origin_thu_thu_1")])
 
 [resource]

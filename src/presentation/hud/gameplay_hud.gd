@@ -846,6 +846,7 @@ func _build_ui() -> void:
 	_bound_side_panel(_chronicle_panel, true)
 	_chronicle_panel.visible = false
 	root.add_child(_chronicle_panel)
+	_feed_chronicle()
 
 
 ## Anchor a toggleable side panel as a BOUNDED BOX defined by the screen, not by its content.
@@ -993,6 +994,8 @@ func set_character(state: CharacterState) -> void:
 	else:
 		_name_key = state.name_key
 		_title_key = state.title_key
+	if _chronicle_panel != null:
+		_chronicle_panel.set_identity(_name_key, _map_name_key)
 	_refresh()
 
 
@@ -1003,6 +1006,8 @@ func set_character(state: CharacterState) -> void:
 ## reported" and "this character is at 0 HP" are different states, and rendering them the same
 ## way would make a wiring failure look like a death.
 func set_health(current: int, maximum: int) -> void:
+	if _chronicle_panel != null:
+		_chronicle_panel.set_health(current, maximum)
 	if _health_gauge == null:
 		return
 	if maximum <= 0:
@@ -1025,6 +1030,8 @@ func is_health_gauge_visible() -> bool:
 ## and rendering them the same way would make a wiring failure look like a new game.
 func set_progression_view(view: ProgressionView) -> void:
 	_progression_view = view
+	if _chronicle_panel != null:
+		_chronicle_panel.set_progression_view(view)
 	if _level_label == null or _xp_meter == null:
 		return
 	var available := view != null and view.available
@@ -1150,6 +1157,8 @@ func _refresh_target_text() -> void:
 ## Set the current map's name localization key.
 func set_map_name(name_key: StringName) -> void:
 	_map_name_key = name_key
+	if _chronicle_panel != null:
+		_chronicle_panel.set_identity(_name_key, _map_name_key)
 	_refresh()
 
 
@@ -1169,6 +1178,8 @@ func set_interact_available(available: bool,
 ## a change and `WorldRuntime` rebuilds and pushes — the HUD never polls.
 func set_cultivation_view(view: CultivationView) -> void:
 	_cultivation_view = view
+	if _chronicle_panel != null:
+		_chronicle_panel.set_cultivation_view(view)
 	_refresh()
 
 
@@ -1651,6 +1662,8 @@ func inventory_panel() -> InventoryPanel:
 func set_skill_view(view: SkillView) -> void:
 	if _skill_dock != null:
 		_skill_dock.set_view(view)
+	if _chronicle_panel != null:
+		_chronicle_panel.set_skill_view(view)
 
 
 ## Push the shop view (Phase 17). The view is the authority on whether a shop is open: an open
@@ -1883,6 +1896,8 @@ func shop_panel() -> ShopPanel:
 ## Push the linh thú view (Phase 16), event-driven from the pet runtime.
 func set_pet_view(view: PetView) -> void:
 	_pet_view = view
+	if _chronicle_panel != null:
+		_chronicle_panel.set_pet_view(view)
 	_refresh_pet_prompt()
 
 
@@ -1923,6 +1938,8 @@ func skill_dock() -> SkillDock:
 func set_inventory_view(view: InventoryView) -> void:
 	if _inventory_panel != null:
 		_inventory_panel.set_view(view)
+	if _chronicle_panel != null:
+		_chronicle_panel.set_inventory_view(view)
 
 
 ## Is the Sect detail panel currently shown? (for tests)
@@ -1932,6 +1949,18 @@ func set_quest_view(view: QuestJournalView) -> void:
 	if _quest_panel != null:
 		_quest_panel.set_view(view)
 	_refresh_purpose()
+
+
+## Hand the book what this HUD has already been told by the owners (D-073 §4): identity and
+## place, level, the realm, the companion. One feed per fact — the book asks no runtime, and
+## what arrives later arrives through the same setters that update the HUD itself.
+func _feed_chronicle() -> void:
+	if _chronicle_panel == null:
+		return
+	_chronicle_panel.set_identity(_name_key, _map_name_key)
+	_chronicle_panel.set_progression_view(_progression_view)
+	_chronicle_panel.set_cultivation_view(_cultivation_view)
+	_chronicle_panel.set_pet_view(_pet_view)
 
 
 ## Push the Chronicle view (Phase 20): the book's pages and the story's line of purpose.
