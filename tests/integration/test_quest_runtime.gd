@@ -341,8 +341,13 @@ func test_content_an_owner_cannot_supply_stops_the_session_and_leaves_nothing_be
 	assert_false(rig.quests.start_session(rig.world, rig.knowledge, rig.inventory, rig.combat,
 		rig.progression, rig.relationship, idle), "an inactive reward ledger")
 	idle.free()
-	assert_false(rig.quests.start_session(rig.world, rig.knowledge, rig.inventory, Node.new(),
+	# Held in a local so it can be FREED: passed inline it was never released, and the suite
+	# ended with `1 ObjectDB instance was leaked at exit` (L-019) — in CI too, where the leak
+	# gate only matched the plural wording and stayed green.
+	var mute := Node.new()
+	assert_false(rig.quests.start_session(rig.world, rig.knowledge, rig.inventory, mute,
 		rig.progression, rig.relationship, rig.rewards), "a combat that announces nothing")
+	mute.free()
 	assert_false(rig.quests.start_session(null, rig.knowledge, rig.inventory, rig.combat,
 		rig.progression, rig.relationship, rig.rewards), "no world")
 	var registry := rig.world.registry

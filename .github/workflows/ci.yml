@@ -147,7 +147,7 @@ jobs:
           rc=${PIPESTATUS[0]}
           set -e
           script_errors=$(grep -c 'SCRIPT ERROR:' _suite.log || true)
-          leaks=$(grep -cE 'ObjectDB instances were leaked|resources still in use' \
+          leaks=$(grep -cE 'ObjectDB instances? (was|were) leaked|resources still in use' \
             _suite.log || true)
           {
             echo "### Headless test suite (rc=$rc, SCRIPT ERROR lines=$script_errors," \
@@ -191,13 +191,16 @@ jobs:
           # capturing `self`, held by a service kept on the test instance), which pinned one
           # test instance and every script it referenced. Still part of the SAME gate, so the
           # gate count is unchanged at 10.
+          # The pattern takes BOTH wordings. For exactly one leaked object the engine says
+          # `1 ObjectDB instance was leaked`; the plural-only pattern read that as clean, and
+          # the Phase-19 suite shipped green with one test node never freed (D-071).
           if [ "$leaks" -ne 0 ]; then
             {
               echo '```'
-              grep -E 'ObjectDB instances were leaked|resources still in use' _suite.log
+              grep -E 'ObjectDB instances? (was|were) leaked|resources still in use' _suite.log
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            grep -E 'ObjectDB instances were leaked|resources still in use' _suite.log \
+            grep -E 'ObjectDB instances? (was|were) leaked|resources still in use' _suite.log \
               | while IFS= read -r line; do echo "::error::[leak] ${line}"; done
             echo "::error::[leak] the suite leaked at exit. A Node created in a test must be" \
               "freed by that test (L-019), and a RefCounted CYCLE (e.g. a lambda capturing" \
@@ -274,7 +277,7 @@ jobs:
               | while IFS= read -r line; do echo "::error::[e2e-pet] ${line}"; done
             exit "$rc"
           fi
-          if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances? (was|were) leaked|resources still in use' \
               _e2e_pet.log; then
             echo "::error::[e2e-pet] the run printed a script error or a leak line"
             exit 1
@@ -304,7 +307,7 @@ jobs:
               | while IFS= read -r line; do echo "::error::[e2e-npc] ${line}"; done
             exit "$rc"
           fi
-          if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances? (was|were) leaked|resources still in use' \
               _e2e_npc.log; then
             echo "::error::[e2e-npc] the run printed a script error or a leak line"
             exit 1
@@ -336,7 +339,7 @@ jobs:
               | while IFS= read -r line; do echo "::error::[e2e-dialogue] ${line}"; done
             exit "$rc"
           fi
-          if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances? (was|were) leaked|resources still in use' \
               _e2e_dialogue.log; then
             echo "::error::[e2e-dialogue] the run printed a script error or a leak line"
             exit 1
@@ -369,7 +372,7 @@ jobs:
               | while IFS= read -r line; do echo "::error::[e2e-quest] ${line}"; done
             exit "$rc"
           fi
-          if grep -E 'SCRIPT ERROR:|ObjectDB instances were leaked|resources still in use' \
+          if grep -E 'SCRIPT ERROR:|ObjectDB instances? (was|were) leaked|resources still in use' \
               _e2e_quest.log; then
             echo "::error::[e2e-quest] the run printed a script error or a leak line"
             exit 1
