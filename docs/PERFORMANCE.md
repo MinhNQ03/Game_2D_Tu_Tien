@@ -301,16 +301,62 @@ Template:
 
 
 
-### PERF-NOTE-21 — what the Night's light added  (2026-10-11, D-073; COUNTED, not profiled)
+### PERF-NOTE-21 — what the Night's light costs a frame  (2026-10-11, D-073; MEASURED in the follow-up, H21-19)
 
-Each shipped map gained `Visual/Ambience`: one `CanvasModulate` and two or three
-`PointLight2D` (`AmbienceLight`) sharing ONE 96×96 banded gradient texture. By day — every
-beat but two — the lights are disabled at energy 0 and `MapAmbience._process` is off, so the
-day path costs a white canvas modulate. During `beat_warning` (dusk) and `beat_night` the
-node processes each frame: one sine pair per lantern, one per vein. No shadows are cast
-(`shadow_enabled = false`), no light is created or freed during play, and the ambience is
-applied on events (map entry, the story moving), never polled. No frame-time measurement was
-taken; if a 2D light pass shows up on the target hardware, Phase 29 owns the profiler run.
+Each shipped map has `Visual/Ambience`: one `CanvasModulate` and two or three `PointLight2D`
+(`AmbienceLight`) sharing ONE 96×96 banded gradient texture. By day — every beat but two —
+the lights are disabled at energy 0 and `MapAmbience._process` is off. During `beat_warning`
+(dusk) and `beat_night` the node processes each frame: one sine pair per lantern, one per
+vein. No shadows (`shadow_enabled = false`), no light created or freed during play, and the
+ambience is applied on events (map entry, the story moving), never polled.
+
+**Measured** with `tools/measure_ambience_frame_time.gd` — the real application in a real
+window, the same place under each ambience, three rounds interleaved (day, dusk, night, day,
+…) so drift lands on all three alike.
+
+- *Method:* simple frame-time sampling, **not the engine profiler**: each sample is the wall
+  time between two consecutive `process_frame`s (`Time.get_ticks_usec`). Uncapped
+  (`--disable-vsync --max-fps 0`) that is the whole cost of a frame — script, physics,
+  render, present; the vsync column is the display's interval, where only hitches show.
+- *Sample:* 3 rounds × 8 s per ambience per place (24 s; 14 000–28 000 frames uncapped,
+  ~1 440 with vsync), 1.6 s settle after each change (an ambience eases in over 0.9 s).
+- *Machine:* Intel Core i3-13100 (8 threads), Intel UHD Graphics 730 (ADL-S GT1, Mesa),
+  Linux 24.04; Godot 4.7.2-stable, renderer `gl_compatibility`, physics 60 Hz. An
+  integrated GPU: the low end of what the game is expected to run on.
+- *Setup, stated:* the run is begun through `RunKit.begin_run`, the player is stood where
+  the lights are on screen, and the ambience is set on the map's own `MapAmbience`
+  (presentation; it holds no truth). The woods' two standing wolves are present and idle in
+  all three; the Night's own two-wolf wave is NOT (this isolates the light).
+
+| map (lights in frame) | ambience | lit / in frame | 1280×720 median · p95 · p99 (ms) | 1280×800 median · p95 · p99 (ms) | vsync 1280×720 median · p95 (ms) |
+|---|---|---|---|---|---|
+| map_hub (both lanterns) | day (as authored) | 0 / 0 | 0.888 · 1.101 · 1.261 | 0.984 · 1.193 · 1.361 | 16.663 · 16.867 |
+| map_hub (both lanterns) | dusk | 2 / 2 | 1.367 · 1.615 · 1.813 | 1.505 · 1.781 · 2.114 | 16.665 · 16.850 |
+| map_hub (both lanterns) | night | 2 / 2 | 1.366 · 1.614 · 1.809 | 1.502 · 1.772 · 1.959 | 16.659 · 16.863 |
+| map_field (the vein) | day (as authored) | 0 / 0 | 0.831 · 1.072 · 1.194 | 0.913 · 1.147 · 1.257 | 16.662 · 16.916 |
+| map_field (the vein) | dusk | 2 / 0 | 0.832 · 1.076 · 1.219 | 0.914 · 1.158 · 1.307 | 16.658 · 16.898 |
+| map_field (the vein) | night | 3 / 1 | 1.137 · 1.431 · 1.640 | 1.248 · 1.555 · 1.751 | 16.662 · 16.897 |
+| map_field (lanterns + vein) | day (as authored) | 0 / 0 | 0.835 · 1.093 · 1.289 | 0.926 · 1.182 · 1.358 | 16.662 · 16.889 |
+| map_field (lanterns + vein) | dusk | 2 / 2 | 1.328 · 1.640 · 1.822 | 1.455 · 1.760 · 1.934 | 16.658 · 16.881 |
+| map_field (lanterns + vein) | night | 3 / 3 | 1.528 · 1.872 · 2.096 | 1.676 · 2.022 · 2.255 | 16.662 · 16.879 |
+
+What it says:
+
+1. **A light costs only where it is in frame.** With no light on screen, dusk and night are
+   within 0.002 ms of day (the modulate and the per-frame sines do not register).
+2. **Worst case, all three of the woods' lights in frame at night: +0.69 ms median at
+   1280×720 (0.835 → 1.528), +0.75 ms at 1280×800 (0.926 → 1.676); p95 +0.78 / +0.84 ms.**
+   That is 4–5% of the 16.67 ms frame, on an integrated GPU. Two lanterns: +0.48–0.53 ms;
+   the vein alone: +0.31–0.34 ms.
+3. **With vsync the frame is the display's:** median 16.66 ms and p95 16.85–16.92 ms under
+   every ambience; no ambience moves p95 or p99. The single-frame maxima (17–24 ms) appear
+   under day as well and follow no ambience.
+
+Budget: PASS with a wide margin on this machine. NOT measured: a discrete GPU, a slower
+iGPU than the UHD 730, the engine profiler's per-category split (Phase 29 owns that run),
+and the Night with its wave fighting (the AI's cost is `tests/performance/test_ai_budget.gd`'s
+subject, not the light's). Reproduce:
+`DISPLAY=:0 godot --path . --resolution 1280x720 --disable-vsync --max-fps 0 -s res://tools/measure_ambience_frame_time.gd -- out.md 8 3`.
 
 ### PERF-NOTE-20 — what the story added to the frame  (2026-10-11)
 
