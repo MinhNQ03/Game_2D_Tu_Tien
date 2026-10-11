@@ -311,6 +311,86 @@ func test_a_choice_whose_owner_is_missing_is_refused_before_anything_is_written(
 	assert_true(rig.service.choose(&"c_side", &"left").ok, "and can still be answered")
 
 
+# --- All or nothing under an owner's refusal (D-073 §2) -----------------------
+#
+# The fixture's `right` answer moves actor_b's trust, then actor_a's affinity, sets a flag and
+# teaches something: four consequences, three owners. Each test refuses ONE of the later ones
+# and requires that none of the earlier ones stands.
+
+func test_a_later_owner_declining_refuses_the_whole_choice_before_anything_is_done() -> void:
+	var rig := _rig()
+	rig.service.set_flag(&"f_heard", 1)
+	rig.owners.decline_regard_for = [&"actor_a"]  # the SECOND regard; the first would succeed
+	var before := _snapshot(rig)
+	var outcome := rig.service.choose(&"c_side", &"right")
+	assert_false(outcome.ok, "refused")
+	assert_eq(outcome.reason, StoryService.REFUSE_OWNER, "because an owner said it could not")
+	assert_eq(_snapshot(rig), before, "no record, no flag, no regard, nothing taught")
+	assert_false(rig.state.has_chosen(&"c_side"), "the decision is still open")
+	assert_eq(rig.service.flag_value(&"f_count"), 0, "the flag the answer sets is unset")
+	assert_eq([rig.owners.regard_calls, rig.owners.teach_calls], [0, 0],
+		"nobody was asked to DO anything: every owner was asked whether it could, first")
+	assert_eq(rig.state.beat_id, &"b", "and the beat that waits on the decision still waits")
+
+
+func test_knowledge_that_cannot_be_taught_refuses_the_whole_choice() -> void:
+	var rig := _rig()
+	rig.service.set_flag(&"f_heard", 1)
+	rig.owners.decline_teach = [&"know_side"]  # the LAST consequence; three would succeed
+	var before := _snapshot(rig)
+	assert_eq(rig.service.choose(&"c_side", &"right").reason, StoryService.REFUSE_OWNER,
+		"refused whole")
+	assert_eq(_snapshot(rig), before, "both regards and the flag did not happen")
+	assert_eq(rig.owners.regard_calls, 0, "the regards were not even attempted")
+
+
+func test_a_refused_choice_can_be_answered_once_the_cause_is_gone_and_only_once() -> void:
+	var rig := _rig()
+	rig.service.set_flag(&"f_heard", 1)
+	rig.owners.decline_regard_for = [&"actor_a"]
+	assert_false(rig.service.choose(&"c_side", &"right").ok, "refused while the owner cannot")
+	rig.owners.decline_regard_for = []
+	var outcome := rig.service.choose(&"c_side", &"right")
+	assert_true(outcome.ok, "the same answer succeeds once the owner can")
+	assert_eq(rig.owners.regards, [[&"actor_b", &"trust", 10], [&"actor_a", &"affinity", -15]],
+		"each regard moved exactly once: the refused attempt left nothing to double")
+	assert_eq(rig.owners.taught, [[&"know_side", &"story:c_side"]], "taught once")
+	assert_eq(rig.state.choices.size(), 1, "recorded once")
+	assert_eq(rig.service.choose(&"c_side", &"right").reason,
+		StoryService.REFUSE_ALREADY_CHOSEN, "and a second answer is refused as before")
+	assert_eq(rig.owners.regards.size(), 2, "with nothing paid twice")
+
+
+## The contract is that an owner which agreed will not then refuse. If one does anyway the
+## story must still not be left holding half a decision.
+func test_an_owner_that_breaks_its_word_at_the_commit_leaves_nothing_behind() -> void:
+	var rig := _rig()
+	rig.service.set_flag(&"f_heard", 1)
+	rig.owners.breach_regard_for = [&"actor_a"]  # agreed when asked; fails when told
+	var before := _snapshot(rig)
+	var outcome := rig.service.choose(&"c_side", &"right")
+	assert_false(outcome.ok, "refused")
+	assert_eq(outcome.reason, StoryService.REFUSE_OWNER, "as an owner's refusal")
+	assert_false(rig.state.has_chosen(&"c_side"), "the choice is NOT recorded")
+	assert_eq(rig.service.flag_value(&"f_count"), 0, "the story wrote none of its own flags")
+	assert_eq(rig.owners.regards, [], "the regard that had already moved was moved back")
+	assert_eq(rig.owners.taught, [], "and nothing was taught: knowledge is committed last")
+	assert_eq(_snapshot(rig), before, "so the run is exactly as it was")
+	rig.owners.breach_regard_for = []
+	assert_true(rig.service.choose(&"c_side", &"right").ok, "and the decision can still be made")
+	assert_eq(rig.owners.regards.size(), 2, "once")
+
+
+func test_an_origin_whose_grant_an_owner_declines_begins_nothing_and_gives_nothing() -> void:
+	var rig := _rig(&"")
+	rig.owners.decline_regard_for = [&"actor_a"]  # the kit's LAST grant; the bag would accept
+	var before := _snapshot(rig)
+	assert_eq(rig.service.begin(&"origin_ho_tieu").reason, StoryService.REFUSE_OWNER,
+		"an Origin's start is refused before its items are handed over")
+	assert_eq(_snapshot(rig), before, "nothing given, nothing taught, not begun")
+	assert_eq(rig.owners.given, [], "the bag was not asked")
+
+
 ## THE EXIT CRITERION: a prior decision shapes a later branch through a stored fact, and the
 ## branches converge.
 func test_a_prior_choice_decides_a_later_branch_and_the_branches_converge() -> void:

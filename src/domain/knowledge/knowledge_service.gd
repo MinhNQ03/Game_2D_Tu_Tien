@@ -46,6 +46,13 @@ func store() -> KnowledgeStore:
 ## Grant `knowledge_id`, learned from `source_id`. Returns GRANTED, ALREADY_KNOWN (idempotent: a
 ## second reading of the same stele teaches nothing new), UNKNOWN_ID (refused loudly — the
 ## catalog does not name it) or NOT_READY.
+## Would a `grant` of `knowledge_id` leave it held (newly, or because it already is)? The rule
+## `grant` refuses by, asked without changing anything: a caller that must know before it
+## commits several things (a story decision, D-073 §2) asks here first.
+func can_grant(knowledge_id: StringName) -> bool:
+	return is_ready() and _catalog.has(knowledge_id)
+
+
 func grant(knowledge_id: StringName, source_id: StringName) -> StringName:
 	if not is_ready():
 		return NOT_READY

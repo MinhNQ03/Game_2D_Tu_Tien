@@ -268,6 +268,149 @@ def cart(d):
     return parts
 
 
+def _tilt(parts, pivot, roll_deg=0.0, pitch_deg=0.0, yaw_deg=0.0, shift=(0.0, 0.0, 0.0)):
+    """Rotate `parts` about `pivot` — roll about the Y (depth) axis, pitch about X, yaw about Z,
+    in that order — then move them by `shift`. Nothing may end below the ground."""
+    cr, sr = math.cos(math.radians(roll_deg)), math.sin(math.radians(roll_deg))
+    cp, sp = math.cos(math.radians(pitch_deg)), math.sin(math.radians(pitch_deg))
+    cy, sy = math.cos(math.radians(yaw_deg)), math.sin(math.radians(yaw_deg))
+    px, py, pz = pivot
+    for part in parts:
+        out = []
+        for x, y, z in part["verts"]:
+            x, y, z = x - px, y - py, z - pz
+            x, z = x * cr + z * sr, -x * sr + z * cr
+            y, z = y * cp - z * sp, y * sp + z * cp
+            x, y = x * cy - y * sy, x * sy + y * cy
+            out.append((x + px + shift[0], y + py + shift[1], max(0.0, z + pz + shift[2])))
+        part["verts"] = out
+    return parts
+
+
+def cart_wreck(d):
+    """The carter's cart as the Night left it (D-073 §3): the near wheel torn off and lying in
+    the litter, the bed down on its bare axle and canted hard over, one shaft snapped, the
+    tarpaulin dragged off. Two crates rode it down; two went over the side and split, and what
+    was packed in them — pale shards of vein stone, not pine — lies in the open.
+
+    Built from the standing cart's own measures so it is recognisably THAT cart, broken."""
+    bed = [_part("bed", "timber", box(-26, 2, 13, 26, 34, 17)),
+           _part("rail_l", "timber_light", box(-27, 2, 17, -24, 34, 24)),
+           _part("rail_r", "timber_light", box(24, 2, 17, 27, 34, 24)),
+           _part("tail", "timber_light", box(-26, 32, 17, 26, 34, 23)),
+           # the wheel that held: still on its axle, taking the whole weight
+           _part("wheel_on", "timber", tube([(28.4, 18, 13), (31.6, 18, 13)], [13, 13], 18,
+                                            up=(0, 0, 1))),
+           _part("hub_on", "wood_pale", tube([(27.6, 18, 13), (32.4, 18, 13)], [3.2, 3.2], 8,
+                                           up=(0, 0, 1))),
+           # the bare axle stub where the other wheel was
+           _part("axle", "timber_light", tube([(-34, 18, 13), (-24, 18, 13)], [1.8, 1.8], 6,
+                                             up=(0, 0, 1))),
+           _part("shaft_whole", "timber_light", tube([(16, 2, 15), (13, -30, 12)], [1.6, 1.4], 6,
+                                                    up=(0, 0, 1))),
+           _part("shaft_stub", "timber_light", tube([(-16, 2, 15), (-15, -9, 14)], [1.6, 1.5], 6,
+                                                   up=(0, 0, 1))),
+           # the two crates that stayed aboard, shifted against the low rail
+           _part("crate_a", "wood_pale", box(-23, 16, 17, -5, 31, 31)),
+           _part("band_a", "timber", box(-23.4, 15.6, 26, -4.6, 31.4, 28)),
+           _part("crate_b", "wood_pale", box(-3, 17, 17, 14, 30, 29)),
+           _part("band_b", "timber", box(-3.4, 16.6, 24, 14.4, 30.4, 26))]
+    # down on the stub: the bed rolls about the standing wheel's foot until the axle end lands
+    parts = _tilt(bed, (30.0, 18.0, 0.0), roll_deg=-21.0, shift=(0.0, 0.0, 0.0))
+    # the wheel that came off, flat in the litter, a spoke's length from where it broke
+    parts.append(_part("wheel_off", "timber", tube([(-46, 2, 0.0), (-46, 2, 3.2)], [13, 13], 18,
+                                                    up=(1, 0, 0))))
+    parts.append(_part("hub_off", "wood_pale", tube([(-46, 2, 3.2), (-46, 2, 5.0)], [3.4, 3.4], 8,
+                                                    up=(1, 0, 0))))
+    # the snapped half of the shaft, thrown forward
+    parts.append(_part("shaft_piece", "timber_light",
+                       tube([(-22, -14, 1.4), (-6, -27, 1.4)], [1.5, 1.3], 6, up=(0, 0, 1))))
+    # the crate that burst: four staved sides fallen open round its floor, the lid thrown off
+    cx, cy = -8.0, -12.0
+    parts.append(_part("burst_floor", "timber", box(cx - 9, cy - 7, 0, cx + 9, cy + 7, 1.2)))
+    parts.append(_part("burst_back", "wood_pale", box(cx - 9, cy + 6, 0, cx + 9, cy + 8, 11)))
+    parts.append(_part("burst_side", "wood_pale", box(cx + 8, cy - 7, 0, cx + 10, cy + 7, 8)))
+    parts.append(_part("burst_flap", "wood_pale", box(cx - 21, cy - 6, 0, cx - 9, cy + 6, 1.6)))
+    parts.append(_part("burst_lid", "wood_pale", box(cx + 14, cy - 16, 0, cx + 29, cy - 5, 1.8)))
+    parts.append(_part("lid_band", "timber", box(cx + 20, cy - 16.4, 1.8, cx + 22.5, cy - 4.6, 2.6)))
+    # the crate that went over whole and split along one seam, lying on its side
+    side = [_part("split_crate", "wood_pale", box(30, -18, 0, 46, -4, 13)),
+            _part("split_band", "timber", box(29.6, -18.4, 8, 46.4, -3.6, 10)),
+            _part("split_dark", "door", box(33, -18.6, 2, 43, -17.6, 11))]
+    parts += _tilt(side, (38.0, -11.0, 0.0), yaw_deg=24.0)
+    # what was in them: raw shards of vein stone, a spill of them from the burst crate
+    shards = ((cx - 2, cy - 1, 3.4, 5.6), (cx + 3, cy + 2, 2.8, 4.4), (cx - 5, cy + 3, 2.4, 3.6),
+              (cx + 1, cy - 12, 2.6, 3.8), (cx - 13, cy - 11, 2.2, 3.0), (cx + 8, cy - 15, 2.0, 2.8),
+              (34, -22, 2.6, 3.6), (27, -25, 2.0, 2.6))
+    for i, (x, y, r, h) in enumerate(shards):
+        m = Mesh()
+        ring = [(x + r * math.cos(math.tau * j / 5 + i), y + r * 0.8 * math.sin(math.tau * j / 5 + i),
+                 0.0) for j in range(5)]
+        tip = [(x + 0.35 * r * math.cos(math.tau * j / 5 + i) + 0.6,
+                y + 0.3 * r * math.sin(math.tau * j / 5 + i), h) for j in range(5)]
+        m.add_ring_loft([ring, tip], cap_start=True, cap_end=True)
+        parts.append(_part("shard%d" % i, "vein_stone", m))
+    # the tarpaulin, pulled off and lying where it was dropped, its rope trailing
+    tarp = sphere((-34, 40, 2.0), (16, 8, 3.0), 12, 6)
+    tarp.verts = [(x + (_h(int(x * 2), int(y * 2), 31) - 0.5) * 3.0,
+                   y + (_h(int(y * 2), int(x * 2), 32) - 0.5) * 2.0,
+                   max(0.0, z + (_h(int(x), int(y), 33) - 0.5) * 2.4)) for x, y, z in tarp.verts]
+    parts.append(_part("tarp", "plaster", tarp))
+    parts.append(_part("rope", "timber", tube([(-20, 44, 0.6), (-4, 40, 0.6), (10, 44, 0.6)],
+                                              [0.8, 0.8, 0.8], 5, up=(0, 0, 1))))
+    return parts
+
+
+def survey_shaft(d):
+    """The Survey Shaft, Hầm Khảo Mạch (D-073 §1): a surveyor's adit driven into an outcrop of
+    the north-east rocks, where the vein was sounded. A squared timber frame holds a plank door
+    BOARDED shut with two crossed battens; a seal strip is pasted across the join and pinned
+    with a knob of cinnabar wax. A worn stone sill; moss on the crown; and beside the mouth the
+    last stake of the survey line, cut square and capped — stake four.
+
+    The ORIGIN is the centre of the sill's front edge: the door is what a person walks up to."""
+    rock = sphere((0, 26, 20), (46, 26, 30), 16, 10)
+    rock.verts = [(x + (_h(int(x), int(z), 41) - 0.5) * 7,
+                   max(3.0, y + (_h(int(y), int(x), 42) - 0.5) * 6),
+                   max(0.0, z + (_h(int(z), int(y), 43) - 0.5) * 7)) for x, y, z in rock.verts]
+    shoulder = sphere((-34, 20, 10), (20, 16, 15), 12, 8)
+    shoulder.verts = [(x + (_h(int(x), int(z), 44) - 0.5) * 5,
+                       max(2.0, y + (_h(int(y), int(x), 45) - 0.5) * 4),
+                       max(0.0, z + (_h(int(z), int(y), 46) - 0.5) * 5))
+                      for x, y, z in shoulder.verts]
+    spur = sphere((36, 18, 8), (17, 14, 12), 12, 8)
+    spur.verts = [(x + (_h(int(x), int(z), 47) - 0.5) * 5,
+                   max(2.0, y + (_h(int(y), int(x), 48) - 0.5) * 4),
+                   max(0.0, z + (_h(int(z), int(y), 49) - 0.5) * 5)) for x, y, z in spur.verts]
+    parts = [_part("rock", "stone", rock), _part("shoulder", "stone", shoulder),
+             _part("spur", "stone_light", spur),
+             _part("moss", "moss", sphere((4, 30, 47), (26, 15, 4), 10, 6), smooth=True),
+             _part("moss_low", "moss", sphere((-36, 20, 23), (11, 8, 2.6), 8, 5), smooth=True),
+             _part("sill", "stone_light", box(-17, 0, 0, 17, 6, 3)),
+             # the dark of the adit behind the door (seen at the gaps and above the lintel)
+             _part("mouth", "door", box(-13, 2.6, 3, 13, 5, 37)),
+             _part("post_l", "timber", box(-16, 1, 3, -12, 5, 40)),
+             _part("post_r", "timber", box(12, 1, 3, 16, 5, 40)),
+             _part("lintel", "timber", box(-18, 0.5, 38, 18, 5.5, 43)),
+             _part("door", "timber_light", box(-12, 1.6, 3, 12, 3.2, 38))]
+    for i, x in enumerate((-6.0, 0.0, 6.0)):                     # the planks' joins
+        parts.append(_part("join%d" % i, "timber", box(x - 0.5, 1.2, 3, x + 0.5, 2.0, 38)))
+    for i, (z0, z1) in enumerate(((10.0, 30.0), (30.0, 10.0))):  # two battens, crossed
+        m = Mesh()
+        m.verts = [(-13, 0.4, z0 - 1.8), (13, 0.4, z1 - 1.8), (13, 0.4, z1 + 1.8),
+                   (-13, 0.4, z0 + 1.8), (-13, 1.6, z0 - 1.8), (13, 1.6, z1 - 1.8),
+                   (13, 1.6, z1 + 1.8), (-13, 1.6, z0 + 1.8)]
+        m.faces = [(0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3),
+                   (3, 7, 4, 0)]
+        parts.append(_part("batten%d" % i, "wood_pale", m))
+    parts.append(_part("seal", "paper", box(-2.6, 0.0, 11, 2.6, 0.5, 29)))
+    parts.append(_part("wax", "lacquer_red", sphere((0, -0.2, 20), (2.6, 1.2, 2.6), 8, 6)))
+    # stake four of the survey line: squared, capped, still standing
+    parts.append(_part("stake", "timber_light", box(25, -4, 0, 28, -1, 20)))
+    parts.append(_part("stake_cap", "gilt", box(24.4, -4.6, 20, 28.6, -0.4, 22)))
+    return parts
+
+
 def pine(d):
     """A frontier pine: a straight trunk under stacked, ragged tiers of needles — the forest's
     vertical, so Rừng Vỡ Mạch reads as a FOREST and not a park of round trees."""
@@ -372,6 +515,8 @@ BUILDERS = {
     "well": well,
     "weapon_rack": weapon_rack,
     "cart": cart,
+    "cart_wreck": cart_wreck,
+    "survey_shaft": survey_shaft,
 }
 
 

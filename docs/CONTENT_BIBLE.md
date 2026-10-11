@@ -207,6 +207,10 @@ the player can OBSERVE in the prologue is marked ▸; the rest is the author's a
   someone who gives him a way to tell the truth and keep the village.
 - **Callback.** The account he gives of the Night (beat 9) is the version that reaches the
   great sects.
+- **Act I (D-073).** ▸ Shown the torn sheet first: "That page was never written" — and, in
+  denying it, names the old shaft "under seal since winter"; his `affinity` falls, because he
+  now knows who holds it. ▸ To a keeper of records who points at the second hand: "I was told
+  to expect someone who could."
 
 ### Lâm Nguyệt — inner disciple, surveyor (`actor_disciple_lin`)
 - **Goal.** Prove the open road is not heterodoxy — by being right, on the record.
@@ -220,6 +224,10 @@ the player can OBSERVE in the prologue is marked ▸; the rest is the author's a
 - **Dies** if she goes to the vein alone. **Flees** if the elder takes her readings and the
   player told. **Joins** a player who kept faith and brings her the sheet.
 - **Callback.** Beat 11: the sheet is hers to give (kept) or the player's to find (told).
+- **Act I (D-073).** ▸ Kept: she reads the old surveyor's hand and the line of four stakes;
+  her `trust` rises; told of the door, "I still have mine. When they are gone, I go down with
+  you." ▸ Told: "You have a page, and I have no rod" — she refuses once, and her rod is in the
+  elder's chest. The rod is the Phase-21 key in both lives.
 
 ### Kha Thản — hired watchman of the crossing (`actor_scout_ko`)
 - **Goal.** Be paid what the risk is worth. **Fear.** Being the one left holding the path.
@@ -230,6 +238,11 @@ the player can OBSERVE in the prologue is marked ▸; the rest is the author's a
 - **Dies** at the treeline if the player withdraws and the watch is alone too long (not in the
   prologue). **Flees** when the money stops. **Joins** whoever pays and does not lie to him.
 - **Callback.** Beat 8: how he regards the player depends on whether they stood.
+- **Act I (D-073).** ▸ Shown the sheet: he cannot read it, and tells what he HEARD — wheels
+  past the third stake on the nights he was paid to sleep — freely to one who stood, grudgingly
+  to one who left ("because I want to know who paid me"). ▸ Four Origins each notice one thing
+  about him or his: his wage-stones are uncounted; he reads ruts; his nails are clean; the
+  seal-cord's knot comes "up from Cloud Vale ready-tied".
 
 ### Tề Mộc — carter of the frontier road (`actor_carter_te`) — NEW
 - **Goal.** Deliver the load and never learn what it is. **Fear.** Learning it.

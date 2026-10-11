@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="KnowledgeCatalogData" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="KnowledgeCatalogData" load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://src/data/knowledge/knowledge_catalog_data.gd" id="1_catalog"]
 [ext_resource type="Script" path="res://src/data/knowledge/knowledge_data.gd" id="2_know"]
@@ -94,7 +94,42 @@ name_key = &"KNOW_SURVEY_NOTATION_NAME"
 desc_key = &"KNOW_SURVEY_NOTATION_DESC"
 kind = 1
 
+[sub_resource type="Resource" id="K_know_surveyors_line"]
+script = ExtResource("2_know")
+id = &"know_surveyors_line"
+name_key = &"KNOW_SURVEYORS_LINE_NAME"
+desc_key = &"KNOW_SURVEYORS_LINE_DESC"
+kind = 1
+
+[sub_resource type="Resource" id="K_know_night_wheels"]
+script = ExtResource("2_know")
+id = &"know_night_wheels"
+name_key = &"KNOW_NIGHT_WHEELS_NAME"
+desc_key = &"KNOW_NIGHT_WHEELS_DESC"
+kind = 1
+
+[sub_resource type="Resource" id="K_know_shaft_claim"]
+script = ExtResource("2_know")
+id = &"know_shaft_claim"
+name_key = &"KNOW_SHAFT_CLAIM_NAME"
+desc_key = &"KNOW_SHAFT_CLAIM_DESC"
+kind = 1
+
+[sub_resource type="Resource" id="K_know_stake_socket"]
+script = ExtResource("2_know")
+id = &"know_stake_socket"
+name_key = &"KNOW_STAKE_SOCKET_NAME"
+desc_key = &"KNOW_STAKE_SOCKET_DESC"
+kind = 2
+
+[sub_resource type="Resource" id="K_know_sealed_shaft"]
+script = ExtResource("2_know")
+id = &"know_sealed_shaft"
+name_key = &"KNOW_SEALED_SHAFT_NAME"
+desc_key = &"KNOW_SEALED_SHAFT_DESC"
+kind = 2
+
 [resource]
 script = ExtResource("1_catalog")
 id = &"knowledge_catalog"
-entries = Array[ExtResource("2_know")]([SubResource("K_know_dan_khi_quyet"), SubResource("K_know_lac_ha_stele_record"), SubResource("K_know_broken_vein_flow"), SubResource("K_know_tien_thien_threshold"), SubResource("K_know_ngu_thien_domain"), SubResource("K_know_trong_thien_law"), SubResource("K_know_thanh_phong_chuong"), SubResource("K_know_loi_chi"), SubResource("K_know_vu_lang_hunting_ground"), SubResource("K_know_thanh_dai_precept"), SubResource("K_know_survey_fragment"), SubResource("K_know_vein_stone_grades"), SubResource("K_know_survey_notation")])
+entries = Array[ExtResource("2_know")]([SubResource("K_know_dan_khi_quyet"), SubResource("K_know_lac_ha_stele_record"), SubResource("K_know_broken_vein_flow"), SubResource("K_know_tien_thien_threshold"), SubResource("K_know_ngu_thien_domain"), SubResource("K_know_trong_thien_law"), SubResource("K_know_thanh_phong_chuong"), SubResource("K_know_loi_chi"), SubResource("K_know_vu_lang_hunting_ground"), SubResource("K_know_thanh_dai_precept"), SubResource("K_know_survey_fragment"), SubResource("K_know_vein_stone_grades"), SubResource("K_know_survey_notation"), SubResource("K_know_surveyors_line"), SubResource("K_know_night_wheels"), SubResource("K_know_shaft_claim"), SubResource("K_know_stake_socket"), SubResource("K_know_sealed_shaft")])

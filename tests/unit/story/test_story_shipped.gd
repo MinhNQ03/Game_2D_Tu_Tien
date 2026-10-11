@@ -185,9 +185,23 @@ func test_the_prologue_can_be_walked_to_act_one_down_both_branches() -> void:
 		var last := service.set_flag(&"flag_heard_road_ahead", 1)
 		assert_true(last.chapter_changed, "the prologue ends")
 		assert_eq(state.chapter_id, &"chapter_ke_vo_danh", "Act I begins")
-		assert_true(service.current_beat().terminal, "and the story rests on a standing purpose")
+		assert_eq(state.beat_id, &"beat_whose_hand",
+			"on a purpose the player can act on (D-073): the story does not rest yet")
 		assert_ne(service.objective_key(), &"", "which is not blank (Q19-03)")
 		assert_eq(state.completed_beats.size(), 11, "eleven beats were completed on the way")
+		# The bridge: one decision, then two things known — in ANY order they were learned.
+		owners.known[&"know_sealed_shaft"] = true  # found the door before asking anyone
+		service.refresh()
+		assert_eq(state.beat_id, &"beat_whose_hand", "finding the door early skips no decision")
+		assert_true(service.choose(&"choice_sheet_shown", &"shen").ok, "the sheet is shown")
+		assert_eq(state.beat_id, &"beat_stake_line", "the stake is still to be looked at")
+		owners.known[&"know_stake_socket"] = true
+		service.refresh()
+		assert_eq(state.beat_id, &"beat_standing",
+			"and with the door already found, the track's beat is passed on entry")
+		assert_true(service.current_beat().terminal, "where the story rests")
+		assert_ne(service.objective_key(), &"", "on a purpose that is not blank")
+		assert_eq(state.completed_beats.size(), 14, "fourteen beats were completed on the way")
 	assert_eq(paths[&"kept"], &"beat_sheet_told", "having kept her confidence, she tells you")
 	assert_eq(paths[&"told"], &"beat_sheet_found", "having told the elder, you find it yourself")
 

@@ -16,8 +16,11 @@ class_name StoryService
 ## cultivation session) completes the beat only if it happens while that beat is current.
 ## There is no polling: every method that can change the answer ends by settling.
 ##
-## EVERY REFUSAL CHANGES NOTHING. Each mutation checks everything it will need — including
-## that the owners it must ask are there — before it writes the first thing.
+## EVERY REFUSAL CHANGES NOTHING. Each mutation checks everything it will need before it
+## writes the first thing — and "checks" means it ASKS each owner whether it can do its part
+## (`StoryOwners.can_*`), not merely that the owner is there (D-073 §2). What the story asks
+## others to do is done first; what is the story's own (the record, the flags) is written
+## last, when nothing that could still refuse is left.
 
 const REFUSE_NOT_READY := &"story_not_ready"
 const REFUSE_NOT_BEGUN := &"story_not_begun"
@@ -167,11 +170,12 @@ func condition_holds(condition: StoryConditionData) -> bool:
 ## enter the first beat, and settle.
 ##
 ## Checked whole before anything is given: the Origin exists, the story has not begun and
-## every owner a grant needs is present. Then the ITEMS go first, as one all-or-nothing ask of
-## the bag — the only grant that can be refused for a reason of state (no room) — so a refusal
-## there has given nothing at all. What follows (knowledge, a first impression) cannot be
-## refused by an owner that is present; if one is anyway, the story is left NOT begun and says
-## so, and the caller's only correct answer is to discard the session (`StoryRuntime` does).
+## every owner a grant needs says it CAN carry it out. Then the ITEMS go first, as one
+## all-or-nothing ask of the bag — the only grant that can be refused for a reason of state
+## (no room) — so a refusal there has given nothing at all. What follows (knowledge, a first
+## impression) was agreed to; if an owner breaks that word the story is left NOT begun and
+## says so, and the caller's only correct answer is to discard the session (`StoryRuntime`
+## does).
 func begin(origin_id: StringName) -> StoryOutcome:
 	if not is_ready():
 		return StoryOutcome.refused(REFUSE_NOT_READY)
@@ -205,9 +209,9 @@ func _can_carry_out_grant(grant: OriginGrantData) -> bool:
 		OriginGrantData.Kind.ITEM:
 			return _owners.give_all.is_valid()
 		OriginGrantData.Kind.KNOWLEDGE:
-			return _owners.teach.is_valid()
+			return _can_teach(grant.knowledge_id)
 		OriginGrantData.Kind.REGARD:
-			return _owners.move_regard.is_valid()
+			return _can_move_regard(grant.character_id, grant.dimension, grant.delta)
 	return false
 
 
@@ -217,9 +221,29 @@ func _carry_out_grant(origin_id: StringName, grant: OriginGrantData) -> bool:
 			return bool(_owners.teach.call(grant.knowledge_id,
 				StringName(KNOWLEDGE_SOURCE_FORMAT % origin_id)))
 		OriginGrantData.Kind.REGARD:
-			return bool(_owners.move_regard.call(grant.character_id, grant.dimension,
-				grant.delta))
+			return bool(_move_regard(grant.character_id, grant.dimension, grant.delta)["ok"])
 	return false
+
+
+# --- Asking the owners (prepare, then commit) ---------------------------------
+
+## Does the Knowledge owner say it can teach this? No seam to ask, or no seam to do it, is no.
+func _can_teach(knowledge_id: StringName) -> bool:
+	return _owners.teach.is_valid() and _owners.can_teach.is_valid() \
+		and bool(_owners.can_teach.call(knowledge_id))
+
+
+func _can_move_regard(character_id: StringName, dimension: StringName, delta: int) -> bool:
+	return _owners.move_regard.is_valid() and _owners.can_move_regard.is_valid() \
+		and bool(_owners.can_move_regard.call(character_id, dimension, delta))
+
+
+## The relationship owner's answer, always in its own shape: `{ ok, old_value, new_value }`.
+func _move_regard(character_id: StringName, dimension: StringName, delta: int) -> Dictionary:
+	var answer: Variant = _owners.move_regard.call(character_id, dimension, delta)
+	if typeof(answer) == TYPE_DICTIONARY and (answer as Dictionary).has("ok"):
+		return answer
+	return {"ok": false, "old_value": 0, "new_value": 0}
 
 
 # --- Flags (the one writer) ----------------------------------------------------
@@ -273,6 +297,15 @@ func flag_errors() -> Array[String]:
 ## recorded once, and its consequences are carried out by their owners, in this one call.
 ## A second answer to the same choice — a repeated key, a signal delivered twice, a stale
 ## panel — is refused and changes nothing.
+##
+## ALL OR NOTHING (D-073 §2), in three steps:
+##   1. PREPARE — every consequence is asked of its owner ("can you?"). One "no" refuses the
+##      whole decision here, with nothing done anywhere.
+##   2. COMMIT, THE OWNERS — regards first (they can be put back exactly), then knowledge.
+##   3. COMMIT, THE STORY — the record and the flags, which are its own and cannot refuse.
+## An owner that said it could and then does not has broken its contract: the regards this
+## call moved are moved back by exactly what the owner reported, nothing is recorded, and the
+## decision stays open to be made again.
 func choose(choice_id: StringName, option_id: StringName) -> StoryOutcome:
 	if not has_begun():
 		return StoryOutcome.refused(REFUSE_NOT_BEGUN if is_ready() else REFUSE_NOT_READY)
@@ -287,39 +320,67 @@ func choose(choice_id: StringName, option_id: StringName) -> StoryOutcome:
 	for consequence in answer.consequences:
 		if not _can_carry_out(consequence):
 			return StoryOutcome.refused(REFUSE_OWNER)
+	if not _commit_to_owners(choice_id, answer):
+		return StoryOutcome.refused(REFUSE_OWNER)
 	_state.choices.append({"choice_id": String(choice_id), "option_id": String(option_id)})
 	for consequence in answer.consequences:
-		if not _carry_out(choice_id, consequence):
-			push_error("[story] choice '%s': an owner refused '%s' after agreeing to it"
-				% [choice_id, consequence.target_key()])
+		if consequence.kind == StoryConsequenceData.Kind.SET_FLAG:
+			_write_flag(_catalog.flag(consequence.flag_id), consequence.value)
 	var outcome := StoryOutcome.new()
 	outcome.choice_id = choice_id
 	outcome.option_id = option_id
 	return _settled(outcome)
 
 
+## PREPARE: can this consequence be carried out? The story answers for its own flags (the
+## flag is declared and can hold the value); every other kind is asked of its owner.
 func _can_carry_out(consequence: StoryConsequenceData) -> bool:
 	match consequence.kind:
 		StoryConsequenceData.Kind.SET_FLAG:
-			return _catalog.flag(consequence.flag_id) != null
+			var declared := _catalog.flag(consequence.flag_id)
+			return declared != null and consequence.value >= 0 \
+				and consequence.value <= declared.ceiling()
 		StoryConsequenceData.Kind.REGARD:
-			return _owners.move_regard.is_valid()
+			return _can_move_regard(consequence.character_id, consequence.dimension,
+				consequence.delta)
 		StoryConsequenceData.Kind.GRANT_KNOWLEDGE:
-			return _owners.teach.is_valid()
+			return _can_teach(consequence.knowledge_id)
 	return false
 
 
-func _carry_out(choice_id: StringName, consequence: StoryConsequenceData) -> bool:
-	match consequence.kind:
-		StoryConsequenceData.Kind.SET_FLAG:
-			_write_flag(_catalog.flag(consequence.flag_id), consequence.value)
-			return true
-		StoryConsequenceData.Kind.REGARD:
-			return bool(_owners.move_regard.call(consequence.character_id,
-				consequence.dimension, consequence.delta))
-		StoryConsequenceData.Kind.GRANT_KNOWLEDGE:
-			return bool(_owners.teach.call(consequence.knowledge_id,
-				StringName(KNOWLEDGE_SOURCE_FORMAT % choice_id)))
+## COMMIT what `answer` asks of OTHER owners. True when every one of them did its part. On a
+## breach nothing of this call is left standing: see `choose`.
+func _commit_to_owners(choice_id: StringName, answer: StoryOptionData) -> bool:
+	# [consequence, the owner's answer] for each regard that has moved, in order.
+	var moved: Array = []
+	for consequence in answer.consequences:
+		if consequence.kind != StoryConsequenceData.Kind.REGARD:
+			continue
+		var result := _move_regard(consequence.character_id, consequence.dimension,
+			consequence.delta)
+		if not bool(result["ok"]):
+			return _breach(choice_id, consequence, moved)
+		moved.append([consequence, result])
+	for consequence in answer.consequences:
+		if consequence.kind == StoryConsequenceData.Kind.GRANT_KNOWLEDGE \
+				and not bool(_owners.teach.call(consequence.knowledge_id,
+					StringName(KNOWLEDGE_SOURCE_FORMAT % choice_id))):
+			return _breach(choice_id, consequence, moved)
+	return true
+
+
+## An owner refused at the commit what it agreed to at the prepare. Put back the regards this
+## call moved — newest first, each by exactly what its owner reported — and say so loudly:
+## this is a defect in an owner's contract, never a state of the world.
+func _breach(choice_id: StringName, failed: StoryConsequenceData, moved: Array) -> bool:
+	push_error("[story] choice '%s': an owner refused '%s' after agreeing to it; undoing %d"
+		% [choice_id, failed.target_key(), moved.size()])
+	for i in range(moved.size() - 1, -1, -1):
+		var done: StoryConsequenceData = moved[i][0]
+		var result: Dictionary = moved[i][1]
+		var applied := int(result["new_value"]) - int(result["old_value"])
+		if applied != 0:
+			_move_regard(done.character_id, done.dimension, -applied)
 	return false
 
 

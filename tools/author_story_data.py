@@ -54,6 +54,18 @@ FLAGS = [
      "Lam Nguyet's one line to this Origin has been said (a line is said once, AUD-13)."),
     ("flag_te_origin_said",
      "What this Origin notices about the carter's load has been noticed."),
+    # --- the Act-I bridge (D-073) ---
+    ("flag_sheet_shown",
+     "Who was shown the torn sheet FIRST: 1 Lam Nguyet, 2 Kha Than, 3 Tham Bat Ky.", 3),
+    ("flag_lin_sheet_said",
+     "Lam Nguyet has said what she will say about the sheet (read it, or refused to)."),
+    ("flag_ko_sheet_said", "Kha Than has said what he will say about the sheet."),
+    ("flag_shen_sheet_said", "Tham Bat Ky has said what he will say about the sheet."),
+    ("flag_lin_shaft_said", "Lam Nguyet has answered the news of the sealed shaft."),
+    ("flag_ko_shaft_said", "Kha Than has answered the news of the sealed shaft."),
+    ("flag_shen_shaft_said", "Tham Bat Ky has answered the news of the sealed shaft."),
+    ("flag_trail_origin_said",
+     "What this Origin alone notices on the trail to the shaft has been noticed."),
 ]
 
 # (id, beat, title_key, [(option, record_key, [consequences])])
@@ -75,13 +87,32 @@ CHOICES = [
         ("withdrew", "STORY_CHOICE_NIGHT_STAND_WITHDREW",
          [(Q_REGARD, KO, "affinity", -5), (Q_SET_FLAG, "flag_night_over", "", 2)]),
     ]),
+    # The Act-I bridge (D-073 §1): WHO is shown the torn sheet first. One decision, three
+    # answers, each a different person's regard and a different piece of what happened. Bound
+    # to its beat: the conversations offer it only once the prologue has ended (a flag), so the
+    # beat is entered - and its scene told - before it can be answered. The regard moves are
+    # first impressions of a confidence (+10, +5) and of a threat (-10): well inside the
+    # ceiling, and the one that falls is on the dimension that can fall.
+    ("choice_sheet_shown", "beat_whose_hand", "STORY_CHOICE_SHEET_SHOWN", [
+        ("lin", "STORY_CHOICE_SHEET_SHOWN_LIN",
+         [(Q_REGARD, LIN, "trust", 10), (Q_KNOWLEDGE, "know_surveyors_line", "", 0),
+          (Q_SET_FLAG, "flag_sheet_shown", "", 1), (Q_SET_FLAG, "flag_lin_sheet_said", "", 1)]),
+        ("ko", "STORY_CHOICE_SHEET_SHOWN_KO",
+         [(Q_REGARD, KO, "trust", 5), (Q_KNOWLEDGE, "know_night_wheels", "", 0),
+          (Q_SET_FLAG, "flag_sheet_shown", "", 2), (Q_SET_FLAG, "flag_ko_sheet_said", "", 1)]),
+        ("shen", "STORY_CHOICE_SHEET_SHOWN_SHEN",
+         [(Q_REGARD, SHEN, "affinity", -10), (Q_KNOWLEDGE, "know_shaft_claim", "", 0),
+          (Q_SET_FLAG, "flag_sheet_shown", "", 3), (Q_SET_FLAG, "flag_shen_sheet_said", "", 1)]),
+    ]),
 ]
 
 # Beats entered with a scene: beat -> scene id, or ORIGIN_VIGNETTE for the run's own.
 ORIGIN_VIGNETTE = "<origin>"
 ENTRY_SCENES = {"beat_road": ORIGIN_VIGNETTE, "beat_arrival": "scene_arrival",
                 "beat_warning": "scene_night_warning", "beat_night": "scene_night_rupture",
-                "beat_aftermath": "scene_morning_after", "beat_standing": "scene_road_ahead"}
+                "beat_aftermath": "scene_morning_after",
+                # Act I opens on the road ahead; it comes to rest in front of a sealed door.
+                "beat_whose_hand": "scene_road_ahead", "beat_standing": "scene_shaft_sealed"}
 # beat -> (encounter id, the choice it answers, option when cleared, option when left)
 ENCOUNTERS = {"beat_night": ("field_night", "choice_night_stand", "stood", "withdrew",
                              "flag_vein_broke")}
@@ -119,6 +150,12 @@ SCENES = {
         (S_CAPTION, "STORY_SCENE_AHEAD_1", "", ""),
         (S_CAPTION, "STORY_SCENE_AHEAD_2", "", ""),
     ],
+    # Told where the player stands, at the door (D-073): what the book says against what
+    # the wax says.
+    "scene_shaft_sealed": [
+        (S_CAPTION, "STORY_SCENE_SHAFT_1", "", ""),
+        (S_CAPTION, "STORY_SCENE_SHAFT_2", "", ""),
+    ],
     "scene_morning_after": [
         (S_CARD, "STORY_SCENE_ARRIVAL_PLACE", "STORY_SCENE_MORNING_TIME", ""),
         (S_CAPTION, "STORY_SCENE_MORNING_1", "", ""),
@@ -152,7 +189,18 @@ PROLOGUE = [
     ("beat_sheet_found", "SHEET_FOUND", M5 % 11 + "; §4 FUTURE PAYOFF; D-072 §5",
      (KNOWS, "know_survey_fragment", [], 1), [([], "beat_leaving")]),
     ("beat_leaving", "LEAVING", M5 % 12 + "; §4 WORLD CONSEQUENCE",
-     (FLAG, "flag_heard_road_ahead", [], 1), [([], "beat_standing")]),
+     (FLAG, "flag_heard_road_ahead", [], 1), [([], "beat_whose_hand")]),
+]
+# Act I, the bridge (D-073 §1): from the torn sheet to the door the book says is shut. Three
+# beats on shipped systems, then the story rests. Each trigger is a fact an owner holds, so
+# what the player already did counts the moment the beat is entered.
+A1 = "D-073 §1; NARRATIVE_MASTER_PLAN.md §8 Act I, §4 FUTURE PAYOFF"
+ACT_ONE = [
+    ("beat_whose_hand", "WHOSE_HAND", A1, (CHOICE, "choice_sheet_shown", [], 1),
+     [([], "beat_stake_line")]),
+    ("beat_stake_line", "STAKE_LINE", A1, (KNOWS, "know_stake_socket", [], 1),
+     [([], "beat_ruts")]),
+    ("beat_ruts", "RUTS", A1, (KNOWS, "know_sealed_shaft", [], 1), [([], "beat_standing")]),
 ]
 STANDING = ("beat_standing", "STANDING", "NARRATIVE_MASTER_PLAN.md §8 Act I: KẺ VÔ DANH")
 
@@ -258,6 +306,8 @@ def story_catalog():
                           ("dimension", sn(dimension)), ("delta", delta)]
                 if kind == Q_SET_FLAG:
                     fields = [("kind", kind), ("flag_id", sn(who)), ("value", delta)]
+                elif kind == Q_KNOWLEDGE:
+                    fields = [("kind", kind), ("knowledge_id", sn(who))]
                 refs.append(doc.sub("story_consequence_data", "Q_%s_%s_%d" % (cid, oid, i),
                                     fields))
             option_refs.append(doc.sub("story_option_data", "O_%s_%s" % (cid, oid), [
@@ -266,8 +316,11 @@ def story_catalog():
         choices.append(doc.sub("story_choice_data", "C_%s" % cid, [
             ("id", sn(cid)), ("beat_id", sn(beat)), ("title_key", sn(title)),
             ("options", doc.array("story_option_data", option_refs))]))
-    beats = []
-    for bid, stem, source, (kind, subject, subjects, count), branches in PROLOGUE:
+    def authored(table):
+        return [one_beat(*row) for row in table]
+
+    def one_beat(bid, stem, source, trigger_spec, branches):
+        kind, subject, subjects, count = trigger_spec
         trigger = doc.sub("story_trigger_data", "T_%s" % bid, [
             ("kind", kind), ("subject_id", sn(subject)), ("subjects", names(subjects)),
             ("count", count)])
@@ -280,7 +333,7 @@ def story_catalog():
                 ("conditions", doc.array("story_condition_data", cond_refs)),
                 ("next_beat_id", sn(nxt))]))
         entry = ENTRY_SCENES.get(bid, "")
-        beats.append(doc.sub("story_beat_data", "BEAT_%s" % bid, [
+        return doc.sub("story_beat_data", "BEAT_%s" % bid, [
             ("id", sn(bid)), ("objective_key", sn("STORY_BEAT_%s_OBJECTIVE" % stem)),
             ("record_key", sn("STORY_BEAT_%s_RECORD" % stem)), ("reveal_layer", 1),
             ("source", '"%s"' % source),
@@ -293,11 +346,12 @@ def story_catalog():
                 ("encounter_cleared_option", sn(ENCOUNTERS[bid][2])),
                 ("encounter_left_option", sn(ENCOUNTERS[bid][3])),
                 ("encounter_flag_id", sn(ENCOUNTERS[bid][4]))]
-               if bid in ENCOUNTERS else [])))
+               if bid in ENCOUNTERS else []))
+
     prologue = doc.sub("story_chapter_data", "CH_prologue", [
         ("id", sn("chapter_prologue")), ("title_key", sn("STORY_CHAPTER_PROLOGUE_TITLE")),
         ("act", 0), ("max_reveal_layer", 1),
-        ("beats", doc.array("story_beat_data", beats))])
+        ("beats", doc.array("story_beat_data", authored(PROLOGUE)))])
     bid, stem, source = STANDING
     standing = doc.sub("story_beat_data", "BEAT_%s" % bid, [
         ("id", sn(bid)), ("objective_key", sn("STORY_BEAT_%s_OBJECTIVE" % stem)),
@@ -306,7 +360,7 @@ def story_catalog():
     act_one = doc.sub("story_chapter_data", "CH_act1", [
         ("id", sn("chapter_ke_vo_danh")), ("title_key", sn("STORY_CHAPTER_KE_VO_DANH_TITLE")),
         ("act", 1), ("max_reveal_layer", 3),
-        ("beats", doc.array("story_beat_data", [standing]))])
+        ("beats", doc.array("story_beat_data", authored(ACT_ONE) + [standing]))])
     return doc.render("story_catalog_data", [
         ("chapters", doc.array("story_chapter_data", [prologue, act_one])),
         ("flags", doc.array("story_flag_data", flags)),

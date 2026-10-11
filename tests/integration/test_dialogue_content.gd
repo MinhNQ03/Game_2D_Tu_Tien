@@ -32,6 +32,14 @@ var _player: CharacterState = null
 
 
 func before_each() -> void:
+	_fresh_owners()
+	_begin_story(&"origin_nghe_nhan")
+	# A private instance: the shared autoload's language is never touched (L-010).
+	_loc = LocalizationScript.new()
+
+
+## Owners with nothing in them: no knowledge, no regard, no quest taken.
+func _fresh_owners() -> void:
 	_config = load(CONFIG_PATH) as RelationshipConfigData
 	_relationship = RelationshipService.new(RelationshipStore.new(_config), _config)
 	_knowledge = KnowledgeService.new(load(KNOWLEDGE_PATH) as KnowledgeCatalogData,
@@ -41,9 +49,6 @@ func before_each() -> void:
 	_quests = QuestService.new(load(QUESTS_PATH) as QuestCatalogData, QuestState.new(),
 		_knowledge, RewardService.new(RewardLedger.new()),
 		func(_item_id: StringName) -> int: return 0)
-	_begin_story(&"origin_nghe_nhan")
-	# A private instance: the shared autoload's language is never touched (L-010).
-	_loc = LocalizationScript.new()
 
 
 func after_each() -> void:
@@ -78,7 +83,9 @@ func _begin_story(origin_id: StringName) -> void:
 	_player.instance_id = PLAYER
 	var owners := StoryOwners.new()
 	owners.knows = _knowledge.knows
+	owners.can_teach = _knowledge.can_grant
 	owners.teach = _teach
+	owners.can_move_regard = _can_move_regard
 	owners.move_regard = _move_regard
 	owners.give_all = _give_all
 	_story = StoryService.new(load(STORY_PATH) as StoryCatalogData,
@@ -93,9 +100,13 @@ func _teach(knowledge_id: StringName, source_id: StringName) -> bool:
 	return result == KnowledgeService.GRANTED or result == KnowledgeService.ALREADY_KNOWN
 
 
-func _move_regard(character_id: StringName, dimension: StringName, delta: int) -> bool:
-	return bool(RegardRules.move(_relationship, _config, character_id, PLAYER, dimension,
-		delta, &"test_story")["ok"])
+func _can_move_regard(character_id: StringName, dimension: StringName, delta: int) -> bool:
+	return RegardRules.can_move(_relationship, _config, character_id, PLAYER, dimension, delta)
+
+
+func _move_regard(character_id: StringName, dimension: StringName, delta: int) -> Dictionary:
+	return RegardRules.move(_relationship, _config, character_id, PLAYER, dimension,
+		delta, &"test_story")
 
 
 func _give_all(_items: Dictionary) -> bool:
@@ -308,3 +319,161 @@ func test_the_rejected_disciple_and_lin_know_each_other() -> void:
 	dialogue = _service.catalog().dialogue_of_speaker(LIN)
 	assert_true(_ids(dialogue.id, &"lin_hub").has(&"lin_rival"), "the one who failed it did")
 	assert_eq(_service.regard(LIN, PLAYER, &"rivalry"), 15, "and she already remembers them")
+
+
+# === The Act-I bridge (D-073 §1): who is shown the sheet, and what each Origin notices ======
+
+const DLG_LIN := &"dlg_disciple_lin"
+const DLG_KO := &"dlg_scout_ko"
+const DLG_SHEN := &"dlg_elder_shen"
+const FRAGMENT := &"know_survey_fragment"
+const SHAFT := &"know_sealed_shaft"
+## Each person's conversation and the line it opens on once Act I has begun.
+const TRAILS := [[DLG_LIN, &"lin_trail"], [DLG_KO, &"ko_trail"], [DLG_SHEN, &"shen_trail"]]
+
+
+## Bring the story to open Act-I play the way a run does: `readings` kept or told, the Night
+## `stood` or `withdrew`, the sheet read, the carter heard.
+func _to_act_one(origin_id: StringName, readings: StringName, night: StringName) -> void:
+	_fresh_owners()  # a new run: nothing an earlier Origin knew or earned is carried over
+	_begin_story(origin_id)
+	_story.note(StoryTriggerData.Kind.SCENE_ENDED, &"scene")
+	for who: StringName in [SHEN, LIN, KO]:
+		_story.meet(who)
+	_story.set_flag(HEARD, 1)
+	assert_true(_story.choose(&"choice_lam_readings", readings).ok, "setup: %s" % readings)
+	_story.note(StoryTriggerData.Kind.ARRIVED, &"map_field")
+	assert_true(_story.choose(&"choice_night_stand", night).ok, "setup: %s" % night)
+	_story.set_flag(&"flag_heard_elder_account", 1)
+	_story.set_flag(&"flag_ko_night_said", 1)  # the line the Night owed has been heard
+	_story.note(StoryTriggerData.Kind.CULTIVATED)
+
+
+func _end_prologue() -> void:
+	_knowledge.grant(FRAGMENT, &"source_survey_sheet")
+	_story.refresh()
+	_story.set_flag(&"flag_heard_road_ahead", 1)
+	assert_eq(_story.state().beat_id, &"beat_whose_hand", "setup: Act I, the sheet in hand")
+
+
+func test_nobody_opens_on_the_sheet_before_the_prologue_is_over() -> void:
+	_to_act_one(&"origin_lang_y", &"kept", &"stood")
+	_knowledge.grant(FRAGMENT, &"source_survey_sheet")
+	_story.refresh()
+	assert_eq(_story.state().beat_id, &"beat_leaving", "sheet held, the carter not yet heard")
+	for pair: Array in TRAILS:
+		assert_ne(_service.opening_node_id(pair[0], PLAYER), pair[1],
+			"%s does not open on the sheet yet: the decision cannot be made early" % pair[0])
+	_end_prologue()
+	for pair: Array in TRAILS:
+		assert_eq(_service.opening_node_id(pair[0], PLAYER), pair[1],
+			"%s opens on it once Act I has begun" % pair[0])
+
+
+func test_each_person_offers_the_sheet_in_the_words_the_run_has_earned() -> void:
+	# kept + stood: she will read it; the watchman speaks to one who stood.
+	_to_act_one(&"origin_lang_y", &"kept", &"stood")
+	_end_prologue()
+	assert_eq(_ids(DLG_LIN, &"lin_trail"), [&"lin_show", &"lin_trail_back"] as Array[StringName],
+		"kept: she offers to read it")
+	assert_eq(_ids(DLG_KO, &"ko_trail"), [&"ko_show_stood", &"ko_trail_back"] as Array[StringName],
+		"stood: the watchman's line for one who stayed")
+	assert_eq(_ids(DLG_SHEN, &"shen_trail"), [&"shen_show", &"shen_trail_back"]
+		as Array[StringName], "the elder can always be shown it")
+	# told + withdrew: she refuses; the watchman speaks to one who left.
+	_to_act_one(&"origin_lang_y", &"told", &"withdrew")
+	_end_prologue()
+	assert_eq(_ids(DLG_LIN, &"lin_trail"), [&"lin_show_refused", &"lin_trail_back"]
+		as Array[StringName], "told: she does not read it for the one who told on her")
+	assert_eq(_ids(DLG_KO, &"ko_trail"), [&"ko_show_left", &"ko_trail_back"] as Array[StringName],
+		"withdrew: the watchman's line for one who left")
+
+
+func test_her_refusal_is_said_once_records_nothing_and_leaves_two_people_to_ask() -> void:
+	_to_act_one(&"origin_lang_y", &"told", &"stood")
+	_end_prologue()
+	var record := str(_story.state().to_dict())
+	var refused := _choose(DLG_LIN, &"lin_trail", &"lin_show_refused")
+	assert_true(refused.ok, "the line is said")
+	assert_eq(refused.next_node_id, &"lin_sheet_refuse", "and it is her refusal")
+	assert_eq(str(_story.state().to_dict()), record, "which records no decision")
+	assert_false(_story.state().has_chosen(&"choice_sheet_shown"), "the choice is still open")
+	assert_eq(_ids(DLG_LIN, &"lin_trail"), [&"lin_trail_back"] as Array[StringName],
+		"she does not say it twice")
+	assert_true(_ids(DLG_KO, &"ko_trail").has(&"ko_show_stood")
+		and _ids(DLG_SHEN, &"shen_trail").has(&"shen_show"), "and two people can still be shown it")
+
+
+func test_the_first_showing_is_the_decision_and_the_others_answer_once_for_nothing() -> void:
+	_to_act_one(&"origin_lang_y", &"kept", &"stood")
+	_end_prologue()
+	var shown := _choose(DLG_SHEN, &"shen_trail", &"shen_show")
+	assert_true(shown.ok, "the elder is shown it first")
+	assert_eq(_story.state().option_of(&"choice_sheet_shown"), &"shen", "recorded")
+	assert_eq(RegardRules.read(_relationship, _config, SHEN, PLAYER, &"affinity"), -10,
+		"he thinks the worse of someone holding that page")
+	assert_true(_knowledge.knows(&"know_shaft_claim"), "and his claim about the shaft is known")
+	assert_eq(_ids(DLG_SHEN, &"shen_trail"), [&"shen_trail_back"] as Array[StringName],
+		"he has said his piece")
+	var lin_trust := RegardRules.read(_relationship, _config, LIN, PLAYER, &"trust")
+	assert_eq(_ids(DLG_LIN, &"lin_trail"), [&"lin_show_late", &"lin_trail_back"]
+		as Array[StringName], "she can still be asked — as someone who came second")
+	assert_true(_choose(DLG_LIN, &"lin_trail", &"lin_show_late").ok, "she answers")
+	assert_eq(RegardRules.read(_relationship, _config, LIN, PLAYER, &"trust"), lin_trust,
+		"with no trust for coming second")
+	assert_false(_knowledge.knows(&"know_surveyors_line"), "and no second prize of knowledge")
+	assert_eq(_story.state().option_of(&"choice_sheet_shown"), &"shen", "the record is unchanged")
+	assert_eq(_ids(DLG_LIN, &"lin_trail"), [&"lin_trail_back"] as Array[StringName], "once")
+	assert_true(_choose(DLG_KO, &"ko_trail", &"ko_show_late").ok, "the watchman answers too")
+	assert_eq(_ids(DLG_KO, &"ko_trail"), [&"ko_trail_back"] as Array[StringName], "once")
+
+
+## Every Origin has exactly ONE thing only it notices on the trail, with one person, after the
+## door is found, said once. Two are opened by what the Origin KNOWS, three by who it was.
+func test_each_origin_notices_one_thing_on_the_trail_once_and_only_after_the_door() -> void:
+	var lines := {
+		&"origin_thu_thu": [DLG_SHEN, &"shen_trail", &"shen_trail_hand"],
+		&"origin_nghe_nhan": [DLG_KO, &"ko_trail", &"ko_trail_stones"],
+		&"origin_ho_tieu": [DLG_KO, &"ko_trail", &"ko_trail_ruts"],
+		&"origin_lang_y": [DLG_KO, &"ko_trail", &"ko_trail_nails"],
+		&"origin_de_tu_bi_loai": [DLG_KO, &"ko_trail", &"ko_trail_cord"],
+	}
+	var every: Array[StringName] = []
+	for origin_id: StringName in lines:
+		every.append(lines[origin_id][2])
+	for origin_id: StringName in lines:
+		_to_act_one(origin_id, &"told", &"withdrew")
+		_end_prologue()
+		var mine: Array = lines[origin_id]
+		var offered: Array[StringName] = []
+		for pair: Array in TRAILS:
+			offered.append_array(_ids(pair[0], pair[1]))
+		for line in every:
+			assert_false(offered.has(line), "%s: '%s' is not said before the door is found"
+				% [origin_id, line])
+		_knowledge.grant(SHAFT, &"source_shaft_seal")
+		offered.clear()
+		for pair: Array in TRAILS:
+			offered.append_array(_ids(pair[0], pair[1]))
+		for line in every:
+			assert_eq(offered.has(line), line == mine[2],
+				"%s: of the five, only its own line is offered ('%s')" % [origin_id, line])
+		assert_true(_choose(mine[0], mine[1], mine[2]).ok, "%s notices it" % origin_id)
+		assert_true(_story.flag_at_least(&"flag_trail_origin_said", 1), "on the record")
+		assert_false(_ids(mine[0], mine[1]).has(mine[2]), "%s: and only once" % origin_id)
+
+
+func test_the_door_is_answered_by_each_person_once_and_by_her_in_two_ways() -> void:
+	for readings: StringName in [&"kept", &"told"]:
+		_to_act_one(&"origin_lang_y", readings, &"stood")
+		_end_prologue()
+		_knowledge.grant(SHAFT, &"source_shaft_seal")
+		var hers: StringName = &"lin_shaft_kept" if readings == &"kept" else &"lin_shaft_told"
+		var not_hers: StringName = &"lin_shaft_told" if readings == &"kept" else &"lin_shaft_kept"
+		assert_true(_ids(DLG_LIN, &"lin_trail").has(hers), "%s: her answer to the door" % readings)
+		assert_false(_ids(DLG_LIN, &"lin_trail").has(not_hers), "%s: and not the other" % readings)
+		for triple: Array in [[DLG_LIN, &"lin_trail", hers], [DLG_KO, &"ko_trail", &"ko_shaft"],
+				[DLG_SHEN, &"shen_trail", &"shen_shaft"]]:
+			assert_true(_choose(triple[0], triple[1], triple[2]).ok, "%s is said" % triple[2])
+			assert_false(_ids(triple[0], triple[1]).has(triple[2]), "%s is said once" % triple[2])
+

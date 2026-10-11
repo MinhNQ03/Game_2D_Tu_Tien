@@ -422,7 +422,7 @@ STORY_BEAT_SHEET_FOUND_OBJECTIVE,Something hides by the stele,Có thứ bị gi�
 STORY_BEAT_SHEET_FOUND_RECORD,You found a torn sheet of the vein survey that someone meant to keep. It does not match what the Terrace says.,Ngươi tìm thấy một mảnh sổ khảo mạch mà ai đó muốn giữ lại. Nó không khớp với lời Thanh Đài.
 STORY_BEAT_LEAVING_OBJECTIVE,See the carter before he goes,Gặp lão phu xe trước khi đi
 STORY_BEAT_LEAVING_RECORD,Word of a broken vein travels. The frontier is no longer the whole map.,Tin mạch vỡ sẽ lan đi. Biên thùy không còn là cả tấm bản đồ nữa.
-STORY_BEAT_STANDING_OBJECTIVE,Find the true vein survey,Tìm sổ khảo mạch thật
+STORY_BEAT_STANDING_OBJECTIVE,Find a rod for the shaft,Tìm thước mở Hầm Khảo Mạch
 STORY_CHOICE_LAM_READINGS,Lin Yue's readings,Sổ đo của Lâm Nguyệt
 STORY_CHOICE_LAM_READINGS_KEPT,You kept quiet about the readings Lin Yue was taking without leave.,Ngươi giữ kín việc Lâm Nguyệt tự ý đo mạch.
 STORY_CHOICE_LAM_READINGS_TOLD,You told Elder Shen that Lin Yue was taking readings without leave.,Ngươi thưa với Trưởng lão Thẩm việc Lâm Nguyệt tự ý đo mạch.
@@ -593,3 +593,59 @@ STORY_SCENE_AHEAD_2,You still belong to no one. But you are holding something th
 UI_HUD_WORLD_EVENT_ROSE_WHO,{who}: {subject} rose,{who}: {subject} tăng lên
 UI_HUD_WORLD_EVENT_FELL_WHO,{who}: {subject} fell,{who}: {subject} giảm xuống
 UI_CHRONICLE_KEYS_LAST,{key} Close · {page}/{pages},{key} Đóng · {page}/{pages}
+UI_STORY_REFUSED_UNSETTLED,That cannot be settled right now. Nothing has changed.,Chuyện ấy lúc này chưa định được. Chưa có gì thay đổi.
+UI_STORY_REFUSED_DECIDED,You have already given your answer to that.,Chuyện ấy ngươi đã trả lời rồi.
+UI_STORY_REFUSED_NOT_YET,It is not yet time to decide that.,Chưa tới lúc quyết chuyện ấy.
+UI_HUD_EXAMINE_ACTION,Examine,Xem xét
+KNOW_SURVEYORS_LINE_NAME,The Surveyor's Line,Đường cọc khảo mạch
+KNOW_SURVEYORS_LINE_DESC,"Lin Yue's reading of the torn sheet: it is the old surveyor's hand. A survey is a line of four stakes, from the road to the place the vein was sounded. This page was written at the third.","Lâm Nguyệt đọc mảnh sổ: đây là nét chữ của người đo cũ. Khảo mạch là một hàng bốn cọc, từ đường cái tới nơi dò mạch. Trang này được ghi ở cọc thứ ba."
+KNOW_NIGHT_WHEELS_NAME,Wheels in the Night,Tiếng bánh xe ban đêm
+KNOW_NIGHT_WHEELS_DESC,"Ko Than's word: on the nights he was paid to sleep, a cart went up past the third stake — and never came back down by the road.","Lời Kha Thản: những đêm hắn được trả tiền để ngủ say, có xe đi lên qua cọc thứ ba — và chưa bao giờ quay xuống theo đường cái."
+KNOW_SHAFT_CLAIM_NAME,The Elder's Word on the Shaft,Lời trưởng lão về căn hầm
+KNOW_SHAFT_CLAIM_DESC,"Elder Shen's word: no such page was ever written, and the old Survey Shaft in the north-east rocks has lain under seal since winter. Nothing is there.","Lời Trưởng lão Thẩm: chưa từng có trang sổ nào như thế, và Hầm Khảo Mạch cũ trên bãi đá đông bắc đã niêm kín từ mùa đông. Ở đó không có gì cả."
+KNOW_STAKE_SOCKET_NAME,Where the Stake Stood,Chỗ cọc từng đứng
+KNOW_STAKE_SOCKET_DESC,"The ground was raked over, but the stone collar is still set in it: the outpost's seal-cut, and the number three. Cart ruts cross the raked earth and run on north-east, away from the road.","Đất đã bị cào bằng, nhưng vòng đá giữ cọc vẫn nằm đó: vết ấn của tiền đồn, và con số ba. Vết bánh xe cắt ngang lớp đất mới cào rồi chạy tiếp về đông bắc, xa khỏi đường cái."
+KNOW_SEALED_SHAFT_NAME,The Survey Shaft,Hầm Khảo Mạch
+KNOW_SEALED_SHAFT_DESC,"An old survey adit in the north-east rocks, boarded up and sealed in the outpost's wax. The wax is days old, and wheels have cut the dust at the sill. The bar is cut to take the head of a surveyor's rod.","Một căn hầm khảo mạch cũ trên bãi đá đông bắc, đóng nẹp và niêm bằng sáp của tiền đồn. Sáp mới được vài ngày, bụi trước ngưỡng cửa hằn vết bánh xe. Then cửa khoét vừa đầu một cây thước khảo mạch."
+STORY_BEAT_WHOSE_HAND_OBJECTIVE,Ask who wrote the sheet,Hỏi ai đã viết mảnh sổ
+STORY_BEAT_WHOSE_HAND_RECORD,You took the torn sheet to someone who might know it.,Ngươi mang mảnh sổ tới người có thể nhận ra nó.
+STORY_BEAT_STAKE_LINE_OBJECTIVE,Look where the stake stood,Xem chỗ cọc khảo mạch cũ
+STORY_BEAT_STAKE_LINE_RECORD,"Where the stake had stood the ground was raked — but the collar was still in it, and cart ruts ran on to the north-east.","Chỗ cọc từng đứng, đất đã bị cào — nhưng vòng đá vẫn còn đó, và vết bánh xe chạy tiếp về đông bắc."
+STORY_BEAT_RUTS_OBJECTIVE,Follow the old cart track,Lần theo vệt xe lên bãi đá
+STORY_BEAT_RUTS_RECORD,The track ends at the Survey Shaft: fresh wax on a door the Terrace says has been shut since winter.,"Vệt xe dừng ở Hầm Khảo Mạch: sáp niêm còn mới, trên cánh cửa mà Thanh Đài bảo đã đóng từ mùa đông."
+STORY_CHOICE_SHEET_SHOWN,Who saw the sheet first,Ai được xem mảnh sổ trước
+STORY_CHOICE_SHEET_SHOWN_LIN,You showed the sheet to Lin Yue first. She read the old surveyor's hand for you.,Ngươi đưa Lâm Nguyệt xem mảnh sổ trước. Nàng đọc giúp ngươi nét chữ của người đo cũ.
+STORY_CHOICE_SHEET_SHOWN_KO,You showed the sheet to Ko Than first. He told you what he heard on the nights he was paid to sleep.,Ngươi đưa Kha Thản xem mảnh sổ trước. Hắn kể điều hắn nghe trong những đêm được trả tiền để ngủ.
+STORY_CHOICE_SHEET_SHOWN_SHEN,You showed the sheet to Elder Shen first. He denied it — and now he knows you hold it.,Ngươi đưa Trưởng lão Thẩm xem mảnh sổ trước. Lão chối — và giờ lão biết ngươi đang giữ nó.
+STORY_SCENE_SHAFT_1,The book says this door has been shut since winter. The wax on it is days old.,Sổ sách ghi cánh cửa này đã đóng từ mùa đông. Sáp niêm trên nó mới được vài ngày.
+STORY_SCENE_SHAFT_2,Somewhere behind it is the rest of the page you are holding. It will not open to bare hands.,Đâu đó phía sau là phần còn lại của trang sổ ngươi đang giữ. Tay không thì không mở được nó.
+DLG_CHOICE_SHAFT,Tell of the sealed shaft,Kể về căn hầm bị niêm
+DLG_CHOICE_BACK,Speak of something else,Nói chuyện khác
+DLG_LIN_TRAIL,(She looks at your hands before she looks at you.) Speak.,(Nàng nhìn tay ngươi trước khi nhìn ngươi.) Nói đi.
+DLG_LIN_CHOICE_SHOW,Show her the sheet,Đưa nàng xem mảnh sổ
+DLG_LIN_SHEET_READ,"…This is his hand. The surveyor before me. A survey is a line — four stakes, from the road to where he sounded the vein. This page was written at the third. The fourth is in the north-east rocks.","…Đây là chữ ông ấy. Người đo trước ta. Khảo mạch là một hàng cọc — bốn cái, từ đường cái tới chỗ ông dò mạch. Trang này ghi ở cọc thứ ba. Cọc thứ tư nằm trên bãi đá đông bắc."
+DLG_LIN_SHEET_REFUSE,"You have a page, and I have no rod. Show it to the one you gave my rod to.","Ngươi có một trang giấy, còn ta thì hết thước. Đem nó cho người mà ngươi đã giao thước của ta ấy."
+DLG_LIN_SHEET_LATE,You showed someone else before you showed me. …It is the old surveyor's hand. Four stakes; this is the third's page. That is what coming second gets you.,Ngươi đưa người khác xem trước ta. …Chữ của người đo cũ. Bốn cọc; đây là trang của cọc thứ ba. Tới sau thì chỉ được chừng ấy.
+DLG_LIN_SHAFT_KEPT,"The bar takes a rod's head — any surveyor's. I still have mine. Not while the province's counters walk those woods. When they are gone, I go down with you.","Then cửa ăn với đầu thước — thước của người đo nào cũng được. Ta vẫn còn thước. Nhưng chưa phải lúc, khi người của châu còn đi lại trong rừng. Họ đi rồi, ta xuống cùng ngươi."
+DLG_LIN_SHAFT_TOLD,It takes a surveyor's rod. Mine is in the elder's chest. You put it there.,Nó cần một cây thước khảo mạch. Thước của ta nằm trong rương của trưởng lão. Chính ngươi đặt nó vào đó.
+DLG_KO_TRAIL,You walk like someone carrying something. Out with it.,Ngươi đi như kẻ đang giấu thứ gì trong người. Nói ra đi.
+DLG_KO_CHOICE_SHOW,Show him the sheet,Đưa hắn xem mảnh sổ
+DLG_KO_SHEET_STOOD,"I cannot read it. I can tell you what I heard. The nights I was paid to sleep — wheels, going up past the third stake. Never coming back down by the road. You stood out there with me; that one is free.","Ta không đọc được. Nhưng ta kể được điều ta nghe. Những đêm ta được trả tiền để ngủ — có tiếng bánh xe, đi lên qua cọc thứ ba. Chưa bao giờ quay xuống theo đường cái. Ngươi đã trụ lại ngoài đó với ta; tin này không tính tiền."
+DLG_KO_SHEET_LEFT,"I cannot read it. …The nights I was paid to sleep — wheels, up past the third stake, never back down by the road. I tell you because I want to know who paid me. Not because you earned it.","Ta không đọc được. …Những đêm ta được trả tiền để ngủ — có tiếng bánh xe, lên qua cọc thứ ba, chưa từng quay xuống đường cái. Ta kể vì ta muốn biết ai đã trả tiền cho ta. Không phải vì ngươi xứng."
+DLG_KO_SHEET_LATE,"Shown it around already, have you. Wheels at night, past the third stake. That is all there is to buy.","Đưa khắp nơi rồi mới tới ta à. Bánh xe ban đêm, qua cọc thứ ba. Chỉ có chừng ấy để bán thôi."
+DLG_KO_SHAFT,"Sealed since winter, he says? I have heard that door at night. A sealed door does not creak.","Niêm từ mùa đông, lão nói thế à? Ta từng nghe cánh cửa ấy ban đêm. Cửa niêm thì không kẽo kẹt."
+DLG_KO_CHOICE_STONES,Ask to see his wage-stones,Xin xem linh thạch tiền công
+DLG_KO_STONES,"(Every one of them has a raw base. Never surveyed, never counted.) They spend the same. …Do they not?","(Viên nào đáy cũng còn thô. Chưa từng qua khảo, chưa từng được đếm.) Tiêu thì vẫn tiêu được. …Phải không?"
+DLG_KO_CHOICE_RUTS,Describe the ruts to him,Tả vết bánh xe cho hắn
+DLG_KO_RUTS,"(Shallow going up, deep coming down: a cart that climbs empty and comes back full. The ruts looked the same the morning your convoy was gone.) You read wheels like an escort. Then you know that cart never hauled pine.","(Nông lúc lên, hằn sâu lúc xuống: xe leo dốc thì rỗng, quay về thì đầy. Sáng hôm đoàn hàng của ngươi biến mất, vết xe cũng y như thế.) Ngươi đọc vết xe như dân áp tiêu. Vậy ngươi thừa biết cái xe ấy chưa từng chở gỗ thông."
+DLG_KO_CHOICE_NAILS,Look at his hands,Nhìn bàn tay hắn
+DLG_KO_NAILS,"(His nails are clean. Whatever turned the carter's grey, the watch never touched it.) I stand by the path. I carry nothing down it. …Why are you looking at my hands?","(Móng tay hắn sạch. Thứ gì làm tay lão phu xe xám đi, người gác chưa từng chạm vào.) Ta đứng bên lối. Ta không khuân gì xuống cả. …Sao ngươi nhìn tay ta?"
+DLG_KO_CHOICE_CORD,Ask about the seal-cord,Hỏi về sợi dây niêm
+DLG_KO_CORD,(The cord on that door is tied in the examiners' knot — the one on the trial board.) Cord like that comes up from Cloud Vale ready-tied. Nobody out here knows the knot.,"(Sợi dây trên cửa hầm thắt kiểu nút của giám khảo — đúng cái nút trên bảng khảo hạch.) Dây ấy từ Vân Cốc gửi lên, thắt sẵn. Ngoài này không ai biết thắt kiểu đó."
+DLG_SHEN_TRAIL,You are still in my village. Then speak — and choose the words with care.,Ngươi vẫn còn ở làng ta. Vậy nói đi — và liệu lời mà nói.
+DLG_SHEN_CHOICE_SHOW,Show him the sheet,Đưa trưởng lão xem mảnh sổ
+DLG_SHEN_SHEET,"That page was never written. The man who would have written it sounded the vein himself, against my order — and the old shaft in the north-east rocks has been under seal since winter. There is nothing there. Burn that.","Trang ấy chưa từng được viết. Kẻ lẽ ra viết nó đã tự ý dò mạch, trái lệnh ta — và căn hầm cũ trên bãi đá đông bắc đã niêm từ mùa đông. Ở đó không có gì. Đốt nó đi."
+DLG_SHEN_SHEET_LATE,I hear a page is being passed about my village. There is no such page. See that there is not.,Ta nghe có một trang giấy đang được chuyền tay trong làng ta. Không có trang nào như thế. Liệu mà để cho nó không có.
+DLG_SHEN_SHAFT,You went to the rocks. The seal on that door is the outpost's — and so is the right to break it. Stay away from it.,Ngươi đã lên bãi đá. Dấu niêm trên cửa ấy là của tiền đồn — quyền phá niêm cũng vậy. Tránh xa nó ra.
+DLG_SHEN_CHOICE_SECOND_HAND,Point at the word 'level',Chỉ vào chữ 'bình ổn'
+DLG_SHEN_SECOND_HAND,(The readings are in one hand. The word 'level' beside them is in another.) …You read the old notation. I was told to expect someone who could. Nobody told me you would be this quiet about it.,(Cột số đo là một nét chữ. Chữ 'bình ổn' bên cạnh là nét chữ khác.) …Ngươi đọc được lối ghi cũ. Ta đã được dặn chờ một kẻ đọc được. Chỉ không ai dặn rằng ngươi sẽ kín tiếng đến thế.

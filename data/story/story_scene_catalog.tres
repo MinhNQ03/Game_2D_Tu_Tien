@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StorySceneCatalogData" load_steps=51 format=3]
+[gd_resource type="Resource" script_class="StorySceneCatalogData" load_steps=54 format=3]
 
 [ext_resource type="Script" path="res://src/data/story/story_scene_catalog_data.gd" id="s_story_scene_catalog_data"]
 [ext_resource type="Script" path="res://src/data/story/story_scene_data.gd" id="s_story_scene_data"]
@@ -152,6 +152,26 @@ script = ExtResource("s_story_scene_data")
 id = &"scene_road_ahead"
 elsewhere = true
 steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_road_ahead_0"), SubResource("STEP_scene_road_ahead_1"), SubResource("STEP_scene_road_ahead_2")])
+
+[sub_resource type="Resource" id="STEP_scene_shaft_sealed_0"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_SHAFT_1"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="STEP_scene_shaft_sealed_1"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_SHAFT_2"
+sub_key = &""
+speaker_id = &""
+
+[sub_resource type="Resource" id="SCENE_scene_shaft_sealed"]
+script = ExtResource("s_story_scene_data")
+id = &"scene_shaft_sealed"
+elsewhere = false
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_shaft_sealed_0"), SubResource("STEP_scene_shaft_sealed_1")])
 
 [sub_resource type="Resource" id="STEP_scene_vignette_de_tu_bi_loai_0"]
 script = ExtResource("s_story_scene_step_data")
@@ -325,4 +345,4 @@ steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_v
 
 [resource]
 script = ExtResource("s_story_scene_catalog_data")
-entries = Array[ExtResource("s_story_scene_data")]([SubResource("SCENE_scene_arrival"), SubResource("SCENE_scene_morning_after"), SubResource("SCENE_scene_night_rupture"), SubResource("SCENE_scene_night_warning"), SubResource("SCENE_scene_road_ahead"), SubResource("SCENE_scene_vignette_de_tu_bi_loai"), SubResource("SCENE_scene_vignette_ho_tieu"), SubResource("SCENE_scene_vignette_lang_y"), SubResource("SCENE_scene_vignette_nghe_nhan"), SubResource("SCENE_scene_vignette_thu_thu")])
+entries = Array[ExtResource("s_story_scene_data")]([SubResource("SCENE_scene_arrival"), SubResource("SCENE_scene_morning_after"), SubResource("SCENE_scene_night_rupture"), SubResource("SCENE_scene_night_warning"), SubResource("SCENE_scene_road_ahead"), SubResource("SCENE_scene_shaft_sealed"), SubResource("SCENE_scene_vignette_de_tu_bi_loai"), SubResource("SCENE_scene_vignette_ho_tieu"), SubResource("SCENE_scene_vignette_lang_y"), SubResource("SCENE_scene_vignette_nghe_nhan"), SubResource("SCENE_scene_vignette_thu_thu")])

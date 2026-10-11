@@ -17,7 +17,8 @@ reproducible and provably self-made (`.kiro/steering/06-art-assets.md`). Standar
   raster.py      pixel primitives, outline, PNG writer
   sheet.py       sheet assembly, the "does it actually animate" verifier, anchor export
   beast.py       Vụ Lang, the pose-driven 32x32 mist wolf
-  props.py       world decor (grass, banner, lantern, mist, rock, planter — the moving ones
+  props.py       world decor (grass, banner, lantern, mist, rock, planter, the stake's
+                 socket — the moving ones
                  padded for their sway), the prototype tileset,
                  sect emblems
 
@@ -88,6 +89,7 @@ def gen_props():
     props.gen_mist(ROOT)
     props.gen_rock(ROOT)
     props.gen_planter(ROOT)
+    props.gen_stake_socket(ROOT)
     props.gen_emblems(ROOT)
     props.gen_prototype_tileset(ROOT)
 

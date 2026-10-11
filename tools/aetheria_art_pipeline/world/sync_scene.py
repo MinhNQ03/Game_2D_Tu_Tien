@@ -7,6 +7,11 @@ The layout YAML is the source of truth for WHERE a house or a tree stands; the s
 nodes so the editor and the tests see them. This rewrites every `Prop_*` WorldProp under
 `Visual/Decor` from the layout, removes the retired decor sprites, and drops grass-tuft sprites
 the painted floor no longer has grass under (a tuft on paving or in water).
+
+A prop that is in the map BECAUSE OF THE STORY (`story_props`: a wreck after the Night, a cart
+until it) is written as a holder node with the prop and its `StoryPresence` under it. They
+were hand-placed in the scenes until D-073, where a sync of the layout dropped the prop data
+they pointed at: one source for where a thing stands, whether or not the story decides it.
 """
 import os
 import re
@@ -22,6 +27,7 @@ sys.path.insert(0, HERE)
 import ground  # noqa: E402
 
 PROP_SCRIPT = "res://src/gameplay/world/props/world_prop.gd"
+PRESENCE_SCRIPT = "res://src/gameplay/maps/story_presence.gd"
 
 
 def _blocks(text):
@@ -68,6 +74,8 @@ def sync(layout_id, scene_rel):
         text = f.read()
     head, blocks = _blocks(text)
     retire = set(L.get("retire_decor", []))
+    story = L.get("story_props", [])
+    retire |= {e["name"] for e in story}     # rewritten below, holder and children
     kept = []
     for b in blocks:
         m = re.match(r'\[node name="([^"]+)"[^\]]*parent="([^"]*)"', b)
@@ -98,7 +106,9 @@ def sync(layout_id, scene_rel):
     lines.append('[ext_resource type="Resource" path="res://data/maps/ground/%s_ground.tres" '
                  'id="p_layout"]' % layout_id)
     lines.append('[ext_resource type="Script" path="%s" id="p_script"]' % PROP_SCRIPT)
-    for p in sorted({e["prop"] for e in L.get("props", [])}):
+    if story:
+        lines.append('[ext_resource type="Script" path="%s" id="p_presence"]' % PRESENCE_SCRIPT)
+    for p in sorted({e["prop"] for e in L.get("props", []) + story}):
         ext_ids[p] = "p_%s" % p
         lines.append('[ext_resource type="Resource" path="res://data/world/props/%s.tres" '
                      'id="p_%s"]' % (p, p))
@@ -113,6 +123,18 @@ def sync(layout_id, scene_rel):
                      'script = ExtResource("p_script")\n'
                      'prop = ExtResource("%s")\n' % (e["name"], e["at"][0], e["at"][1],
                                                      ext_ids[e["prop"]]))
+    for e in story:
+        nodes.append('[node name="%s" type="Node2D" parent="Visual/Decor"]\n'
+                     "position = Vector2(%g, %g)\n" % (e["name"], e["at"][0], e["at"][1]))
+        nodes.append('[node name="Prop_%s" type="StaticBody2D" parent="Visual/Decor/%s"]\n'
+                     'script = ExtResource("p_script")\n'
+                     'prop = ExtResource("%s")\n' % (e["name"], e["name"], ext_ids[e["prop"]]))
+        presence = ('[node name="Presence" type="Node" parent="Visual/Decor/%s"]\n'
+                    'script = ExtResource("p_presence")\n'
+                    'flag_id = &"%s"\n' % (e["name"], e["flag"]))
+        if not e.get("present_when_set", True):
+            presence += "present_when_set = false\n"
+        nodes.append(presence)
     out, placed = [], False
     for b in kept:
         out.append(b)
@@ -125,7 +147,7 @@ def sync(layout_id, scene_rel):
     text = re.sub(r"load_steps=\d+", "load_steps=%d" % (count + 1), text, count=1)
     with open(scene, "w", encoding="utf-8") as f:
         f.write(text)
-    return len(nodes)
+    return len(L.get("props", [])) + len(story)
 
 
 if __name__ == "__main__":

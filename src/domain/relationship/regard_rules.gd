@@ -36,15 +36,35 @@ static func read(relationship: RelationshipService, config: RelationshipConfigDa
 		RelationshipEndpoint.for_character(from_id), dimension)
 
 
+## Would `move` be carried out? THE rule `move` itself decides by — it asks this first — so a
+## caller that must know before it commits anything (a story decision with several
+## consequences, D-073 §2) can ask without changing the graph, and "yes" here means `move`
+## will answer `ok`. False for an unknown dimension, for nobody or for oneself, and when the
+## pair has no edge, needs one, and the id that edge would take is already another pair's.
+static func can_move(relationship: RelationshipService, config: RelationshipConfigData,
+		from_id: StringName, to_id: StringName, dimension: StringName, delta: int) -> bool:
+	if relationship == null or config == null or not config.has_dimension(dimension):
+		return false
+	if from_id == &"" or to_id == &"" or from_id == to_id:
+		return false
+	var store := relationship.get_store()
+	if store == null:
+		return false
+	if edge_between(relationship, from_id, to_id) != null:
+		return true
+	var before := config.get_default(dimension)
+	return config.clamp_value(dimension, before + delta) == before \
+		or not store.has_edge(StringName(EDGE_ID_FORMAT % [from_id, to_id]))
+
+
 ## Move `from_id`'s regard for `to_id` by `delta`. Returns { ok, old_value, new_value }:
-## `ok` is false (and nothing changed, nothing was created) for an unknown dimension or an
-## edge that cannot be made. A move that would move nothing — already at the bound — is `ok`
-## and creates no edge.
+## `ok` is false (and nothing changed, nothing was created) whenever `can_move` says so. A
+## move that would move nothing — already at the bound — is `ok` and creates no edge.
 static func move(relationship: RelationshipService, config: RelationshipConfigData,
 		from_id: StringName, to_id: StringName, dimension: StringName, delta: int,
 		cause: StringName) -> Dictionary:
 	var result := {"ok": false, "old_value": 0, "new_value": 0}
-	if relationship == null or config == null or not config.has_dimension(dimension):
+	if not can_move(relationship, config, from_id, to_id, dimension, delta):
 		return result
 	var before := read(relationship, config, from_id, to_id, dimension)
 	result["old_value"] = before

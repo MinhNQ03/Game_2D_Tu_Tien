@@ -42,6 +42,14 @@ const REASON_MAP := &"map"              # the map it was held in is going away
 const REASON_OUT_OF_REACH := &"reach"   # the speaker is no longer in reach
 const REASON_SESSION := &"session"      # the session ended
 
+## What the player is told when the story owner refuses an answer (D-073 §2). The story speaks
+## in ids; anything not listed is the plain "your words change nothing".
+const STORY_REFUSAL_KEYS := {
+	StoryService.REFUSE_OWNER: &"UI_STORY_REFUSED_UNSETTLED",
+	StoryService.REFUSE_ALREADY_CHOSEN: &"UI_STORY_REFUSED_DECIDED",
+	StoryService.REFUSE_WRONG_BEAT: &"UI_STORY_REFUSED_NOT_YET",
+}
+
 var _world: Node = null
 var _npcs: NpcRuntime = null
 var _knowledge: KnowledgeRuntime = null
@@ -251,7 +259,10 @@ func _story_op(effect: DialogueEffectData) -> StringName:
 			outcome = _story.choose(effect.story_choice_id, effect.story_option_id)
 	if outcome == null:
 		return DialogueService.REFUSE_EFFECT_FAILED
-	return &"" if outcome.ok else outcome.reason
+	if outcome.ok:
+		return &""
+	# The story answers in ids; the player is answered in words (PX-4: every refusal says why).
+	return STORY_REFUSAL_KEYS.get(outcome.reason, DialogueService.REFUSE_EFFECT_FAILED)
 
 
 ## The player leaves the conversation. Safe (and silent) when none is open.

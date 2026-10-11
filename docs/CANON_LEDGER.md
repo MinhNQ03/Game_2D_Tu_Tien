@@ -145,6 +145,7 @@ Ids are stable and never renamed; display text may be revised by a content pass 
 | `region_azure_peak` | **Thanh Vân Phong** | Thiên Nguyên Vực |
 | `region_cloud_vale` | **Vân Cốc** | Thiên Nguyên Vực |
 | `region_scarlet_wastes` | **Xích Hoang** | Huyết Mạc Vực |
+| *(reserved)* `dungeon_survey_shaft` | **Hầm Khảo Mạch** — the Survey Shaft: a surveyor's adit in the north-east rocks of Rừng Vỡ Mạch, the fourth point of the Thanh Đài survey line (D-073). **A LEAD, not a place yet:** its door is in `map_field`, boarded and sealed; no interior, encounter or content exists, and what is inside is NOT canon until Phase 21 writes it | starting châu, Hoang Vực |
 | `sect_azure_cloud` | **Thanh Vân Tông** (orthodox, tier 3) | Thiên Nguyên Vực |
 | `sect_crimson_flame` | **Xích Diễm Tông** (heterodox, tier 3) | Huyết Mạc Vực |
 

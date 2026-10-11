@@ -151,7 +151,9 @@ func get_service() -> StoryService:
 func _owners() -> StoryOwners:
 	var owners := StoryOwners.new()
 	owners.knows = _knows
+	owners.can_teach = _can_teach
 	owners.teach = _teach
+	owners.can_move_regard = _can_move_regard
 	owners.move_regard = _move_regard
 	owners.give_all = _give_all
 	return owners
@@ -161,6 +163,12 @@ func _knows(knowledge_id: StringName) -> bool:
 	return _knowledge != null and _knowledge.get_service().knows(knowledge_id)
 
 
+## The Knowledge Core's own answer to "could you teach this?" (prepare — D-073 §2).
+func _can_teach(knowledge_id: StringName) -> bool:
+	return _knowledge != null and _knowledge.is_session_active() \
+		and _knowledge.get_service().can_grant(knowledge_id)
+
+
 func _teach(knowledge_id: StringName, source_id: StringName) -> bool:
 	if _knowledge == null:
 		return false
@@ -168,14 +176,26 @@ func _teach(knowledge_id: StringName, source_id: StringName) -> bool:
 	return _knowledge.get_service().knows(knowledge_id)
 
 
-## A character's regard for the PLAYER, moved through the relationship graph's service.
-func _move_regard(character_id: StringName, dimension: StringName, delta: int) -> bool:
+func _player_id() -> StringName:
 	var player: CharacterState = _world.call("get_player_character") \
 		if _world != null and is_instance_valid(_world) else null
-	if player == null or _relationship == null:
-		return false
-	return bool(RegardRules.move(_relationship.get_service(), _relationship.get_config(),
-		character_id, player.instance_id, dimension, delta, REGARD_CAUSE)["ok"])
+	return player.instance_id if player != null else &""
+
+
+## The relationship graph's own answer to "could you move this regard?" (prepare).
+func _can_move_regard(character_id: StringName, dimension: StringName, delta: int) -> bool:
+	return _relationship != null and _relationship.is_session_active() \
+		and RegardRules.can_move(_relationship.get_service(), _relationship.get_config(),
+			character_id, _player_id(), dimension, delta)
+
+
+## A character's regard for the PLAYER, moved through the relationship graph's service.
+## Returns the graph's own answer (`RegardRules.move`): `{ ok, old_value, new_value }`.
+func _move_regard(character_id: StringName, dimension: StringName, delta: int) -> Dictionary:
+	if _relationship == null or not _relationship.is_session_active():
+		return {"ok": false, "old_value": 0, "new_value": 0}
+	return RegardRules.move(_relationship.get_service(), _relationship.get_config(),
+		character_id, _player_id(), dimension, delta, REGARD_CAUSE)
 
 
 ## ALL of `items` into the bag, or none (the bag's own all-or-nothing exchange).

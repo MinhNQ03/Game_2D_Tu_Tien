@@ -182,6 +182,34 @@ def gen_rock(root):
     _save_solid(root, "prop_rock", px, depth=6, footprint_round=True)  # a round stone
 
 
+def gen_stake_socket(root):
+    """Where the survey stake stood (D-073): the ground raked over in a hurry, and in the
+    middle of it the stone collar that held the stake — too heavy to lift, so it was left,
+    its seal-cut and its number still on it. FLAT: a mark on the ground with no body (it is
+    walked over), drawn on the decal layer, never y-sorted."""
+    w, h = 32, 18
+    px = raster.blank(w, h)
+    # Freshly turned earth is PALER than the leaf litter it lies in (seen in the real window:
+    # the first pass, darker than the litter, could not be found at 1x), ringed by the dark
+    # clods the rake threw out.
+    clod = (70, 60, 46, 255)
+    soil = (158, 140, 106, 255)
+    raster.oval(px, 16, 9.5, 15, 7.4, clod)
+    raster.oval(px, 16, 9.5, 13, 6.0, soil)
+    raster.oval(px, 14, 8.5, 9, 3.6, raster.shade(soil, 1.12))
+    for y, x0, x1 in ((5, 9, 23), (7, 5, 12), (7, 20, 27), (12, 5, 12), (12, 20, 27),
+                      (14, 10, 22)):
+        raster.line(px, x0, y, x1, y, raster.shade(soil, 0.70))     # the rake's teeth
+    stone = (132, 134, 142, 255)
+    raster.oval(px, 16, 9.5, 4.6, 3.2, raster.shade(stone, 0.62))    # the collar's shadow side
+    raster.oval(px, 16, 9.0, 4.2, 2.8, stone)                        # the collar
+    raster.line(px, 13, 7, 18, 7, raster.shade(stone, 1.28))         # lit rim
+    raster.oval(px, 16, 9.2, 2.0, 1.3, (22, 20, 26, 255))            # the empty socket
+    raster.put(px, 20, 10, (201, 168, 101, 255))                     # the seal-cut, gilt-filled
+    raster.put(px, 21, 10, (201, 168, 101, 255))
+    _save(root, "assets/sprites/props/prop_stake_socket.png", px)
+
+
 def gen_planter(root):
     w, h = 16, 16
     px = raster.blank(w, h)

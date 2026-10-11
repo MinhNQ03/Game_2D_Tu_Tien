@@ -71,6 +71,11 @@ props:
   - {name: TreeSE, prop: tree_small, at: [780, 566]}
   - {name: TreeN, prop: tree_small, at: [384, 132]}
 
+# In the map because of the story (StoryPresence).
+story_props:
+  # Tề Mộc's cart, waiting on the east road for its last load — gone once the vein breaks
+  - {name: CarterCart, prop: cart, at: [872, 250], flag: flag_vein_broke, present_when_set: false}
+
 # decorative sprites from the older set that the new floor makes wrong (a broadleaf drawn at
 # another density, grass tufts on paving or in water) are removed by the scene sync
 retire_decor: [TreeNW, TreeSW, TreeN, TreeS, TreeNE]

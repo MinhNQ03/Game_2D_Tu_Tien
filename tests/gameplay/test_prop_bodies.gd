@@ -32,6 +32,8 @@ const INTANGIBLE_BY_DESIGN := {
 		"hangs from the pole above head height; the pole's footing is the body",
 	"res://assets/sprites/props/prop_lantern_hanging.png":
 		"hangs from the post; the post's foot is the body",
+	"res://assets/sprites/props/prop_stake_socket.png":
+		"a mark on the ground where the survey stake stood (D-073): flat, walked over",
 }
 
 ## Where the world's drawn things live in a map (the training post is a combat target).

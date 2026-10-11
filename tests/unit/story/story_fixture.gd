@@ -240,35 +240,66 @@ static func origins() -> OriginCatalogData:
 ## The seams are BOUND METHODS, not lambdas: a lambda here would capture `self`, the seams
 ## object would hold the lambda, and `self` holds the seams — a reference cycle that pins this
 ## object and every script it names until exit (the leak the faction fixture once had).
+##
+## TWO KINDS OF "NO" (D-073 §2). `decline_*` is an owner that says, when ASKED, that it cannot
+## do the thing — the ordinary refusal. `breach_*` is an owner that agreed when asked and then
+## fails anyway — a broken contract, which the story must still survive whole.
 class Owners extends RefCounted:
 	var known: Dictionary = {}
 	var taught: Array = []
+	## Every regard move that STANDS, as [who, dimension, applied].
 	var regards: Array = []
 	var given: Array = []
 	var bag_has_room := true
-	var refuse_regard := false
+	## Characters whose regard this owner says it cannot move / knowledge it cannot teach.
+	var decline_regard_for: Array[StringName] = []
+	var decline_teach: Array[StringName] = []
+	## The same, but only discovered at the commit.
+	var breach_regard_for: Array[StringName] = []
+	var breach_teach: Array[StringName] = []
+	## How many times each commit seam was called (a refused choice must call none).
+	var regard_calls := 0
+	var teach_calls := 0
 	var seams: StoryOwners = null
 
 	func _init() -> void:
 		seams = StoryOwners.new()
 		seams.knows = _knows
+		seams.can_teach = _can_teach
 		seams.teach = _teach
+		seams.can_move_regard = _can_move_regard
 		seams.move_regard = _move_regard
 		seams.give_all = _give_all
 
 	func _knows(id: StringName) -> bool:
 		return known.has(id)
 
+	func _can_teach(id: StringName) -> bool:
+		return not decline_teach.has(id)
+
 	func _teach(id: StringName, source: StringName) -> bool:
+		teach_calls += 1
+		if decline_teach.has(id) or breach_teach.has(id):
+			return false
 		taught.append([id, source])
 		known[id] = true
 		return true
 
-	func _move_regard(who: StringName, dimension: StringName, delta: int) -> bool:
-		if refuse_regard:
-			return false
-		regards.append([who, dimension, delta])
-		return true
+	func _can_move_regard(who: StringName, _dimension: StringName, _delta: int) -> bool:
+		return not decline_regard_for.has(who)
+
+	## The relationship owner's own answer shape (`RegardRules.move`): what it was, what it is.
+	## A move by the exact inverse of one that stands cancels it, as it does in the graph.
+	func _move_regard(who: StringName, dimension: StringName, delta: int) -> Dictionary:
+		regard_calls += 1
+		if decline_regard_for.has(who) or breach_regard_for.has(who):
+			return {"ok": false, "old_value": 0, "new_value": 0}
+		var inverse := regards.find([who, dimension, -delta])
+		if inverse >= 0:
+			regards.remove_at(inverse)
+		else:
+			regards.append([who, dimension, delta])
+		return {"ok": true, "old_value": 0, "new_value": delta}
 
 	func _give_all(items: Dictionary) -> bool:
 		if not bag_has_room:

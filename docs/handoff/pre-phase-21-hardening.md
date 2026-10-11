@@ -1,6 +1,6 @@
 # Handoff — Post-Phase-20 experience hardening / pre-Phase-21 gate (D-073)
 
-> **Status: IN PROGRESS — Checkpoint 0 (Gate A, docs only).** This is a bounded quality pass
+> **Status: IN PROGRESS — Checkpoint 1 built (the bridge and the choice transaction).** This is a bounded quality pass
 > between two phases. **It is not a phase.** Phase 20 (Story) is and stays **DONE** under D-072;
 > Phase 21 (Dungeon) and Phase 22 (Boss) are **NOT STARTED** and nothing here builds them.
 > A section marked *planned* is what Gate A decided and has not been built yet; *built* means
@@ -138,15 +138,17 @@ the same answer. All five Origins and both looks reach the same three beats and 
 
 After the door is found, ONE line opens for each Origin with the person it concerns, said
 once (`flag_trail_origin_said`), changing nothing but what is on the record. Two are opened
-by what the Origin KNOWS (the Knowledge Core's answer), three by who they were:
+by what the Origin KNOWS (the Knowledge Core's answer), three by who they were. *(Built in
+Checkpoint 1. Gate A had two of them with Lâm Nguyệt; they were moved, because she does not
+speak to someone who told on her and no Origin's line may depend on an earlier decision.)*
 
 | Origin | Opened by | With | What only they notice (an observation, then a CLAIM in reply) |
 |---|---|---|---|
-| Thủ Thư Cấm Lục | `know_survey_notation` | Lâm Nguyệt | the word *level* on the sheet is in a second hand |
+| Thủ Thư Cấm Lục | `know_survey_notation` | Thẩm Bất Kỳ | the word *level* on the sheet is in a second hand — and he was told to expect someone who could see that |
 | Nghệ Nhân Thất Sủng | `know_vein_stone_grades` | Kha Thản | the stones he is paid in have raw bases: nobody ever counted them |
-| Hộ Tiêu Thất Bại | Origin | Kha Thản | the ruts are deep going out and shallow coming back — as on the morning the convoy was lost |
+| Hộ Tiêu Thất Bại | Origin | Kha Thản | the ruts are shallow going up and deep coming down — as on the morning the convoy was lost |
 | Lang Y Du Phương | Origin | Kha Thản | the watchman's nails are clean; whatever greyed the carter's hands, the watch never handled it |
-| Đệ Tử Bị Loại | Origin | Lâm Nguyệt | the cord on the seal is tied with the knot the examiners used on the trial board |
+| Đệ Tử Bị Loại | Origin | Kha Thản | the cord on the seal is tied with the examiners' knot; "cord like that comes up from Cloud Vale ready-tied" |
 
 Each is an authored consequence of a past life, not a vision; none names a culprit. Both
 Origin observations (this one and the Phase-20 one about the carter's load) become READABLE:
@@ -171,7 +173,7 @@ No dungeon map, room, instance or runtime; no boss; no loot or drop table; no ke
 save, Continue or autosave; no new autoload or manager; no quest ledger, XP balance,
 knowledge set or relationship score of its own; no morality value. The door does not open.
 
-## 5. Gate A — every new thing, its reason, its owner (*planned*; filled in as content lands)
+## 5. Every new thing, its reason, its owner (*built* — Checkpoint 1; the Night's rows follow in Checkpoint 2)
 
 Placement reasons (PX-2) and traceability (id · source · cause in the world · what the player
 does with it · the ONE owner of what it changes · keys · payoff or "no callback").
@@ -194,8 +196,39 @@ Looks-usable rule: the socket and the door each carry an `interact` prompt and a
 ruts are drawn flat, under the y-sorted world, with no prompt and no body
 (`INTANGIBLE_BY_DESIGN`); the wreck is solid where it is drawn (§6).
 
-New numbers and their one home are added to this table by the checkpoint that authors them
-(the three regard moves above live in `tools/author_story_data.py`, like every other).
+**As built (Checkpoint 1) — ids, sources and keys.**
+
+| Id | Authored in | `vi` / `en` keys | Notes |
+|---|---|---|---|
+| beats `beat_whose_hand`, `beat_stake_line`, `beat_ruts`; `beat_standing` (kept) | `tools/author_story_data.py` (`ACT_ONE`) → `data/story/story_catalog.tres` | `STORY_BEAT_{WHOSE_HAND,STAKE_LINE,RUTS}_{OBJECTIVE,RECORD}`; `STORY_BEAT_STANDING_OBJECTIVE` (reworded: *Find a rod for the shaft*) | every objective measured to fit the plaque's one row in both languages by the shipped test |
+| `choice_sheet_shown` / `lin`, `ko`, `shen` | same (`CHOICES`), bound to `beat_whose_hand` | `STORY_CHOICE_SHEET_SHOWN[_LIN/_KO/_SHEN]` | bound to its beat on purpose: the conversations offer it only after the farewell (a flag), so the beat is entered and its scene told first |
+| flags `flag_sheet_shown` (INT 1..3), `flag_{lin,ko,shen}_sheet_said`, `flag_{lin,ko,shen}_shaft_said`, `flag_trail_origin_said` | same (`FLAGS`) | — | one writer (`StoryService`), stored on the player's `CharacterState`; each gates a line said once |
+| `scene_shaft_sealed` (two captions, told over the place) | same (`SCENES`) | `STORY_SCENE_SHAFT_1/2` | entry scene of `beat_standing`; `scene_road_ahead` moved to `beat_whose_hand` |
+| five knowledge entries (table above) | `data/knowledge/knowledge_catalog.tres` | `KNOW_{SURVEYORS_LINE,NIGHT_WHEELS,SHAFT_CLAIM,STAKE_SOCKET,SEALED_SHAFT}_{NAME,DESC}` | three RECORD (told), two OBSERVATION (examined) |
+| 20 conversation choices and 20 lines over three people | `data/dialogue/dialogue_catalog.tres` | `DLG_{LIN,KO,SHEN}_*`, `DLG_CHOICE_{SHAFT,BACK}` | a conversation OPENS on its trail line once `know_survey_fragment` is held and `flag_heard_road_ahead` is set; the hubs gained no entry (the box is measured full at five) |
+| `KnowledgeSources/StakeSocket`, `KnowledgeSources/ShaftSeal` | `src/gameplay/maps/field_map.tscn` | prompt `UI_HUD_EXAMINE_ACTION` (new; the sheet under the stele used to say *Read stele*) | each appears with `flag_night_over`; examined with `interact` |
+| `Prop_SurveyShaft` at (896,184); `RockNE1`, `RockNE2`, `PineE2` moved to frame it; the haul track | `designs/maps/vo_mach.yaml` → `sync_scene.py`, `ground.py` | — | see "Placement, as seen" below |
+
+**Numbers introduced, each with its one home.**
+
+| Value | Where it lives | Why this value | Boundary tested |
+|---|---|---|---|
+| first-showing regard: Lâm Nguyệt `trust` +10, Kha Thản `trust` +5, Thẩm Bất Kỳ `affinity` −10 | `tools/author_story_data.py` `CHOICES` | a confidence given (+10 to the one with most to lose, +5 to one who trades in such things) and a threat registered (−10); the fall is on the only dimension that can fall; all far inside `StoryConsequenceData.MAX_DELTA` (50) | the shipped-content scan (falling regard on a dimension that can fall); a 0 move is refused by the catalog (mutation B6) |
+| `flag_sheet_shown` ceiling 3 | `FLAGS` | one value per person who can be shown it | a value above a flag's ceiling is refused (shipped test) |
+| reach of the socket 20 px, of the seal 22 px | the scene | the socket is a flat mark stood ON; the seal is read from the sill, outside the door's body | `test_solid_props_never_block_the_play` (an anchor is never inside a body); E2E 8i walks into both |
+| haul track width 11 px | `vo_mach.yaml` | one cart wide, visibly narrower than the 18–28 px paths: an old way, not a road | — (art) |
+
+**Placement, as seen in the real window.** The first placement put the door at (884,128), in
+the rock patch's middle. Captured at 1280×720 it was UNDER the place plaque: in the map's
+top-right corner the camera stops at the edge, so the plaque covers world x 841–967, y 25–110.
+Moved to the patch's south lip (896,184), the door, its seal and stake four are clear of the
+HUD at both aspect ratios. The stake's socket was first drawn darker than the leaf litter and
+could not be found at 1×; it is now pale turned earth ringed with dark clods.
+
+**A risk left in on purpose.** The haul track passes the cairn where one of the woods' own
+Vụ Lang lives (detect radius 170 px): reaching the door means meeting it or going round over
+the open ground to the south. It is the shipped creature with its shipped telegraph, already
+fought in the prologue.
 
 ## 6. Gates C–F — what each fix is held to (*planned*)
 
@@ -270,8 +303,8 @@ until a person has played it.
 
 | # | Scope | Commit | CI on that exact SHA |
 |---|---|---|---|
-| 0 | Audit, Gate A, D-073, status drift corrected. No gameplay code | *(this commit)* | recorded by the next commit |
-| 1 | The Act-I bridge and the choice transaction | | |
+| 0 | Audit, Gate A, D-073, status drift corrected. No gameplay code | `1fa3011` | 38134053360 — success, `head_sha` `1fa3011e53ddfe1fb7e88fafd24b3727a67bd71d` |
+| 1 | The Act-I bridge and the choice transaction | *(this commit)* | recorded by the next commit |
 | 2 | The Night: ambience, the wreck, the socket and ruts, the creatures | | |
 | 3 | The Chronicle and the cultivate / recovery rule | | |
 | 4 | Full regression, the capture matrix, docs, debt register, Phase-21 handoff | | |
@@ -312,7 +345,99 @@ repository root (no exported build exists yet). Start from New Game; no test-onl
    prop that lied about being solid or about whose it was; and the moment you became curious
    about the survey. Time to first control, to first fight, to first mystery.
 
-## 12. Status
+## 12. Evidence
 
-Checkpoint 0 only. Nothing player-facing has changed yet. **Phase 20 is DONE (D-072). This
-pass is IN PROGRESS. Phase 21 and Phase 22 are NOT STARTED.** No person has played the build.
+### Checkpoint 1 — the Act-I bridge and the choice transaction (*built*)
+
+**H21-02, reproduced before it was fixed.** With the seam's new shape only and the OLD logic
+in `choose`, five new tests were red: an owner declining the second of four consequences left
+the choice recorded, the flag set to 2, the first regard moved and the knowledge taught — and
+the call returned `ok`. The same held when the owner agreed and then failed, and for an
+Origin's kit (the blade was handed over before a later grant was refused).
+
+**The fix, as built (D-073 §2).** `StoryOwners.can_teach` / `can_move_regard`;
+`KnowledgeService.can_grant`; `RegardRules.can_move`, which `RegardRules.move` now asks first,
+so "can" and "does" are one rule. `StoryService.choose`: prepare all → the owners' regards →
+their knowledge → the story's record and flags. `move_regard` returns the graph's own
+`{ok, old_value, new_value}`, which is what lets a breach be undone exactly. A refused
+decision reaches the player as words (`UI_STORY_REFUSED_*`), on the same line, with the answer
+still on offer — before this, the HUD would have printed `story_owner_refused`.
+
+*A like defect elsewhere?* `RewardService` was read for the same shape. It is a different,
+deliberate contract: each part of a reward is claimed in the ledger as it is paid and an
+unfinished reward is `OWED` and resumable. Nothing to fix there.
+
+**H21-01: what a player can do now.** After the farewell the plaque reads *Hỏi ai đã viết mảnh
+sổ*. Lâm Nguyệt, Kha Thản and Thẩm Bất Kỳ each open on the sheet. Showing it to one of them
+first is recorded once and moves that person's regard and teaches one thing; the other two
+then answer once, for nothing. Where the stake stood there is a raked socket to examine; an
+old cart track runs from the wreck to a boarded, sealed door in the north-east rocks; examining
+the door ends the bridge on *Tìm thước mở Hầm Khảo Mạch*.
+
+**Tests.** Suite **1202** (was 1188): +5 all-or-nothing unit tests, +2 on the real owners,
++1 at the conversation, +6 on the shipped bridge content; the Origin × decision matrix grew
+from 20 runs to 50 (5 Origins × (kept: 3 confidants | told: 2) × 2 Nights), each walked to
+the door through the runtime's public seams. Story E2E: **20** real-key steps (was 17) —
+8i (declined, shown, asked again, the socket, the door, which is solid), 8j (the door brought
+back; the Origin's line once), 12 (told + withdrew: refused by her, answered by him).
+All eight E2E flows pass; 0 `SCRIPT ERROR`; 0 leak lines.
+
+**Covered by real keys:** thủ thư / woman / kept / stood / shown to Lâm Nguyệt, end to end;
+hộ tiêu / man / told / withdrew / shown to Kha Thản, from Act I on (its prologue is staged
+through the owner, as before). **Covered only through public seams (MỘT PHẦN):** the other
+48 combinations; the three Origin lines with Kha Thản other than the one the E2E's Origin has.
+
+**Re-pinned on the same invariant, not relaxed.** "The prologue ends in open play with a
+purpose that is not blank" is now asserted at `beat_whose_hand` (E2E 8h, two unit tests): the
+resting beat is three beats further on and is asserted there too.
+
+**Mutations: 17 applied, 17 red, tree restored** (hash of `git diff` compared before and
+after).
+
+| # | What was broken | Red in |
+|---|---|---|
+| C1 / C2 | a regard / a grant of knowledge prepared only by "the seam exists" (the old rule) | story service ×2 |
+| C3 | the choice recorded before the owners commit | story service (breach) |
+| C4 | a breach does not put moved regards back | story service (breach) |
+| C5 | a breach reported as success | story service (breach) |
+| C6 | an Origin's grant prepared only by "the seam exists" | story service |
+| C7 | the relationship owner says it can when it cannot | story runtime ×2 |
+| C8 | the Knowledge Core says it can teach what it lacks | story runtime |
+| C9 | a story refusal reaches the player as a raw id | dialogue runtime |
+| B1 | the sheet can be shown before Act I | story runtime (50-run matrix) |
+| B2 | she reads the sheet for someone who told on her | dialogue content ×2 |
+| B3 | people open on the sheet before the prologue is over | dialogue content |
+| B4 / B5 | an Origin's line repeats / is offered before the door | dialogue content |
+| B6 | showing the sheet moves nobody's regard | the catalog refuses a zero move |
+| B7 | the door's body is not where it is drawn | Story E2E 8i |
+| B8 | story presence ignored | Story E2E 8a, 8d |
+
+**Real window (opened and looked at, 1280×720 vi; scratch path, not committed).**
+
+| Frame | What is in it |
+|---|---|
+| `32_act1_whom_to_show` | by the spring, Lâm Nguyệt's box: *"(Nàng nhìn tay ngươi trước khi nhìn ngươi.) Nói đi."*, two answers — *Đưa nàng xem mảnh sổ*, *Nói chuyện khác*; the plaque reads *Hỏi ai đã viết mảnh sổ* |
+| `34_act1_where_the_stake_stood` | the clearing: a pale raked oval with a stone collar where the stake stood; the plaque reads *Xem chỗ cọc khảo mạch cũ* |
+| `35_act1_wreck_and_old_track` | the cart on one wheel, the other lying off, a burst crate with pale shards, a narrow track leaving it east |
+| `36_act1_the_survey_shaft` | a boarded door with crossed battens and a seal in a mossed outcrop, a capped stake beside it, the track ending at its sill, the player on the sill; the strip offers *E Xem xét* |
+| `37_act1_shaft_sealed_caption` | the caption band over the place: *"Sổ sách ghi cánh cửa này đã đóng từ mùa đông. Sáp niêm trên nó mới được vài ngày."*; the plaque already reads *Tìm thước mở Hầm Khảo Mạch* |
+
+Not yet done at this checkpoint: en, 1280×800, and the real-window `playtest_flow.gd` step
+for the bridge (Checkpoint 4). The wreck appears here because the art was made with the
+door's; the Night's LIGHT and its creatures are Checkpoint 2.
+
+**Honest limits at this checkpoint.** (1) Once every trail line has been said, a person still
+opens on their trail line with one answer (*Nói chuyện khác*); an opening cannot ask "is
+anything left". (2) The wreck's standing wheel reads as a dark slab, like the whole cart's.
+(3) The bridge has no failure state: it cannot be lost, only walked or not.
+
+## 13. Debt register (`PLAYER_EXPERIENCE_STANDARD.md` §4 form)
+
+| ID | Symptom and cost | Why not now | Owner | Closes when | Makes later work harder? |
+|---|---|---|---|---|---|
+| H21-15 | after all of a person's trail lines are said they still open on the trail line with only *Speak of something else*: one wasted press per talk | an opening's conditions are AND-only; "any line left" needs an OR or a derived flag, which is a dialogue-data change with its own tests | Dialogue data; Phase 21 (the first phase that adds the next lines to these people) | a test opens each of the three with every trail flag set and lands on the hub | no |
+
+## 14. Status
+
+Checkpoints 0–1. **Phase 20 is DONE (D-072). This pass is IN PROGRESS. Phase 21 and Phase 22
+are NOT STARTED.** No person has played the build.

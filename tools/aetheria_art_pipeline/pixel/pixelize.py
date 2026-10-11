@@ -562,6 +562,14 @@ def _footprint(spec, meta):
         w, d = 64.0, 8.0
     elif kind == "cart":
         w, d = 64.0, 34.0
+    elif kind == "cart_wreck":
+        # The canted bed on its one wheel (model/props3d.py cart_wreck): x -34..33, y 2..34.
+        # What lies round it — the wheel, the lid, the shards, the tarpaulin — is flat on the
+        # ground and is walked over (INTANGIBLE_BY_DESIGN: litter, not an obstacle).
+        return (-34.0 * ppu, -34.0 * ppu * squash, 67.0 * ppu, 32.0 * ppu * squash)
+    elif kind == "survey_shaft":
+        # The outcrop the door is set in: x -54..53, from just behind the sill to its back.
+        return (-54.0 * ppu, -52.0 * ppu * squash, 107.0 * ppu, 49.0 * ppu * squash)
     else:
         return (0, 0, 0, 0)
     return (-w * ppu / 2, -d * ppu * squash, w * ppu, d * ppu * squash)

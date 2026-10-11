@@ -21,7 +21,8 @@ validate/determinism_check.py    every stage under several hash seeds: same byte
 model/icons.py, model/props3d.py icon and world-prop geometry (same primitives as the cultivator)
 blender/build_icons.py, build_props.py   icon / prop passes (props catch their cast shadow)
 designs/icons.yaml, props.yaml   icon and prop designs (ramps in DNA roles)
-designs/maps/<map>.yaml          a map's layout: regions, water blockers, props, retired decor
+designs/maps/<map>.yaml          a map's layout: regions, water blockers, props, story props
+                                 (there because of a story flag), retired decor
 world/ground.py                  the floor painter -> assets/maps/<map>_ground.png + GroundLayoutData
 world/sync_scene.py              writes a layout's props / painted floor into its scene
 ui/ui_kit.py                     the ink-lacquer UI kit + medallions -> assets/ui/aetheria_ink/

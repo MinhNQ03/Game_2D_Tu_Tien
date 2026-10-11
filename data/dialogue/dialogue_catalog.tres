@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=220 format=3]
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=327 format=3]
 
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
@@ -118,6 +118,317 @@ id = &"ko_cart"
 text_key = &"DLG_KO_CART"
 mood = 3
 next_node_id = &"ko_price"
+
+[sub_resource type="Resource" id="C_ko_open_trail_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_ko_open_trail_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="P_ko_trail"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_open_trail_0"), SubResource("C_ko_open_trail_1")])
+node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="C_ko_show_stood_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_sheet_shown"
+negate = true
+
+[sub_resource type="Resource" id="C_ko_show_stood_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_night_over"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_show_stood"]
+script = ExtResource("2_effect")
+kind = 7
+story_choice_id = &"choice_sheet_shown"
+story_option_id = &"ko"
+
+[sub_resource type="Resource" id="H_ko_show_stood"]
+script = ExtResource("3_choice")
+id = &"ko_show_stood"
+text_key = &"DLG_KO_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_show_stood_0"), SubResource("C_ko_show_stood_1")])
+effect = SubResource("E_ko_show_stood")
+next_node_id = &"ko_sheet_stood"
+
+[sub_resource type="Resource" id="C_ko_show_left_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_sheet_shown"
+negate = true
+
+[sub_resource type="Resource" id="C_ko_show_left_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="E_ko_show_left"]
+script = ExtResource("2_effect")
+kind = 7
+story_choice_id = &"choice_sheet_shown"
+story_option_id = &"ko"
+
+[sub_resource type="Resource" id="H_ko_show_left"]
+script = ExtResource("3_choice")
+id = &"ko_show_left"
+text_key = &"DLG_KO_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_show_left_0"), SubResource("C_ko_show_left_1")])
+effect = SubResource("E_ko_show_left")
+next_node_id = &"ko_sheet_left"
+
+[sub_resource type="Resource" id="C_ko_show_late_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_sheet_shown"
+
+[sub_resource type="Resource" id="C_ko_show_late_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_ko_sheet_said"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_show_late"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_ko_sheet_said"
+
+[sub_resource type="Resource" id="H_ko_show_late"]
+script = ExtResource("3_choice")
+id = &"ko_show_late"
+text_key = &"DLG_KO_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_show_late_0"), SubResource("C_ko_show_late_1")])
+effect = SubResource("E_ko_show_late")
+next_node_id = &"ko_sheet_late"
+
+[sub_resource type="Resource" id="C_ko_shaft_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_shaft_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_ko_shaft_said"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_shaft"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_ko_shaft_said"
+
+[sub_resource type="Resource" id="H_ko_shaft"]
+script = ExtResource("3_choice")
+id = &"ko_shaft"
+text_key = &"DLG_CHOICE_SHAFT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_shaft_0"), SubResource("C_ko_shaft_1")])
+effect = SubResource("E_ko_shaft")
+next_node_id = &"ko_shaft_line"
+
+[sub_resource type="Resource" id="C_ko_trail_stones_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_vein_stone_grades"
+
+[sub_resource type="Resource" id="C_ko_trail_stones_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_stones_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_trail_stones"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_trail_origin_said"
+
+[sub_resource type="Resource" id="H_ko_trail_stones"]
+script = ExtResource("3_choice")
+id = &"ko_trail_stones"
+text_key = &"DLG_KO_CHOICE_STONES"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_stones_0"), SubResource("C_ko_trail_stones_1"), SubResource("C_ko_trail_stones_2")])
+effect = SubResource("E_ko_trail_stones")
+next_node_id = &"ko_stones_line"
+
+[sub_resource type="Resource" id="C_ko_trail_ruts_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_ho_tieu"
+
+[sub_resource type="Resource" id="C_ko_trail_ruts_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_ruts_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_trail_ruts"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_trail_origin_said"
+
+[sub_resource type="Resource" id="H_ko_trail_ruts"]
+script = ExtResource("3_choice")
+id = &"ko_trail_ruts"
+text_key = &"DLG_KO_CHOICE_RUTS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_ruts_0"), SubResource("C_ko_trail_ruts_1"), SubResource("C_ko_trail_ruts_2")])
+effect = SubResource("E_ko_trail_ruts")
+next_node_id = &"ko_ruts_line"
+
+[sub_resource type="Resource" id="C_ko_trail_nails_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_lang_y"
+
+[sub_resource type="Resource" id="C_ko_trail_nails_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_nails_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_trail_nails"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_trail_origin_said"
+
+[sub_resource type="Resource" id="H_ko_trail_nails"]
+script = ExtResource("3_choice")
+id = &"ko_trail_nails"
+text_key = &"DLG_KO_CHOICE_NAILS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_nails_0"), SubResource("C_ko_trail_nails_1"), SubResource("C_ko_trail_nails_2")])
+effect = SubResource("E_ko_trail_nails")
+next_node_id = &"ko_nails_line"
+
+[sub_resource type="Resource" id="C_ko_trail_cord_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_de_tu_bi_loai"
+
+[sub_resource type="Resource" id="C_ko_trail_cord_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_ko_trail_cord_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_trail_cord"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_trail_origin_said"
+
+[sub_resource type="Resource" id="H_ko_trail_cord"]
+script = ExtResource("3_choice")
+id = &"ko_trail_cord"
+text_key = &"DLG_KO_CHOICE_CORD"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_trail_cord_0"), SubResource("C_ko_trail_cord_1"), SubResource("C_ko_trail_cord_2")])
+effect = SubResource("E_ko_trail_cord")
+next_node_id = &"ko_cord_line"
+
+[sub_resource type="Resource" id="H_ko_trail_back"]
+script = ExtResource("3_choice")
+id = &"ko_trail_back"
+text_key = &"DLG_CHOICE_BACK"
+next_node_id = &"ko_hub"
+
+[sub_resource type="Resource" id="N_ko_trail"]
+script = ExtResource("4_node")
+id = &"ko_trail"
+text_key = &"DLG_KO_TRAIL"
+mood = 0
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_show_stood"), SubResource("H_ko_show_left"), SubResource("H_ko_show_late"), SubResource("H_ko_shaft"), SubResource("H_ko_trail_stones"), SubResource("H_ko_trail_ruts"), SubResource("H_ko_trail_nails"), SubResource("H_ko_trail_cord"), SubResource("H_ko_trail_back")])
+
+[sub_resource type="Resource" id="N_ko_sheet_stood"]
+script = ExtResource("4_node")
+id = &"ko_sheet_stood"
+text_key = &"DLG_KO_SHEET_STOOD"
+mood = 1
+next_node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="N_ko_sheet_left"]
+script = ExtResource("4_node")
+id = &"ko_sheet_left"
+text_key = &"DLG_KO_SHEET_LEFT"
+mood = 3
+next_node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="N_ko_sheet_late"]
+script = ExtResource("4_node")
+id = &"ko_sheet_late"
+text_key = &"DLG_KO_SHEET_LATE"
+mood = 3
+next_node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="N_ko_shaft_line"]
+script = ExtResource("4_node")
+id = &"ko_shaft_line"
+text_key = &"DLG_KO_SHAFT"
+mood = 3
+next_node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="N_ko_stones_line"]
+script = ExtResource("4_node")
+id = &"ko_stones_line"
+text_key = &"DLG_KO_STONES"
+mood = 3
+next_node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="N_ko_ruts_line"]
+script = ExtResource("4_node")
+id = &"ko_ruts_line"
+text_key = &"DLG_KO_RUTS"
+mood = 0
+next_node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="N_ko_nails_line"]
+script = ExtResource("4_node")
+id = &"ko_nails_line"
+text_key = &"DLG_KO_NAILS"
+mood = 3
+next_node_id = &"ko_trail"
+
+[sub_resource type="Resource" id="N_ko_cord_line"]
+script = ExtResource("4_node")
+id = &"ko_cord_line"
+text_key = &"DLG_KO_CORD"
+mood = 0
+next_node_id = &"ko_trail"
 
 [sub_resource type="Resource" id="N_ko_hub"]
 script = ExtResource("4_node")
@@ -382,8 +693,8 @@ script = ExtResource("5_dlg")
 id = &"dlg_scout_ko"
 speaker_id = &"actor_scout_ko"
 start_node_id = &"ko_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart"), SubResource("N_ko_night_stood"), SubResource("N_ko_night_left")])
-openings = Array[ExtResource("7_open")]([SubResource("P_ko_stood"), SubResource("P_ko_left")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart"), SubResource("N_ko_night_stood"), SubResource("N_ko_night_left"), SubResource("N_ko_trail"), SubResource("N_ko_sheet_stood"), SubResource("N_ko_sheet_left"), SubResource("N_ko_sheet_late"), SubResource("N_ko_shaft_line"), SubResource("N_ko_stones_line"), SubResource("N_ko_ruts_line"), SubResource("N_ko_nails_line"), SubResource("N_ko_cord_line")])
+openings = Array[ExtResource("7_open")]([SubResource("P_ko_stood"), SubResource("P_ko_left"), SubResource("P_ko_trail")])
 
 [sub_resource type="Resource" id="N_shen_greet"]
 script = ExtResource("4_node")
@@ -594,6 +905,165 @@ text_key = &"DLG_SHEN_TOLD"
 mood = 2
 next_node_id = &"shen_hub"
 
+[sub_resource type="Resource" id="C_shen_open_trail_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_shen_open_trail_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="P_shen_trail"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_open_trail_0"), SubResource("C_shen_open_trail_1")])
+node_id = &"shen_trail"
+
+[sub_resource type="Resource" id="C_shen_show_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_sheet_shown"
+negate = true
+
+[sub_resource type="Resource" id="E_shen_show"]
+script = ExtResource("2_effect")
+kind = 7
+story_choice_id = &"choice_sheet_shown"
+story_option_id = &"shen"
+
+[sub_resource type="Resource" id="H_shen_show"]
+script = ExtResource("3_choice")
+id = &"shen_show"
+text_key = &"DLG_SHEN_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_show_0")])
+effect = SubResource("E_shen_show")
+next_node_id = &"shen_sheet_line"
+
+[sub_resource type="Resource" id="C_shen_show_late_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_sheet_shown"
+
+[sub_resource type="Resource" id="C_shen_show_late_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_shen_sheet_said"
+negate = true
+
+[sub_resource type="Resource" id="E_shen_show_late"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_shen_sheet_said"
+
+[sub_resource type="Resource" id="H_shen_show_late"]
+script = ExtResource("3_choice")
+id = &"shen_show_late"
+text_key = &"DLG_SHEN_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_show_late_0"), SubResource("C_shen_show_late_1")])
+effect = SubResource("E_shen_show_late")
+next_node_id = &"shen_sheet_late"
+
+[sub_resource type="Resource" id="C_shen_shaft_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_shen_shaft_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_shen_shaft_said"
+negate = true
+
+[sub_resource type="Resource" id="E_shen_shaft"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_shen_shaft_said"
+
+[sub_resource type="Resource" id="H_shen_shaft"]
+script = ExtResource("3_choice")
+id = &"shen_shaft"
+text_key = &"DLG_CHOICE_SHAFT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_shaft_0"), SubResource("C_shen_shaft_1")])
+effect = SubResource("E_shen_shaft")
+next_node_id = &"shen_shaft_line"
+
+[sub_resource type="Resource" id="C_shen_trail_hand_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_notation"
+
+[sub_resource type="Resource" id="C_shen_trail_hand_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_shen_trail_hand_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_trail_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_shen_trail_hand"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_trail_origin_said"
+
+[sub_resource type="Resource" id="H_shen_trail_hand"]
+script = ExtResource("3_choice")
+id = &"shen_trail_hand"
+text_key = &"DLG_SHEN_CHOICE_SECOND_HAND"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_trail_hand_0"), SubResource("C_shen_trail_hand_1"), SubResource("C_shen_trail_hand_2")])
+effect = SubResource("E_shen_trail_hand")
+next_node_id = &"shen_hand_line"
+
+[sub_resource type="Resource" id="H_shen_trail_back"]
+script = ExtResource("3_choice")
+id = &"shen_trail_back"
+text_key = &"DLG_CHOICE_BACK"
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="N_shen_trail"]
+script = ExtResource("4_node")
+id = &"shen_trail"
+text_key = &"DLG_SHEN_TRAIL"
+mood = 2
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_show"), SubResource("H_shen_show_late"), SubResource("H_shen_shaft"), SubResource("H_shen_trail_hand"), SubResource("H_shen_trail_back")])
+
+[sub_resource type="Resource" id="N_shen_sheet_line"]
+script = ExtResource("4_node")
+id = &"shen_sheet_line"
+text_key = &"DLG_SHEN_SHEET"
+mood = 2
+next_node_id = &"shen_trail"
+
+[sub_resource type="Resource" id="N_shen_sheet_late"]
+script = ExtResource("4_node")
+id = &"shen_sheet_late"
+text_key = &"DLG_SHEN_SHEET_LATE"
+mood = 2
+next_node_id = &"shen_trail"
+
+[sub_resource type="Resource" id="N_shen_shaft_line"]
+script = ExtResource("4_node")
+id = &"shen_shaft_line"
+text_key = &"DLG_SHEN_SHAFT"
+mood = 2
+next_node_id = &"shen_trail"
+
+[sub_resource type="Resource" id="N_shen_hand_line"]
+script = ExtResource("4_node")
+id = &"shen_hand_line"
+text_key = &"DLG_SHEN_SECOND_HAND"
+mood = 3
+next_node_id = &"shen_trail"
+
 [sub_resource type="Resource" id="N_shen_hub"]
 script = ExtResource("4_node")
 id = &"shen_hub"
@@ -787,8 +1257,8 @@ script = ExtResource("5_dlg")
 id = &"dlg_elder_shen"
 speaker_id = &"actor_elder_shen"
 start_node_id = &"shen_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight"), SubResource("N_shen_issue"), SubResource("N_shen_told"), SubResource("N_shen_night"), SubResource("N_shen_night_stake_line"), SubResource("N_shen_night_nod_line")])
-openings = Array[ExtResource("7_open")]([SubResource("P_shen_night")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight"), SubResource("N_shen_issue"), SubResource("N_shen_told"), SubResource("N_shen_night"), SubResource("N_shen_night_stake_line"), SubResource("N_shen_night_nod_line"), SubResource("N_shen_trail"), SubResource("N_shen_sheet_line"), SubResource("N_shen_sheet_late"), SubResource("N_shen_shaft_line"), SubResource("N_shen_hand_line")])
+openings = Array[ExtResource("7_open")]([SubResource("P_shen_night"), SubResource("P_shen_trail")])
 
 [sub_resource type="Resource" id="H_lin_ask_measure"]
 script = ExtResource("3_choice")
@@ -937,6 +1407,220 @@ text_key = &"DLG_LIN_GREET"
 mood = 3
 next_node_id = &"lin_hub"
 
+[sub_resource type="Resource" id="C_lin_open_trail_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_survey_fragment"
+
+[sub_resource type="Resource" id="C_lin_open_trail_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="P_lin_trail"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_open_trail_0"), SubResource("C_lin_open_trail_1")])
+node_id = &"lin_trail"
+
+[sub_resource type="Resource" id="C_lin_show_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_sheet_shown"
+negate = true
+
+[sub_resource type="Resource" id="C_lin_show_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_show"]
+script = ExtResource("2_effect")
+kind = 7
+story_choice_id = &"choice_sheet_shown"
+story_option_id = &"lin"
+
+[sub_resource type="Resource" id="H_lin_show"]
+script = ExtResource("3_choice")
+id = &"lin_show"
+text_key = &"DLG_LIN_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_show_0"), SubResource("C_lin_show_1")])
+effect = SubResource("E_lin_show")
+next_node_id = &"lin_sheet_read"
+
+[sub_resource type="Resource" id="C_lin_show_refused_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+
+[sub_resource type="Resource" id="C_lin_show_refused_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_sheet_said"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_show_refused"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lin_sheet_said"
+
+[sub_resource type="Resource" id="H_lin_show_refused"]
+script = ExtResource("3_choice")
+id = &"lin_show_refused"
+text_key = &"DLG_LIN_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_show_refused_0"), SubResource("C_lin_show_refused_1")])
+effect = SubResource("E_lin_show_refused")
+next_node_id = &"lin_sheet_refuse"
+
+[sub_resource type="Resource" id="C_lin_show_late_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_sheet_shown"
+
+[sub_resource type="Resource" id="C_lin_show_late_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+negate = true
+
+[sub_resource type="Resource" id="C_lin_show_late_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_sheet_said"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_show_late"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lin_sheet_said"
+
+[sub_resource type="Resource" id="H_lin_show_late"]
+script = ExtResource("3_choice")
+id = &"lin_show_late"
+text_key = &"DLG_LIN_CHOICE_SHOW"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_show_late_0"), SubResource("C_lin_show_late_1"), SubResource("C_lin_show_late_2")])
+effect = SubResource("E_lin_show_late")
+next_node_id = &"lin_sheet_late"
+
+[sub_resource type="Resource" id="C_lin_shaft_kept_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_lin_shaft_kept_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+negate = true
+
+[sub_resource type="Resource" id="C_lin_shaft_kept_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_shaft_said"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_shaft_kept"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lin_shaft_said"
+
+[sub_resource type="Resource" id="H_lin_shaft_kept"]
+script = ExtResource("3_choice")
+id = &"lin_shaft_kept"
+text_key = &"DLG_CHOICE_SHAFT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_shaft_kept_0"), SubResource("C_lin_shaft_kept_1"), SubResource("C_lin_shaft_kept_2")])
+effect = SubResource("E_lin_shaft_kept")
+next_node_id = &"lin_shaft_kept_line"
+
+[sub_resource type="Resource" id="C_lin_shaft_told_0"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_sealed_shaft"
+
+[sub_resource type="Resource" id="C_lin_shaft_told_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+
+[sub_resource type="Resource" id="C_lin_shaft_told_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_shaft_said"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_shaft_told"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lin_shaft_said"
+
+[sub_resource type="Resource" id="H_lin_shaft_told"]
+script = ExtResource("3_choice")
+id = &"lin_shaft_told"
+text_key = &"DLG_CHOICE_SHAFT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_shaft_told_0"), SubResource("C_lin_shaft_told_1"), SubResource("C_lin_shaft_told_2")])
+effect = SubResource("E_lin_shaft_told")
+next_node_id = &"lin_shaft_told_line"
+
+[sub_resource type="Resource" id="H_lin_trail_back"]
+script = ExtResource("3_choice")
+id = &"lin_trail_back"
+text_key = &"DLG_CHOICE_BACK"
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="N_lin_trail"]
+script = ExtResource("4_node")
+id = &"lin_trail"
+text_key = &"DLG_LIN_TRAIL"
+mood = 3
+choices = Array[ExtResource("3_choice")]([SubResource("H_lin_show"), SubResource("H_lin_show_refused"), SubResource("H_lin_show_late"), SubResource("H_lin_shaft_kept"), SubResource("H_lin_shaft_told"), SubResource("H_lin_trail_back")])
+
+[sub_resource type="Resource" id="N_lin_sheet_read"]
+script = ExtResource("4_node")
+id = &"lin_sheet_read"
+text_key = &"DLG_LIN_SHEET_READ"
+mood = 1
+next_node_id = &"lin_trail"
+
+[sub_resource type="Resource" id="N_lin_sheet_refuse"]
+script = ExtResource("4_node")
+id = &"lin_sheet_refuse"
+text_key = &"DLG_LIN_SHEET_REFUSE"
+mood = 2
+next_node_id = &"lin_trail"
+
+[sub_resource type="Resource" id="N_lin_sheet_late"]
+script = ExtResource("4_node")
+id = &"lin_sheet_late"
+text_key = &"DLG_LIN_SHEET_LATE"
+mood = 3
+next_node_id = &"lin_trail"
+
+[sub_resource type="Resource" id="N_lin_shaft_kept_line"]
+script = ExtResource("4_node")
+id = &"lin_shaft_kept_line"
+text_key = &"DLG_LIN_SHAFT_KEPT"
+mood = 1
+next_node_id = &"lin_trail"
+
+[sub_resource type="Resource" id="N_lin_shaft_told_line"]
+script = ExtResource("4_node")
+id = &"lin_shaft_told_line"
+text_key = &"DLG_LIN_SHAFT_TOLD"
+mood = 2
+next_node_id = &"lin_trail"
+
 [sub_resource type="Resource" id="N_lin_hub"]
 script = ExtResource("4_node")
 id = &"lin_hub"
@@ -1080,8 +1764,8 @@ script = ExtResource("5_dlg")
 id = &"dlg_disciple_lin"
 speaker_id = &"actor_disciple_lin"
 start_node_id = &"lin_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told"), SubResource("N_lin_morning_kept"), SubResource("N_lin_morning_told")])
-openings = Array[ExtResource("7_open")]([SubResource("P_lin_morning_told"), SubResource("P_lin_morning_kept"), SubResource("P_lin_told"), SubResource("P_lin_kept")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told"), SubResource("N_lin_morning_kept"), SubResource("N_lin_morning_told"), SubResource("N_lin_trail"), SubResource("N_lin_sheet_read"), SubResource("N_lin_sheet_refuse"), SubResource("N_lin_sheet_late"), SubResource("N_lin_shaft_kept_line"), SubResource("N_lin_shaft_told_line")])
+openings = Array[ExtResource("7_open")]([SubResource("P_lin_trail"), SubResource("P_lin_morning_told"), SubResource("P_lin_morning_kept"), SubResource("P_lin_told"), SubResource("P_lin_kept")])
 
 [sub_resource type="Resource" id="E_te_ask_load"]
 script = ExtResource("2_effect")

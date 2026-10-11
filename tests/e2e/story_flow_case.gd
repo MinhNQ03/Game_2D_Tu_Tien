@@ -25,6 +25,7 @@ const SHEN := &"actor_elder_shen"
 const LIN := &"actor_disciple_lin"
 const MOVE_LEFT := &"move_left"
 const MOVE_DOWN := &"move_down"
+const MOVE_UP := &"move_up"
 const STELE := &"know_lac_ha_stele_record"
 const ISSUE := &"flag_outpost_issue"
 const KO := &"actor_scout_ko"
@@ -515,9 +516,10 @@ func test_real_story_flow() -> void:
 	assert_true(story.is_scene_playing() and hud.story_scene_panel().covers_the_map(),
 		"then it is told")
 	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
-	assert_eq(service.state().beat_id, &"beat_standing", "open play, with a standing purpose")
+	assert_eq(service.state().beat_id, &"beat_whose_hand",
+		"open play, with a purpose the player can act on (D-073)")
 	# The five things NARRATIVE_MASTER_PLAN §5 says the player must leave holding:
-	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_BEAT_STANDING_OBJECTIVE")),
+	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_BEAT_WHOSE_HAND_OBJECTIVE")),
 		"1. an immediate goal, on the plaque")
 	assert_ne(service.origin().goal_key, &"", "2. a personal goal from their Origin")
 	assert_true(RegardRules.read(relationship.get_service(), relationship.get_config(), LIN,
@@ -526,6 +528,133 @@ func test_real_story_flow() -> void:
 	assert_true(service.flag_at_least(&"flag_heard_road_ahead", 1), "5. a reason to go on")
 	assert_eq(str(character.sect_id), "", "and still belonging to no sect")
 	_step("8h. the prologue ended into open play, holding all five things it must hand over")
+
+	# --- 8i. THE BRIDGE (D-073): whom to show the sheet, the stake, the track, the door -------
+	# Declining is a complete path: she is asked, the player says something else, nothing moves.
+	lin = hub.get_node("Interactables/LinYue") as WorldNpc
+	var lin_trust_before := RegardRules.read(relationship.get_service(), relationship.get_config(),
+		LIN, character.instance_id, &"trust")
+	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+	assert_eq(_dialogue.current_node_id(), &"lin_trail",
+		"with the sheet in hand and the prologue over, she opens on it")
+	assert_true(_panel.choice_ids().has(&"lin_show"), "showing it is offered (%s)"
+		% str(_panel.choice_ids()))
+	await _say(&"lin_trail_back", &"lin_hub")
+	await _say(&"lin_leave", &"")
+	assert_false(service.state().has_chosen(&"choice_sheet_shown"),
+		"declining records nothing")
+	assert_eq(service.state().beat_id, &"beat_whose_hand", "and the purpose stands")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), LIN,
+		character.instance_id, &"trust"), lin_trust_before, "nobody's regard moved")
+	# Then: she is the first to see it.
+	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+	await _say(&"lin_show", &"lin_sheet_read")
+	assert_eq(service.state().option_of(&"choice_sheet_shown"), &"lin",
+		"ONE real answer recorded who saw the sheet first")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), LIN,
+		character.instance_id, &"trust"), lin_trust_before + 10, "her trust rose, in the graph")
+	assert_true(knowledge.get_service().knows(&"know_surveyors_line"),
+		"and what she read is held by the Knowledge Core")
+	assert_eq(service.state().beat_id, &"beat_stake_line", "the story moved on")
+	await _advance_to(&"lin_trail")
+	assert_false(_panel.choice_ids().has(&"lin_show"), "the same answer is not offered twice")
+	await _say(&"lin_trail_back", &"lin_hub")
+	await _say(&"lin_leave", &"")
+	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_BEAT_STAKE_LINE_OBJECTIVE")),
+		"and the plaque says where to look next")
+	# The elder is asked second: he answers in character, and nothing is paid twice.
+	var shen_affinity := RegardRules.read(relationship.get_service(),
+		relationship.get_config(), SHEN, character.instance_id, &"affinity")
+	shen = hub.get_node("Interactables/ShenBuqi") as WorldNpc
+	await _talk_to(player, hub, shen, Vector2(30, 0))
+	assert_eq(_dialogue.current_node_id(), &"shen_trail", "the elder opens on it too")
+	await _say(&"shen_show_late", &"shen_sheet_late")
+	assert_eq(service.state().option_of(&"choice_sheet_shown"), &"lin", "the record is unchanged")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), SHEN,
+		character.instance_id, &"affinity"), shen_affinity, "a second showing costs nothing more")
+	assert_false(knowledge.get_service().knows(&"know_shaft_claim"),
+		"and he gives a latecomer only his denial")
+	await _advance_to(&"shen_trail")
+	await _say(&"shen_trail_back", &"shen_hub")
+	await _say(&"shen_leave", &"")
+
+	# The woods: where the stake stood.
+	await _go_through_exit(player)
+	field = router.call("get_current_scene")
+	hud = _find_hud(field)
+	_panel = hud.dialogue_panel()
+	var socket := field.get_node("KnowledgeSources/StakeSocket") as KnowledgeSource
+	assert_true(socket.visible, "the raked socket is where the stake was")
+	assert_false((field.get_node("Visual/Decor/SurveyStake") as Node2D).visible,
+		"and the stake is not")
+	player.global_position = socket.global_position + Vector2(40, 0)  # setup: beside it
+	await scene_tree.physics_frame
+	Input.action_press(MOVE_LEFT)
+	await _wait_until(func() -> bool: return field.call("active_knowledge_source") == socket, 120)
+	Input.action_release(MOVE_LEFT)
+	assert_eq(field.call("active_knowledge_source"), socket, "walking up to it offers it")
+	await _press_until(INTERACT, func() -> bool:
+		return knowledge.get_service().knows(&"know_stake_socket"))
+	assert_eq(service.state().beat_id, &"beat_ruts", "a real examine: the track is next")
+	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_BEAT_RUTS_OBJECTIVE")),
+		"on the plaque")
+	# The door. It is SOLID: walking up into it stops at its sill.
+	var shaft := field.get_node("Visual/Decor/Prop_SurveyShaft") as Node2D
+	var seal := field.get_node("KnowledgeSources/ShaftSeal") as KnowledgeSource
+	player.global_position = seal.global_position + Vector2(0, 34)  # setup: below the door
+	await scene_tree.physics_frame
+	Input.action_press(MOVE_UP)
+	for _i in 90:
+		await scene_tree.physics_frame
+	Input.action_release(MOVE_UP)
+	await scene_tree.physics_frame
+	assert_true(shaft.global_position.distance_to(seal.global_position) < 16.0,
+		"the seal is read AT the door, not somewhere else")
+	assert_true(player.global_position.y > seal.global_position.y - 12.0,
+		"a held move key did not carry the player through the door (y %.1f, sill %.1f)"
+		% [player.global_position.y, shaft.global_position.y])
+	assert_eq(field.call("active_knowledge_source"), seal, "standing at the sill offers the seal")
+	await _press_until(INTERACT, func() -> bool:
+		return knowledge.get_service().knows(&"know_sealed_shaft"))
+	assert_eq(service.state().beat_id, &"beat_standing", "the door is found: the story rests")
+	assert_true(story.is_scene_playing(), "and says so, once")
+	assert_false(hud.story_scene_panel().covers_the_map(), "over the place itself")
+	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
+	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_BEAT_STANDING_OBJECTIVE")),
+		"the standing purpose now names the door and what it needs")
+	var reads := knowledge.get_service().store().known_ids().size()
+	await _fire_action(INTERACT)
+	for _i in 4:
+		await scene_tree.process_frame
+	assert_eq(knowledge.get_service().store().known_ids().size(), reads,
+		"examining it again teaches nothing new")
+	assert_false(story.is_scene_playing(), "and tells nothing twice")
+	_step("8i. the bridge with real keys: declined, shown, asked again, the stake, the door")
+
+	# --- 8j. bringing it back: who answers, and what only this Origin notices ------------------
+	await _go_through_exit(player)
+	hub = router.call("get_current_scene")
+	hud = _find_hud(hub)
+	_panel = hud.dialogue_panel()
+	lin = hub.get_node("Interactables/LinYue") as WorldNpc
+	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+	await _say(&"lin_shaft_kept", &"lin_shaft_kept_line")
+	await _advance_to(&"lin_trail")
+	assert_false(_panel.choice_ids().has(&"lin_shaft_kept"), "said once")
+	await _say(&"lin_trail_back", &"lin_hub")
+	await _say(&"lin_leave", &"")
+	shen = hub.get_node("Interactables/ShenBuqi") as WorldNpc
+	await _talk_to(player, hub, shen, Vector2(30, 0))
+	assert_true(_panel.choice_ids().has(&"shen_trail_hand"),
+		"a keeper of records sees what nobody else can: the second hand (%s)"
+		% str(_panel.choice_ids()))
+	await _say(&"shen_trail_hand", &"shen_hand_line")
+	assert_true(service.flag_at_least(&"flag_trail_origin_said", 1), "noticed, on the record")
+	await _advance_to(&"shen_trail")
+	assert_false(_panel.choice_ids().has(&"shen_trail_hand"), "and noticed once")
+	await _say(&"shen_trail_back", &"shen_hub")
+	await _say(&"shen_leave", &"")
+	_step("8j. the door was brought back to those it concerns; the Origin's line was said once")
 
 	# --- 9. leave through the real question; everything is torn down --------------------------
 	await _press_until(OPEN_MENU, func() -> bool:
@@ -584,12 +713,13 @@ func test_real_story_flow() -> void:
 
 	# --- 11. the other answer to the Night: walk away from it ---------------------------------
 	# SETUP (each proved with real keys in the first run): three people met, the village's
-	# business heard, Lâm Nguyệt's confidence kept. What is proved here is the leaving.
+	# business heard, and — the OTHER answer this time — the elder told about Lâm Nguyệt's
+	# readings. What is proved here is the leaving, and then (12) what telling costs.
 	RunKit.skip_scenes(main)
 	for who: StringName in [SHEN, LIN, KO]:
 		story.meet(who)
 	story.set_flag(&"flag_heard_village_business", 1)
-	story.choose(&"choice_lam_readings", &"kept")
+	story.choose(&"choice_lam_readings", &"told")
 	RunKit.skip_scenes(main)
 	service = story.get_service()
 	assert_eq(service.state().beat_id, &"beat_warning", "setup: the Night is due")
@@ -614,6 +744,60 @@ func test_real_story_flow() -> void:
 	assert_eq(service.state().beat_id, &"beat_aftermath", "morning comes either way")
 	RunKit.skip_scenes(main)
 	_step("11. withdrew from the Night through the real exit: a different, recorded outcome")
+
+	# --- 12. the bridge for someone who TOLD and WITHDREW: a refusal that is not a dead end ----
+	# SETUP (each proved with real keys in the first run): the elder heard, a sitting, the
+	# sheet read, the carter's farewell.
+	story.set_flag(&"flag_heard_elder_account", 1)
+	story.note_cultivated()
+	knowledge.grant(&"know_survey_fragment", &"source_survey_sheet")
+	story.set_flag(&"flag_heard_road_ahead", 1)
+	RunKit.skip_scenes(main)
+	assert_eq(service.state().beat_id, &"beat_whose_hand", "setup: Act I, sheet in hand")
+	hub = router.call("get_current_scene")
+	hud = _find_hud(hub)
+	_panel = hud.dialogue_panel()
+	lin = hub.get_node("Interactables/LinYue") as WorldNpc
+	var record_before := str(service.state().to_dict())
+	var lin_trust := RegardRules.read(relationship.get_service(), relationship.get_config(),
+		LIN, character.instance_id, &"trust")
+	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+	assert_eq(_dialogue.current_node_id(), &"lin_trail", "she opens on the sheet")
+	assert_false(_panel.choice_ids().has(&"lin_show"),
+		"she does not read it for someone who told on her (%s)" % str(_panel.choice_ids()))
+	await _say(&"lin_show_refused", &"lin_sheet_refuse")
+	assert_eq(str(service.state().to_dict()), record_before, "her refusal records no decision")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), LIN,
+		character.instance_id, &"trust"), lin_trust, "and moves nothing")
+	await _advance_to(&"lin_trail")
+	assert_false(_panel.choice_ids().has(&"lin_show_refused"), "she says it once")
+	await _say(&"lin_trail_back", &"lin_hub")
+	await _say(&"lin_leave", &"")
+	assert_eq(service.state().beat_id, &"beat_whose_hand", "the purpose stands: ask someone else")
+	# The watchman still answers — with the line of someone who was left alone at the treeline.
+	await _go_through_exit(player)
+	field = router.call("get_current_scene")
+	hud = _find_hud(field)
+	_panel = hud.dialogue_panel()
+	var ko := field.get_node("Interactables/KoThan") as WorldNpc
+	await _talk_to(player, field, ko, Vector2(30, 0))
+	if _dialogue.current_node_id() == &"ko_night_left":  # the line the Night still owed
+		await _say(&"ko_night_ack2", &"")
+		await _talk_to(player, field, ko, Vector2(30, 0))
+	assert_eq(_dialogue.current_node_id(), &"ko_trail", "the watchman opens on it")
+	assert_false(_panel.choice_ids().has(&"ko_show_stood"), "not with the words for one who stood")
+	var ko_trust := RegardRules.read(relationship.get_service(), relationship.get_config(), KO,
+		character.instance_id, &"trust")
+	await _say(&"ko_show_left", &"ko_sheet_left")
+	assert_eq(service.state().option_of(&"choice_sheet_shown"), &"ko", "recorded: the watchman")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), KO,
+		character.instance_id, &"trust"), ko_trust + 5, "his trust rose")
+	assert_true(knowledge.get_service().knows(&"know_night_wheels"), "what he heard is known")
+	assert_eq(service.state().beat_id, &"beat_stake_line", "and the run goes on")
+	await _advance_to(&"ko_trail")
+	await _say(&"ko_trail_back", &"ko_hub")
+	await _say(&"ko_leave", &"")
+	_step("12. told and withdrew: refused by her, answered by him — recorded once, no dead end")
 
 	var last_map: Node = router.call("get_current_scene")
 	last_map.emit_signal("return_to_menu_requested")

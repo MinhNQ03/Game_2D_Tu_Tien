@@ -5996,3 +5996,34 @@ story.
 A dungeon, a room, an instance runtime, a boss, loot or drops, a key item, save / Continue /
 autosave, networking, a new autoload or manager, a second quest ledger, XP balance, knowledge
 set or relationship score, a morality value, an audio system.
+
+### D-073 addendum (Checkpoint 1) — what building the bridge changed
+
+**A. A conversation OPENS on the sheet; the hubs gained nothing.** Gate A imagined one more
+answer on each person's hub. The dialogue box is measured to hold five answers under the
+clear zone, and the watchman's and the elder's hubs already offer five. So the trail is an
+OPENING (`DialogueData.openings`, D-072 addendum B): once the sheet is held and the carter
+has been heard, each of the three greets the player on their trail line, whose own answers
+never exceed four, and *Speak of something else* leads to the hub as it was. No layout rule
+was relaxed. Cost, recorded as H21-15: an opening cannot ask "is anything left to say".
+
+**B. The choice is bound to its beat after all.** Gate A left `choice_sheet_shown` unbound,
+by analogy with addendum C of D-072. Built that way, a player could show the sheet the moment
+they had read it — before the farewell — and the beat that opens Act I would then be passed
+on entry and its scene (the road ahead) never told. It is bound to `beat_whose_hand`, and the
+conversations do not offer it until the flag the farewell sets. Nothing is refused that was
+ever offered.
+
+**C. No Origin's line depends on an earlier decision.** Two of the five trail observations
+were first written for Lâm Nguyệt, who does not talk about the sheet to someone who told on
+her — which would have cost two Origins their line in half of all runs. They are with Kha
+Thản and Thẩm Bất Kỳ, who always answer.
+
+**D. `sync_scene.py` owns story props.** The wreck and the carter's cart were hand-placed in
+the scenes while every other prop came from the layout. Re-syncing a layout dropped the prop
+data they pointed at (found by doing it). A layout's `story_props` (name, prop, position,
+flag, present-when-set) are now written by the same tool: one source for where a thing
+stands, whether or not the story decides if it is there.
+
+**E. The door stands where the HUD does not.** See the handoff §5, "Placement, as seen".
+

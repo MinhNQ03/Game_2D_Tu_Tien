@@ -1,4 +1,4 @@
-[gd_scene load_steps=55 format=3]
+[gd_scene load_steps=60 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_exit_zone.gd" id="2_exit"]
@@ -33,17 +33,6 @@
 [ext_resource type="Resource" path="res://data/items/item_kiem_thanh_thiet.tres" id="53_sword"]
 [ext_resource type="Resource" path="res://data/items/item_dao_bao_thanh_van.tres" id="54_robe"]
 
-[ext_resource type="Script" path="res://src/gameplay/maps/painted_ground.gd" id="p_ground"]
-[ext_resource type="Resource" path="res://data/maps/ground/lac_ha_ground.tres" id="p_layout"]
-[ext_resource type="Script" path="res://src/gameplay/world/props/world_prop.gd" id="p_script"]
-[ext_resource type="Resource" path="res://data/world/props/dwelling_a.tres" id="p_dwelling_a"]
-[ext_resource type="Resource" path="res://data/world/props/dwelling_b.tres" id="p_dwelling_b"]
-[ext_resource type="Resource" path="res://data/world/props/fence_long.tres" id="p_fence_long"]
-[ext_resource type="Resource" path="res://data/world/props/outpost_hall.tres" id="p_outpost_hall"]
-[ext_resource type="Resource" path="res://data/world/props/tree_broadleaf.tres" id="p_tree_broadleaf"]
-[ext_resource type="Resource" path="res://data/world/props/tree_small.tres" id="p_tree_small"]
-[ext_resource type="Resource" path="res://data/world/props/weapon_rack.tres" id="p_weapon_rack"]
-[ext_resource type="Resource" path="res://data/world/props/well.tres" id="p_well"]
 [ext_resource type="Script" path="res://src/gameplay/world/props/prop_body.gd" id="pb_script"]
 [ext_resource type="Resource" path="res://data/world/props/spirit_spring.tres" id="pb_spring"]
 [ext_resource type="Resource" path="res://data/world/props/stele.tres" id="pb_stele"]
@@ -56,9 +45,21 @@
 [ext_resource type="Resource" path="res://data/characters/npc_elder_shen.tres" id="63_shen"]
 [ext_resource type="Resource" path="res://data/characters/npc_disciple_lin.tres" id="64_lin"]
 [ext_resource type="Resource" path="res://data/characters/npc_carter_te.tres" id="65_te"]
-[ext_resource type="Resource" path="res://data/world/props/cart.tres" id="p_cart"]
 [ext_resource type="Script" path="res://src/gameplay/maps/story_presence.gd" id="sp_script"]
 [ext_resource type="Resource" path="res://data/pets/pet_hoang_khuyen.tres" id="61_hound"]
+[ext_resource type="Script" path="res://src/gameplay/maps/painted_ground.gd" id="p_ground"]
+[ext_resource type="Resource" path="res://data/maps/ground/lac_ha_ground.tres" id="p_layout"]
+[ext_resource type="Script" path="res://src/gameplay/world/props/world_prop.gd" id="p_script"]
+[ext_resource type="Script" path="res://src/gameplay/maps/story_presence.gd" id="p_presence"]
+[ext_resource type="Resource" path="res://data/world/props/cart.tres" id="p_cart"]
+[ext_resource type="Resource" path="res://data/world/props/dwelling_a.tres" id="p_dwelling_a"]
+[ext_resource type="Resource" path="res://data/world/props/dwelling_b.tres" id="p_dwelling_b"]
+[ext_resource type="Resource" path="res://data/world/props/fence_long.tres" id="p_fence_long"]
+[ext_resource type="Resource" path="res://data/world/props/outpost_hall.tres" id="p_outpost_hall"]
+[ext_resource type="Resource" path="res://data/world/props/tree_broadleaf.tres" id="p_tree_broadleaf"]
+[ext_resource type="Resource" path="res://data/world/props/tree_small.tres" id="p_tree_small"]
+[ext_resource type="Resource" path="res://data/world/props/weapon_rack.tres" id="p_weapon_rack"]
+[ext_resource type="Resource" path="res://data/world/props/well.tres" id="p_well"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
 shader_parameter/pivot_row = 11.0
@@ -141,18 +142,6 @@ position = Vector2(740, 382)
 script = ExtResource("p_script")
 prop = ExtResource("p_weapon_rack")
 
-[node name="CarterCart" type="Node2D" parent="Visual/Decor"]
-position = Vector2(872, 250)
-
-[node name="Prop_Cart" type="StaticBody2D" parent="Visual/Decor/CarterCart"]
-script = ExtResource("p_script")
-prop = ExtResource("p_cart")
-
-[node name="Presence" type="Node" parent="Visual/Decor/CarterCart"]
-script = ExtResource("sp_script")
-flag_id = &"flag_vein_broke"
-present_when_set = false
-
 [node name="Prop_YardFence" type="StaticBody2D" parent="Visual/Decor"]
 position = Vector2(700, 480)
 script = ExtResource("p_script")
@@ -197,6 +186,18 @@ prop = ExtResource("p_tree_small")
 position = Vector2(384, 132)
 script = ExtResource("p_script")
 prop = ExtResource("p_tree_small")
+
+[node name="CarterCart" type="Node2D" parent="Visual/Decor"]
+position = Vector2(872, 250)
+
+[node name="Prop_CarterCart" type="StaticBody2D" parent="Visual/Decor/CarterCart"]
+script = ExtResource("p_script")
+prop = ExtResource("p_cart")
+
+[node name="Presence" type="Node" parent="Visual/Decor/CarterCart"]
+script = ExtResource("p_presence")
+flag_id = &"flag_vein_broke"
+present_when_set = false
 
 [node name="BannerW" type="Sprite2D" parent="Visual/Decor"]
 texture_filter = 1
@@ -664,6 +665,7 @@ script = ExtResource("45_source")
 source_id = &"source_survey_sheet"
 grants = Array[StringName]([&"know_survey_fragment"])
 reach_px = 18.0
+prompt_key = &"UI_HUD_EXAMINE_ACTION"
 
 [node name="Stone" type="Sprite2D" parent="KnowledgeSources/SurveySheet"]
 texture_filter = 1

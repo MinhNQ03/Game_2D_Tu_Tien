@@ -808,3 +808,46 @@ func test_content_that_names_what_the_story_lacks_stops_the_session() -> void:
 	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
 		rig.relationship, sound, rig.quests, rig.story), "and starts with the story it names")
 	_free(rig)
+
+
+## D-073 §2, as the PLAYER meets it: an answer that is a story decision, which an owner cannot
+## finish. The conversation must stay on its line with the answer still on offer, say why in
+## words that exist in every language, change nothing — and take the answer once it can.
+func test_a_story_decision_an_owner_cannot_finish_keeps_the_line_and_says_why() -> void:
+	var decide := DialogueEffectData.new()
+	decide.kind = DialogueEffectData.Kind.STORY_CHOICE
+	decide.story_choice_id = &"choice_lam_readings"
+	decide.story_option_id = &"told"
+	var rig := _rig(_story_talk(null, decide))
+	# The edge Lâm Nguyệt's regard for the player would need cannot be made while its id is
+	# another pair's: the decision's SECOND consequence is refused by its owner.
+	var graph := rig.relationship.get_service()
+	var taken := StringName(RegardRules.EDGE_ID_FORMAT % [LIN, PLAYER])
+	graph.create_edge(taken, RelationshipEndpoint.for_character(SHEN),
+		RelationshipEndpoint.for_character(KO))
+	_stand_by(rig, rig.lin)
+	assert_eq(rig.dialogue.talk(STRANGER), &"", "the conversation opens")
+	var node := rig.dialogue.current_node_id()
+	var story := rig.story.get_service()
+	var edges := rig.relationship.get_store().edge_count()
+	var answer := rig.dialogue.choose(node, &"say")
+	assert_false(answer.ok, "the answer is refused")
+	assert_eq(rig.refused.size(), 1, "the player is told once")
+	var why := String(rig.refused[0])
+	assert_true(why.begins_with("UI_"), "in words, not an id ('%s')" % why)
+	var loc: Node = scene_tree.root.get_node_or_null("Localization")
+	assert_not_null(loc, "the localization service is there to ask")
+	assert_true(bool(loc.call("is_translated", why)), "'%s' exists in every language" % why)
+	assert_true(rig.dialogue.is_open(), "the conversation is still open")
+	assert_eq(rig.dialogue.current_node_id(), node, "on the same line")
+	assert_true(_choice_ids(rig).has(&"say"), "with the answer still on offer")
+	assert_false(story.state().has_chosen(&"choice_lam_readings"), "nothing was decided")
+	assert_eq(story.flag_value(&"flag_lam_settled"), 0, "no flag was set")
+	assert_eq(rig.relationship.get_store().edge_count(), edges, "and no regard moved")
+
+	graph.remove_edge(taken)
+	assert_true(rig.dialogue.choose(node, &"say").ok, "once the owner can, the answer is taken")
+	assert_eq(story.state().option_of(&"choice_lam_readings"), &"told", "and recorded")
+	assert_eq(story.flag_value(&"flag_lam_settled"), 2, "with its flag")
+	assert_eq(rig.refused.size(), 1, "with no second refusal")
+	_free(rig)

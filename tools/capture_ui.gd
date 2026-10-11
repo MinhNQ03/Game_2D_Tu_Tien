@@ -256,6 +256,70 @@ func _capture_the_night(main: Node) -> void:
 		await _shot("26_chronicle_page_%d" % (page + 1))
 		book.advance_page()
 	book.visible = false
+	await _capture_the_bridge(main)
+
+
+## The Act-I bridge (D-073) as the window shows it: the sheet shown, where the stake stood, the
+## old cart track and the door at its end. A CAPTURE, staged through the owners; the real-key
+## path is the Story E2E's (8i, 8j, 12).
+func _capture_the_bridge(main: Node) -> void:
+	var story := RunKit.story_of(main)
+	var world := main.get_node_or_null("Systems/WorldRuntime")
+	var knowledge := main.get_node_or_null("Systems/KnowledgeRuntime")
+	var dialogue := main.get_node_or_null("Systems/DialogueRuntime")
+	if story == null or world == null or knowledge == null or dialogue == null:
+		push_error("[capture] no session to capture the bridge of")
+		_failed = true
+		return
+	story.set_flag(&"flag_heard_elder_account", 1)
+	story.note_cultivated()
+	knowledge.call("grant", &"know_survey_fragment", &"source_survey_sheet")
+	story.set_flag(&"flag_heard_road_ahead", 1)
+	await _settle()
+	await _shot("30_act1_road_ahead_card")
+	RunKit.skip_scenes(main)
+	var router := root.get_node_or_null("SceneRouter")
+	var hub: Node = router.call("get_current_scene")
+	var lin := hub.get_node_or_null("Interactables/LinYue") as Node2D
+	var player := world.call("get_player") as Node2D
+	if lin != null and player != null:
+		player.global_position = lin.global_position + Vector2(-22, 0)  # staging: beside her
+		await _settle()
+		await _shot("31_act1_purpose_ask_who_wrote_it")
+		dialogue.call("talk", &"actor_disciple_lin")
+		await _settle()
+		await _shot("32_act1_whom_to_show")
+		dialogue.call("choose", &"lin_trail", &"lin_show")
+		await _settle()
+		await _shot("33_act1_she_reads_the_hand")
+		dialogue.call("leave")
+	world.call("request_map_transition", &"map_field", &"from_hub")
+	await _settle()
+	await _settle()
+	var field: Node = router.call("get_current_scene")
+	player = world.call("get_player") as Node2D
+	var socket := field.get_node_or_null("KnowledgeSources/StakeSocket") as Node2D
+	if socket != null and player != null:
+		player.global_position = socket.global_position + Vector2(14, 2)  # staging: at the mark
+		await _settle()
+		await _shot("34_act1_where_the_stake_stood")
+		knowledge.call("grant", &"know_stake_socket", &"source_stake_socket")
+	var wreck := field.get_node_or_null("Visual/Decor/CartWreck") as Node2D
+	if wreck != null and player != null:
+		player.global_position = wreck.global_position + Vector2(-44, 30)  # staging: by the wreck
+		await _settle()
+		await _shot("35_act1_wreck_and_old_track")
+	var seal := field.get_node_or_null("KnowledgeSources/ShaftSeal") as Node2D
+	if seal != null and player != null:
+		player.global_position = seal.global_position + Vector2(0, 6)  # staging: at the sill
+		await _settle()
+		await _shot("36_act1_the_survey_shaft")
+		knowledge.call("grant", &"know_sealed_shaft", &"source_shaft_seal")
+		await _settle()
+		await _shot("37_act1_shaft_sealed_caption")
+		RunKit.skip_scenes(main)
+		await _settle()
+		await _shot("38_act1_standing_purpose")
 
 
 func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:

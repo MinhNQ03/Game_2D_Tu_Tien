@@ -396,8 +396,17 @@ func test_knowledge_gained_anywhere_moves_a_beat_that_waits_for_it() -> void:
 		"the Knowledge Core said so, and the story heard it")
 	rig.story.set_flag(&"flag_heard_road_ahead")
 	assert_true(rig.log.has("chapter chapter_ke_vo_danh"), "Act I was announced")
-	assert_true(rig.story.get_service().current_beat().terminal, "and the story rests")
+	assert_eq(rig.story.get_service().state().beat_id, &"beat_whose_hand",
+		"and Act I opens on something to DO (D-073): whose hand is on the sheet")
 	assert_ne(rig.story.build_view().objective_key, &"", "with a purpose that is not blank")
+	# The bridge's two finds are things KNOWN, wherever they were learned.
+	_skip_all(rig)
+	assert_true(rig.story.choose(&"choice_sheet_shown", &"ko").ok, "the sheet is shown")
+	assert_eq(rig.story.get_service().state().beat_id, &"beat_stake_line", "then: the stake")
+	rig.knowledge.grant(&"know_stake_socket", &"source_test")
+	assert_eq(rig.story.get_service().state().beat_id, &"beat_ruts", "then: the track")
+	rig.knowledge.grant(&"know_sealed_shaft", &"source_test")
+	assert_true(rig.story.get_service().current_beat().terminal, "and at the door the story rests")
 	_free(rig)
 
 
@@ -431,6 +440,95 @@ func test_a_mid_run_record_round_trips_through_the_runtime() -> void:
 	_free(rig)
 
 
+# === All or nothing, on the real owners (D-073 §2) ===========================
+
+## The promise the story builds on: when a real owner says it CAN, its commit does. Asked over
+## the cases a decision can meet — and the ones that must be "no".
+func test_what_a_real_owner_says_it_can_do_it_does() -> void:
+	var rig := _rig()
+	assert_true(_start(rig, &"origin_lang_y"), "the session starts")
+	var graph := rig.relationship.get_service()
+	var config := rig.relationship.get_config()
+	# An edge whose id is the one Lâm Nguyệt's regard for the player would take, between two
+	# OTHER people: her edge cannot be made while it stands.
+	var taken := StringName(RegardRules.EDGE_ID_FORMAT % [LIN, PLAYER])
+	assert_true(graph.create_edge(taken, RelationshipEndpoint.for_character(SHEN),
+		RelationshipEndpoint.for_character(KO)) != null, "the id is taken")
+	var cases := [
+		[SHEN, &"trust", 10, true, "a new edge, a real change"],
+		[SHEN, &"trust", 5, true, "an edge that exists"],
+		[KO, &"trust", -5, true, "no edge and no change: trust cannot go below its floor"],
+		[KO, &"affinity", -5, true, "a fall on a dimension that can fall"],
+		[SHEN, &"no_such_dimension", 5, false, "an unknown dimension"],
+		[&"", &"trust", 5, false, "nobody"],
+		[PLAYER, &"trust", 5, false, "oneself"],
+		[LIN, &"affinity", -15, false, "an edge that cannot be made"],
+		[LIN, &"trust", -5, true, "the same pair, but nothing would change: no edge needed"],
+	]
+	for case: Array in cases:
+		var edges_before := rig.relationship.get_store().edge_count()
+		var can := RegardRules.can_move(graph, config, case[0], PLAYER, case[1], case[2])
+		assert_eq(can, case[3], "can_move: %s" % case[4])
+		assert_eq(rig.relationship.get_store().edge_count(), edges_before,
+			"asking changes nothing (%s)" % case[4])
+		var moved := RegardRules.move(graph, config, case[0], PLAYER, case[1], case[2], &"test")
+		assert_eq(bool(moved["ok"]), can, "move agrees with what it said: %s" % case[4])
+		if not can:
+			assert_eq(rig.relationship.get_store().edge_count(), edges_before,
+				"and a refused move made nothing (%s)" % case[4])
+	var core := rig.knowledge.get_service()
+	for id: StringName in [&"know_survey_fragment", &"know_dan_khi_quyet", &"know_no_such"]:
+		var can_teach := core.can_grant(id)
+		var held_before := core.knows(id)
+		var result := core.grant(id, &"test")
+		assert_eq(result == KnowledgeService.GRANTED or result == KnowledgeService.ALREADY_KNOWN,
+			can_teach, "grant agrees with can_grant for '%s'" % id)
+		assert_eq(core.knows(id), can_teach or held_before,
+			"and '%s' is held only if it could be" % id)
+	_free(rig)
+
+
+## THE DEFECT (handoff H21-02), on the shipped content and the real owners: telling the elder
+## moves his trust, THEN lowers Lâm Nguyệt's affinity, THEN sets a flag. When the second owner
+## cannot, the first must not have been asked, the choice must not be recorded, nobody must be
+## told it was — and once the cause is gone the same answer must succeed exactly once.
+func test_a_shipped_decision_an_owner_cannot_finish_is_refused_whole_then_made_once() -> void:
+	var rig := _rig()
+	assert_true(_start(rig, &"origin_lang_y"), "the session starts")
+	_skip_all(rig)
+	var graph := rig.relationship.get_service()
+	var taken := StringName(RegardRules.EDGE_ID_FORMAT % [LIN, PLAYER])
+	graph.create_edge(taken, RelationshipEndpoint.for_character(SHEN),
+		RelationshipEndpoint.for_character(KO))
+	var state := rig.story.get_service().state()
+	var record_before := str(state.to_dict())
+	var flags_before := str(rig.world.character.story_flags)
+	var edges_before := rig.relationship.get_store().edge_count()
+	rig.log.clear()
+	var refused := rig.story.choose(&"choice_lam_readings", &"told")
+	assert_false(refused.ok, "the decision is refused")
+	assert_eq(refused.reason, StoryService.REFUSE_OWNER, "because an owner cannot do its part")
+	assert_eq(_regard(rig, SHEN, &"trust"), 0, "the elder's trust did NOT move")
+	assert_eq(rig.relationship.get_store().edge_count(), edges_before, "no edge was made")
+	assert_eq(str(state.to_dict()), record_before, "nothing was recorded")
+	assert_eq(str(rig.world.character.story_flags), flags_before, "no flag was written")
+	assert_eq(rig.log, [] as Array[String], "and nothing was announced")
+	assert_false(state.has_chosen(&"choice_lam_readings"), "the decision is still open")
+
+	assert_true(graph.remove_edge(taken), "the cause is removed")
+	var made := rig.story.choose(&"choice_lam_readings", &"told")
+	assert_true(made.ok, "the same answer now succeeds")
+	assert_eq([_regard(rig, SHEN, &"trust"), _regard(rig, LIN, &"affinity")], [10, -15],
+		"both regards moved, once")
+	assert_eq(rig.story.get_service().flag_value(&"flag_lam_settled"), 2, "the flag is set")
+	assert_true(rig.log.has("choice choice_lam_readings=told"), "and it is announced, once")
+	assert_eq(rig.story.choose(&"choice_lam_readings", &"told").reason,
+		StoryService.REFUSE_ALREADY_CHOSEN, "a repeat is refused")
+	assert_eq([_regard(rig, SHEN, &"trust"), _regard(rig, LIN, &"affinity")], [10, -15],
+		"and pays nothing twice")
+	_free(rig)
+
+
 func test_ending_the_session_stops_listening_and_is_idempotent() -> void:
 	var rig := _rig()
 	_start(rig, &"origin_lang_y")
@@ -447,42 +545,98 @@ func test_ending_the_session_stops_listening_and_is_idempotent() -> void:
 	_free(rig)
 
 
-## Phase 20 close-out: NO Origin and NO pair of decisions can leave a run stuck. Every one of
-## the 5 x 2 x 2 runs reaches open Act-I play through the runtime's public seams, in an order
-## a player can produce, and ends holding the mystery and a standing purpose.
+## Phase 20 close-out, extended by D-073: NO Origin and NO combination of decisions can leave
+## a run stuck. Every one of the 5 x (kept: 3 | told: 2) x 2 = 50 runs reaches open Act-I play
+## AND the door the bridge ends at, through the runtime's public seams, in an order a player
+## can produce. (Lâm Nguyệt does not look at the sheet of someone who told on her: that
+## combination is not offered by her conversation, so it is not a run.)
 func test_every_origin_and_every_pair_of_decisions_reaches_act_one() -> void:
 	var origins: Array[StringName] = [&"origin_ho_tieu", &"origin_de_tu_bi_loai",
 		&"origin_lang_y", &"origin_nghe_nhan", &"origin_thu_thu"]
+	var runs := 0
 	for origin_id in origins:
 		for readings: StringName in [&"kept", &"told"]:
 			for night: StringName in [&"stood", &"withdrew"]:
-				var rig := _rig()
-				var run := "%s / %s / %s" % [origin_id, readings, night]
-				assert_true(_start(rig, origin_id), "%s starts" % run)
-				_skip_all(rig)
-				for who: StringName in [LIN, &"actor_carter_te", SHEN]:
-					rig.story.meet(who)
-				rig.story.set_flag(&"flag_heard_village_business")
-				assert_true(rig.story.choose(&"choice_lam_readings", readings).ok,
-					"%s: the first decision is taken" % run)
-				_skip_all(rig)
-				rig.world.map_id = &"map_field"
-				rig.world.active_map_ready.emit()
-				_skip_all(rig)
-				assert_true(rig.story.choose(&"choice_night_stand", night).ok,
-					"%s: the Night is answered" % run)
-				_skip_all(rig)
-				rig.story.set_flag(&"flag_heard_elder_account")
-				rig.story.note_cultivated()
-				var service := rig.story.get_service()
-				assert_eq(service.state().beat_id,
-					&"beat_sheet_told" if readings == &"kept" else &"beat_sheet_found",
-					"%s: the sheet beat follows the first decision" % run)
-				rig.knowledge.grant(&"know_survey_fragment", &"source_survey_sheet")
-				rig.story.set_flag(&"flag_heard_road_ahead")
-				_skip_all(rig)
-				assert_eq([service.state().chapter_id, service.state().beat_id],
-					[&"chapter_ke_vo_danh", &"beat_standing"], "%s reaches Act I" % run)
-				assert_ne(service.objective_key(), &"", "%s: with a standing purpose" % run)
-				assert_ne(service.origin().goal_key, &"", "%s: and a goal of their own" % run)
-				_free(rig)
+				var confidants: Array[StringName] = [&"ko", &"shen"]
+				if readings == &"kept":
+					confidants.append(&"lin")
+				for shown in confidants:
+					runs += 1
+					_run_to_the_door(origin_id, readings, night, shown)
+	assert_eq(runs, 50, "every combination a player can produce was walked")
+
+
+## Regard owed to each first confidant, as authored: [who, dimension, delta].
+const SHOWN_REGARD := {
+	&"lin": [LIN, &"trust", 10], &"ko": [KO, &"trust", 5], &"shen": [SHEN, &"affinity", -10]}
+const SHOWN_KNOWLEDGE := {
+	&"lin": &"know_surveyors_line", &"ko": &"know_night_wheels", &"shen": &"know_shaft_claim"}
+
+
+func _run_to_the_door(origin_id: StringName, readings: StringName, night: StringName,
+		shown: StringName) -> void:
+	var rig := _rig()
+	var run := "%s / %s / %s / first shown to %s" % [origin_id, readings, night, shown]
+	assert_true(_start(rig, origin_id), "%s starts" % run)
+	_skip_all(rig)
+	for who: StringName in [LIN, &"actor_carter_te", SHEN]:
+		rig.story.meet(who)
+	rig.story.set_flag(&"flag_heard_village_business")
+	assert_true(rig.story.choose(&"choice_lam_readings", readings).ok,
+		"%s: the first decision is taken" % run)
+	_skip_all(rig)
+	rig.world.map_id = &"map_field"
+	rig.world.active_map_ready.emit()
+	_skip_all(rig)
+	assert_true(rig.story.choose(&"choice_night_stand", night).ok,
+		"%s: the Night is answered" % run)
+	_skip_all(rig)
+	rig.story.set_flag(&"flag_heard_elder_account")
+	rig.story.note_cultivated()
+	var service := rig.story.get_service()
+	assert_eq(service.state().beat_id,
+		&"beat_sheet_told" if readings == &"kept" else &"beat_sheet_found",
+		"%s: the sheet beat follows the first decision" % run)
+	assert_eq(rig.story.choose(&"choice_sheet_shown", shown).reason,
+		StoryService.REFUSE_WRONG_BEAT, "%s: the sheet cannot be shown before it is held" % run)
+	rig.knowledge.grant(&"know_survey_fragment", &"source_survey_sheet")
+	rig.story.set_flag(&"flag_heard_road_ahead")
+	assert_eq([service.state().chapter_id, service.state().beat_id],
+		[&"chapter_ke_vo_danh", &"beat_whose_hand"], "%s reaches Act I" % run)
+	assert_true(rig.story.is_scene_playing(), "%s: the road ahead is told" % run)
+	_skip_all(rig)
+	assert_ne(service.objective_key(), &"", "%s: with a purpose" % run)
+	assert_ne(service.origin().goal_key, &"", "%s: and a goal of their own" % run)
+
+	# --- the bridge (D-073): one decision, two finds, a door ---
+	var owed: Array = SHOWN_REGARD[shown]
+	var regard_before := _regard(rig, owed[0], owed[1])
+	var edges_before := rig.relationship.get_store().edge_count()
+	assert_true(rig.story.choose(&"choice_sheet_shown", shown).ok,
+		"%s: the sheet is shown" % run)
+	assert_eq(_regard(rig, owed[0], owed[1]), regard_before + int(owed[2]),
+		"%s: that person's regard moved, in the relationship graph" % run)
+	assert_true(rig.knowledge.get_service().knows(SHOWN_KNOWLEDGE[shown]),
+		"%s: and what they said is held by the Knowledge Core" % run)
+	for other: StringName in SHOWN_KNOWLEDGE:
+		if other != shown:
+			assert_false(rig.knowledge.get_service().knows(SHOWN_KNOWLEDGE[other]),
+				"%s: what %s would have said was not learned" % [run, other])
+	assert_eq(rig.story.choose(&"choice_sheet_shown", &"ko").reason,
+		StoryService.REFUSE_ALREADY_CHOSEN, "%s: there is only one FIRST" % run)
+	assert_eq(_regard(rig, owed[0], owed[1]), regard_before + int(owed[2]),
+		"%s: and asking again paid nothing twice" % run)
+	assert_true(rig.relationship.get_store().edge_count() <= edges_before + 1,
+		"%s: at most the one edge was made" % run)
+	assert_eq(service.state().beat_id, &"beat_stake_line", "%s: next, the stake" % run)
+	rig.knowledge.grant(&"know_stake_socket", &"source_stake_socket")
+	assert_eq(service.state().beat_id, &"beat_ruts", "%s: next, the track" % run)
+	rig.knowledge.grant(&"know_sealed_shaft", &"source_shaft_seal")
+	assert_eq(service.state().beat_id, &"beat_standing", "%s: and the door" % run)
+	assert_true(service.current_beat().terminal, "%s: where the story rests" % run)
+	assert_eq(rig.story.build_scene_view().scene_id, &"scene_shaft_sealed",
+		"%s: told where the player stands" % run)
+	_skip_all(rig)
+	assert_eq(service.state().beat_id, &"beat_standing", "%s: a scene changes nothing" % run)
+	assert_ne(service.objective_key(), &"", "%s: with a purpose that names the door" % run)
+	_free(rig)

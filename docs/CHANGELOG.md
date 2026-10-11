@@ -8,6 +8,21 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 1: the Act-I bridge; a choice is all or nothing (D-073)
+
+- **A story choice can no longer be half-applied.** `StoryOwners` gains prepare seams
+  (`can_teach`, `can_move_regard`); `choose` asks every owner first, commits the owners, and
+  writes its own record and flags last; a breach is undone exactly. `RegardRules.can_move`,
+  `KnowledgeService.can_grant`. A refused decision is said in words (`UI_STORY_REFUSED_*`).
+- **Act I has something to do.** Three beats between the farewell and the resting beat: show
+  the torn sheet to ONE of three people first (`choice_sheet_shown`), examine where the stake
+  stood, follow the old cart track to the sealed Survey Shaft. Five knowledge entries; 20
+  choices and 20 lines; one line per Origin after the door.
+- **Art:** `cart_wreck`, `survey_shaft` (prop pipeline), the stake's socket, the haul track.
+  `sync_scene.py` writes `story_props` from the layout (it used to drop the prop data of the
+  hand-placed cart and wreck).
+- Suite 1202; Story E2E 20 real-key steps; 17 mutations red. No dungeon, no boss.
+
 ### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 0: audit and Gate A (D-073)
 
 - Not a phase. Baseline `4dd38ec` re-verified (CI 38132418506; 1188 tests locally); fourteen
