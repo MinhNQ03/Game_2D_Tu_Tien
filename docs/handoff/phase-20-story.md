@@ -1,9 +1,14 @@
 # Handoff — Phase 20: Story, Origins and the first playable prologue (D-072)
 
-> **Status: IN PROGRESS.** This file is kept current at every checkpoint. A section marked
-> *planned* describes what Gate A decided and has not yet been built; a section marked
-> *built* is on the branch with its tests. Phase 20 is not DONE until §12 says so.
-> Phase 21 (Dungeon) is NOT STARTED.
+> **Status: DONE (D-072).** All six checkpoints are built and on `main`: the closing commit is
+> `4dd38ec4d35650c35f69be93c234f9db1ca1fcf6`, green in CI run 38132239303 on the branch and in
+> run 38132418506 on `main`, both on that exact SHA (15 gates, 1188 tests). §12 is the closing
+> statement and its limits. Tables below that were written at Gate A as *planned* are marked
+> with what was actually built. Phase 21 (Dungeon) is NOT STARTED.
+>
+> **After this phase:** the limits §11 and §12 leave open are taken up by a separate,
+> bounded pass — `docs/handoff/pre-phase-21-hardening.md` (D-073). That pass is not a phase
+> and does not reopen this one.
 
 ## 1. Baseline
 
@@ -54,7 +59,7 @@ to.
 | What the Night looks like on a map | presentation, derived from `StoryState` | never stored |
 | The purpose line | derived: quest → story → place | never stored |
 
-## 4. The twelve beats (planned; updated as each is built)
+## 4. The twelve beats (decided at Gate A; all twelve BUILT — Checkpoints 2–5)
 
 | # | Master-plan beat | In this game | Completes when (read from an owner) | Owner of what changes |
 |---|---|---|---|---|
@@ -76,7 +81,7 @@ village's business and turned it down — a decision in itself). A quest finishe
 beat is acknowledged, not asked for again. If every authored wolf is already dead, the Night
 brings its own (per-spawn ids; no corpse is revived or paid twice).
 
-## 5. Cast (planned)
+## 5. Cast (the "exists today" column is the state AT GATE A; all four are placed and speak — Checkpoint 3)
 
 | Character | Exists today | Why they are here | What the player can do with them |
 |---|---|---|---|
@@ -167,7 +172,7 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 | 4 | The Night, the encounter, the aftermath, cultivation, the sheet | `7daa7f7` | 38130589579 — success, `head_sha` `7daa7f743658d55d202c6e55f0bf4c540c8f5c30` (15 gates) |
 | 5 | Chronicle, purpose arbitration, the way out | `7103d05` | 38131696310 — success, `head_sha` `7103d051b6e9651e0dff05477db25f65b4f7d98d` (15 gates) |
 | 6 | Audit, real app, close-out | `0bc5722` | 38132046760 — success, `head_sha` `0bc5722f9bc1ffb7e72e82e848cc42d0509a3367` (15 gates, 1188 tests) |
-| — | Closing record (docs only: this row, DONE) | *(this commit)* | verified with `gh` before `main` is fast-forwarded to it; the run id is in the phase report, not here (a commit cannot name its own run) |
+| — | Closing record (docs only: this row, DONE) | `4dd38ec` | 38132239303 (`feature/phase-20-story`) and 38132418506 (`main`) — both success, `head_sha` `4dd38ec4d35650c35f69be93c234f9db1ca1fcf6`. Recorded afterwards by the D-073 pass: a commit cannot name its own run |
 
 ## 10. Non-goals
 
@@ -510,7 +515,8 @@ NOT STARTED.**
 
 **What a successor should know.** Act I has a standing objective and nothing to do about it.
 Phase 21 (Dungeon) owns CLV-01 and NAV-01; Phase 25 owns Q19-01, Q19-02 and AUD-15; Phase 26
-owns AUD-07. New in this phase and unowned: the people page shows numbers, not words; the
-Chronicle key is not advertised outside the book; there is no night lighting; the wreck is
+owns AUD-07. New in this phase and left open by it: the people page shows numbers, not words;
+the Chronicle key is not advertised outside the book; there is no night lighting; the wreck is
 not drawn broken; a swing's recovery ended a sitting in the E2E and was not investigated in
-play.
+play. **Each of these now has an owner:** the pre-Phase-21 hardening pass (D-073,
+`docs/handoff/pre-phase-21-hardening.md` §2, findings H21-01 … H21-14).

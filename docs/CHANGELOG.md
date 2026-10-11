@@ -8,6 +8,17 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 0: audit and Gate A (D-073)
+
+- Not a phase. Baseline `4dd38ec` re-verified (CI 38132418506; 1188 tests locally); fourteen
+  findings with severity, owner and player cost in `docs/handoff/pre-phase-21-hardening.md`.
+- Gate A: what the player knows, claims and may only infer at the end of the prologue; the
+  Act-I bridge to the Survey Shaft; the choice prepare/commit contract; the Night as derived
+  presentation; the Chronicle's new reads (D-073).
+- Status drift corrected: the Phase-20 handoff header and closing row, `GAME_FLOW.md`, the
+  Story row of `SYSTEM_DEPENDENCY_MATRIX.md`, D-072's status line. Phase 20 stays DONE.
+- No code. Phase 21 (Dungeon) is NOT STARTED.
+
 ### 2026-10-11 — Phase 20, Checkpoint 6: audit and close-out
 
 - 20 runs (5 Origins × 2 × 2 decisions) proved to reach Act I; architecture audit recorded;

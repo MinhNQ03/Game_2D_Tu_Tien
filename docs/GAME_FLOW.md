@@ -65,15 +65,19 @@
 > - A failure of ANY per-session runtime ABORTS New Game and unwinds back to the menu
 >   (D-037/D-047/D-054) rather than entering a half-wired world.
 >
-> - **Phase 20 (D-072, IN PROGRESS) — what is live so far:** New Game opens the IDENTITY
+> - **Phase 20 (D-072, DONE) — what is live:** New Game opens the IDENTITY
 >   SCREEN (a look and one of the five Origins, chosen before a run exists; backing out starts
 >   nothing). Confirming starts ONE run as that look and that Origin: the player belongs to
 >   NO sect (C-003 is finally true in the authoritative state), the Origin's small starting
 >   kit is handed over once through its owners, and the run opens on that Origin's vignette
 >   and then the arrival in Lạc Hà — short scenes that can be read step by step or skipped,
 >   and change nothing either way. The story's record (Origin, chapter, beat, choices) and
->   its one store of flags exist; the beats after the arrival are being built
->   (`docs/handoff/phase-20-story.md`).
+>   its one store of flags exist, and ALL TWELVE prologue beats are playable with real keys:
+>   the people of Lạc Hà, the village's business, one decision about whom to trust, the Night,
+>   its morning, a first sitting, the torn survey sheet, and open Act-I play with a standing
+>   purpose and a Chronicle (`docs/handoff/phase-20-story.md`). What that opening still lacks
+>   as an EXPERIENCE is being closed by the pre-Phase-21 hardening pass (D-073,
+>   `docs/handoff/pre-phase-21-hardening.md`), which is not a phase.
 >
 > **② FUTURE — design target, NOT implemented.**
 > - **Dungeons (21), bosses (22) and file-level save (23) do not exist.** The story's record
@@ -123,7 +127,7 @@ NEW GAME                                                            [LIVE]
 IDENTITY (look + Origin; back = nothing started)                    [LIVE, Phase 20]
   ↓
 PROLOGUE: Origin vignette → arrival in Lạc Hà                       [LIVE, Phase 20]
-  ↓        (beats 4–12: IN PROGRESS, Phase 20)
+  ↓        (beats 4–12: the people, the decision, the Night, the sheet — LIVE, Phase 20)
 VILLAGE  ◄──────────────┐                                           [LIVE — the hub map]
   ↓                     │
 QUEST                   │                                           [LIVE, Phase 19]

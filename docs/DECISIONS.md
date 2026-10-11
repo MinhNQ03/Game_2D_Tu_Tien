@@ -5508,10 +5508,12 @@ a `preload` of a domain script from data would have passed it.
 
 ## D-072 — Phase 20: who owns the story, the nobody's start, and how the Night is told
 
-**Status:** Gate A — decided before any Story code (Checkpoint 0, docs only), on
-`feature/phase-20-story`, base `4420eae` (`origin/main`; 13 local gates, 1090 tests, CI run
-38112355059 green on that exact SHA). Checkpoints, CI runs and evidence accumulate in
-`docs/handoff/phase-20-story.md`. The status line is rewritten when the phase closes.
+**Status:** DONE. Decided at Gate A before any Story code (Checkpoint 0, docs only), on
+`feature/phase-20-story`, base `4420eae` (13 local gates, 1090 tests, CI run 38112355059 on
+that SHA); built in six checkpoints and closed at `4dd38ec` (15 gates, 1188 tests, CI run
+38132418506 on `main` at that exact SHA). Checkpoints, CI runs, evidence and the limits it
+leaves are in `docs/handoff/phase-20-story.md`. *(This line was still the Gate-A wording at
+close; corrected by D-073, which changes nothing else in this record.)*
 
 ### The experience this phase builds
 
@@ -5837,3 +5839,160 @@ about nobody the registry knows keeps the old wording, which already had a subje
 leaves on foot and says where to ask about the crates. Hearing him ends the prologue; the
 road ahead is told once, after he has finished speaking; the standing Act-I purpose is
 *find the true vein survey*. The Story E2E asserts the five things §5 requires at that moment.
+
+
+## D-073 — Post-Phase-20 experience hardening: the bridge, the choice transaction, the Night shown, the book that explains
+
+**Status:** Gate A — decided before any code of this pass (Checkpoint 0, docs only), on
+`hardening/pre-phase21-experience`, base `4dd38ec` (`origin/main`; 15 gates, 1188 tests, CI
+run 38132418506 green on that exact SHA). **Not a phase.** Phase 20 stays DONE under D-072;
+Phase 21 and 22 are not started and nothing here builds them. Findings, evidence, checkpoints
+and the debt register are in `docs/handoff/pre-phase-21-hardening.md`. This status line is
+rewritten when the pass closes.
+
+**Why a record is needed.** Four things in this pass are decisions a later reader would ask
+"why" about: a named place enters the world (canon grows by one location), the story's choice
+seam gains a prepare step (an ownership contract changes), what a map looks like becomes a
+function of the story's beat (a new presentation seam), and the Chronicle starts to read five
+more owners. Copy edits and layout do not get an ADR and are not here.
+
+### 1. The Act-I bridge, and the one place it adds to the world
+
+**Problem.** Act I opened on *find the true vein survey* with nothing in the game that
+answers to it (handoff H21-01).
+
+**Decision.** Three beats are authored between the carter's farewell and the story's resting
+beat, on the systems that already ship — conversation, the Knowledge Core, the relationship
+graph, story presence — and on the two shipped maps and the four registered people. The
+player shows the torn sheet to ONE person first (`choice_sheet_shown`: Lâm Nguyệt, Kha Thản or
+Thẩm Bất Kỳ — each tells a different thing, each moves a different regard), examines the
+place the survey stake stood, and follows the wheel ruts to a door. The resting beat keeps its
+id (`beat_standing`) and now names that door and what it needs.
+
+**The place: the Survey Shaft (*Hầm Khảo Mạch*).** A surveyor's adit in the north-east rocks
+of Rừng Vỡ Mạch, where the vein was sounded; the fourth and last point of the survey line
+whose third stake was pulled after the Night. It is boarded and sealed in the outpost's wax.
+The elder says it has been sealed since winter; the wax is days old and wheel ruts run to it.
+
+*Canon check.* `NARRATIVE_MASTER_PLAN.md` §4 already contains everything this place implies:
+a vein "drawn on beyond its surveyed allocation for years", an outpost "reporting nominal
+figures", material leaving the overdraw cheaply. The shaft is WHERE, not WHO or WHY. It adds
+no actor, no motive and no event; it names no heterodox group, no Vân Hải buyer, no Thiên Khế,
+no Tà Đế. Reveal layer: still 1, with the handle on layer 2 a little further in the player's
+hand. The reserved id and name are entered in `CANON_LEDGER.md` CL-11 with the content
+(Checkpoint 1), marked as a LEAD: the interior, its dangers and what is found there are
+Phase 21's to decide and are not canon until that phase writes them.
+
+**Why a door the player cannot open is not a second dead end.** `MAP_DUNGEON_DESIGN.md` §3
+rule 2: a gate must be legible before it is passable. The player ends the bridge having DONE
+something that changed three owners, standing in front of a named thing, knowing what kind of
+key it takes (a surveyor's rod) and who has one — instead of holding an abstraction.
+
+**Rejected.** A "talk to three people" quest (no choice, no cost); a new NPC who explains
+(nobody in Lạc Hà has a reason to); letting the door open onto a stub room (that is Phase 21
+by another name); recording a second decision at the door whose only reader would be a future
+phase (a flag nobody reads is a fake branch — `NARRATIVE_MASTER_PLAN.md` §10).
+
+**An Origin's observation is kept.** `OriginData.observations` pairs a story flag with a
+record key; the Chronicle shows the ones whose flag is set. What each Origin noticed about the
+carter's load (Phase 20) and what each notices on the trail (this pass) can be re-read. The
+flag is still the story's; the Chronicle still writes nothing.
+
+### 2. A story choice is prepared before it is committed
+
+**What was wrong.** D-072 §7 says a choice's consequences are "all validated before any is
+applied". The code validated that each owner seam was PRESENT, appended the choice to the
+record, and then carried the consequences out; an owner that said no at that point was logged
+and the choice stayed recorded with part of its effect (handoff H21-02).
+
+**Is that reachable with shipped owners?** Checked, not assumed. `RegardRules.move` refuses an
+unknown dimension, an unregistered endpoint, an edge id already taken by another pair;
+`KnowledgeService.grant` refuses an id that is not in its catalog. The session's content check
+rules the first and the last out for shipped data at start-up. So today it is prevented by
+VALIDATION AT START, not by the transaction — one new consequence kind, or one content check
+relaxed, away from a half-made decision. That is not a guarantee a server-authoritative
+command boundary can be built on.
+
+**Decision — prepare, then commit; the story's own writes go last.**
+- `StoryOwners` gains `can_teach(knowledge_id)` and `can_move_regard(character_id, dimension,
+  delta)`. Each is answered by the owner's OWN rule (the same function its commit uses to
+  decide), so "prepare said yes" and "commit will succeed" are one statement, and a test holds
+  them together on the real owners.
+- `choose` asks every prepare first. Any "no", or a missing seam, refuses the WHOLE choice:
+  nothing is recorded, no flag, no regard, no knowledge.
+- Then the owners' consequences are carried out, and only then the story writes what is its
+  own and cannot fail: the choice record and the flags.
+- If an owner still refuses at commit — a contract breach, not a state of the world — the
+  story does not record the choice, writes no flag, returns a refusal and logs it as an error.
+  Regards this call already moved are moved back through the same owner seam, by exactly what
+  it reported it moved.
+- The conversation that asked stays on its node and says why
+  (`DialogueService` already keeps the node on a refused effect — D-066); a retry after the
+  cause is gone succeeds once.
+
+**Rejected.** A generic transaction object or manager (one caller); snapshotting other
+owners' stores from the story (the story would reach into their fields); recording first and
+"repairing" later (a record that can be wrong is not a record).
+
+**What this does not do.** No networking. Story state stays per run and per player; nothing
+moves to a shared store.
+
+### 3. What a map looks like at night is derived from the story's beat
+
+**Decision.** `StoryBeatData.ambience_id` names an AMBIENCE (empty = the map as authored). The
+ambience is presentation: `data/world/ambience/<id>.tres` holds a canvas tint, the energy of
+the map's lights and the length of the change; the colours come from night roles added to
+`style/aetheria_style.yaml` and are written into the profile by the art pipeline, so no
+gameplay, domain or story file contains a colour and the DNA stays the one source. A map's
+`MapAmbience` node applies the profile it is handed; `WorldRuntime` hands it over where it
+already applies story presence (on map entry and whenever the story moves). Nothing stores
+"it is night", nothing reads a clock, and the simulation's calendar is untouched: load a
+story record and the right light follows from the beat.
+
+**Readability is a constraint, not a hope.** The tint is a multiply, never an overlay above
+the playfield; the player, the creatures, their wind-up, the exit and what can be picked up
+keep a measured luminance gap from the floor at 1×; banded light pools mark the lanterns and
+the vein. Stages differ in more than a caption: dusk in the village (warm-grey, the lanterns
+unsteady), the rupture (the vein's light opens along the fissure and the grass is pushed flat
+in a ring — the existing `WindField` impulse, its third consumer), the fight (night, the
+vein's light pulsing), the morning (the authored day; the wreck, the socket and the ruts
+remain).
+
+**The wreck, the socket, the creatures.** The wreck is a prop of its own from the prop
+pipeline, selected by story presence; its body is the footprint the pipeline measures from the
+picture. The Night's creatures are the shipped wolf's rules under their own sheets:
+`EnemySpawnTableData.visual_profile` (the encounter's data) overrides the look of what that
+table spawns, so no renderer branches on an enemy's name; the cue is a changed SILHOUETTE
+(raised hackles) as well as light, so colour is never the only signal.
+
+**Not built.** A day/night simulation, weather, a lighting manager, audio, a new autoload.
+
+### 4. The Chronicle reads more owners and still owns nothing
+
+**Decision.** `ChronicleView` stays a snapshot assembled by `WorldRuntime` from owners on
+events. People: each relationship dimension by its name, with a band word and its number —
+never added together (`RELATIONSHIP_SYSTEM.md` keeps them independent; a sum would be the
+morality score the design forbids). The band thresholds are presentation data in one place,
+tested against the dimension's range. Self splits into *who you are* and *body and path*, each
+line read from the owner that holds it (CharacterState and the stat owner, Progression,
+Cultivation, Equipment, Skill, Pet, the map catalog); the book offers no action on any of
+them. History is paged, newest first, nothing dropped. The key is taught once by a notice
+raised from the story's own once-only event (a beat completing), with the label
+`InputService` reports — no "hint shown" flag exists anywhere.
+
+**Rejected.** An eighth permanent prompt (the strip is measured full); a relationship total;
+an equipment editor inside the book; scroll keys that would take the move keys from a panel
+whose contract is that the player keeps walking.
+
+### 5. Sitting down mid-swing
+
+Decided after it is reproduced in the real window (handoff H21-12), and recorded here as an
+addendum by the checkpoint that does it. The constraint is fixed now: the answer is given by
+the cultivation and combat owners, in words, at the press — not by a timer and not by the
+story.
+
+### What is NOT built
+
+A dungeon, a room, an instance runtime, a boss, loot or drops, a key item, save / Continue /
+autosave, networking, a new autoload or manager, a second quest ledger, XP balance, knowledge
+set or relationship score, a morality value, an audio system.
