@@ -117,7 +117,7 @@ the evidence. The player is present by circumstance, is not chosen, and leaves w
 
 ## CL-09 — The five Origins (gender-independent)
 
-`origin_hо_tieu` **Hộ Tiêu Thất Bại** (failed caravan escort) · `origin_de_tu_bi_loai`
+`origin_ho_tieu` **Hộ Tiêu Thất Bại** (failed caravan escort) · `origin_de_tu_bi_loai`
 **Đệ Tử Bị Loại** (rejected sect candidate) · `origin_lang_y` **Lang Y Du Phương** (wandering
 healer) · `origin_nghe_nhan` **Nghệ Nhân Thất Sủng** (disgraced artisan) ·
 `origin_thu_thu` **Thủ Thư Cấm Lục** (keeper of forbidden records).

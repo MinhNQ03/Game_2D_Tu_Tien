@@ -103,7 +103,8 @@ Grouped by concern. Display strings are localization **keys** (`07-localization.
 
 - **Identity:** `instance_id`, `template_id`, `name_key`, `title_key`, `gender`,
   `portrait_ref`, `sprite_set_ref`.
-- **Origin:** `origin_key` (birthplace/background), `bloodline_key` (optional).
+- **Origin:** `origin_key` (birthplace/background — a DISPLAY key for a character's biography line, never read by a rule), `bloodline_key` (optional).
+  This is NOT the narrative Origin. The player's run-scoped Origin (CL-09) is `StoryState.origin_id`, an `OriginData` id owned by the Story system (D-072 §2); the player template authors no `origin_key`, so there is one answer to "what is the player's origin".
 - **Age:** `age`, `age_category` (enum: CHILD/YOUTH/ADULT/ELDER/ANCIENT) — age can matter
   in a cultivation setting (lifespan extends with realm). Optional per template.
 - **Profession:** `profession` (enum/StringName: CULTIVATOR, ALCHEMIST, BLACKSMITH,
@@ -128,7 +129,7 @@ Grouped by concern. Display strings are localization **keys** (`07-localization.
 - **Secrets:** `secrets` (Array of `{ secret_id, known_by: Array[instance_id] }`) —
   hidden facts (true identity, betrayal, hidden technique) that story/relationship logic
   can reveal.
-- **Story state:** `story_flags` (Dictionary) local to this character.
+- **Story state:** `story_flags` (Dictionary) local to this character. **`StoryService` is its only writer** (D-072 §1): flags are declared in the story catalog with a type, and nothing else — not Dialogue, Quest, the HUD, `GameState` or a scene — may write the dictionary. It is the SINGLE store of story flags; the future save's `story` block does not repeat it.
 - **Life state:** `life_state` (enum ALIVE / DEAD / MISSING / ASCENDED), `death_cause`
   (optional) — world simulation and story read/modify this.
 - **Schedule / background state:** `schedule_ref` (a data-defined daily/weekly routine)

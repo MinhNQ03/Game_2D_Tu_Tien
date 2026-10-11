@@ -8,6 +8,19 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Phase 20, Checkpoint 0: Gate A (D-072) — documentation only
+
+- **Decided.** Who owns the story (D-072): story flags have one store, the player's
+  `CharacterState.story_flags`, written only by the story service; the run's Origin is
+  `StoryState.origin_id`; the player starts with no sect; defeat ends the run; what the
+  survey fragment shows and what it leaves open; the Night's trigger rule and its one scene
+  contract; one choice, one owner.
+- **Corrected.** `CANON_LEDGER.md` CL-09 spelt `origin_ho_tieu` with a Cyrillic `о`
+  (U+043E). An identifier fix; no canon changed.
+- **Reconciled.** `SAVE_FORMAT.md` (the `story` block no longer repeats flags),
+  `CHARACTER_SYSTEM.md` (`origin_key` is a biography line, not the narrative Origin).
+- No code. Phase 20 is IN PROGRESS; Phase 21 is NOT STARTED.
+
 ### 2026-10-11 — Pre-Phase-20 readiness: Q19-04 and Q19-05 closed (D-071)
 
 Not a phase. No gameplay, content, story, save file, event or autoload was added.

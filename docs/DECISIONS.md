@@ -5504,3 +5504,220 @@ a `preload` of a domain script from data would have passed it.
 - The hand is "toward the target", not "the shorter way". Round a wide obstacle it can take
   the longer side. Correct, bounded, and not worth a shape query today.
 
+---
+
+## D-072 — Phase 20: who owns the story, the nobody's start, and how the Night is told
+
+**Status:** Gate A — decided before any Story code (Checkpoint 0, docs only), on
+`feature/phase-20-story`, base `4420eae` (`origin/main`; 13 local gates, 1090 tests, CI run
+38112355059 green on that exact SHA). Checkpoints, CI runs and evidence accumulate in
+`docs/handoff/phase-20-story.md`. The status line is rewritten when the phase closes.
+
+### The experience this phase builds
+
+**The player's situation.** A nobody walks into Thôn Lạc Hà at the end of a bad road, carrying
+one personal problem that depends on who they were (their Origin) and nothing else: no sect, no
+rank, no gift. The village has its own business — an elder who needs to know if wolves hold the
+woods' vein, a watchman owed two pills, a disciple measuring a spring nobody asked her to
+measure, a carter who wants to be gone before dark. The player gets involved in a small way,
+makes one decision about whom to trust, and that night the vein under Rừng Vỡ Mạch breaks.
+Nobody planned it and nobody was aiming at the player. By morning the one thing that would
+have explained it has been taken away — and the player is holding a piece of it.
+
+**Outcome.** New Game leads to identity and Origin, a short vignette, and a playable opening
+through all twelve beats of `NARRATIVE_MASTER_PLAN.md` §5 with real input, ending in open
+Act-I play with a standing purpose. The player leaves holding the five things §5 requires.
+
+**What must not regress.** Dialogue (one surface), the two Phase-19 quests and their ledger,
+the relationship graph, the Knowledge Core, sect and faction stores, the world simulation,
+combat and the D-071 pursuit, cultivation, bag / equipment / techniques, the companion, the
+shop, the place plaque, the session prompt, defeat, localization, input contexts and the
+reverse-order teardown.
+
+### 1. Story flags have ONE store, and it already exists
+
+`CharacterState.story_flags` is serialized today; `SAVE_FORMAT.md` also sketched
+`story.flags`; D-066 said the story service would be the flags' only writer. Three statements,
+two stores.
+
+**Decision.** The player's `CharacterState.story_flags` is the single backing store.
+`StoryService` is its only writer and its only typed reader for rules. `StoryState` holds what
+is NOT a flag — `origin_id`, `chapter_id`, `beat_id`, completed chapters and beats, and the
+ordered choice record — and `StoryState.to_dict()` does not contain flags. `SAVE_FORMAT.md`
+no longer lists `story.flags`.
+
+**Why this way round.** The field is already in the character block of every snapshot the
+project can produce; moving it would mean a migration for nothing. And a flag is a fact about
+what a person has done or been told, which is what a `CharacterState` is for.
+
+**What makes the two incapable of diverging.** There is no second copy to diverge from.
+Flags are DECLARED in the story catalog (`id`, type `BOOL` / `INT`); an undeclared id or a
+value of the wrong type is refused, and nothing but those two scalar types can be stored. A
+test reads the source: no file outside `src/domain/story/` assigns into `story_flags`.
+
+**Flags are not knowledge, not quest state and not progress.** What the player KNOWS stays in
+`KnowledgeService`; what a quest's phase is stays in `QuestService`; which beat the story is
+on is `StoryState`. A flag records something only the story cares about (a line already
+said, a thing heard). Dialogue gains the two kinds D-066 reserved, `FLAG` (condition) and
+`SET_FLAG` (effect), and one more with a real consumer, `ORIGIN` (condition): a line that
+only someone of that Origin would say or be told.
+
+### 2. The Origin is the run's, not the character template's
+
+`CharacterState.origin_key` is a display key for a character's biography line ("born on Azure
+Peak"). The five narrative Origins (CL-09) are a different thing with a similar name.
+
+**Decision.** `StoryState.origin_id` is the one place the run's Origin lives. It names an
+`OriginData` resource in an `OriginCatalogData`; no subclass, no template per Origin, no
+`if origin ==` anywhere in code. What an Origin changes at the start is DATA on that resource
+— a short list of typed grants (an item, a piece of knowledge, a regard toward a named
+person) — applied once, through the owners, in one place (`StoryRuntime.start_session`), all
+checked before any is applied. The player template stops authoring an `origin_key`.
+
+**Identifier correction (not a canon change).** `CANON_LEDGER.md` CL-09 spelt the first id
+with a Cyrillic `о` (U+043E). The id is `origin_ho_tieu`, ASCII, as in the master plan §6.
+Corrected; the repository contains no other Cyrillic letter. A test holds every Origin, story,
+beat, flag and choice id to `[a-z0-9_]`.
+
+**Gender and appearance** are identity, and identity is the character's: the creation screen
+chooses among authored **player appearances** (data: a gender, a visual profile, a portrait),
+and the choice selects which the player's `CharacterState` is built with. Only looks the game
+can actually draw — every action sheet, the equipped-robe variant, the medallion — are
+offered. All five Origins are open to every appearance (CL-09, §12 of the master plan).
+
+### 3. The nobody starts with no sect
+
+New Game enrolled the player in Thanh Vân Tông as an outer disciple (Phase-06 scaffolding;
+C-003 has always said it is not canon).
+
+**Decision.** The sect catalog authors no player start sect, and the player template no
+default sect. `SectRuntime.start_session` already treats enrolment as optional and already
+verifies the derived cache against the roster; an unaffiliated player is a state the owner
+supports, not a special case added for the story. Every surface that assumed membership is
+made truthful rather than hidden: the identity plaque, the sect panel and the politics panel
+say what an outsider can actually see. Joining remains possible only through
+`SectService.join_member`, and nothing in the prologue calls it (canon: Act II).
+
+The named cast keep their memberships: Thẩm Bất Kỳ, Lâm Nguyệt and Kha Thản serve Thanh Đài,
+the sect's outpost in the village. That asymmetry is the point of the opening — they belong
+to something and the player does not.
+
+### 4. Defeat ends the run (closes AUD-14)
+
+**Decision.** When the player's HP reaches zero the run is over. The existing defeat box
+(D-068) stays and now states a rule rather than a stopgap: *"This journey ends here. Nothing
+was saved."* One key returns to the menu; the session is torn down in reverse order; New
+Game starts a new run from identity and Origin. Nothing is revived, rewound or kept — there
+is no checkpoint because there is nothing to restore one from before Phase 23, and a terminal
+`CharacterState` is never reanimated in place.
+
+**Why not a retry at the encounter.** A retry needs a snapshot to return to. Building one
+here would be the save system by another name, and a revival that kept some state and not
+other state would be a second, undocumented persistence rule.
+
+**What keeps that honest rather than cruel.** The Night's encounter is authored to be
+survivable by a new character with the starting kit: the creatures telegraph, the ground is
+open, the way back to the village stays open and leaving is a legitimate outcome with its own
+consequence, and pills exist before it. Defeat is possible; it is never the only way a first
+attempt can go.
+
+### 5. What the survey fragment shows, and what it does not
+
+The master plan §4 calls the suppressed survey "the player's first physical proof that
+orthodox records are edited for institutional convenience". The reveal ladder (§9) puts
+"historical records contradict each other" at layer 4, Acts IV–V. Read carelessly these
+collide.
+
+**Decision — no canon is changed; the two are the same object at two distances.**
+
+- **What the player observes (beat 11):** one torn sheet of the Thanh Đài vein survey for
+  Rừng Vỡ Mạch, in a surveyor's hand, with a column of readings that fall season after
+  season — and, on the same sheet, the figure that was sent up: *level*.
+- **What can be inferred:** the outpost knew this vein was being drawn down and reported
+  that it was not. Someone at Thanh Đài removed the survey mark after the Night.
+- **What stays open:** who was drawing the vein and why; whether anyone meant it to break;
+  who else reads such figures; whether this is one frightened outpost or the way things are
+  done. The sheet cannot answer any of these.
+- **Layer.** This is layer 1 ("something is wrong") with a handle on layer 2 that the player
+  cannot yet turn. It is a LOCAL discrepancy about ONE vein in ONE season's paperwork.
+- **When it is recontextualised:** in Act IV, set beside other regions' records, the same
+  sheet stops being one outpost's lie and becomes the first instance of a pattern (layer 4).
+  The prologue never says "records are edited"; a later act earns that sentence.
+
+Nothing in the prologue names the heterodox extraction, the Vân Hải buyer, the Thiên Khế or
+the Tà Đế. The player is told the version that reaches the great sects ("heterodox
+cultivators broke it") by a man who needs it to be true, and holds one sheet that does not
+fit.
+
+### 6. The Night is the world's, and its stages are data
+
+**Cause, in the game's own terms.** The vein under the woods has been overdrawn for years
+(the shipped knowledge *Nhịp mạch vỡ* already says "as if something draws it off"); Thanh Đài
+reported nominal figures because its allocation — the pills it issues, the watch it pays —
+depends on them; an extraction on a vein already at its limit broke it. Nobody wanted that.
+
+**Trigger rule (deterministic, no timer).** The Night becomes due when the player has made
+their first decision about whom to trust (beat 6). The WARNING plays where the player is.
+The RUPTURE happens when the player next arrives in Rừng Vỡ Mạch. If the player never goes,
+nothing waits on a clock: the purpose line says where the trouble is, and the world holds
+until they walk into it. Both stages happen exactly once, are recorded by `StoryService`
+before anything is shown, and survive leaving and re-entering either map.
+
+**One presentation contract, two consumers.** A story SCENE is a data resource: an ordered
+list of typed steps (a place-and-time card, a caption, a spoken line with its speaker, a
+camera hold on a named marker, a world cue). The warning and the rupture are two scenes on
+the same contract; so are the five Origin vignettes and the arrival. No per-scene script, no
+timer chain, no global manager. A scene is advanceable and skippable; skipping shows nothing
+further and changes nothing else, because **a scene never changes state** — the beat that
+plays it has already committed. A scene may not carry a combat warning: threats are
+announced by the world (the creatures' own telegraph), outside any skippable surface, and a
+scene yields the moment something hostile engages.
+
+**The encounter is the shipped combat.** Creatures come through the existing spawn seam with
+per-spawn reward ids; their reward is the existing XP through the one ledger; the story adds
+no drop. If the player withdraws to the village instead of fighting, the watch drives the
+creatures off; that is recorded as a different outcome of the same beat, with its own
+consequence for how Kha Thản regards them.
+
+### 7. One choice, one owner, one consequence
+
+Phase 18's rule stands: a dialogue choice carries at most one typed effect, applied by its
+owner. A story decision that must both be RECORDED and MOVE a relationship is not two
+effects fired at two owners: the choice is one new effect kind, `STORY_CHOICE`, dispatched to
+the story owner, and `StoryService.choose` is the transaction — it validates, records the
+choice once, and applies the option's authored consequences through the owners
+(`RelationshipService`, `KnowledgeService`) inside the same call, all validated before any is
+applied. A second submission of the same choice is refused and changes nothing.
+
+### 8. Surfaces: one book, and the bag that already exists
+
+The player must be able to read their own state. The audit of what ships today (profile:
+only the HUD plaque; bag and equipment: the satchel; techniques: the dock; cultivation: the
+plaque line; companion: a HUD line; quests: the journal; knowledge: nowhere; people:
+nowhere; story: nowhere) and the decision of what is built are in the handoff §7. The rule:
+ONE non-modal reading book (the Chronicle) holds every read-only page that has no home —
+story, self, knowledge, people — built on the journal's reading-panel pattern, closed by the
+same `close_reading_panels`. It is not a second journal (quests stay where they are), not a
+second bag, and it shows no tab for a system that does not exist.
+
+### 9. The purpose line never goes blank (closes Q19-03)
+
+One line, three sources, in order: (1) the most urgent active-or-ready quest objective, from
+`QuestRuntime`'s view; (2) otherwise the current story beat's objective, from `StoryRuntime`'s
+view; (3) otherwise a neutral line about the place. Derived on owner signals, never stored,
+never polled.
+
+### What is NOT built
+
+A morality or alignment value; a second dialogue runner; a save file, slot, autosave or
+Continue; loot tables or drops; a dungeon, a boss, navigation (NAV-01); a sect join; an
+EventBus gameplay event without a consumer; an audio system; per-Origin campaigns; any act
+beyond the prologue and the standing Act-I purpose.
+
+### Debt this phase owns and must close
+
+Q19-03 (the blank purpose line), AUD-14 (defeat rule — §4), AUD-13 (a line said once — the
+`FLAG` / `SET_FLAG` seam), AUD-09 (the world line with no subject — the Chronicle). Carried,
+with their recorded owners: Q19-01, Q19-02 and AUD-15 (Phase 25), CLV-01 and NAV-01
+(Phase 21), AUD-07 (Phase 26).
+

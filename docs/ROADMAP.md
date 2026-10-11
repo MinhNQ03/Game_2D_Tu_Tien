@@ -551,6 +551,13 @@ Carried debt: CLV-01, Q19-01, Q19-02, Q19-03, NAV-01 (`docs/handoff/phase-19-que
 `docs/handoff/pre-phase-20-readiness.md`.
 
 ## Phase 20 — Story
+> **IN PROGRESS (D-072) on `feature/phase-20-story`.** Gate A is decided: the story engine
+> ships WITH the first authored story — identity and Origin at New Game, the twelve prologue
+> beats of `NARRATIVE_MASTER_PLAN.md` §5 as a playable flow, and a Chronicle — not as a flag
+> dictionary with two sample branches. Ownership (one store for flags, the run's Origin, the
+> sectless start, the defeat rule, what the survey fragment may show): D-072. Working record:
+> `docs/handoff/phase-20-story.md`. Phase 21+ is NOT STARTED.
+
 Story/flag engine; branches read character/sect/faction state + flags; chapter loop +
 world-state-change feedback (`docs/GAME_FLOW.md` §1b). **PRODUCES and READS knowledge** through
 `KnowledgeService` — **Story does NOT own knowledge** and must not shadow it with story flags

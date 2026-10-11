@@ -89,11 +89,18 @@ SaveFile:
     # quest record closes that quest without paying — tested both ways.
   # (no `dialogue` block: Dialogue owns no persistent state — D-066. What a choice changed is
   #  already in `relationships` / `knowledge` / `shops`; an open conversation is runtime.)
-  story:                                      # Phase 20 owns ALL of this, including `flags`
+  story:                                      # Phase 20 (D-072): `StoryState.to_dict()`
+    schema: 1
+    origin_id: StringName                     # the run's Origin (CL-09); THE one place it is kept
     chapter_id: StringName
+    beat_id: StringName                       # the current beat inside that chapter
     completed_chapters: Array[StringName]
-    flags: Dictionary { flag -> value }
-    choices: Dictionary
+    completed_beats: Array[StringName]        # in the order they completed
+    choices: Array[Dictionary]                # the choice record, in order: {choice_id, option_id}
+    # NO `flags` HERE. Story flags have ONE store: the player's
+    # `characters.by_instance_id[player].story_flags` (already serialized by `CharacterState`).
+    # `StoryService` is their only writer. A second copy in this block could disagree with
+    # the first after any partial load, so it does not exist (D-072 §1).
   characters:                                 # core system — docs/CHARACTER_SYSTEM.md
     by_instance_id: Dictionary                # instance_id -> CharacterState (persistent tier only)
     player_instance_id: StringName            # the player is a Character
