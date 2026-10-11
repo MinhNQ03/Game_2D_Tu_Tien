@@ -35,6 +35,19 @@ func add(item: ItemData, count: int) -> int:
 	return count - left
 
 
+## How many more of `item` the bag could take right now: the room left in its own stacks
+## plus whole stacks in the free slots. `add(item, n)` fits all of `n` exactly when
+## `n <= room_for(item)` — so a caller that must not split something asks first.
+func room_for(item: ItemData) -> int:
+	if item == null:
+		return 0
+	var room := (capacity - _stacks.size()) * item.stack_max
+	for stack in _stacks:
+		if stack["item_id"] == item.id:
+			room += item.stack_max - int(stack["count"])
+	return maxi(0, room)
+
+
 ## Remove `count` of `item_id`, from the LAST stacks first. All-or-nothing: false (and no
 ## change) when fewer are held.
 func remove(item_id: StringName, count: int) -> bool:

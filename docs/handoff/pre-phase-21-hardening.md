@@ -756,8 +756,8 @@ anything left". (2) The wreck's standing wheel reads as a dark slab, like the wh
 | H21-15 — **CLOSED** (follow-up §15.1) | after all of a person's trail lines are said they still open on the trail line with only *Nói chuyện khác*: one wasted press per talk | an opening's conditions are AND-only; "any line left" needs an OR or a derived flag — a dialogue-data change with its own tests | Dialogue data; Phase 21 (the first phase that adds the next lines to these three people) | a test opens each of the three with every trail flag set and lands on the hub | no |
 | H21-16 — **CLOSED** (follow-up §15.2) | reaching the socket or the shaft's door usually meant a fight: the wolf followed the player to both (real window) | *recorded reason was wrong*: it was not "the shipped creature in its shipped territory" — the creature HAD no territory (its patrol was a random walk to its 340 px leash) | AI domain (`AiProfileData.patrol_radius`) + the field's layout | the socket, the door and a way between them are outside the wolf's reach by test, and a real-window walk shows it never notices | no |
 | H21-17 — **CLOSED** (follow-up §15.2) | both carts' wheels read as dark slabs (discs seen edge-on by the top-down camera) | — | art pipeline (`props3d.cart`, `cart_wreck`) | both carts' wheels judged readable at 1× in real captures (done: village cart, wreck) | no |
-| H21-18 | the wolf's wind-up under the night tint was looked at in stills, not as a motion strip | `capture_motion.gd` has no night scenario | presentation; Phase 22 (whose contract requires each telegraph in a motion strip) | a motion strip of the bite under `night` is opened and the wind-up frame is named | no |
-| H21-19 | no frame-time measurement of the 2D lights | no profiler session in this pass (Phase 29 owns profiling) | Phase 29 | PERF-NOTE-21 gains measured numbers | no |
+| H21-18 — **CLOSED** (follow-up §15.3) | the wolf's wind-up under the night tint had been looked at in stills, not as a motion strip | — | presentation (`capture_motion.gd night_bite`, `AttackFeedback`) | the strip is opened and the tell frame named (done; and the telegraph it showed to be dimmed is fixed) | no |
+| H21-19 — **CLOSED** (follow-up §15.3) | no frame-time measurement of the 2D lights | — | `tools/measure_ambience_frame_time.gd`; `docs/PERFORMANCE.md` PERF-NOTE-21 | measured numbers recorded (done: simple frame-time sampling, one machine; the engine profiler's split stays Phase 29's) | no |
 
 Closed by this pass: H21-01 … H21-13. Carried unchanged with their recorded owners: Q19-01,
 Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
@@ -911,3 +911,105 @@ x = ±33 (foot ±24 + the player's 9) and at the foot's north and south edges, d
 when south of it and behind (head showing) when north. The generic body invariants
 (`test_each_body_sits_under_the_mass_that_is_drawn`, the eight-way walk) hold both. No new
 test: "reads as a wheel" is a judgement, recorded here as one.
+
+### 15.3 Checkpoint C — the bite under the Night (H21-18); the light's cost (H21-19); what lies in the world (FG-3)
+
+**H21-18.** `tools/capture_motion.gd` gained the named scenario `night_bite`: the story is
+brought to the Night through its owner (setup, as `capture_ui` does), one wolf OF THE WAVE is
+chosen (wearing its table's look — the woods' two standing wolves are still there in
+daylight coats, and the first run picked one of them by distance), the player is stood 64 px
+in front of it, and from there the wolf acts by itself. Every rendered frame is kept from six
+frames before the wind-up to four after READY; each cell carries a bar in the colour of the
+attack state it was taken in, and `motion_night_bite.txt` lists every cell with its state
+and the milliseconds since the wind-up began.
+
+| | 1280×720 vi | 1280×720 en | 1280×800 vi | 1280×800 en |
+|---|---|---|---|---|
+| ambience / look | night / `vis_vein_wolf` | same | same | same |
+| wind-up → ACTIVE | 267 ms | 268 ms | 268 ms | 267 ms |
+| ACTIVE → RECOVERY | 349 ms | 349 ms | 350 ms | 349 ms |
+| strip opened | yes | yes | yes | timings read; image not opened |
+
+Authored: wind-up 0.26 s, active 0.08 s, recovery 0.34 s — **unchanged**, and what the
+window shows.
+
+*What the strip shows, frame by frame (60 fps, 16.7 ms a cell):*
+- **before** (grey): the wolf stands square, head level, pale coat and dark crest clear
+  against the near-black earth;
+- **the tell — cells 07–09, 15–49 ms into the wind-up:** the body DROPS into a crouch (about
+  3 px lower, legs shortened) and the reach arc appears on the ground; this is ~220–250 ms
+  before the bite;
+- through the wind-up the arc grows to full strength; at **cell 20–21 (≈ 232–249 ms)** the
+  head is thrown forward and up — the lunge;
+- **ACTIVE at 267 ms:** the player flashes, claw streaks on the body; RECOVERY: the wolf
+  backs off.
+
+*Finding, and fix.* In the first night strip the reach arc — the telegraph the combat
+contract says "is read and learned once" — was a dim brown hair-line. Measured on the
+captured pixels: its strongest pixel was (106, 57, 59) under the night against (235, 109, 77)
+by day — red-over-green **49 against 126, 39%**, and it only cleared a 40-level threshold
+165 ms into the 267 ms wind-up. Cause: `MapAmbience` tints by a `CanvasModulate` multiply
+(night 0.45, 0.54, 0.78), and red is the channel it takes most of; the telegraph is drawn on
+that canvas. A telegraph is information, not a surface the night falls on:
+`AttackFeedback` now reads the map's tint ONCE as a swing begins and draws the telegraph
+brighter by exactly what the tint will take (`_telegraph_colour`; channels floored at 0.2).
+After: (232, 104, 75) under the night — red-over-green **128** — visible from the second
+wind-up frame. Nothing else is exempted: the wolf, the player and the world stay in the
+night. Test: `drawn × tint == UIPalette.TELEGRAPH_HOSTILE` under the real `night` profile,
+and the authored colour with no ambience; mutations 2/2 red.
+
+**H21-19.** `tools/measure_ambience_frame_time.gd` (new, reproducible) and
+`docs/PERFORMANCE.md` PERF-NOTE-21. Simple frame-time sampling — **not the engine
+profiler**: wall time between consecutive `process_frame`s, 3 rounds × 8 s per ambience per
+place, interleaved, on an Intel i3-13100 / UHD Graphics 730 / Godot 4.7.2 `gl_compatibility`.
+Worst case (night, all three of the woods' lights in frame): median 0.835 → 1.528 ms at
+1280×720 (+0.69), 0.926 → 1.676 ms at 1280×800 (+0.75); p95 1.09 → 1.87 / 1.18 → 2.02 ms.
+A light out of frame costs nothing measurable. With vsync: median 16.66 ms, p95 ≤ 16.92 ms
+under every ambience. Not measured: other GPUs, the profiler's split (Phase 29), the Night
+with its wave fighting.
+
+**FG-3 — everything lying in the world, audited.** Paths read: `WorldItem`,
+`InventoryRuntime` (`tick`, `give`, `take`, `exchange`, `use`, save shape), `InventoryState`,
+`EquipmentRuntime.equip/unequip`, `RewardService` (bag part), `StoryRuntime._give_all /
+_take_all`, `WorldRuntime._enter_map`, `StoryPresence`, `MapBase._track_knowledge_source`,
+both map scenes. There are no creature drops in the game (a kill pays through the
+`RewardLedger`; nothing is spawned on the ground), so there are no orphan drops to find.
+
+| Lying there | In-world cause | There when | Taken by | Gives | Once | On re-entry |
+|---|---|---|---|---|---|---|
+| `pickup_hubpill1` ×2 | a healer's pills left by the spring path | always | walking onto it | 2 × Bổ Huyết Đan | `_collected` id | hidden at arrival |
+| `pickup_hubmanualphong`, `pickup_hubrobe`, `pickup_hubsword` | the outpost's issue: primer, coat, blade | always drawn; HELD until `flag_outpost_issue` (the elder says so) | walking onto it after he has | the item | id | hidden at arrival |
+| `pickup_fieldstone1` ×2, `pickup_fieldstone2` | stones the vein shed | always | walking onto it | Linh Thạch | id | hidden at arrival |
+| `pickup_fieldpill1` | dropped on the forest road | always | walking onto it | 1 pill | id | hidden at arrival |
+| `pickup_fieldmanualloi` | spilled from the carter's wreck | only once `flag_vein_broke` | walking onto it | the Thunder-Finger manual | id | hidden at arrival; absent before the Night |
+| the Origin's kit | what the chosen past carried | at the start | `StoryService.begin` (one bag exchange) | per Origin | undone whole on a breach (§15.1) | — |
+| quest / story rewards | a deed | on completion | `RewardService` → one bag exchange | per reward | `RewardLedger` id | — |
+
+Four defects found, each red before it was fixed:
+
+1. **A pickup that only partly fit was destroyed.** `tick` marked it collected as soon as
+   `give` put ANY of it in the bag: five pills onto room for two → two in the bag, three
+   gone for the run. Now a pickup is taken whole or left whole
+   (`InventoryState.room_for`); leaving a remainder on the map node was rejected because
+   the node comes back whole on re-entry — a duplicate.
+2. **A full bag was said sixty times a second.** `give` emitted "bag full" every physics
+   tick the player stood there (measured: 30 ticks → 30 refusals). Said once per approach.
+3. **Two held things underfoot re-said one of them every tick.** The "once per approach"
+   memory held ONE id; the outpost's coat and primer lie 12.8 px apart with a 14 px reach
+   each, so one step stands on both — a shipped layout. The memory is now a set.
+4. **A map arrived showing what was not there.** A map scene is built fresh on each entry
+   with every pickup drawn; the bag's owner hid the collected ones, and the manual the
+   rupture has not spilled yet, on its NEXT physics tick. Read inside `active_map_ready`
+   (the entry's own call stack): `FieldManualLoi` drawn on the first visit to the woods, and
+   the pill, primer, coat and blade drawn again on every return. `WorldRuntime._enter_map`
+   now asks the bag before it announces the map.
+
+Pinned without a defect: every pickup in both maps has one id, a catalogued item in a count
+an empty bag takes whole, gates that are real story flags, a reason in vi and en when it is
+somebody's, and no body; every `StoryPresence` in both maps, both ways — absent means not
+drawn (which is what takes it off the interact key) and every shape off, present means
+solid again, and with no story to ask it fails closed.
+
+Tests (+6; suite **1241**), world E2E extended (21 arrivals looked at). Mutations 10/10
+red (telegraph ×2; partial take; per-tick "bag full"; the set forgotten; `room_for` without
+free slots; no ask at arrival; a removed thing keeps its body / stays drawn; a shared id).

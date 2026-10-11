@@ -394,6 +394,13 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# stale entries and the new map would have nothing in it. Last in the sequence because an
 	# enemy needs the player already placed (it is the hunt target) and the HUD already built.
 	_repopulate_combat_for_active_map()
+	# A map scene arrives with every pickup it was authored with DRAWN. The bag's owner
+	# knows which are already taken and which are not in the world yet, and used to say so
+	# on its next physics tick — frames in which a collected pill lay there again and the
+	# manual the rupture spills was on the grass before the vein broke (FG-3). Asked now.
+	var bag := _find_sibling_of(InventoryRuntime) as InventoryRuntime
+	if bag != null:
+		bag.tick()
 	# The old scene was freed by the router's _free_current_scene(); nothing to do here.
 	# Last of all: the map is whole, so what follows the player into it (Phase 16) may appear.
 	active_map_ready.emit()

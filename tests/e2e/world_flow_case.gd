@@ -316,7 +316,33 @@ func test_real_world_map_flow() -> void:
 	await _prove_technique_phong(main, player, hub_map)
 
 	# --- 5. first transition hub → field via REAL interact input -----------------
+	# WHAT A MAP SHOWS THE MOMENT IT IS READY (D-073 follow-up, FG-3). A map scene is built
+	# fresh on every entry with all its pickups drawn; the bag's owner only put away what was
+	# already taken, or not yet in the world, on its NEXT physics tick — so a collected pill
+	# and the not-yet-spilled manual were on screen for the frames in between. Read inside
+	# `active_map_ready`, in the call stack of the entry itself: no tick can have run.
+	var ghosts: Array[String] = []
+	var arrivals := [0]
+	var bag := main.get_node_or_null("Systems/InventoryRuntime") as InventoryRuntime
+	var on_ready := func() -> void:
+		arrivals[0] += 1
+		var arrived: Node = router.get_current_scene()
+		var host := arrived.get_node_or_null("Pickups") if arrived != null else null
+		if host == null or bag == null:
+			return
+		for child in host.get_children():
+			var pickup := child as WorldItem
+			if pickup == null or not pickup.visible:
+				continue
+			if bag.is_collected(pickup.pickup_id):
+				ghosts.append("%s (already collected)" % pickup.name)
+			elif pickup.appears_with_flag != &"" and arrivals[0] == 1:
+				ghosts.append("%s (not in the world yet)" % pickup.name)
+	world_runtime.active_map_ready.connect(on_ready)
 	await _interact_to_transition(player, "map_hub")
+	assert_eq(arrivals[0], 1, "the field announced it was ready, once")
+	assert_eq(ghosts, [] as Array[String],
+		"nothing is drawn at arrival that is not in the world: %s" % str(ghosts))
 	assert_eq(router.get_current_key(), "map_field", "real interact transitioned hub → field")
 	assert_eq(gs.call("get_current_map_id"), &"map_field", "GameState now records the field")
 	var field_map: Node = router.get_current_scene()
@@ -366,6 +392,11 @@ func test_real_world_map_flow() -> void:
 		assert_eq(gs.call("get_current_map_id"), StringName(now_key),
 			"round %d: GameState map id matches router" % i)
 		assert_false(router.call("is_transitioning"), "round %d: router not stuck" % i)
+	world_runtime.active_map_ready.disconnect(on_ready)
+	assert_eq(arrivals[0], 1 + ROUND_TRIPS, "every arrival was looked at")
+	assert_eq(ghosts, [] as Array[String],
+		("across %d re-entries nothing already collected is drawn at arrival (the pill, the "
+			+ "coat, the primer, the manual): %s") % [ROUND_TRIPS, str(ghosts)])
 	# --- 6b. THE WORLD MOVED WHILE THE PLAYER TRAVELLED (Phase 08) ---------------
 	# This is the payoff assertion for the whole phase: 20 real map transitions are 20 real
 	# gameplay beats, so simulated time must have passed and the world must have DONE

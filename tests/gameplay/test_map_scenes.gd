@@ -872,3 +872,112 @@ func test_nothing_the_player_must_reach_in_the_woods_is_inside_a_creatures_terri
 		"the cairn wolf still holds the wreck: the contested way is still contested")
 	field.free()
 
+
+
+const ITEM_CATALOG := "res://data/items/item_catalog.tres"
+const STORY_CATALOG := "res://data/story/story_catalog.tres"
+const LOCALE_TABLE := "res://locale/aetheria.csv"
+
+
+## THE PICKUP LEDGER (D-073 follow-up, FG-3). Everything lying in either map, held to what
+## the bag's owner relies on: ONE id in the whole world (the run remembers a pickup by id, so
+## a shared id makes the second vanish when the first is taken); a catalogued item in a count
+## an empty bag can take WHOLE (a pickup is never split); a gate that names a real story flag
+## and, when it is somebody's, can say whose in both languages; and no body of its own — a
+## pickup is walked ONTO, so nothing is left to bump into once it is gone.
+func test_everything_lying_in_the_world_has_one_identity_a_cause_and_no_body() -> void:
+	var catalog := load(ITEM_CATALOG) as ItemCatalogData
+	var story := load(STORY_CATALOG) as StoryCatalogData
+	assert_true(catalog != null and story != null, "the item and story catalogs load")
+	var keys := {}
+	var table := FileAccess.open(LOCALE_TABLE, FileAccess.READ)
+	assert_not_null(table, "the locale table opens")
+	while table != null and not table.eof_reached():
+		var row := table.get_csv_line()
+		if row.size() >= 3:
+			keys[row[0]] = row[1].strip_edges() != "" and row[2].strip_edges() != ""
+	var empty := InventoryState.new()
+	var seen := {}
+	var total := 0
+	for scene: PackedScene in [HubScene, FieldScene]:
+		var map: Node = scene.instantiate()
+		var host := map.get_node_or_null("Pickups")
+		assert_not_null(host, "%s has a Pickups holder" % map.name)
+		for child in host.get_children() if host != null else []:
+			var pickup := child as WorldItem
+			assert_not_null(pickup, "%s/%s is a WorldItem" % [map.name, child.name])
+			if pickup == null:
+				continue
+			total += 1
+			var what := "%s/%s" % [map.name, pickup.name]
+			assert_true(pickup.pickup_id != &"" and not seen.has(pickup.pickup_id),
+				"%s has an id of its own ('%s', also %s)" % [what, pickup.pickup_id,
+					seen.get(pickup.pickup_id, "nobody's")])
+			seen[pickup.pickup_id] = what
+			assert_true(pickup.item != null and catalog.entry(pickup.item.id) == pickup.item,
+				"%s is a catalogued item" % what)
+			if pickup.item != null:
+				assert_true(pickup.count >= 1 and pickup.count <= empty.room_for(pickup.item),
+					"%s (x%d) fits an empty bag whole" % [what, pickup.count])
+			for flag_id: StringName in [pickup.held_by_flag, pickup.appears_with_flag]:
+				assert_true(flag_id == &"" or story.flag(flag_id) != null,
+					"%s is gated by a flag the story has ('%s')" % [what, flag_id])
+			if pickup.held_by_flag != &"":
+				assert_true(bool(keys.get(String(pickup.held_reason_key), false)),
+					"%s can say whose it is, in vi and en ('%s')"
+					% [what, pickup.held_reason_key])
+			for part in pickup.find_children("*", "CollisionObject2D", true, false):
+				assert_true(false, "%s has a body (%s): a pickup is walked onto" % [what,
+					part.name])
+		map.free()
+	assert_true(total >= 8, "both maps' pickups were looked at (%d)" % total)
+
+
+## NO GHOSTS (D-073 follow-up, FG-3). What the story has taken out of a map — the cart after
+## the Night, the stake somebody pulled, the wreck before it happened — is gone as a THING:
+## not drawn (which is also what takes it off the interact key: `MapBase` offers only what is
+## visible) and with every collision shape under it switched off. Brought back, it is solid
+## again. Both ways, on every `StoryPresence` in both maps, with the bodies BUILT as `_ready`
+## builds them (off-tree, a `WorldProp` has no shape yet and the check would pass on nothing).
+func test_what_the_story_removes_leaves_no_picture_and_no_body() -> void:
+	var presences := 0
+	var with_bodies := 0
+	for scene: PackedScene in [HubScene, FieldScene]:
+		var map: Node = scene.instantiate()
+		for found in map.find_children("*", "StaticBody2D", true, false):
+			if found is WorldProp:
+				(found as WorldProp).build()
+			elif found is PropBody:
+				(found as PropBody).build()
+		for found in map.find_children("*", "", true, false):
+			var presence := found as StoryPresence
+			if presence == null:
+				continue
+			presences += 1
+			var host := presence.get_parent() as CanvasItem
+			var what := "%s/%s" % [map.name, host.name]
+			var bodies: Array[Node] = host.find_children("*", "CollisionObject2D", true, false)
+			if host is CollisionObject2D:
+				bodies.append(host)
+			var shapes := 0
+			for set_now: bool in [true, false, true]:
+				presence.apply(func(_flag: StringName) -> bool: return set_now)
+				var there: bool = set_now == presence.present_when_set
+				assert_eq(host.visible, there, "%s is %s when its flag is %s"
+					% [what, "drawn" if there else "not drawn", set_now])
+				for body: CollisionObject2D in bodies:
+					for owner_id in body.get_shape_owners():
+						shapes += 1
+						assert_eq(body.is_shape_owner_disabled(owner_id), not there,
+							"%s: %s is %s when its flag is %s" % [what, body.name,
+								"solid" if there else "bodiless", set_now])
+			if shapes > 0:
+				with_bodies += 1
+			# FAIL CLOSED: with nobody to ask, a thing that needs a flag SET is not there.
+			presence.apply(Callable())
+			assert_eq(host.visible, not presence.present_when_set,
+				"%s with no story to ask is as if its flag were unset" % what)
+		map.free()
+	assert_true(presences >= 6, "every StoryPresence in both maps was tried (%d)" % presences)
+	assert_true(with_bodies >= 3,
+		"the cart, the wreck and the stake had real shapes to switch (%d)" % with_bodies)

@@ -49,8 +49,11 @@ var _collected: Dictionary = {}
 ## `flag_id -> bool`: has the story handed this over? Given by the session once the story
 ## runs. FAIL CLOSED: with nobody to ask, a held item stays held.
 var _flag_holds: Callable = Callable()
-## The held pickup the player is standing on (so the refusal is said once per approach).
-var _standing_on_held: StringName = &""
+## The pickups underfoot that were REFUSED on the last tick — somebody's, or more than the
+## bag has room for — so each refusal is said once per approach, not once per tick. A SET:
+## two things lie within one step of each other in the village, and a memory of one id made
+## the other look new every tick.
+var _refused_underfoot: Dictionary = {}
 var _session_active: bool = false
 
 
@@ -86,7 +89,7 @@ func start_session(character: CharacterState, world: Node, knowledge: KnowledgeR
 func end_session() -> void:
 	set_physics_process(false)
 	_flag_holds = Callable()
-	_standing_on_held = &""
+	_refused_underfoot = {}
 	_catalog = null
 	_bag = null
 	_character = null
@@ -248,7 +251,7 @@ func tick() -> void:
 	var host := map.get_node_or_null("Pickups")
 	if host == null:
 		return
-	var held_under: StringName = &""
+	var refused := {}
 	for child in host.get_children():
 		var pickup := child as WorldItem
 		if pickup == null:
@@ -262,16 +265,25 @@ func tick() -> void:
 			continue
 		if pickup.appears_with_flag != &"" and not _flag_is_set(pickup.appears_with_flag):
 			continue  # not in the world yet
-		if pickup.reaches(player.global_position) and pickup.item != null:
-			if _is_held(pickup):
-				held_under = pickup.pickup_id
-				if _standing_on_held != pickup.pickup_id:
-					pickup_withheld.emit(pickup.pickup_id, pickup.held_reason_key)
-				continue
-			if give(pickup.item.id, pickup.count) > 0:
-				_collected[pickup.pickup_id] = true
-				pickup.visible = false
-	_standing_on_held = held_under
+		if not pickup.reaches(player.global_position) or pickup.item == null:
+			continue
+		if _is_held(pickup):
+			refused[pickup.pickup_id] = true
+			if not _refused_underfoot.has(pickup.pickup_id):
+				pickup_withheld.emit(pickup.pickup_id, pickup.held_reason_key)
+			continue
+		# WHOLE OR NOT AT ALL. A pickup is one authored thing with one id: taking the part
+		# that fits and marking it collected destroyed the rest for the whole run, and
+		# leaving a remainder on a map node would come back whole on re-entry (a duplicate).
+		if _bag.room_for(pickup.item) < pickup.count:
+			refused[pickup.pickup_id] = true
+			if not _refused_underfoot.has(pickup.pickup_id):
+				use_refused.emit(pickup.item.id, REFUSE_BAG_FULL)
+			continue
+		if give(pickup.item.id, pickup.count) == pickup.count:
+			_collected[pickup.pickup_id] = true
+			pickup.visible = false
+	_refused_underfoot = refused
 
 
 func to_dict() -> Dictionary:

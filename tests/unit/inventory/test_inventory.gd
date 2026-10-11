@@ -134,6 +134,98 @@ func test_a_pickup_is_collected_once_for_the_whole_run() -> void:
 	_end(parts)
 
 
+func _pickup(parts: Array, id: StringName, item_id: StringName, count: int,
+		at: Vector2) -> WorldItem:
+	var pickup: WorldItem = WorldItemScript.new()
+	pickup.item = _item(item_id)
+	pickup.count = count
+	pickup.pickup_id = id
+	pickup.position = at
+	(parts[6] as Node).add_child(pickup)
+	return pickup
+
+
+## A pickup is taken WHOLE or left WHOLE (D-073 follow-up, FG-3). It used to be marked
+## collected as soon as ANY of it fit: five pills onto a bag with room for two put two in the
+## bag and destroyed three, with the pickup gone for the rest of the run.
+func test_a_pickup_that_does_not_all_fit_stays_whole_in_the_world() -> void:
+	var parts := _session()
+	var inventory: InventoryRuntime = parts[3]
+	var player: StubPlayer = parts[5]
+	inventory.get_bag().capacity = 1
+	assert_eq(inventory.give(&"item_bo_huyet_dan", 8), 8, "eight pills: one stack of ten")
+	var pickup := _pickup(parts, &"pickup_five", &"item_bo_huyet_dan", 5, Vector2(200, 0))
+	player.position = Vector2(202, 0)
+	inventory.tick()
+	assert_eq(inventory.count_of(&"item_bo_huyet_dan"), 8, "room for two of five: none taken")
+	assert_true(pickup.visible, "the five are still lying there")
+	assert_false(inventory.is_collected(&"pickup_five"), "and not remembered as collected")
+	# Make room and it is taken, all of it, on the same visit.
+	assert_true(inventory.take(&"item_bo_huyet_dan", 3), "three pills leave the bag")
+	inventory.tick()
+	assert_eq(inventory.count_of(&"item_bo_huyet_dan"), 10, "now all five fit: all five taken")
+	assert_false(pickup.visible, "and it is gone from the world")
+	assert_true(inventory.is_collected(&"pickup_five"), "collected once")
+	_end(parts)
+
+
+## A full bag is SAID once per approach. `give()` reported "bag full" on every physics tick
+## the player stood there: sixty refusals a second into the HUD's answer lane.
+func test_a_full_bag_is_said_once_per_approach_not_every_tick() -> void:
+	var parts := _session()
+	var inventory: InventoryRuntime = parts[3]
+	var player: StubPlayer = parts[5]
+	inventory.get_bag().capacity = 1
+	inventory.give(&"item_kiem_thanh_thiet", 1)
+	var said: Array[StringName] = []
+	var on_refused := func(_item_id: StringName, reason: StringName) -> void:
+		said.append(reason)
+	inventory.use_refused.connect(on_refused)
+	var pickup := _pickup(parts, &"pickup_stone", &"item_linh_thach", 1, Vector2(200, 0))
+	player.position = Vector2(202, 0)
+	for _i in 30:
+		inventory.tick()
+	assert_eq(said, [InventoryRuntime.REFUSE_BAG_FULL] as Array[StringName],
+		"thirty ticks standing on it: said once (got %d)" % said.size())
+	assert_true(pickup.visible, "and it waits")
+	player.position = Vector2(400, 0)
+	inventory.tick()
+	player.position = Vector2(202, 0)
+	for _i in 30:
+		inventory.tick()
+	assert_eq(said.size(), 2, "walking away and back is a new approach: said again, once")
+	inventory.use_refused.disconnect(on_refused)
+	_end(parts)
+
+
+## TWO things that are somebody's, both underfoot — the outpost's coat and primer lie 12.8 px
+## apart with a 14 px reach each, so one step stands on both. The "said once per approach"
+## memory held ONE id, so each tick the first of the pair looked new and was said again.
+func test_two_held_things_underfoot_are_each_said_once() -> void:
+	var parts := _session()
+	var inventory: InventoryRuntime = parts[3]
+	var player: StubPlayer = parts[5]
+	inventory.set_pickup_gate(func(_flag: StringName) -> bool: return false)
+	# Strings: a StringName array sorts by identity, not by spelling (seen flip in the suite).
+	var said: Array[String] = []
+	var on_withheld := func(pickup_id: StringName, _reason: StringName) -> void:
+		said.append(String(pickup_id))
+	inventory.pickup_withheld.connect(on_withheld)
+	for entry: Array in [[&"pickup_primer", Vector2(520, 276)], [&"pickup_coat",
+			Vector2(530, 268)]]:
+		var pickup := _pickup(parts, entry[0], &"item_manual_phong", 1, entry[1])
+		pickup.held_by_flag = &"flag_outpost_issue"
+		pickup.held_reason_key = &"UI_PICKUP_HELD_OUTPOST"
+	player.position = Vector2(525, 272)
+	for _i in 30:
+		inventory.tick()
+	said.sort()
+	assert_eq(said, ["pickup_coat", "pickup_primer"] as Array[String],
+		"thirty ticks on both: each said once (got %d)" % said.size())
+	inventory.pickup_withheld.disconnect(on_withheld)
+	_end(parts)
+
+
 func test_uses_go_through_their_owners_and_a_wasted_use_burns_nothing() -> void:
 	var parts := _session()
 	var knowledge: KnowledgeRuntime = parts[1]
