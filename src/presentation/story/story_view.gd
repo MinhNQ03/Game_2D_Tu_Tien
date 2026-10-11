@@ -10,3 +10,11 @@ var chapter_title_key: StringName = &""
 var origin_name_key: StringName = &""
 ## The Origin's standing personal goal.
 var origin_goal_key: StringName = &""
+var origin_problem_key: StringName = &""
+var origin_edge_key: StringName = &""
+var origin_cost_key: StringName = &""
+## Record keys of the beats completed (oldest first) and of the options chosen.
+var records: Array[StringName] = []
+var decisions: Array[StringName] = []
+## Who the player has spoken to, in the order they met.
+var met: Array[StringName] = []

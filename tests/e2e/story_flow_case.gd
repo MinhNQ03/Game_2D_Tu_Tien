@@ -31,6 +31,7 @@ const KO := &"actor_scout_ko"
 const ATTACK := &"attack"
 const CULTIVATE := &"cultivate"
 const NIGHT_PREFIX := "map_field__night__"
+const CHRONICLE := &"chronicle"
 
 var _passed: int = 0
 var _dialogue: DialogueRuntime = null
@@ -254,6 +255,9 @@ func test_real_story_flow() -> void:
 	assert_true(hub.get_node("Spawns/from_road").global_position.distance_to(before) < 4.0,
 		"the run began on the west road, where the cart let the player down")
 	assert_eq(service.state().beat_id, &"beat_arrival", "the story waits for a first meeting")
+	assert_eq([hud.purpose_source(), hud.purpose_text()], [GameplayHUD.PURPOSE_FROM_STORY,
+		String(loc.call("t", "STORY_BEAT_ARRIVAL_OBJECTIVE"))],
+		"the plaque says what the STORY asks next, not a quest nobody has taken on")
 	assert_false((hub.get_node("KnowledgeSources/SurveySheet") as Node2D).visible,
 		"nothing is hidden under the stele yet: the Night has not happened")
 	var lin := hub.get_node_or_null("Interactables/LinYue") as WorldNpc
@@ -459,6 +463,69 @@ func test_real_story_flow() -> void:
 		"a real interact read the sheet: information, held by the Knowledge Core")
 	assert_eq(service.state().beat_id, &"beat_leaving", "the mystery is in hand")
 	_step("8f. the elder's account; a first deliberate cultivation; the suppressed sheet")
+
+	# --- 8g. the Chronicle: one book, a real key, never modal ----------------------------------
+	var book := hud.chronicle_panel()
+	assert_false(hud.is_chronicle_open(), "the book is closed until asked for")
+	await _press_until(CHRONICLE, func() -> bool: return hud.is_chronicle_open())
+	assert_eq(book.page_id(), ChroniclePanel.PAGE_STORY, "it opens on the road so far")
+	var story_page := book.page_lines()
+	assert_true(story_page.has(String(loc.call("t", "STORY_BEAT_NIGHT_RECORD"))),
+		"which records the Night (%s)" % str(story_page))
+	assert_true(story_page.has("◆ " + String(loc.call("t", "STORY_CHOICE_NIGHT_STAND_STOOD"))),
+		"and the decision made there")
+	assert_eq(int(input.call("current_context")), int(input.Context.GAMEPLAY),
+		"reading takes no input context")
+	var read_from := player.global_position
+	Input.action_press(MOVE_RIGHT)
+	await _wait_until(func() -> bool: return player.global_position.x > read_from.x + 4.0, 60)
+	Input.action_release(MOVE_RIGHT)
+	assert_true(player.global_position.x > read_from.x + 4.0 and hud.is_chronicle_open(),
+		"the player walks with the book open")
+	await _fire_action(CHRONICLE)
+	assert_eq(book.page_id(), ChroniclePanel.PAGE_SELF, "the same key turns the page")
+	assert_true(book.page_lines().has(String(loc.call("t", "ORIGIN_THU_THU_NAME"))),
+		"who the player was")
+	await _fire_action(CHRONICLE)
+	assert_true(book.page_lines().has(String(loc.call("t", "KNOW_SURVEY_FRAGMENT_NAME"))),
+		"what they know now includes the sheet")
+	await _fire_action(CHRONICLE)
+	assert_eq(book.page_id(), ChroniclePanel.PAGE_PEOPLE, "the last page: whom they have met")
+	var lin_row := "%s — %s" % [loc.call("t", "CHARACTER_DISCIPLE_LIN_NAME"),
+		loc.call("t", "CHARACTER_DISCIPLE_LIN_TITLE")]
+	assert_true(book.page_lines().has(lin_row), "Lâm Nguyệt is in it (%s)" % str(book.page_lines()))
+	await _fire_action(CHRONICLE)
+	assert_false(hud.is_chronicle_open(), "and after the last page the key closes the book")
+	await _press_until(CHRONICLE, func() -> bool: return hud.is_chronicle_open())
+	await _fire_action(OPEN_MENU)
+	assert_false(hud.is_chronicle_open(), "Esc closes it like every reading surface")
+	assert_eq(hud.session_prompt_kind(), &"", "without asking about leaving")
+	_step("8g. the Chronicle opened, paged and closed with real keys; the player kept walking")
+
+	# --- 8h. the way out: the carter, the road ahead, and what the player leaves holding -------
+	assert_false((hub.get_node("Visual/Decor/CarterCart") as Node2D).visible,
+		"the cart that waited on the east road never came back")
+	carter = hub.get_node("Interactables/QiMu") as WorldNpc
+	await _talk_to(player, hub, carter, Vector2(30, 0))
+	assert_eq(_dialogue.current_node_id(), &"te_morning", "the carter opens with what he lost")
+	await _say(&"te_morning_where", &"te_morning_road")
+	assert_eq(service.state().chapter_id, &"chapter_ke_vo_danh", "the prologue is over")
+	assert_false(story.is_scene_playing(), "the road ahead waits for him to finish")
+	await _advance_to(&"")
+	assert_true(story.is_scene_playing() and hud.story_scene_panel().covers_the_map(),
+		"then it is told")
+	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
+	assert_eq(service.state().beat_id, &"beat_standing", "open play, with a standing purpose")
+	# The five things NARRATIVE_MASTER_PLAN §5 says the player must leave holding:
+	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_BEAT_STANDING_OBJECTIVE")),
+		"1. an immediate goal, on the plaque")
+	assert_ne(service.origin().goal_key, &"", "2. a personal goal from their Origin")
+	assert_true(RegardRules.read(relationship.get_service(), relationship.get_config(), LIN,
+		character.instance_id, &"trust") >= 15, "3. a relationship that was earned")
+	assert_true(knowledge.get_service().knows(&"know_survey_fragment"), "4. an unanswered mystery")
+	assert_true(service.flag_at_least(&"flag_heard_road_ahead", 1), "5. a reason to go on")
+	assert_eq(str(character.sect_id), "", "and still belonging to no sect")
+	_step("8h. the prologue ended into open play, holding all five things it must hand over")
 
 	# --- 9. leave through the real question; everything is torn down --------------------------
 	await _press_until(OPEN_MENU, func() -> bool:

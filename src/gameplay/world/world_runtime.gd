@@ -502,7 +502,14 @@ func _push_world_sim_view_to_active_map() -> void:
 	var sim := _find_world_sim_runtime()
 	if sim == null:
 		return
-	_active_map.call("set_world_sim_view", sim.call("get_view"))
+	var view: WorldSimView = sim.call("get_view")
+	# Name who the latest event was about, when it was about somebody the registry knows.
+	var registry := get_character_registry()
+	var about: CharacterState = registry.get_character(view.last_event_target_id) \
+		if view != null and registry != null and view.last_event_target_id != &"" else null
+	if about != null:
+		view.last_event_who_key = about.name_key
+	_active_map.call("set_world_sim_view", view)
 
 
 ## Locate the WorldSimulationRuntime among this node's siblings under Main/Systems (or null).
@@ -1142,6 +1149,7 @@ func _push_quest_view_to_active_map() -> void:
 	if quests == null or not quests.is_session_active():
 		return
 	_active_map.call("set_quest_view", quests.build_view())
+	_push_chronicle_view_to_active_map()  # a quest may have moved somebody's regard
 
 
 func _connect_quest_signals() -> void:
@@ -1255,8 +1263,57 @@ func _push_story_scene_to_active_map() -> void:
 	if story == null or not story.is_session_active():
 		return
 	_active_map.call("set_story_scene_view", story.build_scene_view())
+	_push_chronicle_view_to_active_map()
 	_apply_story_presence(story)
 	_begin_story_encounter(story)
+
+
+# --- The Chronicle (Phase 20, D-072 §8) --------------------------------------------
+
+## Assemble the Chronicle's read-only view from the owners and push it to the active map: the
+## story's record, the Origin, what the Knowledge Core holds, and how the people met regard
+## the player. Event-driven (the story moved, something was learned, a quest view changed).
+func _push_chronicle_view_to_active_map() -> void:
+	if _active_map == null or not _active_map.has_method("set_chronicle_view"):
+		return
+	var story := _find_sibling_of(StoryRuntime) as StoryRuntime
+	if story == null or not story.is_session_active():
+		return
+	var told := story.build_view()
+	var view := ChronicleView.new()
+	view.available = true
+	view.chapter_title_key = told.chapter_title_key
+	view.objective_key = told.objective_key
+	view.records = told.records
+	view.decisions = told.decisions
+	view.origin_name_key = told.origin_name_key
+	view.origin_problem_key = told.origin_problem_key
+	view.origin_edge_key = told.origin_edge_key
+	view.origin_cost_key = told.origin_cost_key
+	view.origin_goal_key = told.origin_goal_key
+	var knowledge := _find_sibling_of(KnowledgeRuntime) as KnowledgeRuntime
+	if knowledge != null and knowledge.is_session_active():
+		var core := knowledge.get_service()
+		for knowledge_id in core.store().known_ids():
+			var entry := core.catalog().entry(knowledge_id)
+			if entry != null:
+				view.knowledge.append({"name_key": entry.name_key, "desc_key": entry.desc_key})
+	var relationship := _find_sibling_of(RelationshipRuntime) as RelationshipRuntime
+	var me := _player_character.instance_id if _player_character != null else &""
+	for character_id in told.met:
+		var registry := get_character_registry()
+		var person: CharacterState = registry.get_character(character_id) \
+			if registry != null else null
+		if person == null:
+			continue
+		var row := {"name_key": person.name_key, "title_key": person.title_key,
+			"affinity": 0, "trust": 0, "respect": 0}
+		if relationship != null and relationship.is_session_active():
+			for dimension: StringName in [&"affinity", &"trust", &"respect"]:
+				row[String(dimension)] = RegardRules.read(relationship.get_service(),
+					relationship.get_config(), character_id, me, dimension)
+		view.people.append(row)
+	_active_map.call("set_chronicle_view", view)
 
 
 # --- The story's part of the world (Phase 20, D-072 §6) ---------------------------

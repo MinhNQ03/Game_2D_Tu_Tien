@@ -5807,3 +5807,33 @@ look; a teller finds it with no help, and she says only that something was hidde
 
 **J. Sitting is announced.** `CultivationRuntime.gathered(amount)` is emitted when the service
 accepts tu vi; Main passes it to the story. Beat 10 completes on a real gather at any site.
+
+
+### D-072 addendum (Checkpoint 5) — the book, the line, the way out
+
+**K. The purpose line, as built (closes Q19-03).** §9 said "quest, then story, then place".
+Played, that put *"Speak with Elder Shen"* — a quest nobody had taken on — over the story's
+first ask. The order is refined, not changed in spirit: (1) a quest the player HAS TAKEN ON
+(ready to answer before under way); (2) what the story asks next; (3) a quest merely on
+offer; (4) one plain line about the road. The HUD derives it from the two views the owners
+push (`QuestJournalView`, `ChronicleView`); it stores nothing, polls nothing, and is never
+blank. Every objective the shipped story can show is measured to fit the plaque's one row in
+both languages; the long form of each beat is its RECORD, which the Chronicle shows.
+
+**L. The Chronicle is one panel with four pages.** `ChroniclePanel` (LEFT column, its own
+action `chronicle`, key B): the road so far (chapter, what to do now, the newest records
+first, decisions marked), who the player was (their Origin's problem, goal, edge and cost),
+what they know (the Knowledge Core's holdings), whom they have met (name, title, and the
+three regard numbers the graph holds). `WorldRuntime` assembles `ChronicleView` from the
+owners on events. Not modal; the key opens, turns the page and closes after the last; Esc and
+a threat close it with every other reading surface. No page exists for a system that does not.
+
+**M. The world line names its subject (closes AUD-09).** The event feed already carried
+`target_id`; the view now carries it, `WorldRuntime` resolves it to a name through the
+character registry, and the plaque says *"Lâm Nguyệt: ties between people rose"*. An event
+about nobody the registry knows keeps the old wording, which already had a subject of its own.
+
+**N. The way out.** The carter's cart never comes back from the woods (`StoryPresence`); he
+leaves on foot and says where to ask about the crates. Hearing him ends the prologue; the
+road ahead is told once, after he has finished speaking; the standing Act-I purpose is
+*find the true vein survey*. The Story E2E asserts the five things §5 requires at that moment.

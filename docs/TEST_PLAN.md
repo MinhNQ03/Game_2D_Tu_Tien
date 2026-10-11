@@ -1312,6 +1312,16 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
 
 ## Phase 20 (D-072) — Story, Origins and the prologue
 
+### Checkpoint 5 — the Chronicle, the purpose line, the way out
+
+| Invariant | Test |
+|---|---|
+| Purpose: taken-on quest → story → offered quest → road; never blank | `test_quest_journal.gd` (2 tests) |
+| Every shipped story objective fits one row in vi and en | `test_quest_journal.gd::test_every_shipped_story_objective_fits_…` |
+| The Chronicle's four pages show what their owners hold, newest record first, no raw key | `test_chronicle.gd` |
+| The book is opened, paged and closed with real keys and never takes the move keys | Story E2E 8g |
+| The prologue ends holding the five things `NARRATIVE_MASTER_PLAN` §5 requires | Story E2E 8h |
+
 ### Checkpoint 4 — the Night
 
 | Invariant | Test |

@@ -73,6 +73,7 @@ var _dialogue_view: DialogueView = null  # cached read-only conversation view (P
 var _story_scene_view: StorySceneView = null  # the story-scene step on screen (Phase 20)
 var _player_portrait_path: String = ""  # the chosen look's portrait (Phase 20)
 var _quest_view: QuestJournalView = null  # cached read-only quest view (Phase 19)
+var _chronicle_view: ChronicleView = null  # cached read-only Chronicle view (Phase 20)
 ## The knowledge source (a stele) the player stands within reach of, or null (Phase 12).
 var _active_source: KnowledgeSource = null
 ## The interactable in reach (Phase 16): a stele, a stray animal, later a person. `_active_source`
@@ -345,6 +346,13 @@ func show_defeat() -> void:
 
 ## Push the quest view (Phase 19): the journal's entries and the place plaque's purpose line.
 ## Cached like every other view, so the next map's fresh HUD shows it at once.
+## Push the Chronicle view (Phase 20): the book's pages and the story's line of purpose.
+func set_chronicle_view(view: ChronicleView) -> void:
+	_chronicle_view = view
+	if _hud != null:
+		_hud.set_chronicle_view(view)
+
+
 func set_quest_view(view: QuestJournalView) -> void:
 	_quest_view = view
 	if _hud != null:
@@ -692,6 +700,8 @@ func _refresh_hud() -> void:
 		_hud.set_player_portrait(_player_portrait_path)
 	if _quest_view != null:
 		_hud.set_quest_view(_quest_view)
+	if _chronicle_view != null:
+		_hud.set_chronicle_view(_chronicle_view)
 	# And the world-simulation view (Phase 08).
 	if _world_sim_view != null:
 		_hud.set_world_sim_view(_world_sim_view)

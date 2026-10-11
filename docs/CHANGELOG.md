@@ -8,6 +8,13 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Phase 20, Checkpoint 5: the Chronicle, the purpose line, the way out
+
+- The prologue is playable from New Game to open Act-I play (all twelve beats).
+- `ChroniclePanel` (key B): story, self, knowledge, people — one read-only book.
+- Purpose line never blank (Q19-03 closed); world line names its subject (AUD-09 closed).
+- Story objectives rewritten to fit the plaque; the carter's farewell; the road-ahead scene.
+
 ### 2026-10-11 — Phase 20, Checkpoint 4: the Night (D-072 addendum E–J)
 
 - **Đêm Vỡ Mạch is playable:** warning → rupture → the wave → stood / withdrew → morning →

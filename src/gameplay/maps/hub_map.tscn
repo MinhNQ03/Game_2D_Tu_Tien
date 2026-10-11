@@ -141,10 +141,17 @@ position = Vector2(740, 382)
 script = ExtResource("p_script")
 prop = ExtResource("p_weapon_rack")
 
-[node name="Prop_Cart" type="StaticBody2D" parent="Visual/Decor"]
+[node name="CarterCart" type="Node2D" parent="Visual/Decor"]
 position = Vector2(872, 250)
+
+[node name="Prop_Cart" type="StaticBody2D" parent="Visual/Decor/CarterCart"]
 script = ExtResource("p_script")
 prop = ExtResource("p_cart")
+
+[node name="Presence" type="Node" parent="Visual/Decor/CarterCart"]
+script = ExtResource("sp_script")
+flag_id = &"flag_vein_broke"
+present_when_set = false
 
 [node name="Prop_YardFence" type="StaticBody2D" parent="Visual/Decor"]
 position = Vector2(700, 480)

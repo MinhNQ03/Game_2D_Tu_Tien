@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=210 format=3]
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=220 format=3]
 
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
@@ -1296,12 +1296,74 @@ text_key = &"DLG_TE_SEATS"
 mood = 3
 next_node_id = &"te_hub"
 
+[sub_resource type="Resource" id="C_te_open_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="C_te_open_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_road_ahead"
+negate = true
+
+[sub_resource type="Resource" id="P_te_morning"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_open_0"), SubResource("C_te_open_1")])
+node_id = &"te_morning"
+
+[sub_resource type="Resource" id="E_te_m_where"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="H_te_morning_where"]
+script = ExtResource("3_choice")
+id = &"te_morning_where"
+text_key = &"DLG_TE_CHOICE_MORNING_WHERE"
+effect = SubResource("E_te_m_where")
+next_node_id = &"te_morning_road"
+
+[sub_resource type="Resource" id="E_te_m_stay"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_heard_road_ahead"
+
+[sub_resource type="Resource" id="H_te_morning_stay"]
+script = ExtResource("3_choice")
+id = &"te_morning_stay"
+text_key = &"DLG_TE_CHOICE_MORNING_STAY"
+effect = SubResource("E_te_m_stay")
+next_node_id = &"te_morning_stay_line"
+
+[sub_resource type="Resource" id="N_te_morning"]
+script = ExtResource("4_node")
+id = &"te_morning"
+text_key = &"DLG_TE_MORNING"
+mood = 3
+choices = Array[ExtResource("3_choice")]([SubResource("H_te_morning_where"), SubResource("H_te_morning_stay")])
+
+[sub_resource type="Resource" id="N_te_morning_road"]
+script = ExtResource("4_node")
+id = &"te_morning_road"
+text_key = &"DLG_TE_MORNING_ROAD"
+mood = 0
+
+[sub_resource type="Resource" id="N_te_morning_stay_line"]
+script = ExtResource("4_node")
+id = &"te_morning_stay_line"
+text_key = &"DLG_TE_MORNING_STAY"
+mood = 1
+
 [sub_resource type="Resource" id="D_dlg_carter_te"]
 script = ExtResource("5_dlg")
 id = &"dlg_carter_te"
 speaker_id = &"actor_carter_te"
 start_node_id = &"te_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_te_greet"), SubResource("N_te_hub"), SubResource("N_te_load"), SubResource("N_te_road"), SubResource("N_te_mark_line"), SubResource("N_te_knot_line"), SubResource("N_te_hands_line"), SubResource("N_te_ledger_line"), SubResource("N_te_seats_line")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_te_greet"), SubResource("N_te_hub"), SubResource("N_te_load"), SubResource("N_te_road"), SubResource("N_te_mark_line"), SubResource("N_te_knot_line"), SubResource("N_te_hands_line"), SubResource("N_te_ledger_line"), SubResource("N_te_seats_line"), SubResource("N_te_morning"), SubResource("N_te_morning_road"), SubResource("N_te_morning_stay_line")])
+openings = Array[ExtResource("7_open")]([SubResource("P_te_morning")])
 
 [resource]
 script = ExtResource("6_cat")

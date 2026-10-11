@@ -161,8 +161,8 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 | 1 | Story / Origin domain and data | `d8edcf7` | 38114604673 — success, `head_sha` `d8edcf7…` |
 | 2 | Real New Game, identity, Origins, the sectless start | `8a3bc2f` | 38117230702 — success, `head_sha` `8a3bc2f96e575827f1373835cdb54cdf4eb33365` (15 gates) |
 | 3 | Arrival, contacts, the small problem, the first decision | `d676f51` | 38129290085 — success, `head_sha` `d676f51f1c62f60352d9b432c6684d652b026893` (15 gates) |
-| 4 | The Night, the encounter, the aftermath, cultivation, the sheet | *(this commit)* | *(recorded by the next)* |
-| 5 | Chronicle, purpose arbitration, the way out | | |
+| 4 | The Night, the encounter, the aftermath, cultivation, the sheet | `7daa7f7` | 38130589579 — success, `head_sha` `7daa7f743658d55d202c6e55f0bf4c540c8f5c30` (15 gates) |
+| 5 | Chronicle, purpose arbitration, the way out | *(this commit)* | *(recorded by the next)* |
 | 6 | Audit, real app, close-out | | |
 
 ## 10. Non-goals
@@ -172,6 +172,29 @@ manager · save file, slots, autosave, Continue · loot or drops · dungeon, bos
 a sect join · per-Origin campaigns · an audio system · anything Phase 21 owns.
 
 ## 11. Evidence
+
+### Checkpoint 5 — the Chronicle, the purpose line, the way out (built)
+
+**All twelve beats are now playable end to end with real keys**, from New Game to open
+Act-I play (`chapter_ke_vo_danh` / `beat_standing`).
+
+| Rule | Owner | Proof |
+|---|---|---|
+| The purpose line is never blank: taken-on quest → story → quest on offer → the road | HUD, from the owners' views | `test_the_purpose_line_is_arbitrated_…`, `…always_says_what_the_player_is_about`; E2E 8a, 8h |
+| Every story objective fits the plaque's one row, vi and en | content | `test_every_shipped_story_objective_fits_one_row_in_both_languages` (all 13 were too long; rewritten) |
+| One book, four pages, read-only, never modal; key opens / pages / closes; Esc closes | `ChroniclePanel` + HUD | `test_chronicle.gd` (3); E2E 8g (the player walks with it open) |
+| The world line names whom it is about | `WorldRuntime` → `WorldSimView` | `test_the_world_line_names_who_it_is_about` |
+| The prologue hands over all five things and ends in open play | Story | E2E 8h |
+
+Debt closed here: **Q19-03** (blank purpose line), **AUD-09** (subjectless world line),
+**AUD-13** (a line said once — Checkpoint 3's `FLAG` seam, used by every once-only line).
+
+**Honest limits.** (1) The people page shows three raw numbers per person; it does not yet
+say them in words. (2) The Chronicle's key is not advertised in the prompt strip (an eighth
+prompt does not fit, as Phase 19 measured); it is in the panel's own footer only, so a new
+player has to find B. (3) The story page shows the newest six records; older ones are not
+reachable. (4) Act I has one standing objective and nothing to do about it yet — by design
+(Phase 20 stops here), but a player WILL reach "now what?".
 
 ### Checkpoint 4 — the Night, the encounter, the morning, the first sitting, the sheet (built)
 

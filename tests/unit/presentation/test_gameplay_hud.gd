@@ -420,8 +420,8 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 		assert_eq(int(absf(panel.offset_right - panel.offset_left)),
 			UIPalette.SIDE_PANEL_WIDTH,
 			"its width comes from SIDE_PANEL_WIDTH, not from its content")
-	assert_eq(side_panels, 5,
-		"all five side panels (sect, politics, satchel, shop, journal) are bounded boxes (got %d)"
+	assert_eq(side_panels, 6, ("all six side panels (sect, politics, satchel, shop, journal, "
+		+ "chronicle) are bounded boxes (got %d)")
 			% side_panels)
 	free_node(hud)
 
@@ -620,7 +620,7 @@ func test_side_panels_scroll_their_content() -> void:
 		assert_eq(int(scroll.mouse_filter), int(Control.MOUSE_FILTER_STOP),
 			"and it accepts mouse input, or the wheel passes through and clipped content "
 				+ "becomes unreachable (every other node in the panel is IGNORE)")
-	assert_eq(scrollers, 5, "all five side panels scroll (got %d)" % scrollers)
+	assert_eq(scrollers, 6, "all six side panels scroll (got %d)" % scrollers)
 	free_node(hud)
 
 

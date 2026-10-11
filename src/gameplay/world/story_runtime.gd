@@ -352,6 +352,21 @@ func build_view() -> StoryView:
 	if origin != null:
 		view.origin_name_key = origin.name_key
 		view.origin_goal_key = origin.goal_key
+		view.origin_problem_key = origin.problem_key
+		view.origin_edge_key = origin.edge_key
+		view.origin_cost_key = origin.cost_key
+	var state := _service.state()
+	for beat_id in state.completed_beats:
+		var beat := _service.catalog().beat(beat_id)
+		if beat != null and beat.record_key != &"":
+			view.records.append(beat.record_key)
+	for entry: Dictionary in state.choices:
+		var asked := _service.catalog().choice(StringName(String(entry["choice_id"])))
+		var answer := asked.option(StringName(String(entry["option_id"]))) \
+			if asked != null else null
+		if answer != null:
+			view.decisions.append(answer.record_key)
+	view.met = state.met.duplicate()
 	return view
 
 

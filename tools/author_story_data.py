@@ -81,7 +81,7 @@ CHOICES = [
 ORIGIN_VIGNETTE = "<origin>"
 ENTRY_SCENES = {"beat_road": ORIGIN_VIGNETTE, "beat_arrival": "scene_arrival",
                 "beat_warning": "scene_night_warning", "beat_night": "scene_night_rupture",
-                "beat_aftermath": "scene_morning_after"}
+                "beat_aftermath": "scene_morning_after", "beat_standing": "scene_road_ahead"}
 # beat -> (encounter id, the choice it answers, option when cleared, option when left)
 ENCOUNTERS = {"beat_night": ("field_night", "choice_night_stand", "stood", "withdrew",
                              "flag_vein_broke")}
@@ -113,6 +113,11 @@ SCENES = {
         (S_CAPTION, "STORY_SCENE_RUPTURE_1", "", ""),
         (S_CAPTION, "STORY_SCENE_RUPTURE_2", "", ""),
         (S_CAPTION, "STORY_SCENE_RUPTURE_3", "", ""),
+    ],
+    "scene_road_ahead": [
+        (S_CARD, "STORY_SCENE_ARRIVAL_PLACE", "STORY_SCENE_AHEAD_TIME", ""),
+        (S_CAPTION, "STORY_SCENE_AHEAD_1", "", ""),
+        (S_CAPTION, "STORY_SCENE_AHEAD_2", "", ""),
     ],
     "scene_morning_after": [
         (S_CARD, "STORY_SCENE_ARRIVAL_PLACE", "STORY_SCENE_MORNING_TIME", ""),
@@ -184,7 +189,7 @@ ORIGINS = [
 
 # Scenes that happen somewhere else (the map behind them is covered): every vignette.
 # Scenes that happen somewhere or somewhen else are drawn over an opaque ground.
-ELSEWHERE = {"scene_morning_after"}
+ELSEWHERE = {"scene_morning_after", "scene_road_ahead"}
 for _oid, _stem, _grants in ORIGINS:
     SCENES["scene_vignette_%s" % _oid[len("origin_"):]] = vignette(_stem)
     ELSEWHERE.add("scene_vignette_%s" % _oid[len("origin_"):])
@@ -296,7 +301,8 @@ def story_catalog():
     bid, stem, source = STANDING
     standing = doc.sub("story_beat_data", "BEAT_%s" % bid, [
         ("id", sn(bid)), ("objective_key", sn("STORY_BEAT_%s_OBJECTIVE" % stem)),
-        ("reveal_layer", 1), ("source", '"%s"' % source), ("terminal", "true")])
+        ("reveal_layer", 1), ("source", '"%s"' % source),
+        ("entry_scene_id", sn(ENTRY_SCENES.get(bid, ""))), ("terminal", "true")])
     act_one = doc.sub("story_chapter_data", "CH_act1", [
         ("id", sn("chapter_ke_vo_danh")), ("title_key", sn("STORY_CHAPTER_KE_VO_DANH_TITLE")),
         ("act", 1), ("max_reveal_layer", 3),

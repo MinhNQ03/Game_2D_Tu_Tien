@@ -71,10 +71,12 @@ func _view() -> QuestJournalView:
 
 # === The purpose line ==============================================================
 
-func test_the_plaque_says_what_the_player_is_about_or_nothing() -> void:
+func test_the_plaque_always_says_what_the_player_is_about() -> void:
 	_use_language("vi")
 	var hud := _hud()
-	assert_eq(hud.purpose_text(), "", "with no quest view the line is hidden")
+	assert_eq([hud.purpose_text(), hud.purpose_source()],
+		["Đường còn mở", GameplayHUD.PURPOSE_FROM_PLACE],
+		"with nothing to go on the line is a plain one about the road - never blank (Q19-03)")
 	var view := _view()
 	hud.set_quest_view(view)
 	assert_eq(hud.purpose_text(), "Trao thuốc cho Kha Thản",
@@ -91,9 +93,67 @@ func test_the_plaque_says_what_the_player_is_about_or_nothing() -> void:
 	assert_eq(hud.purpose_text(), "See if wolves hold the vein", "a language change relabels it")
 	view.purpose_key = &""
 	hud.set_quest_view(view)
-	assert_eq(hud.purpose_text(), "", "nothing on offer and nothing under way: hidden again")
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_PLACE,
+		"nothing on offer and nothing under way: back to the plain line")
 	hud.set_quest_view(QuestJournalView.make_empty())
-	assert_eq(hud.purpose_text(), "", "no quest session: hidden")
+	assert_eq(hud.purpose_text(), "The road is open", "no quest session: still not blank")
+	_use_language("vi")
+	free_node(hud)
+
+
+## Phase 20 (D-072 §9): one line, three sources, in order. A quest the player has TAKEN ON
+## outranks the story; the story outranks a quest merely on offer; the road is the last resort.
+func test_the_purpose_line_is_arbitrated_quest_then_story_then_road() -> void:
+	_use_language("vi")
+	var hud := _hud()
+	var story := ChronicleView.new()
+	story.available = true
+	story.objective_key = &"STORY_BEAT_ARRIVAL_OBJECTIVE"
+	hud.set_chronicle_view(story)
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_STORY, "only a story: the story")
+	var quests := QuestJournalView.new()
+	quests.available = true
+	quests.purpose_key = &"QUEST_UNQUIET_VEIN_LEAD"
+	quests.purpose_phase = QuestData.Phase.AVAILABLE
+	hud.set_quest_view(quests)
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_STORY,
+		"a quest merely on offer does not talk over what the story asks next")
+	quests.purpose_key = &"QUEST_UNQUIET_VEIN_GOAL"
+	quests.purpose_phase = QuestData.Phase.ACTIVE
+	hud.set_quest_view(quests)
+	assert_eq([hud.purpose_source(), hud.purpose_text()],
+		[GameplayHUD.PURPOSE_FROM_QUEST, "Xem Vụ Lang có bám mạch rừng"],
+		"a quest taken on is the most urgent thing")
+	story.objective_key = &""
+	hud.set_chronicle_view(story)
+	quests.purpose_key = &"QUEST_UNQUIET_VEIN_LEAD"
+	quests.purpose_phase = QuestData.Phase.AVAILABLE
+	hud.set_quest_view(quests)
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_QUEST,
+		"with the story silent, a quest on offer is better than the road")
+	hud.set_quest_view(QuestJournalView.make_empty())
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_PLACE, "and then the road")
+	assert_ne(hud.purpose_text(), "", "never blank")
+	free_node(hud)
+
+
+## Every objective the shipped story can put on the plaque fits its ONE row, in both languages.
+func test_every_shipped_story_objective_fits_one_row_in_both_languages() -> void:
+	var catalog := load("res://data/story/story_catalog.tres") as StoryCatalogData
+	var hud := _hud()
+	var view := ChronicleView.new()
+	view.available = true
+	var label := hud.find_child("Purpose", true, false) as Label
+	for code: String in ["vi", "en"]:
+		_use_language(code)
+		for beat in catalog.all_beats():
+			view.objective_key = beat.objective_key
+			hud.set_chronicle_view(view)
+			await scene_tree.process_frame
+			var needed := label.get_theme_font("font").get_string_size(label.text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
+			assert_true(needed <= label.size.x + 0.5, "[%s] '%s' needs %.0f px and has %.0f"
+				% [code, label.text, needed, label.size.x])
 	_use_language("vi")
 	free_node(hud)
 

@@ -490,6 +490,7 @@ id = &"beat_standing"
 objective_key = &"STORY_BEAT_STANDING_OBJECTIVE"
 reveal_layer = 1
 source = "NARRATIVE_MASTER_PLAN.md §8 Act I: KẺ VÔ DANH"
+entry_scene_id = &"scene_road_ahead"
 terminal = true
 
 [sub_resource type="Resource" id="CH_act1"]

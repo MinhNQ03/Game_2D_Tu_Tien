@@ -93,8 +93,9 @@ func test_real_quest_flow() -> void:
 	var hub: Node = router.call("get_current_scene")
 	var hud := _find_hud(hub)
 	_panel = hud.dialogue_panel()
-	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_LEAD"),
-		"at spawn the place plaque says where to go ('%s')" % hud.purpose_text())
+	# Phase 20 (D-072 addendum K): a quest nobody has taken on no longer talks over the story.
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_STORY,
+		"at spawn the plaque says what the story asks ('%s')" % hud.purpose_text())
 	assert_eq([service.phase_of(VEIN), service.phase_of(PILLS)],
 		[QuestData.Phase.AVAILABLE, QuestData.Phase.AVAILABLE],
 		"and nothing was taken on the player's behalf")
@@ -140,7 +141,8 @@ func test_real_quest_flow() -> void:
 	await _say(&"shen_task_decline", &"shen_hub")
 	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE, "declined: still on offer")
 	assert_eq(quests.to_dict()["quests"], {}, "with no record anywhere")
-	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_LEAD"), "the lead still stands")
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_STORY,
+		"declined: the plaque is still the story's, not a task the player turned down")
 	_step("3. the ask was heard and DECLINED with real keys; nothing changed")
 
 	# --- 4. ask again; ACCEPT ---------------------------------------------------------------
@@ -221,7 +223,8 @@ func test_real_quest_flow() -> void:
 	await _say(&"shen_task_abandon", &"shen_task_released")
 	assert_eq(service.phase_of(VEIN), QuestData.Phase.AVAILABLE, "given back with real keys")
 	assert_true(_t(loc, "QUEST_UNQUIET_VEIN_TITLE") in hud.notice_text(), "and said so")
-	assert_eq(hud.purpose_text(), _t(loc, "QUEST_UNQUIET_VEIN_LEAD"), "the plaque is a lead again")
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_STORY,
+		"given back: the plaque returns to the story")
 	await _press_until(INTERACT, func() -> bool: return not _dialogue.is_open())
 	await _talk_to(player, hub, shen, Vector2(70, 6))
 	await _advance_to(&"shen_hub")
@@ -381,7 +384,9 @@ func test_real_quest_flow() -> void:
 		affinity + 15, "his affinity moved in the relationship graph")
 	assert_eq(npcs.standing_for(npcs.get_service().catalog().shop_of_keeper(KO)).value,
 		affinity + 15, "the very number his shop prices on")
-	assert_eq(hud.purpose_text(), "", "nothing is left to be about: the plaque line is gone")
+	assert_eq(hud.purpose_source(), GameplayHUD.PURPOSE_FROM_STORY,
+		"both quests done: the plaque is the story's again, and never blank (Q19-03)")
+	assert_ne(hud.purpose_text(), "", "it says something")
 	await _press_until(INTERACT, func() -> bool: return not _dialogue.is_open())
 	await _talk_to(player, field, ko, Vector2(78, 4))
 	await _advance_to(&"ko_hub")

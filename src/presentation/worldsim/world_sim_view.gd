@@ -47,6 +47,12 @@ var last_event_magnitude: int = 0
 ## The tick the event happened on, so the HUD can say how long ago it was in world time.
 var last_event_tick: int = 0
 
+## Who the event was about, as the feed names them (an instance id; "" when it names nobody),
+## and — filled by whoever pushes the view and can ask the character registry — their name.
+## Without a name the line has no subject and says only that "something rose" (AUD-09).
+var last_event_target_id: StringName = &""
+var last_event_who_key: StringName = &""
+
 
 ## The "there is no simulation" view. A valid object with `available == false`, never null, so
 ## the HUD never has to null-check before reading.
@@ -73,6 +79,7 @@ static func make(state: WorldSimulationState) -> WorldSimView:
 		view.last_event_kind_key = WorldSimEventData.kind_name_key(int(latest.get("kind", 0)))
 		view.last_event_magnitude = int(latest.get("magnitude", 0))
 		view.last_event_tick = int(latest.get("tick", 0))
+		view.last_event_target_id = StringName(String(latest.get("target_id", "")))
 	return view
 
 

@@ -240,6 +240,22 @@ func _capture_the_night(main: Node) -> void:
 		player.global_position = Vector2(612, 364)  # staging: at the weighted sheet
 	await _settle()
 	await _shot("25_morning_sheet_under_the_stele")
+	# The Chronicle, page by page, as the run stands this morning.
+	var router := root.get_node_or_null("SceneRouter")
+	var here: Node = router.call("get_current_scene") if router != null else null
+	var hud: Node = here.get_node_or_null("GameplayHUD") if here != null else null
+	var book: ChroniclePanel = hud.call("chronicle_panel") if hud != null else null
+	if book == null:
+		push_error("[capture] no Chronicle to capture")
+		_failed = true
+		return
+	book.reset_page()
+	book.visible = true
+	for page in ChroniclePanel.PAGES.size():
+		await _settle()
+		await _shot("26_chronicle_page_%d" % (page + 1))
+		book.advance_page()
+	book.visible = false
 
 
 func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:

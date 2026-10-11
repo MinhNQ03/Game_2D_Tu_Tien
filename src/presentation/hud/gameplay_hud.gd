@@ -62,6 +62,7 @@ const CULTIVATE_ACTION := &"cultivate"
 const INVENTORY_ACTION := &"inventory"
 const PET_SUMMON_ACTION := &"pet_summon"
 const QUEST_JOURNAL_ACTION := &"quest_journal"
+const CHRONICLE_ACTION := &"chronicle"
 
 ## The player asked to use an item from the bag (Phase 13). The HUD decides nothing: MapBase
 ## forwards it to WorldRuntime → InventoryRuntime.
@@ -116,6 +117,11 @@ var _world_event_label: Label
 ## The ONE line of purpose under the place and the date (Phase 19): what the player is about.
 ## Orientation, like the two lines above it — not a quest-tracker widget.
 var _purpose_label: Label
+const PURPOSE_FROM_QUEST := &"quest"
+const PURPOSE_FROM_STORY := &"story"
+const PURPOSE_FROM_PLACE := &"place"
+const PURPOSE_FALLBACK_KEY := &"UI_PURPOSE_OPEN"
+var _purpose_source: StringName = PURPOSE_FROM_PLACE
 var _portrait: TextureRect
 ## The player's health gauge (Phase 09). Hidden until a health value arrives, so a HUD built
 ## outside a combat session shows no gauge rather than a full bar for health nothing owns.
@@ -208,6 +214,10 @@ var _faction_panel: FactionPanel
 ## action, never modal, closed with them by Esc and by a threat.
 var _quest_panel: QuestJournalPanel
 var _quest_view: QuestJournalView = null
+## The Chronicle (Phase 20): the one reading book for the story, the self, knowledge and
+## people. LEFT column (where the politics panel opens): one reading surface per side.
+var _chronicle_panel: ChroniclePanel
+var _chronicle_view: ChronicleView = null
 # The inventory panel (Phase 13): a MODAL reading surface — while open the HUD holds a UI_MODAL
 # input context so the move keys choose a row instead of walking the player.
 var _inventory_panel: InventoryPanel
@@ -830,6 +840,12 @@ func _build_ui() -> void:
 	_bound_side_panel(_quest_panel, false)
 	_quest_panel.visible = false
 	root.add_child(_quest_panel)
+
+	_chronicle_panel = ChroniclePanel.new()
+	_chronicle_panel.name = "ChroniclePanel"
+	_bound_side_panel(_chronicle_panel, true)
+	_chronicle_panel.visible = false
+	root.add_child(_chronicle_panel)
 
 
 ## Anchor a toggleable side panel as a BOUNDED BOX defined by the screen, not by its content.
@@ -1545,14 +1561,29 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _faction_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", FACTION_PANEL_ACTION):
 		_faction_panel.visible = not _faction_panel.visible
+		if _faction_panel.visible and _chronicle_panel != null:
+			_chronicle_panel.visible = false  # one reading surface on the left
+		handled = true
+	# The Chronicle's key opens it, turns the page, and closes it after the last page.
+	if _chronicle_panel != null \
+			and _input.call("is_gameplay_action_just_pressed", CHRONICLE_ACTION):
+		if not _chronicle_panel.visible:
+			_chronicle_panel.reset_page()
+			_chronicle_panel.visible = true
+			if _faction_panel != null:
+				_faction_panel.visible = false
+		elif not _chronicle_panel.advance_page():
+			_chronicle_panel.visible = false
 		handled = true
 	# Esc steps BACK one level (PX-4). A reading panel that is open closes; only with nothing
 	# open does it ask about leaving — and asking is all one press can do.
 	if not handled and _input.call("is_system_action_just_pressed", OPEN_MENU_ACTION):
-		if is_sect_panel_open() or is_faction_panel_open() or is_quest_journal_open():
+		if is_sect_panel_open() or is_faction_panel_open() or is_quest_journal_open() \
+				or is_chronicle_open():
 			_sect_panel.visible = false
 			_faction_panel.visible = false
 			_quest_panel.visible = false
+			_chronicle_panel.visible = false
 		else:
 			_show_session_prompt(PROMPT_LEAVE)
 		handled = true
@@ -1570,6 +1601,8 @@ func _close_side_panels() -> void:
 		_faction_panel.visible = false
 	if _quest_panel != null:
 		_quest_panel.visible = false
+	if _chronicle_panel != null:
+		_chronicle_panel.visible = false
 	close_inventory()
 	# A fight ends a conversation: ask the shop's owner to close it.
 	if _shop_modal:
@@ -1901,6 +1934,22 @@ func set_quest_view(view: QuestJournalView) -> void:
 	_refresh_purpose()
 
 
+## Push the Chronicle view (Phase 20): the book's pages and the story's line of purpose.
+func set_chronicle_view(view: ChronicleView) -> void:
+	_chronicle_view = view
+	if _chronicle_panel != null:
+		_chronicle_panel.set_view(view)
+	_refresh_purpose()
+
+
+func is_chronicle_open() -> bool:
+	return _chronicle_panel != null and _chronicle_panel.visible
+
+
+func chronicle_panel() -> ChroniclePanel:
+	return _chronicle_panel
+
+
 func is_quest_journal_open() -> bool:
 	return _quest_panel != null and _quest_panel.visible
 
@@ -1919,15 +1968,37 @@ func purpose_text() -> String:
 func _refresh_purpose() -> void:
 	if _purpose_label == null:
 		return
-	var shown := _quest_view != null and _quest_view.available \
-		and _quest_view.purpose_key != &""
-	_purpose_label.visible = shown
-	if not shown:
-		_purpose_label.text = ""
-		return
-	_purpose_label.text = _resolve(_quest_view.purpose_key)
+	# ONE line, never blank (D-072 §9, closes Q19-03). In order: a quest the player has taken
+	# on (ready to answer first); else what the story asks next; else a quest on offer; else a
+	# plain line about the road. Derived from the views the owners push; nothing is stored.
+	var quest_key: StringName = _quest_view.purpose_key \
+		if _quest_view != null and _quest_view.available else &""
+	var quest_phase: int = _quest_view.purpose_phase if quest_key != &"" else -1
+	var story_key: StringName = _chronicle_view.objective_key \
+		if _chronicle_view != null and _chronicle_view.available else &""
+	var taken_on := quest_phase == QuestData.Phase.ACTIVE or quest_phase == QuestData.Phase.READY
+	var key := PURPOSE_FALLBACK_KEY
+	_purpose_source = PURPOSE_FROM_PLACE
+	if quest_key != &"" and taken_on:
+		key = quest_key
+		_purpose_source = PURPOSE_FROM_QUEST
+	elif story_key != &"":
+		key = story_key
+		_purpose_source = PURPOSE_FROM_STORY
+	elif quest_key != &"":
+		key = quest_key
+		_purpose_source = PURPOSE_FROM_QUEST
+	_purpose_label.visible = true
+	_purpose_label.text = _resolve(key)
+	_purpose_label.tooltip_text = _purpose_label.text
 	_purpose_label.add_theme_color_override("font_color", UIPalette.COLOR_ACCENT
-		if _quest_view.purpose_phase == QuestData.Phase.READY else UIPalette.COLOR_TEXT)
+		if _purpose_source == PURPOSE_FROM_QUEST and quest_phase == QuestData.Phase.READY
+		else UIPalette.COLOR_TEXT)
+
+
+## Where the purpose line's words come from right now — for tests.
+func purpose_source() -> StringName:
+	return _purpose_source
 
 
 func is_sect_panel_open() -> bool:
@@ -1996,6 +2067,11 @@ func _refresh_world_sim() -> void:
 	var subject := _resolve(_world_sim_view.last_event_kind_key)
 	var template := "UI_HUD_WORLD_EVENT_ROSE" if _world_sim_view.last_event_magnitude >= 0 \
 		else "UI_HUD_WORLD_EVENT_FELL"
+	if _world_sim_view.last_event_who_key != &"":
+		# The line names its subject (AUD-09): whose standing or ties moved.
+		_world_event_label.text = _text_args(template + "_WHO", {"subject": subject,
+			"who": _resolve(_world_sim_view.last_event_who_key)})
+		return
 	_world_event_label.text = _text_args(template, {"subject": subject})
 
 
