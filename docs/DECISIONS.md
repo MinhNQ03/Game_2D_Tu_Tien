@@ -5843,12 +5843,13 @@ road ahead is told once, after he has finished speaking; the standing Act-I purp
 
 ## D-073 — Post-Phase-20 experience hardening: the bridge, the choice transaction, the Night shown, the book that explains
 
-**Status:** Gate A — decided before any code of this pass (Checkpoint 0, docs only), on
-`hardening/pre-phase21-experience`, base `4dd38ec` (`origin/main`; 15 gates, 1188 tests, CI
-run 38132418506 green on that exact SHA). **Not a phase.** Phase 20 stays DONE under D-072;
-Phase 21 and 22 are not started and nothing here builds them. Findings, evidence, checkpoints
-and the debt register are in `docs/handoff/pre-phase-21-hardening.md`. This status line is
-rewritten when the pass closes.
+**Status:** DONE. Decided at Gate A before any code of this pass (Checkpoint 0, docs only),
+on `hardening/pre-phase21-experience`, base `4dd38ec` (`origin/main`; 15 gates, 1188 tests,
+CI run 38132418506 on that SHA); built in five checkpoints (1224 tests, 50 mutations red,
+the real window in four combinations). **Not a phase.** Phase 20 stays DONE under D-072;
+Phase 21 and 22 are not started and nothing here builds them. Findings, evidence, the CI run
+of each checkpoint and the debt register are in `docs/handoff/pre-phase-21-hardening.md`;
+what building changed in these decisions is in the three addenda below.
 
 **Why a record is needed.** Four things in this pass are decisions a later reader would ask
 "why" about: a named place enters the world (canon grows by one location), the story's choice

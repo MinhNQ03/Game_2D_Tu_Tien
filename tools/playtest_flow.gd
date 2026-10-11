@@ -104,6 +104,7 @@ func _run() -> void:
 	await _step_encounter(main)
 	await _step_hunt_round_obstacle(main)
 	await _step_natural_encounter(main)
+	await _step_act_one_bridge(main)
 	await _step_return_to_menu(main)
 
 	_write_report()
@@ -1361,6 +1362,140 @@ func _step_natural_encounter(main: Node) -> void:
 		return player.global_position.distance_to(before_move) > 1.0)
 	_record("21_play_continues", "the player can keep moving after the encounter",
 		"moved=%.1fpx" % player.global_position.distance_to(before_move), moved, started)
+
+
+## THE ACT-I BRIDGE (D-073): after the prologue the player has something to DO. The prologue
+## itself is staged through the story's owner (each beat is driven with real keys by the Story
+## E2E); what is played HERE, in the real window with real keys, is the bridge: the sheet shown
+## to someone, the place the stake stood examined, the sealed door found.
+func _step_act_one_bridge(main: Node) -> void:
+	var started := Time.get_ticks_msec()
+	var story := RunKit.story_of(main)
+	var world := main.get_node_or_null("Systems/WorldRuntime")
+	var knowledge := main.get_node_or_null("Systems/KnowledgeRuntime")
+	var dialogue := main.get_node_or_null("Systems/DialogueRuntime")
+	var router := root.get_node_or_null("SceneRouter")
+	var loc := root.get_node_or_null("Localization")
+	if story == null or world == null or knowledge == null or dialogue == null or router == null:
+		_record("21a_bridge_shown", "a story, a world and a dialogue runtime", "missing", false,
+			started)
+		return
+	# --- staging: the prologue, through its owner (a setup, declared as one) -----------------
+	world.call("request_map_transition", &"map_hub", &"from_field")
+	await _settle()
+	var service := story.get_service()
+	for who: StringName in [&"actor_elder_shen", &"actor_disciple_lin", &"actor_carter_te"]:
+		story.meet(who)
+	story.set_flag(&"flag_heard_village_business", 1)
+	story.choose(&"choice_lam_readings", &"kept")
+	RunKit.skip_scenes(main)
+	world.call("request_map_transition", &"map_field", &"from_hub")
+	await _settle()
+	RunKit.skip_scenes(main)
+	await _settle()
+	world.call("request_map_transition", &"map_hub", &"from_field")  # withdrawing answers it
+	await _settle()
+	RunKit.skip_scenes(main)
+	story.set_flag(&"flag_heard_elder_account", 1)
+	story.note_cultivated()
+	knowledge.call("grant", &"know_survey_fragment", &"source_survey_sheet")
+	story.set_flag(&"flag_heard_road_ahead", 1)
+	await _settle()
+	RunKit.skip_scenes(main)
+	await _settle()
+	var staged := service.state().beat_id == &"beat_whose_hand"
+	var hub: Node = router.call("get_current_scene")
+	var hud := _find_hud(hub)
+	var player := _player_of(hub)
+	var lin := hub.get_node_or_null("Interactables/LinYue") as Node2D
+	if not staged or hud == null or player == null or lin == null:
+		_record("21a_bridge_shown", "Act I staged with the sheet in hand",
+			"beat=%s" % service.state().beat_id, false, started)
+		return
+	# --- real keys: walk to her, open on the sheet, show it ----------------------------------
+	var purpose_before := String(hud.call("purpose_text"))
+	player.global_position = lin.global_position + Vector2(-30, 0)  # staging: beside her
+	await _settle()
+	await _hold_action(&"move_right", func() -> bool:
+		return hub.call("active_interactable") == lin)
+	await _press_until(&"interact", func() -> bool: return bool(dialogue.call("is_open")))
+	var opened_on := StringName(dialogue.call("current_node_id"))
+	var panel: Node = hud.call("dialogue_panel")
+	var offered: Array = panel.call("choice_ids")
+	var ask_shot := await _shot("21a_whom_to_show")
+	for _i in 8:
+		if panel.call("selected_choice_id") == &"lin_show":
+			break
+		await _tap(&"move_down")
+		await process_frame
+	await _press_until(&"interact", func() -> bool:
+		return dialogue.call("current_node_id") == &"lin_sheet_read")
+	var shown := service.state().option_of(&"choice_sheet_shown")
+	await _shot("21a_she_reads_it")
+	dialogue.call("leave")
+	await _settle()
+	_record("21a_bridge_shown", "after the farewell the plaque asks who wrote the sheet; "
+		+ "Lâm Nguyệt opens on it; ONE real answer records who saw it first and the plaque "
+		+ "moves on to the stake",
+		"setup{prologue=staged} purpose_before='%s' opened_on=%s offered=%s shown=%s beat=%s "
+		% [purpose_before, opened_on, str(offered), shown, service.state().beat_id]
+		+ "purpose_after='%s'" % String(hud.call("purpose_text")),
+		opened_on == &"lin_trail" and offered.has(&"lin_show") and shown == &"lin"
+			and service.state().beat_id == &"beat_stake_line"
+			and purpose_before == String(loc.call("t", "STORY_BEAT_WHOSE_HAND_OBJECTIVE")),
+		started, ask_shot)
+
+	# --- real keys: the woods — where the stake stood, then the door ---------------------------
+	started = Time.get_ticks_msec()
+	world.call("request_map_transition", &"map_field", &"from_hub")
+	await _settle()
+	await _settle()
+	var field: Node = router.call("get_current_scene")
+	hud = _find_hud(field)
+	player = _player_of(field)
+	var socket := field.get_node_or_null("KnowledgeSources/StakeSocket") as Node2D
+	var seal := field.get_node_or_null("KnowledgeSources/ShaftSeal") as Node2D
+	var core: KnowledgeService = knowledge.call("get_service")
+	if socket == null or seal == null or player == null or hud == null:
+		_record("21b_bridge_walked", "a socket and a sealed door in the woods", "missing", false,
+			started)
+		return
+	player.global_position = socket.global_position + Vector2(40, 0)  # staging: beside it
+	await _settle()
+	var reached_socket := await _hold_action(&"move_left", func() -> bool:
+		return field.call("active_knowledge_source") == socket)
+	var socket_shot := await _shot("21b_where_the_stake_stood")
+	await _press_until(&"interact", func() -> bool: return core.knows(&"know_stake_socket"))
+	var after_socket := service.state().beat_id
+	player.global_position = seal.global_position + Vector2(0, 34)  # staging: below the door
+	await _settle()
+	_send_key(&"move_up", true)
+	for _i in 90:
+		await physics_frame
+	_send_key(&"move_up", false)
+	await _settle()
+	var stopped_at := player.global_position.y
+	var at_the_door: bool = field.call("active_knowledge_source") == seal
+	var door_shot := await _shot("21b_the_sealed_door")
+	await _press_until(&"interact", func() -> bool: return core.knows(&"know_sealed_shaft"))
+	var told := story.is_scene_playing()
+	await _settle()
+	await _shot("21b_the_door_caption")
+	await _press_until(&"interact", func() -> bool: return not story.is_scene_playing())
+	await _settle()
+	var purpose_after := String(hud.call("purpose_text"))
+	_record("21b_bridge_walked", "a held move key walks onto the socket and a real interact "
+		+ "examines it; a held move key is STOPPED by the door; a real interact reads its "
+		+ "seal; the story says so once and rests on a purpose that names the door",
+		"setup{placements=2} reached_socket=%s after_socket=%s stopped_y=%.1f sill_y=%.1f "
+		% [reached_socket, after_socket, stopped_at, seal.global_position.y]
+		+ "at_the_door=%s told=%s beat=%s purpose='%s' shots=%s"
+		% [at_the_door, told, service.state().beat_id, purpose_after, socket_shot],
+		reached_socket and after_socket == &"beat_ruts"
+			and stopped_at > seal.global_position.y - 12.0 and at_the_door and told
+			and service.state().beat_id == &"beat_standing"
+			and purpose_after == String(loc.call("t", "STORY_BEAT_STANDING_OBJECTIVE")),
+		started, door_shot)
 
 
 func _step_return_to_menu(main: Node) -> void:

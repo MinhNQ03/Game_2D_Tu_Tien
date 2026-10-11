@@ -1,10 +1,10 @@
 # Handoff — Post-Phase-20 experience hardening / pre-Phase-21 gate (D-073)
 
-> **Status: IN PROGRESS — Checkpoints 1–3 built (the bridge, the choice transaction, the Night shown, the Chronicle, the cultivate rule).** This is a bounded quality pass
-> between two phases. **It is not a phase.** Phase 20 (Story) is and stays **DONE** under D-072;
-> Phase 21 (Dungeon) and Phase 22 (Boss) are **NOT STARTED** and nothing here builds them.
-> A section marked *planned* is what Gate A decided and has not been built yet; *built* means
-> it is on the branch with its tests. The status line and §12 are rewritten at close.
+> **Status: DONE — all five checkpoints built, every local gate green, the capture matrix
+> opened.** This was a bounded quality pass between two phases. **It is not a phase.**
+> Phase 20 (Story) is and stays **DONE** under D-072; Phase 21 (Dungeon) and Phase 22 (Boss)
+> are **NOT STARTED** and nothing here builds them. Not merged: integration is the owner's
+> (§14). **No person has played this build** — see H21-14 and the checklist in §11.
 
 ## 1. Baseline (verified, not assumed)
 
@@ -306,22 +306,69 @@ until a person has played it.
 | 0 | Audit, Gate A, D-073, status drift corrected. No gameplay code | `1fa3011` | 38134053360 — success, `head_sha` `1fa3011e53ddfe1fb7e88fafd24b3727a67bd71d` |
 | 1 | The Act-I bridge and the choice transaction | `7f900c9` | 38135850806 — success, `head_sha` `7f900c9b075e487def943e1d07016631dbbd7f48` |
 | 2 | The Night: ambience, the wreck, the socket and track, the creatures | `b857b4d` | 38146160332 — success, `head_sha` `b857b4d8187889ff9a61be11a05d295884e20186` |
-| 3 | The Chronicle and the cultivate / recovery rule | *(this commit)* | recorded by the next commit |
-| 4 | Full regression, the capture matrix, docs, debt register, Phase-21 handoff | | |
+| 3 | The Chronicle and the cultivate / recovery rule | `2547b4e` | 38148365891 — success, `head_sha` `2547b4efb041a317e252a93c44e04647cd4c6d27` |
+| 4 | Full regression, the capture matrix, docs, debt register, Phase-21 handoff | *(this commit)* | verified with `gh` on that exact SHA and reported in the closing message; a commit cannot name its own run |
 
-## 10. The Phase-21 handoff (*filled at close; the lead as designed*)
+## 10. The Phase-21 handoff (what the dungeon is authored AGAINST)
 
-- **The lead.** The Survey Shaft (*Hầm Khảo Mạch*) in the north-east rocks of Rừng Vỡ Mạch:
-  on paper sealed since winter, in fact used within days of the Night.
-- **Why go in.** The rest of the survey the player holds one page of; and whatever was being
-  brought out of it in crates.
-- **Access.** Legible before passable (`MAP_DUNGEON_DESIGN.md` §3 rule 2): the bar is cut for
-  the head of a surveyor's rod. Kept faith → Lâm Nguyệt still has a rod. Told → hers is in the
-  elder's keeping. Both must reach the same door; how each gets a rod is Phase 21's to author.
-- **Must reuse.** `StoryService` (beats, choices, flags), `StoryPresence`, the encounter seam
-  (`StoryBeatData.encounter_*`, tagged spawn tables), `CombatRuntime.spawn_from_table`,
-  `RewardLedger`, the Knowledge Core, the ambience seam (a shaft is dark by the same data), the
-  Chronicle. Debts it already owns: CLV-01, NAV-01.
+**Where the player stands when Phase 21 begins.** In front of a boarded, sealed door in the
+north-east rocks of Rừng Vỡ Mạch, holding one page of a survey, knowing what kind of key the
+door takes, and having decided who saw the page first. The story rests on `beat_standing`
+(*Tìm thước mở Hầm Khảo Mạch*). Phase 21 continues FROM that beat: its first beat is the next
+entry in `ACT_ONE`, and `beat_standing` stays the story's resting beat at the end of whatever
+it adds.
+
+**The lead.** The Survey Shaft (*Hầm Khảo Mạch*, reserved id `dungeon_survey_shaft`,
+`CANON_LEDGER.md` CL-11): the fourth point of the Thanh Đài survey line. On paper sealed
+since winter; in fact used within days of the Night (fresh wax, wheel ruts to the sill).
+
+**Why the player goes in (narrative).** The rest of the survey they hold one page of — the
+field book the old surveyor kept where he measured, never in the hall. **Why they go in
+(gameplay).** The first authored, concentrated challenge: the place the vein was actually
+drawn from, where the woods' creatures are what the Night made of them.
+
+**What the dungeon may establish, and what it may not.** It may show THAT the shaft was
+worked and what was taken out (reveal layer 2: *someone caused it* — evidence, not a
+confession). It may not name the Vân Hải buyer, the heterodox group, the Thiên Khế or the Tà
+Đế, and it may not have a character explain the lie (`NARRATIVE_MASTER_PLAN.md` §9; D-072 §5).
+What is found is INFORMATION — the survey — not power.
+
+**Access (legible before passable — already true in the build).**
+
+| Run | State the conditions read | How the door opens (to author) |
+|---|---|---|
+| kept Lâm Nguyệt's confidence | `flag_lam_settled` = 1; she has said "I still have mine… when they are gone, I go down with you" if told of the door (`flag_lin_shaft_said`) | she brings the rod: a companion-at-the-door beat, not a key item in the bag |
+| told the elder | `flag_lam_settled` = 2; her rod is "in the elder's chest" | the rod must be earned back or taken — a different first beat that reaches the SAME door |
+| who saw the sheet first | `choice_sheet_shown` (lin / ko / shen) | colours who is on the player's side at the door; must not gate entry |
+
+No level gate (`MAP_DUNGEON_DESIGN.md` §3). At least one gate is the rod (item / story); a
+second may be knowledge (`know_surveyors_line` / `know_sealed_shaft` are already held).
+
+**Exit and revisit.** A way out at any time (ROADMAP Phase-21 contract); leaving mid-way is a
+recorded state of the INSTANCE, not of the story. Revisit reasons to author (≥ 2,
+`MAP_DUNGEON_DESIGN.md` §9): the book is found in parts; a sealed lower level that a later
+realm can stand in.
+
+**The boss (Phase 22) — narrative purpose only.** Whatever the over-drawn vein made of the
+thing that lived nearest it: the Night's creatures' cue (raised hackles, the vein's light) is
+the visual seed, and its defeat must have a post-boss WORLD consequence (the shaft can be
+read; the outpost can no longer say it was sealed) — recorded per player.
+
+**Contracts it must reuse, not rebuild.**
+
+| Need | Use | Not |
+|---|---|---|
+| beats, choices, flags | `StoryService` via `tools/author_story_data.py`; a choice with consequences is prepared with its owners (D-073 §2) | a quest-side copy of a story flag |
+| "this exists because of the story" | `StoryPresence`; layout `story_props`; `WorldItem.appears_with_flag` | a second map version |
+| an encounter with an outcome | `StoryBeatData.encounter_*` + a TAGGED spawn table → `CombatRuntime.spawn_from_table`; the answer recorded by `StoryRuntime.choose` | a global `boss_defeated` / `dungeon_cleared` boolean — an outcome belongs to an INSTANCE with its own id and to the player who was in it |
+| a creature seen differently | `EnemySpawnTableData.visual_profile` | a second `EnemyData` with copied rules |
+| how the place is lit | `StoryBeatData.ambience_id` + a new entry under `ambience.states` in the Visual DNA (a shaft is dark by the same data) | a tint in a scene or a script |
+| rewards | the ONE `RewardLedger`; drops (Phase 21 owns them) paid through it | a second XP / currency / item owner |
+| what the player reads back | the Chronicle (records, people, knowledge) | a dungeon journal |
+| the instance | a dungeon runtime under `Main/Systems` (ROADMAP) holding INSTANCE state | an autoload; story state in the instance |
+
+Debts it already owns: **CLV-01**, **NAV-01** (the shaft is the first concave space a creature
+must path through), and **H21-15** below.
 
 ## 11. Owner playtest checklist (to be played by a person; not done by this task)
 
@@ -346,6 +393,70 @@ repository root (no exported build exists yet). Start from New Game; no test-onl
    about the survey. Time to first control, to first fight, to first mystery.
 
 ## 12. Evidence
+
+### Checkpoint 4 — full regression, the real window in four combinations, close-out
+
+**Local gates on the closing tree (all green).** `gdscript_lint` (selftest + scan, 362
+files) · `author_story_data.py --check` · `build.py ambience-check` · `--import` ·
+`parse_check` · boot smoke · the suite **1224 / 1224** · eight E2E flows (app, player, world,
+pet, NPC, dialogue, quest, story — the story flow at 20 real-key steps). 0 `SCRIPT ERROR`,
+0 leak lines in either wording, no "resources still in use", in every log.
+
+**Real-window playtest, real keys (`tools/playtest_flow.gd`).** Two steps were added for the
+bridge: `21a_bridge_shown` (walk to Lâm Nguyệt, she opens on the sheet, ONE real answer
+records it, the plaque moves on) and `21b_bridge_walked` (a held move key onto the socket, a
+real examine; a held move key STOPPED by the door at y 194.6 against a sill at 192.0; a real
+examine; the scene; the standing purpose). The prologue before them is staged through the
+story's owner and declared as a setup (each beat is driven with real keys by the Story E2E).
+
+| Language | Window | Steps | Result |
+|---|---|---|---|
+| vi | 1280×720 | 38 | 38 PASS |
+| en | 1280×720 | 38 | 38 PASS |
+| vi | 1280×800 | 38 | 38 PASS |
+| en | 1280×800 | 38 | 38 PASS |
+
+**Capture matrix (`tools/capture_ui.gd`), generated vs opened.** Scratch path, not
+committed. Every file's real dimensions were read back.
+
+| Combination | Files | Real size | Total |
+|---|---|---|---|
+| vi 1280×720 | 51 | all 1280×720 | 21.2 MB (150–989 KB each) |
+| en 1280×720 | 51 | all 1280×720 | 21.1 MB |
+| vi 1280×800 | 48 | all 1280×800 | 22.8 MB (the taller window needs three fewer Chronicle pages) |
+| en 1280×800 | 48 | all 1280×800 | 22.7 MB |
+
+**198 generated; OPENED and judged: 31** (the rest were not looked at and are not claimed).
+By the brief's eight categories:
+
+| # | Category | Opened (combination) | Seen |
+|---|---|---|---|
+| 1 | New Game / identity / Origins | `04b_identity_origin_3` (en 800) | "Who are you?", two looks with sprite and medallion, five Origins, the chosen one marked ◆ and the focused one framed, problem / gives / costs at the right, nothing clipped. Unchanged by this pass; the other Origin cards and the woman's sprite were NOT re-opened |
+| 2 | Arrival, people, dialogue | `32_act1_whom_to_show` (vi 720), `33_act1_she_reads_the_hand` (en 720) | Lâm Nguyệt's medallion, name, title and mood; her line in three rows inside the box; two answers; "Learned: The Surveyor's Line" above it; the plaque already reads "Look where the stake stood" |
+| 3 | The trust decision, held items | — | NOT opened in this pass (unchanged since Phase 20) |
+| 4 | Warning, Night, wind-up, wreck | `21_night_warning_caption` (vi 720), `22_night_rupture_caption` (vi 720), `23_night_wave_and_wreck` (vi 720, en 800); the wolf sheets at ×6 day and night | dusk, night, banded lantern pools, the vein's pool, the crested creatures next to the plain one, the wreck and its spill. The WIND-UP was seen only as sheet frames, not in the lit scene (H21-18) |
+| 5 | Morning, the removed stake | `25_morning_sheet_under_the_stele` (vi 720), `34_act1_where_the_stake_stood` (vi 720) | the village as authored; the pale raked socket with its collar where the stake stood |
+| 6 | Cultivation, the sheet, the farewell, the Act-I prompt | `37_act1_shaft_sealed_caption` (vi 720), `36_act1_the_survey_shaft` (vi 720, vi 800), `35_act1_wreck_and_old_track` (vi 720); the mid-swing notice read back from the HUD by the probe | the door clear of the plaque at both ratios, the track to its sill, the caption over the place, the standing purpose. The sitting itself was not captured |
+| 7 | Chronicle, journal, bag, dialogue controls | `26_chronicle_page_*`: story, self, body, people (vi 720, each after each fix), body (en 720), people (en 800) | every page inside its panel, no scrollbar, one-line titles, footers with the bound key; "Affinity: cold (-10)", "Trust: a little (+15)" in English. Journal and satchel were NOT re-opened |
+| 8 | Collision at altered props, combat after the book, back to menu | `21b_the_sealed_door` from the playtest (vi 720) | the player stopped at the sill with a wolf beside them and the health gauge down to 69 / 100: the door is solid, combat goes on, the strip still offers *Examine* |
+
+**Defects found by opening images in this pass** (each fixed, each with the test it lacked):
+the door under the place plaque; a socket that could not be found; the vein burnt out to
+white; a charcoal coat lost in the night; half of each Chronicle page unused; a crash when
+paging; a clipped last line and a scrollbar; a clipped title. None of the eight was visible
+to a green suite.
+
+**Player-facing review (protocol §3), in prose.** *Understandable?* The next thing to do is
+always on the plaque and always a place or a person. *Alive rather than scripted?* The Night
+now changes what is on screen in four distinct ways; the three people answer differently for
+what was done to them. *Predictable?* A refusal always says why. *Why did this happen to me?*
+The people page ties a number to the decision that moved it. *Does success mean something?*
+The bridge ends at a locked door — honest, but not a victory. *Aetheria rather than a demo?*
+A survey, a seal, a rod: the mystery is administrative, which is this world's kind.
+Scores (a review aid, not a rule): UX 4 · Visual 3 · Readability 4 · Performance 4 (counted,
+not profiled) · Maintainability 4. **Visual is 3**: the world's ground and trees are
+unchanged, the wreck's wheel reads as a slab (H21-17), the bite's wind-up was not judged in
+the night scene (H21-18), and whether any of it is ENGAGING is unknown (H21-14).
 
 ### Checkpoint 3 — the book that explains, and sitting down mid-swing (*built*)
 
@@ -633,9 +744,38 @@ anything left". (2) The wreck's standing wheel reads as a dark slab, like the wh
 
 | ID | Symptom and cost | Why not now | Owner | Closes when | Makes later work harder? |
 |---|---|---|---|---|---|
-| H21-15 | after all of a person's trail lines are said they still open on the trail line with only *Speak of something else*: one wasted press per talk | an opening's conditions are AND-only; "any line left" needs an OR or a derived flag, which is a dialogue-data change with its own tests | Dialogue data; Phase 21 (the first phase that adds the next lines to these people) | a test opens each of the three with every trail flag set and lands on the hub | no |
+| H21-14 | nobody but tools has played the opening: "engaging", pacing, attachment are UNPROVEN | it needs a person, not a tool | the project owner (checklist §11) | the owner has played it and written down the first point of confusion, any ignored key, and the three timings | yes if skipped: Phase 21 would build on an opening nobody has felt |
+| H21-15 | after all of a person's trail lines are said they still open on the trail line with only *Nói chuyện khác*: one wasted press per talk | an opening's conditions are AND-only; "any line left" needs an OR or a derived flag — a dialogue-data change with its own tests | Dialogue data; Phase 21 (the first phase that adds the next lines to these three people) | a test opens each of the three with every trail flag set and lands on the hub | no |
+| H21-16 | the old cart track passes within the cairn wolf's 170 px detect radius: reaching the door usually means a fight or a detour (seen in the real-window playtest: the wolf follows the player to the door) | it is the shipped creature in its shipped territory; moving either changes Phase-19 quest content and the Night's staging | Map / encounter design; Phase 21 (which authors the approach to its own entrance) | Phase 21's Gate A states whether the approach is meant to be contested and places the wolf or the track accordingly | no |
+| H21-17 | the wreck's standing wheel reads as a dark slab (as the whole cart's wheels do, seen edge-on by the top-down camera) | a wheel that reads as a wheel from this camera is a cart re-model, shared by the standing cart | art pipeline (`props3d.cart`, `cart_wreck`); Phase 25 (production polish) | both carts' wheels are judged readable at 1× in a real capture | no |
+| H21-18 | the wolf's wind-up under the night tint was looked at in stills, not as a motion strip | `capture_motion.gd` has no night scenario | presentation; Phase 22 (whose contract requires each telegraph in a motion strip) | a motion strip of the bite under `night` is opened and the wind-up frame is named | no |
+| H21-19 | no frame-time measurement of the 2D lights | no profiler session in this pass (Phase 29 owns profiling) | Phase 29 | PERF-NOTE-21 gains measured numbers | no |
+
+Closed by this pass: H21-01 … H21-13. Carried unchanged with their recorded owners: Q19-01,
+Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
 
 ## 14. Status
 
-Checkpoints 0–1. **Phase 20 is DONE (D-072). This pass is IN PROGRESS. Phase 21 and Phase 22
-are NOT STARTED.** No person has played the build.
+**This pass is DONE** against its ten criteria:
+
+1. Baseline recorded and protected (`4dd38ec`); one branch; `CLAUDE.md` never staged.
+2. Phase 20 is DONE everywhere it is mentioned; this is a pre-Phase-21 gate, not a phase.
+3. The prologue leads into a three-beat bridge that ends at a motivated lead; nothing is
+   revealed early; no dead-end objective.
+4. A story choice is all or nothing under an owner's refusal.
+5. The Night is shown: light, the wreck, the socket, creatures with their own silhouette;
+   bodies and interactables asserted.
+6. The Chronicle explains, has a character overview from its owners, keeps every record, is
+   taught once, owns nothing.
+7. Sitting down mid-swing was reproduced, decided and made clear; no input is swallowed.
+8. Tests, 50 mutations, all local gates and the four-combination real-window evidence are
+   above; CI on the final SHA is reported in the closing message.
+9. Six debts are recorded with owners (§13); no claim of human-tested fun.
+10. **Phase 21 and Phase 22 have not started.** §10 is what they are authored against.
+
+**Integration.** The branch `hardening/pre-phase21-experience` is pushed and NOT merged.
+`origin/main` was `4dd38ec` at the start and is not touched by this task; fast-forwarding
+`main` is the owner's step (the project's flow: the owner fast-forwards after closure).
+
+**The next action is a person's, not a tool's:** play §11's checklist once. Then author the
+Phase-21 Gate A against §10.

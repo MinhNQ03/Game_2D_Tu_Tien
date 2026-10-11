@@ -75,16 +75,24 @@
 >   its one store of flags exist, and ALL TWELVE prologue beats are playable with real keys:
 >   the people of Lạc Hà, the village's business, one decision about whom to trust, the Night,
 >   its morning, a first sitting, the torn survey sheet, and open Act-I play with a standing
->   purpose and a Chronicle (`docs/handoff/phase-20-story.md`). What that opening still lacks
->   as an EXPERIENCE is being closed by the pre-Phase-21 hardening pass (D-073,
->   `docs/handoff/pre-phase-21-hardening.md`), which is not a phase.
+>   purpose and a Chronicle (`docs/handoff/phase-20-story.md`).
+> - **Post-Phase-20 hardening (D-073, not a phase) — what it made live:** Act I opens on
+>   something to DO — show the torn sheet to one of three people first, examine where the
+>   survey stake stood, follow the old cart track to a boarded, sealed door (the Survey
+>   Shaft) — and rests there on a purpose that names the door and what it needs. The Night is
+>   SHOWN: dusk in the village, night in the woods, the broken vein's light, creatures with
+>   their hackles up, a wrecked cart. A story decision is all or nothing. The Chronicle says
+>   each regard in words, has a "body and path" page, pages its whole history, and its key is
+>   taught once. `cultivate` during a swing is refused in words
+>   (`docs/handoff/pre-phase-21-hardening.md`).
 >
 > **② FUTURE — design target, NOT implemented.**
 > - **Dungeons (21), bosses (22) and file-level save (23) do not exist.** The story's record
 >   is per session — it has an in-memory `to_dict()` / `from_dict()` boundary and no file —
 >   and so is quest progress. There are no loot tables or drops: a wolf still pays XP only.
-> - The rest of the prologue (`docs/NARRATIVE_MASTER_PLAN.md` §5, beats 4–12) and every act
->   after it are the design target; the branching flow below describes them.
+> - Act I beyond its three-beat bridge, and every act after it, are the design target; the
+>   branching flow below describes them. The Survey Shaft's door does not open: what is
+>   behind it is Phase 21's.
 > - Crafting, professions, a regional market and the wider economy are design only
 >   (`docs/ECONOMY_CRAFTING_DESIGN.md`); the one shop is the only trade that exists.
 > - `dodge` has a keyboard binding and no consumer — **a binding is not a system**.

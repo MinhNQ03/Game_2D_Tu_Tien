@@ -1310,6 +1310,35 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
 - Mutation-checked: 15 (pursuit) + 2 (budget) + 7 (calendar / layer), each red; see the
   handoff for the list.
 
+## Post-Phase-20 hardening (D-073) — the bridge, the transaction, the Night, the book
+
+Suite **1224** (was 1188); Story E2E **20** real-key steps (was 17); the real-window playtest
+**38** steps (was 36). 15 CI gates, unchanged. Mutations: 17 + 15 + 18 = **50 applied, 50
+red** — two of them (N14, K14) survived their first run and each got the test it lacked.
+
+| Invariant | Test |
+|---|---|
+| A story choice an owner cannot finish changes NOTHING: no record, no flag, no regard, no knowledge; and succeeds once when it can | `test_story_service.gd` (5: declined later owner, untaught knowledge, retry once, breach undone, an Origin's grant) |
+| What a real owner says it can do, it does (`RegardRules.can_move` ⇔ `move`, `KnowledgeService.can_grant` ⇔ `grant`) | `test_story_runtime.gd::test_what_a_real_owner_says_it_can_do_it_does` |
+| The shipped decision, refused whole on the real owners, then made once | `test_story_runtime.gd::test_a_shipped_decision_an_owner_cannot_finish_…` |
+| A refused decision keeps the conversation on its line and says why in words that exist in vi and en | `test_dialogue_runtime.gd::test_a_story_decision_an_owner_cannot_finish_keeps_the_line_…` |
+| Every Origin × (kept: 3 confidants / told: 2) × (stood / withdrew) = 50 runs reach the sealed door | `test_story_runtime.gd::test_every_origin_and_every_pair_of_decisions_reaches_act_one` |
+| The sheet cannot be shown before Act I; nobody opens on it before the farewell | same; `test_dialogue_content.gd::test_nobody_opens_on_the_sheet_…` |
+| Who offers what follows kept / told and stood / withdrew; her refusal records nothing and leaves two people | `test_dialogue_content.gd` (3 tests) |
+| The first showing is the decision; the others answer once for nothing | `test_dialogue_content.gd::test_the_first_showing_is_the_decision_…` |
+| Each Origin has exactly one trail line, only after the door, once | `test_dialogue_content.gd::test_each_origin_notices_one_thing_on_the_trail_…` |
+| The bridge with real keys: declined, shown, asked again, the socket, the door (which is solid), brought back | Story E2E 8i, 8j; told + withdrew: 12; real window: `playtest_flow` 21a, 21b |
+| A beat lit by an ambience nobody made refuses the start; dusk → night → morning follow the beats; the record stores no light | `test_story_runtime.gd::test_a_beat_lit_by_an_ambience_nobody_made_…` |
+| Day costs nothing; night tints and lights; a pulse flares and settles; every profile keeps the readability floor | `test_map_ambience.gd` (9) |
+| The Night's creatures are the wolf's data, registry and AI under a look that differs in SHAPE on the same grid | `test_enemy_encounter.gd` (3) |
+| The cart that waits is whole; the cart that was left is the wreck; never together; solid only where drawn | `test_map_scenes.gd::test_the_cart_that_waits_is_whole_…` |
+| The village is at dusk for the warning, the woods at night for the wave with the vein lit and flared, day by morning | Story E2E 8c, 8d, 8e |
+| Sitting down mid-swing is refused in words in each of three phases; the next press sits; an attack still ends a sitting; lasting reasons are heard first | `test_cultivation_runtime.gd::test_sitting_down_mid_swing_…`; Story E2E 8f; World E2E |
+| The Chronicle: pages in order; each regard named, banded, numbered, never summed, with its decision; body and path from the owners' views and not the bag | `test_chronicle.gd` (5 of 10) |
+| A long history is paged whole, newest first, every page fitting AS THE ENGINE LAID IT OUT at 1280×720 and 1280×800 in vi and en, every title on one line; a page uses its room; a closed book is not rebuilt | `test_chronicle.gd` (3 of 10) |
+| The bands follow each dimension's own range and all thirty are named in both languages | `test_chronicle.gd::test_regard_bands_…` |
+| The Chronicle's key is taught once, not before there is a book, not over a line, with the bound key's label; the people page follows the graph | Story E2E 8a, 8g |
+
 ## Phase 20 (D-072) — Story, Origins and the prologue
 
 ### Checkpoint 5 — the Chronicle, the purpose line, the way out

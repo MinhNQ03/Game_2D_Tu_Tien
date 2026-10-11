@@ -8,6 +8,15 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 4: regression, the real window, close-out (D-073)
+
+- All local gates green on the closing tree: 1224 tests, eight E2E flows, 0 script errors,
+  0 leak lines. `tools/playtest_flow.gd` gained two real-key steps for the bridge: 38 / 38 at
+  vi / en × 1280×720 / 1280×800. `tools/capture_ui.gd`: 198 frames, 31 opened and described.
+- 50 mutations applied over the pass, 50 red (two survived a first run and got a test).
+- Six debts recorded with owners (H21-14 … H21-19); the Phase-21 handoff written.
+- Phase 20 stays DONE. Phase 21 (Dungeon) and Phase 22 (Boss) are NOT STARTED.
+
 ### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 3: the Chronicle explains; sitting mid-swing is answered (D-073 §4, §5)
 
 - **Chronicle.** People: each relationship dimension by name with a band word and its number

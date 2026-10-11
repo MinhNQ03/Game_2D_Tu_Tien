@@ -75,11 +75,14 @@
 > the world-simulation data no longer depends on its own domain (Q19-05). 1090 tests;
 > `docs/handoff/pre-phase-20-readiness.md`.
 > Phase 20 (Story) is DONE (D-072); Phase 21+ is NOT STARTED.
-> **Post-Phase-20 experience hardening (D-073, not a phase, IN PROGRESS):** the gaps Phase 20
-> recorded as open — a standing objective with nothing to do, a Night that is told and not
-> shown, a choice seam that could half-apply, a Chronicle of raw numbers — are being closed on
-> `hardening/pre-phase21-experience` before a dungeon is authored
-> (`docs/handoff/pre-phase-21-hardening.md`). It builds no dungeon and no boss.
+> **Post-Phase-20 experience hardening (D-073, not a phase) — DONE:** the gaps Phase 20
+> recorded as open are closed on `hardening/pre-phase21-experience` — Act I has a three-beat
+> bridge to a sealed door (the Survey Shaft); a story choice is all or nothing; the Night is
+> shown (dusk, night, the vein's light, creatures with their hackles up, a wrecked cart); the
+> Chronicle says a regard in words, has a body-and-path page, pages its whole history and is
+> taught once; `cultivate` mid-swing is answered. 1224 tests, 50 mutations red, the real
+> window at vi / en × 1280×720 / 1280×800. No dungeon, no boss. The Phase-21 handoff is
+> `docs/handoff/pre-phase-21-hardening.md` §10. **No person has played it yet (H21-14).**
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
 > contract (`MOTION_DESIGN_CONTRACT.md`) and corrected the HUD's composition by measurement;
