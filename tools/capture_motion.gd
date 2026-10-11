@@ -18,8 +18,11 @@ extends SceneTree
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
 ## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
-## techniques, golden, field_fight, pet, shop, dialogue, session, quest (second user argument
-## runs one; a third picks the language, `vi` or `en`, default the saved setting).
+## techniques, golden, field_fight, pet, shop, dialogue, session, quest, night_bite (second
+## user argument runs one; a third picks the language, `vi` or `en`, default the saved
+## setting). `night_bite` is the vein-touched wolf's bite under the Night's ambience, every
+## rendered frame from before its wind-up to after its recovery, each cell marked with the
+## attack state it was taken in; run it with `--disable-vsync --max-fps 60`.
 ##
 ## OUTPUT: `<out>/motion_<scenario>.png` strips (each cell = one captured frame, magnified 2x
 ## on top of the camera's own zoom) and `<out>/scene_<name>.png` full frames. Exit code 1 if any
@@ -118,6 +121,9 @@ func _run() -> void:
 	if _only == "quest":
 		print("[capture_motion] scenario quest")
 		await _scenario_quest()
+	if _only == "night_bite":
+		print("[capture_motion] scenario night_bite")
+		await _scenario_night_bite()
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
@@ -479,6 +485,111 @@ func _scenario_field_fight() -> void:
 	_save_strip("motion_strike_wolf", strike)
 	await _settle()
 	await _shot("scene_field_after")
+
+
+## The Night's bite (D-073 follow-up, H21-18), by name only (it moves the story). A telegraph
+## that was only ever looked at in daylight has not been looked at: the Night multiplies the
+## whole canvas down and gives the wave a darker-crested look, and the wind-up is the one
+## thing the player must still read. The story is brought to the Night through its owner
+## (SETUP, as `capture_ui` does; the real-key path is the Story E2E's) and the player is stood
+## in front of one wolf; from there the wolf acts by itself.
+##
+## Every rendered frame is kept from `NIGHT_BITE_LEAD` frames before the wind-up starts until
+## the attack is READY again. Each cell carries a bar in the colour of the attack state it was
+## taken in, and `motion_night_bite.txt` lists every cell: state, and milliseconds since the
+## wind-up began — so "which frame is the tell" is an answer with a number.
+const NIGHT_BITE_LEAD := 6
+const NIGHT_BITE_TAIL := 4
+const NIGHT_BITE_BAR := {
+	"READY": Color(0.55, 0.55, 0.55), "WINDUP": Color(1.0, 0.75, 0.1),
+	"ACTIVE": Color(1.0, 0.15, 0.15), "RECOVERY": Color(0.25, 0.55, 1.0),
+}
+
+
+func _scenario_night_bite() -> void:
+	var story := RunKit.story_of(_main)
+	var world := _main.get_node_or_null("Systems/WorldRuntime")
+	var combat := _main.get_node_or_null("Systems/CombatRuntime") as CombatRuntime
+	if story == null or world == null or combat == null:
+		_fail("night_bite: no story, world or combat runtime")
+		return
+	for who: StringName in [&"actor_elder_shen", &"actor_disciple_lin", &"actor_carter_te"]:
+		story.meet(who)
+	story.set_flag(&"flag_heard_village_business", 1)
+	story.choose(&"choice_lam_readings", &"kept")
+	RunKit.skip_scenes(_main)
+	world.call("request_map_transition", &"map_field", &"from_hub")
+	await _settle()
+	await _settle()
+	RunKit.skip_scenes(_main)
+	await _settle()
+	if story.ambience_id() != &"night":
+		_fail("night_bite: the woods are not under the Night (ambience '%s')"
+			% story.ambience_id())
+		return
+	var player := _player()
+	var wolf: Enemy = null
+	# One of the NIGHT's: a creature wearing its table's look, not its own (the woods' two
+	# standing wolves are still there, in daylight coats).
+	for enemy in combat.enemies():
+		if not enemy.is_dead() and enemy.look() != enemy.data().visual_profile:
+			wolf = enemy
+			break
+	if wolf == null:
+		_fail("night_bite: the Night brought no creature in its own look")
+		return
+	var attack: AttackComponent = null
+	for child in wolf.get_children():
+		if child is AttackComponent:
+			attack = child
+	if attack == null:
+		_fail("night_bite: the creature has no AttackComponent")
+		return
+	# SETUP: in front of it, outside its bite and inside its notice. It closes by itself.
+	player.global_position = wolf.global_position + Vector2(-64, 4)
+	await _shot("scene_night_bite_before")
+	var focus := func() -> Vector2:
+		return (wolf.global_position + player.global_position) * 0.5 + Vector2(0, -14)
+	var cells: Array[Image] = []
+	var notes: Array[String] = []
+	var began_ms := -1
+	var after := 0
+	for _frame in 600:
+		await process_frame
+		var state := attack.state_name()
+		var now := Time.get_ticks_msec()
+		if began_ms < 0 and state == "WINDUP":
+			began_ms = now
+		var cell := _cell(focus.call())
+		cell.fill_rect(Rect2i(0, cell.get_height() - 10, cell.get_width(), 10),
+			NIGHT_BITE_BAR.get(state, Color.WHITE))
+		cells.append(cell)
+		notes.append("%s ai=%s t=%s" % [state, wolf.ai_state_name(),
+			("%d ms" % (now - began_ms)) if began_ms >= 0 else "before"])
+		if began_ms < 0 and cells.size() > NIGHT_BITE_LEAD:
+			cells.pop_front()
+			notes.pop_front()
+		if began_ms >= 0 and state == "READY":
+			after += 1
+			if after >= NIGHT_BITE_TAIL:
+				break
+	if began_ms < 0:
+		_fail("night_bite: the creature never wound up in 600 frames")
+		return
+	_save_strip("motion_night_bite", cells)
+	var lines := PackedStringArray(["# motion_night_bite: one line per cell, row-major, 8 per row",
+		"# ambience=%s look=%s viewport=%dx%d" % [story.ambience_id(),
+			wolf.look().id if wolf.look() != null else &"", root.size.x, root.size.y]])
+	for i in notes.size():
+		lines.append("cell %02d (row %d, col %d): %s" % [i, i / 8 + 1, i % 8 + 1, notes[i]])
+	var file := FileAccess.open("%s/motion_night_bite.txt" % _out_dir, FileAccess.WRITE)
+	if file == null:
+		_fail("night_bite: could not write the cell notes")
+		return
+	file.store_string("\n".join(lines) + "\n")
+	file.close()
+	_written.append("motion_night_bite.txt")
+	await _shot("scene_night_bite_after")
 
 
 ## The linh thú (Phase 16), by name only (it changes the session, so it is not part of the

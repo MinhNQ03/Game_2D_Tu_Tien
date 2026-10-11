@@ -67,6 +67,10 @@ const SWEEP_SAMPLES := 8
 ## things it hits — a wolf's core is ~12px up, a cultivator's ~16-20px.
 const STRIKE_HEIGHT := -13.0
 
+## A map's tint is never trusted below this per channel when the telegraph is corrected for
+## it: `MapAmbience` refuses a tint that dark, and a divide by a near-zero channel is a flare.
+const MIN_TINT_CHANNEL := 0.2
+
 ## A hostile swing telegraphs its reach on the ground. Authored per scene (`enemy.tscn`).
 @export var hostile: bool = false
 
@@ -83,6 +87,9 @@ var _reach: float = 24.0
 var _arc_degrees: float = 120.0
 ## Where the release starts (the striking point at the moment of release, this node's space).
 var _source: Vector2 = Vector2.ZERO
+## The tint the map's light multiplies this canvas by, read ONCE as the swing begins (white
+## with no ambience). The telegraph is drawn against it — see `_telegraph_colour`.
+var _map_tint: Color = Color.WHITE
 
 
 func _ready() -> void:
@@ -104,6 +111,9 @@ func _ready() -> void:
 
 
 func _on_attack_started() -> void:
+	var ambience := get_tree().get_first_node_in_group(MapAmbience.GROUP) as MapAmbience \
+		if is_inside_tree() else null
+	_map_tint = ambience.tint() if ambience != null else Color.WHITE
 	# Read the authored geometry ONCE per swing rather than every frame.
 	var data := _attack_data()
 	if data != null:
@@ -155,6 +165,7 @@ func sample() -> Dictionary:
 		"progress": _progress,
 		"source": _source,
 		"telegraph": hostile and _state == AttackStateMachine.State.WINDUP,
+		"telegraph_colour": _telegraph_colour(),
 		"streak": segment,
 		"sweep": _sweep_points(),
 		"z_index": z_index,
@@ -327,9 +338,7 @@ func _draw() -> void:
 func _draw_telegraph() -> void:
 	if not hostile or _state != AttackStateMachine.State.WINDUP or _facing == Vector2.ZERO:
 		return
-	# A warning the player must read: it grows to full strength as the bite approaches.
-	var colour := UIPalette.TELEGRAPH_HOSTILE
-	colour.a = lerpf(0.25, 0.8, _progress)
+	var colour := _telegraph_colour()
 	var centre := _facing.angle()
 	var half := deg_to_rad(_arc_degrees * 0.5 * ARC_FRACTION)
 	# A double line: one pixel at 2x zoom read as a stray hair in the grass, not a warning.
@@ -343,6 +352,23 @@ func _draw_telegraph() -> void:
 	for edge in [centre - half, centre + half]:
 		var dir := Vector2.from_angle(edge)
 		_telegraph.draw_line((dir * (_reach - 3.0)).round(), (dir * _reach).round(), colour, 1.0)
+
+
+## The colour the telegraph is DRAWN in so that it is SEEN in `UIPalette.TELEGRAPH_HOSTILE`.
+##
+## A map's light is a multiply over the whole canvas (`MapAmbience`), and the Night's takes
+## most of the red: uncorrected, the warning reached the screen at 39% of its daytime
+## red-over-green and was the dimmest thing in the fight it exists to warn about (H21-18).
+## A telegraph is information, not a surface the night falls on, so it is drawn brighter by
+## exactly what the tint will take — the world stays dark, the warning stays the warning.
+## Alpha is the wind-up's own: it grows to full strength as the bite approaches.
+func _telegraph_colour() -> Color:
+	var colour := UIPalette.TELEGRAPH_HOSTILE
+	colour.r /= maxf(_map_tint.r, MIN_TINT_CHANNEL)
+	colour.g /= maxf(_map_tint.g, MIN_TINT_CHANNEL)
+	colour.b /= maxf(_map_tint.b, MIN_TINT_CHANNEL)
+	colour.a = lerpf(0.25, 0.8, _progress)
+	return colour
 
 
 ## A Kiếm draws a CRESCENT, not air: the edge sweeping across the arc it actually covers,

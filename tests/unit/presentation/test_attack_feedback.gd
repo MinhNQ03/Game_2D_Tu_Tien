@@ -139,6 +139,39 @@ func test_only_a_hostile_windup_telegraphs() -> void:
 	free_node(hostile)
 
 
+## A warning is read in the colour it was authored in, whatever the light (D-073 follow-up,
+## H21-18). The Night multiplies the whole canvas by a blue tint, and red is the channel it
+## takes most of: in the real window the bite's telegraph kept 39% of its daytime red-over-
+## green (49 against 126) and only cleared the eye's threshold 165 ms into a 267 ms wind-up.
+## What reaches the screen is `drawn colour x tint`, so that product is what is pinned.
+func test_a_hostile_telegraph_keeps_its_colour_under_the_night() -> void:
+	var ambience := MapAmbience.new()
+	add_to_tree(ambience)
+	ambience.apply(&"night")
+	var tint := ambience.tint()
+	assert_true(tint.r < 0.6, "the fixture is a real night: red is cut to %.2f" % tint.r)
+	var hostile := _attacker(true, Vector2.RIGHT)
+	_component(hostile).request_attack()
+	_step(hostile, 0.02)
+	var drawn: Color = _feedback(hostile).sample()["telegraph_colour"]
+	var seen := Color(drawn.r * tint.r, drawn.g * tint.g, drawn.b * tint.b)
+	var authored := UIPalette.TELEGRAPH_HOSTILE
+	assert_true(absf(seen.r - authored.r) < 0.01 and absf(seen.g - authored.g) < 0.01
+			and absf(seen.b - authored.b) < 0.01,
+		"on screen the warning is its authored red %s, got %s" % [authored, seen])
+	free_node(hostile)
+	# A map with no light of its own (white): the drawn colour IS the authored one.
+	free_node(ambience)
+	var day := _attacker(true, Vector2.RIGHT)
+	_component(day).request_attack()
+	_step(day, 0.02)
+	var by_day: Color = _feedback(day).sample()["telegraph_colour"]
+	assert_true(absf(by_day.r - authored.r) < 0.01 and absf(by_day.g - authored.g) < 0.01
+			and absf(by_day.b - authored.b) < 0.01,
+		"by day it is simply the authored colour, got %s" % by_day)
+	free_node(day)
+
+
 # === Commitment: a swing roots the attacker (gameplay data) ====================
 
 ## READY moves freely; a swing in flight keeps only the authored share of the speed.
