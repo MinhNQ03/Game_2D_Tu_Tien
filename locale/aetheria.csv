@@ -396,3 +396,67 @@ UI_REWARD_OWED,Part of it is still owed.,Vẫn còn thiếu một phần.
 UI_QUEST_OBJECTIVE_MET,{text} — done,{text} — xong
 UI_QUEST_JOURNAL_KEYS_NEXT,{key} Next task · {close} Close,{key} Việc kế · {close} Đóng
 UI_QUEST_OBJECTIVE_OR,or: {text},hoặc: {text}
+STORY_CHAPTER_PROLOGUE_TITLE,Prologue · A Stranger in Lạc Hà,Mở đầu · Người lạ ở Lạc Hà
+STORY_CHAPTER_KE_VO_DANH_TITLE,Act I · The Nameless,Hồi I · Kẻ Vô Danh
+STORY_BEAT_ROAD_OBJECTIVE,Remember what put you on this road,Nhớ lại điều đã đẩy ngươi lên con đường này
+STORY_BEAT_ROAD_RECORD,You came to the Hoang Vực frontier carrying one trouble of your own.,"Ngươi tới biên thùy Hoang Vực, mang theo một mối bận lòng của riêng mình."
+STORY_BEAT_ARRIVAL_OBJECTIVE,Find someone in Lạc Hà to speak with,Tìm một người ở Lạc Hà để hỏi chuyện
+STORY_BEAT_ARRIVAL_RECORD,You walked into Lạc Hà Village. Nobody was expecting you.,Ngươi bước vào Thôn Lạc Hà. Không ai chờ ngươi cả.
+STORY_BEAT_CONTACTS_OBJECTIVE,Get to know the people of Lạc Hà,Làm quen với người ở Lạc Hà
+STORY_BEAT_CONTACTS_RECORD,"One outpost keeps this whole stretch of frontier: an elder, a disciple and a hired watchman.","Cả dải biên thùy này chỉ có một tiền đồn trông coi: một trưởng lão, một đệ tử và một người gác thuê."
+STORY_BEAT_BUSINESS_OBJECTIVE,"Hear what troubles the elder, or the watchman at the treeline","Nghe điều Trưởng lão Thẩm bận lòng, hoặc người gác ở bìa rừng"
+STORY_BEAT_BUSINESS_RECORD,"Lạc Hà had business of its own long before you arrived, and you heard it out.","Lạc Hà có việc riêng của nó từ trước khi ngươi tới, và ngươi đã nghe."
+STORY_BEAT_CONFIDENCE_OBJECTIVE,Lin Yue wants a word — find her by the Lạc Hà spring,Lâm Nguyệt có điều muốn nói — tìm nàng bên suối Lạc Hà
+STORY_BEAT_CONFIDENCE_RECORD,You decided whose word to keep.,Ngươi đã quyết định giữ lời với ai.
+STORY_BEAT_WARNING_OBJECTIVE,Something is wrong with the woods' vein — go to the eastern treeline,Mạch rừng có điều chẳng lành — ra bìa rừng phía đông
+STORY_BEAT_WARNING_RECORD,"That evening the spring in Lạc Hà lost its beat, and the lanterns on the east road guttered.","Chiều hôm ấy suối Lạc Hà hụt nhịp, và đèn trên đường phía đông chập chờn."
+STORY_BEAT_NIGHT_OBJECTIVE,Live through the night in the Broken-Vein Woods,Sống sót qua đêm ở Rừng Vỡ Mạch
+STORY_BEAT_NIGHT_RECORD,"The vein beneath the woods broke. You were there, and you lived.","Mạch dưới rừng đã vỡ. Ngươi có mặt ở đó, và ngươi còn sống."
+STORY_BEAT_AFTERMATH_OBJECTIVE,Morning — hear what Elder Shen says about the night,Trời sáng — nghe Trưởng lão Thẩm nói gì về đêm qua
+STORY_BEAT_AFTERMATH_RECORD,"By morning the Azure Terrace had its account of the night, and its survey mark was gone from the woods.","Tới sáng, Thanh Đài đã có lời giải thích cho đêm qua, còn cọc khảo mạch của họ thì biến mất khỏi rừng."
+STORY_BEAT_SETTLE_OBJECTIVE,The surge is still in you — sit and settle it at the Lạc Hà spring,Khí loạn còn trong người — tĩnh tọa dẫn khí ở suối Lạc Hà
+STORY_BEAT_SETTLE_RECORD,For the first time you sat down to cultivate because you chose to.,Lần đầu tiên ngươi ngồi xuống tu luyện vì chính mình muốn thế.
+STORY_BEAT_SHEET_TOLD_OBJECTIVE,Lin Yue's message: look beneath the Lạc Hà stele,Lâm Nguyệt nhắn: xem dưới chân bia Lạc Hà
+STORY_BEAT_SHEET_TOLD_RECORD,Lin Yue trusted you with a torn sheet of the vein survey. It does not match what the Terrace says.,Lâm Nguyệt giao cho ngươi một mảnh sổ khảo mạch. Nó không khớp với lời Thanh Đài.
+STORY_BEAT_SHEET_FOUND_OBJECTIVE,Something was hidden in a hurry beneath the Lạc Hà stele,Có thứ bị giấu vội dưới chân bia Lạc Hà
+STORY_BEAT_SHEET_FOUND_RECORD,You found a torn sheet of the vein survey that someone meant to keep. It does not match what the Terrace says.,Ngươi tìm thấy một mảnh sổ khảo mạch mà ai đó muốn giữ lại. Nó không khớp với lời Thanh Đài.
+STORY_BEAT_LEAVING_OBJECTIVE,The carter leaves at first light — speak with him before he goes,Phu xe sẽ đi lúc rạng đông — nói chuyện với hắn trước khi hắn đi
+STORY_BEAT_LEAVING_RECORD,Word of a broken vein travels. The frontier is no longer the whole map.,Tin mạch vỡ sẽ lan đi. Biên thùy không còn là cả tấm bản đồ nữa.
+STORY_BEAT_STANDING_OBJECTIVE,Find out where the true survey of the woods' vein went,Tìm xem sổ khảo mạch thật của mạch rừng đã đi đâu
+STORY_CHOICE_LAM_READINGS,Lin Yue's readings,Sổ đo của Lâm Nguyệt
+STORY_CHOICE_LAM_READINGS_KEPT,You kept quiet about the readings Lin Yue was taking without leave.,Ngươi giữ kín việc Lâm Nguyệt tự ý đo mạch.
+STORY_CHOICE_LAM_READINGS_TOLD,You told Elder Shen that Lin Yue was taking readings without leave.,Ngươi thưa với Trưởng lão Thẩm việc Lâm Nguyệt tự ý đo mạch.
+STORY_CHOICE_NIGHT_STAND,The night in the woods,Đêm trong rừng
+STORY_CHOICE_NIGHT_STAND_STOOD,You stood your ground until the last of the maddened wolves was down.,Ngươi trụ lại cho tới khi con Vụ Lang phát cuồng cuối cùng gục xuống.
+STORY_CHOICE_NIGHT_STAND_WITHDREW,"You fell back to the village, and the watch held the treeline without you.","Ngươi lui về làng, để người gác một mình giữ bìa rừng."
+ORIGIN_HO_TIEU_NAME,Failed Escort,Hộ Tiêu Thất Bại
+ORIGIN_HO_TIEU_PROBLEM,"A caravan under your guard was destroyed on the road. The ledger says it was your failure, and you do not remember it that way.","Một đoàn hàng do ngươi áp tải bị diệt giữa đường. Sổ sách ghi đó là lỗi của ngươi, còn ngươi nhớ khác."
+ORIGIN_HO_TIEU_EDGE,You still carry an escort's blade.,Ngươi vẫn mang thanh kiếm của kẻ áp tiêu.
+ORIGIN_HO_TIEU_COST,"A debt, and a name the outposts already know.","Một món nợ, và cái tên mà các tiền đồn đã nghe qua."
+ORIGIN_HO_TIEU_GOAL,Learn who destroyed your caravan — and why the records disagree.,Tìm ra kẻ đã diệt đoàn hàng của ngươi — và vì sao sổ sách ghi khác nhau.
+ORIGIN_DE_TU_BI_LOAI_NAME,Rejected Candidate,Đệ Tử Bị Loại
+ORIGIN_DE_TU_BI_LOAI_PROBLEM,You failed a sect examination you were ready for. Someone weaker passed.,Ngươi trượt kỳ khảo hạch tông môn dù đã sẵn sàng. Kẻ yếu hơn ngươi lại đỗ.
+ORIGIN_DE_TU_BI_LOAI_EDGE,You were drilled in the first breathing method.,Ngươi đã được rèn phép thở nhập môn.
+ORIGIN_DE_TU_BI_LOAI_COST,"A rival who passed, and who remembers you.","Một đối thủ đã đỗ, và vẫn nhớ ngươi."
+ORIGIN_DE_TU_BI_LOAI_GOAL,Learn how that examination was really decided.,Tìm ra kỳ khảo hạch ấy thật sự được định đoạt thế nào.
+ORIGIN_LANG_Y_NAME,Wandering Healer,Lang Y Du Phương
+ORIGIN_LANG_Y_PROBLEM,A patient of yours died of something that did not behave like any sickness you know.,Một bệnh nhân của ngươi chết vì thứ chẳng giống căn bệnh nào ngươi từng biết.
+ORIGIN_LANG_Y_EDGE,You carry pills you compounded yourself.,Ngươi mang theo thuốc do chính tay mình bào chế.
+ORIGIN_LANG_Y_COST,"No training at arms, and people who are owed your care.","Chưa từng luyện võ, và còn nợ những người chờ ngươi chữa."
+ORIGIN_LANG_Y_GOAL,Learn what your patient really died of.,Tìm ra bệnh nhân của ngươi thật sự chết vì đâu.
+ORIGIN_NGHE_NHAN_NAME,Disgraced Artisan,Nghệ Nhân Thất Sủng
+ORIGIN_NGHE_NHAN_PROBLEM,A patron's accusation closed your workshop. You know your work was sound.,Một lời cáo buộc của kẻ bảo trợ đã đóng cửa xưởng của ngươi. Ngươi biết tay nghề mình không sai.
+ORIGIN_NGHE_NHAN_EDGE,You can read a spirit stone's cut and seal at a glance.,Ngươi liếc qua là đọc được vết cắt và ấn trên linh thạch.
+ORIGIN_NGHE_NHAN_COST,"Empty pockets, and an enemy with a long reach.","Túi rỗng, và một kẻ thù với cánh tay dài."
+ORIGIN_NGHE_NHAN_GOAL,Learn where the material that ruined you came from.,Tìm ra thứ vật liệu đã hại ngươi đến từ đâu.
+ORIGIN_THU_THU_NAME,Keeper of Forbidden Records,Thủ Thư Cấm Lục
+ORIGIN_THU_THU_PROBLEM,Your mentor vanished and left the records unfinished. The last pages are missing.,"Thầy ngươi biến mất, để lại sổ sách dang dở. Những trang cuối không còn."
+ORIGIN_THU_THU_EDGE,You know how an old survey is set down.,Ngươi biết lối ghi của sổ khảo cũ.
+ORIGIN_THU_THU_COST,People who want those records are watching you.,Những kẻ muốn chỗ sổ sách ấy đang dõi theo ngươi.
+ORIGIN_THU_THU_GOAL,Learn what your mentor was tracing when he vanished.,Tìm ra thầy ngươi đang lần theo điều gì khi biến mất.
+KNOW_SURVEY_FRAGMENT_NAME,A Torn Survey Sheet,Mảnh sổ khảo mạch
+KNOW_SURVEY_FRAGMENT_DESC,"The Terrace's survey of the woods' vein, in a surveyor's hand: the readings fall season after season. Beside them, the figure sent up: level.","Sổ khảo mạch rừng của Thanh Đài, nét chữ người đo: số đo tụt dần qua từng mùa. Bên cạnh là con số báo lên trên: mạch bình ổn."
+KNOW_VEIN_STONE_GRADES_NAME,Reading a Spirit Stone,Cách đọc linh thạch
+KNOW_VEIN_STONE_GRADES_DESC,A surveyed stone carries the outpost's seal-cut on its base. A stone with a raw base was never counted by anyone.,Linh thạch qua khảo mạch có vết ấn của tiền đồn dưới đáy. Viên nào đáy còn thô thì chưa từng được ai kiểm đếm.
+KNOW_SURVEY_NOTATION_NAME,How a Vein Survey Is Set Down,Lối ghi sổ khảo mạch
+KNOW_SURVEY_NOTATION_DESC,"A survey keeps two columns: what the surveyor read at the vein, and what the outpost reports. They are meant to agree.","Sổ khảo mạch có hai cột: số người đo đọc được tại mạch, và số tiền đồn báo lên. Hai cột ấy vốn phải khớp nhau."

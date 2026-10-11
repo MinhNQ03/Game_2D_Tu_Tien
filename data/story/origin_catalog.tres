@@ -1,0 +1,115 @@
+[gd_resource type="Resource" script_class="OriginCatalogData" load_steps=17 format=3]
+
+[ext_resource type="Script" path="res://src/data/story/origin_catalog_data.gd" id="s_origin_catalog_data"]
+[ext_resource type="Script" path="res://src/data/story/origin_data.gd" id="s_origin_data"]
+[ext_resource type="Script" path="res://src/data/story/origin_grant_data.gd" id="s_origin_grant_data"]
+
+[sub_resource type="Resource" id="G_origin_ho_tieu_0"]
+script = ExtResource("s_origin_grant_data")
+kind = 0
+item_id = &"item_kiem_thanh_thiet"
+count = 1
+reason = "An escort keeps their blade when everything else is taken (§6: combat footing)."
+
+[sub_resource type="Resource" id="G_origin_ho_tieu_1"]
+script = ExtResource("s_origin_grant_data")
+kind = 2
+character_id = &"actor_elder_shen"
+dimension = &"affinity"
+delta = -10
+reason = "Word of the lost caravan reached the outpost first (§6: a damaged name)."
+
+[sub_resource type="Resource" id="ORIGIN_origin_ho_tieu"]
+script = ExtResource("s_origin_data")
+id = &"origin_ho_tieu"
+name_key = &"ORIGIN_HO_TIEU_NAME"
+problem_key = &"ORIGIN_HO_TIEU_PROBLEM"
+edge_key = &"ORIGIN_HO_TIEU_EDGE"
+cost_key = &"ORIGIN_HO_TIEU_COST"
+goal_key = &"ORIGIN_HO_TIEU_GOAL"
+grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_ho_tieu_0"), SubResource("G_origin_ho_tieu_1")])
+
+[sub_resource type="Resource" id="G_origin_de_tu_bi_loai_0"]
+script = ExtResource("s_origin_grant_data")
+kind = 1
+knowledge_id = &"know_dan_khi_quyet"
+reason = "A candidate is drilled in the first breathing method (§6: formal grounding)."
+
+[sub_resource type="Resource" id="G_origin_de_tu_bi_loai_1"]
+script = ExtResource("s_origin_grant_data")
+kind = 2
+character_id = &"actor_disciple_lin"
+dimension = &"rivalry"
+delta = 15
+reason = "Lâm Nguyệt passed the examination the player did not (§6: a rival who passed)."
+
+[sub_resource type="Resource" id="ORIGIN_origin_de_tu_bi_loai"]
+script = ExtResource("s_origin_data")
+id = &"origin_de_tu_bi_loai"
+name_key = &"ORIGIN_DE_TU_BI_LOAI_NAME"
+problem_key = &"ORIGIN_DE_TU_BI_LOAI_PROBLEM"
+edge_key = &"ORIGIN_DE_TU_BI_LOAI_EDGE"
+cost_key = &"ORIGIN_DE_TU_BI_LOAI_COST"
+goal_key = &"ORIGIN_DE_TU_BI_LOAI_GOAL"
+grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_de_tu_bi_loai_0"), SubResource("G_origin_de_tu_bi_loai_1")])
+
+[sub_resource type="Resource" id="G_origin_lang_y_0"]
+script = ExtResource("s_origin_grant_data")
+kind = 0
+item_id = &"item_bo_huyet_dan"
+count = 2
+reason = "A travelling healer carries what they compound (§6: herbal knowledge)."
+
+[sub_resource type="Resource" id="ORIGIN_origin_lang_y"]
+script = ExtResource("s_origin_data")
+id = &"origin_lang_y"
+name_key = &"ORIGIN_LANG_Y_NAME"
+problem_key = &"ORIGIN_LANG_Y_PROBLEM"
+edge_key = &"ORIGIN_LANG_Y_EDGE"
+cost_key = &"ORIGIN_LANG_Y_COST"
+goal_key = &"ORIGIN_LANG_Y_GOAL"
+grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_lang_y_0")])
+
+[sub_resource type="Resource" id="G_origin_nghe_nhan_0"]
+script = ExtResource("s_origin_grant_data")
+kind = 1
+knowledge_id = &"know_vein_stone_grades"
+reason = "An artisan reads a stone's cut and seal at a glance (§6: can read materials)."
+
+[sub_resource type="Resource" id="ORIGIN_origin_nghe_nhan"]
+script = ExtResource("s_origin_data")
+id = &"origin_nghe_nhan"
+name_key = &"ORIGIN_NGHE_NHAN_NAME"
+problem_key = &"ORIGIN_NGHE_NHAN_PROBLEM"
+edge_key = &"ORIGIN_NGHE_NHAN_EDGE"
+cost_key = &"ORIGIN_NGHE_NHAN_COST"
+goal_key = &"ORIGIN_NGHE_NHAN_GOAL"
+grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_nghe_nhan_0")])
+
+[sub_resource type="Resource" id="G_origin_thu_thu_0"]
+script = ExtResource("s_origin_grant_data")
+kind = 1
+knowledge_id = &"know_survey_notation"
+reason = "A keeper of old records knows how a survey is set down (§6: literacy in records)."
+
+[sub_resource type="Resource" id="G_origin_thu_thu_1"]
+script = ExtResource("s_origin_grant_data")
+kind = 2
+character_id = &"actor_elder_shen"
+dimension = &"affinity"
+delta = -15
+reason = "The outpost was told to watch for a keeper of proscribed records (§6: watched)."
+
+[sub_resource type="Resource" id="ORIGIN_origin_thu_thu"]
+script = ExtResource("s_origin_data")
+id = &"origin_thu_thu"
+name_key = &"ORIGIN_THU_THU_NAME"
+problem_key = &"ORIGIN_THU_THU_PROBLEM"
+edge_key = &"ORIGIN_THU_THU_EDGE"
+cost_key = &"ORIGIN_THU_THU_COST"
+goal_key = &"ORIGIN_THU_THU_GOAL"
+grants = Array[ExtResource("s_origin_grant_data")]([SubResource("G_origin_thu_thu_0"), SubResource("G_origin_thu_thu_1")])
+
+[resource]
+script = ExtResource("s_origin_catalog_data")
+entries = Array[ExtResource("s_origin_data")]([SubResource("ORIGIN_origin_ho_tieu"), SubResource("ORIGIN_origin_de_tu_bi_loai"), SubResource("ORIGIN_origin_lang_y"), SubResource("ORIGIN_origin_nghe_nhan"), SubResource("ORIGIN_origin_thu_thu")])

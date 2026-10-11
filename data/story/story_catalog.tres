@@ -1,0 +1,406 @@
+[gd_resource type="Resource" script_class="StoryCatalogData" load_steps=66 format=3]
+
+[ext_resource type="Script" path="res://src/data/story/story_catalog_data.gd" id="s_story_catalog_data"]
+[ext_resource type="Script" path="res://src/data/story/story_chapter_data.gd" id="s_story_chapter_data"]
+[ext_resource type="Script" path="res://src/data/story/story_beat_data.gd" id="s_story_beat_data"]
+[ext_resource type="Script" path="res://src/data/story/story_trigger_data.gd" id="s_story_trigger_data"]
+[ext_resource type="Script" path="res://src/data/story/story_branch_data.gd" id="s_story_branch_data"]
+[ext_resource type="Script" path="res://src/data/story/story_condition_data.gd" id="s_story_condition_data"]
+[ext_resource type="Script" path="res://src/data/story/story_flag_data.gd" id="s_story_flag_data"]
+[ext_resource type="Script" path="res://src/data/story/story_choice_data.gd" id="s_story_choice_data"]
+[ext_resource type="Script" path="res://src/data/story/story_option_data.gd" id="s_story_option_data"]
+[ext_resource type="Script" path="res://src/data/story/story_consequence_data.gd" id="s_story_consequence_data"]
+
+[sub_resource type="Resource" id="F_flag_heard_village_business"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_heard_village_business"
+purpose = "The player has heard one of the village's two problems out (taken or declined)."
+
+[sub_resource type="Resource" id="F_flag_heard_elder_account"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_heard_elder_account"
+purpose = "The elder has given his account of the Night to the player."
+
+[sub_resource type="Resource" id="F_flag_heard_road_ahead"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_heard_road_ahead"
+purpose = "The player has been told what is coming to the frontier and where the road leads."
+
+[sub_resource type="Resource" id="Q_choice_lam_readings_kept_0"]
+script = ExtResource("s_story_consequence_data")
+kind = 1
+character_id = &"actor_disciple_lin"
+dimension = &"trust"
+delta = 15
+
+[sub_resource type="Resource" id="O_choice_lam_readings_kept"]
+script = ExtResource("s_story_option_data")
+id = &"kept"
+record_key = &"STORY_CHOICE_LAM_READINGS_KEPT"
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_lam_readings_kept_0")])
+
+[sub_resource type="Resource" id="Q_choice_lam_readings_told_0"]
+script = ExtResource("s_story_consequence_data")
+kind = 1
+character_id = &"actor_elder_shen"
+dimension = &"trust"
+delta = 10
+
+[sub_resource type="Resource" id="Q_choice_lam_readings_told_1"]
+script = ExtResource("s_story_consequence_data")
+kind = 1
+character_id = &"actor_disciple_lin"
+dimension = &"affinity"
+delta = -15
+
+[sub_resource type="Resource" id="O_choice_lam_readings_told"]
+script = ExtResource("s_story_option_data")
+id = &"told"
+record_key = &"STORY_CHOICE_LAM_READINGS_TOLD"
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_lam_readings_told_0"), SubResource("Q_choice_lam_readings_told_1")])
+
+[sub_resource type="Resource" id="C_choice_lam_readings"]
+script = ExtResource("s_story_choice_data")
+id = &"choice_lam_readings"
+beat_id = &"beat_confidence"
+title_key = &"STORY_CHOICE_LAM_READINGS"
+options = Array[ExtResource("s_story_option_data")]([SubResource("O_choice_lam_readings_kept"), SubResource("O_choice_lam_readings_told")])
+
+[sub_resource type="Resource" id="Q_choice_night_stand_stood_0"]
+script = ExtResource("s_story_consequence_data")
+kind = 1
+character_id = &"actor_scout_ko"
+dimension = &"respect"
+delta = 10
+
+[sub_resource type="Resource" id="O_choice_night_stand_stood"]
+script = ExtResource("s_story_option_data")
+id = &"stood"
+record_key = &"STORY_CHOICE_NIGHT_STAND_STOOD"
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_night_stand_stood_0")])
+
+[sub_resource type="Resource" id="Q_choice_night_stand_withdrew_0"]
+script = ExtResource("s_story_consequence_data")
+kind = 1
+character_id = &"actor_scout_ko"
+dimension = &"affinity"
+delta = -5
+
+[sub_resource type="Resource" id="O_choice_night_stand_withdrew"]
+script = ExtResource("s_story_option_data")
+id = &"withdrew"
+record_key = &"STORY_CHOICE_NIGHT_STAND_WITHDREW"
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_night_stand_withdrew_0")])
+
+[sub_resource type="Resource" id="C_choice_night_stand"]
+script = ExtResource("s_story_choice_data")
+id = &"choice_night_stand"
+beat_id = &"beat_night"
+title_key = &"STORY_CHOICE_NIGHT_STAND"
+options = Array[ExtResource("s_story_option_data")]([SubResource("O_choice_night_stand_stood"), SubResource("O_choice_night_stand_withdrew")])
+
+[sub_resource type="Resource" id="T_beat_road"]
+script = ExtResource("s_story_trigger_data")
+kind = 0
+subject_id = &""
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_road_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_arrival"
+
+[sub_resource type="Resource" id="BEAT_beat_road"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_road"
+objective_key = &"STORY_BEAT_ROAD_OBJECTIVE"
+record_key = &"STORY_BEAT_ROAD_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 2"
+trigger = SubResource("T_beat_road")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_road_0")])
+
+[sub_resource type="Resource" id="T_beat_arrival"]
+script = ExtResource("s_story_trigger_data")
+kind = 4
+subject_id = &""
+subjects = Array[StringName]([&"actor_elder_shen", &"actor_disciple_lin", &"actor_scout_ko"])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_arrival_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_contacts"
+
+[sub_resource type="Resource" id="BEAT_beat_arrival"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_arrival"
+objective_key = &"STORY_BEAT_ARRIVAL_OBJECTIVE"
+record_key = &"STORY_BEAT_ARRIVAL_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 3"
+trigger = SubResource("T_beat_arrival")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_arrival_0")])
+
+[sub_resource type="Resource" id="T_beat_contacts"]
+script = ExtResource("s_story_trigger_data")
+kind = 4
+subject_id = &""
+subjects = Array[StringName]([&"actor_elder_shen", &"actor_disciple_lin", &"actor_scout_ko"])
+count = 3
+
+[sub_resource type="Resource" id="B_beat_contacts_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_village_business"
+
+[sub_resource type="Resource" id="BEAT_beat_contacts"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_contacts"
+objective_key = &"STORY_BEAT_CONTACTS_OBJECTIVE"
+record_key = &"STORY_BEAT_CONTACTS_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 4"
+trigger = SubResource("T_beat_contacts")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_contacts_0")])
+
+[sub_resource type="Resource" id="T_beat_village_business"]
+script = ExtResource("s_story_trigger_data")
+kind = 3
+subject_id = &"flag_heard_village_business"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_village_business_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_confidence"
+
+[sub_resource type="Resource" id="BEAT_beat_village_business"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_village_business"
+objective_key = &"STORY_BEAT_BUSINESS_OBJECTIVE"
+record_key = &"STORY_BEAT_BUSINESS_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 5"
+trigger = SubResource("T_beat_village_business")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_village_business_0")])
+
+[sub_resource type="Resource" id="T_beat_confidence"]
+script = ExtResource("s_story_trigger_data")
+kind = 5
+subject_id = &"choice_lam_readings"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_confidence_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_warning"
+
+[sub_resource type="Resource" id="BEAT_beat_confidence"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_confidence"
+objective_key = &"STORY_BEAT_CONFIDENCE_OBJECTIVE"
+record_key = &"STORY_BEAT_CONFIDENCE_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 6"
+trigger = SubResource("T_beat_confidence")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_confidence_0")])
+
+[sub_resource type="Resource" id="T_beat_warning"]
+script = ExtResource("s_story_trigger_data")
+kind = 1
+subject_id = &"map_field"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_warning_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_night"
+
+[sub_resource type="Resource" id="BEAT_beat_warning"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_warning"
+objective_key = &"STORY_BEAT_WARNING_OBJECTIVE"
+record_key = &"STORY_BEAT_WARNING_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 7; §4 TRIGGER"
+trigger = SubResource("T_beat_warning")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_warning_0")])
+
+[sub_resource type="Resource" id="T_beat_night"]
+script = ExtResource("s_story_trigger_data")
+kind = 5
+subject_id = &"choice_night_stand"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_night_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_aftermath"
+
+[sub_resource type="Resource" id="BEAT_beat_night"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_night"
+objective_key = &"STORY_BEAT_NIGHT_OBJECTIVE"
+record_key = &"STORY_BEAT_NIGHT_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 8; §4 IMMEDIATE RESULT"
+trigger = SubResource("T_beat_night")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_night_0")])
+
+[sub_resource type="Resource" id="T_beat_aftermath"]
+script = ExtResource("s_story_trigger_data")
+kind = 3
+subject_id = &"flag_heard_elder_account"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_aftermath_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_settle"
+
+[sub_resource type="Resource" id="BEAT_beat_aftermath"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_aftermath"
+objective_key = &"STORY_BEAT_AFTERMATH_OBJECTIVE"
+record_key = &"STORY_BEAT_AFTERMATH_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 9; §4 SOCIAL CONSEQUENCE"
+trigger = SubResource("T_beat_aftermath")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_aftermath_0")])
+
+[sub_resource type="Resource" id="T_beat_settle"]
+script = ExtResource("s_story_trigger_data")
+kind = 2
+subject_id = &""
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="K_beat_settle_0_0"]
+script = ExtResource("s_story_condition_data")
+kind = 2
+choice_id = &"choice_lam_readings"
+option_id = &"kept"
+
+[sub_resource type="Resource" id="B_beat_settle_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([SubResource("K_beat_settle_0_0")])
+next_beat_id = &"beat_sheet_told"
+
+[sub_resource type="Resource" id="B_beat_settle_1"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_sheet_found"
+
+[sub_resource type="Resource" id="BEAT_beat_settle"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_settle"
+objective_key = &"STORY_BEAT_SETTLE_OBJECTIVE"
+record_key = &"STORY_BEAT_SETTLE_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 10"
+trigger = SubResource("T_beat_settle")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_settle_0"), SubResource("B_beat_settle_1")])
+
+[sub_resource type="Resource" id="T_beat_sheet_told"]
+script = ExtResource("s_story_trigger_data")
+kind = 6
+subject_id = &"know_survey_fragment"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_sheet_told_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_leaving"
+
+[sub_resource type="Resource" id="BEAT_beat_sheet_told"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_sheet_told"
+objective_key = &"STORY_BEAT_SHEET_TOLD_OBJECTIVE"
+record_key = &"STORY_BEAT_SHEET_TOLD_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 11; §4 FUTURE PAYOFF; D-072 §5"
+trigger = SubResource("T_beat_sheet_told")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_sheet_told_0")])
+
+[sub_resource type="Resource" id="T_beat_sheet_found"]
+script = ExtResource("s_story_trigger_data")
+kind = 6
+subject_id = &"know_survey_fragment"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_sheet_found_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_leaving"
+
+[sub_resource type="Resource" id="BEAT_beat_sheet_found"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_sheet_found"
+objective_key = &"STORY_BEAT_SHEET_FOUND_OBJECTIVE"
+record_key = &"STORY_BEAT_SHEET_FOUND_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 11; §4 FUTURE PAYOFF; D-072 §5"
+trigger = SubResource("T_beat_sheet_found")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_sheet_found_0")])
+
+[sub_resource type="Resource" id="T_beat_leaving"]
+script = ExtResource("s_story_trigger_data")
+kind = 3
+subject_id = &"flag_heard_road_ahead"
+subjects = Array[StringName]([])
+count = 1
+
+[sub_resource type="Resource" id="B_beat_leaving_0"]
+script = ExtResource("s_story_branch_data")
+conditions = Array[ExtResource("s_story_condition_data")]([])
+next_beat_id = &"beat_standing"
+
+[sub_resource type="Resource" id="BEAT_beat_leaving"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_leaving"
+objective_key = &"STORY_BEAT_LEAVING_OBJECTIVE"
+record_key = &"STORY_BEAT_LEAVING_RECORD"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §5 beat 12; §4 WORLD CONSEQUENCE"
+trigger = SubResource("T_beat_leaving")
+branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_leaving_0")])
+
+[sub_resource type="Resource" id="CH_prologue"]
+script = ExtResource("s_story_chapter_data")
+id = &"chapter_prologue"
+title_key = &"STORY_CHAPTER_PROLOGUE_TITLE"
+act = 0
+max_reveal_layer = 1
+beats = Array[ExtResource("s_story_beat_data")]([SubResource("BEAT_beat_road"), SubResource("BEAT_beat_arrival"), SubResource("BEAT_beat_contacts"), SubResource("BEAT_beat_village_business"), SubResource("BEAT_beat_confidence"), SubResource("BEAT_beat_warning"), SubResource("BEAT_beat_night"), SubResource("BEAT_beat_aftermath"), SubResource("BEAT_beat_settle"), SubResource("BEAT_beat_sheet_told"), SubResource("BEAT_beat_sheet_found"), SubResource("BEAT_beat_leaving")])
+
+[sub_resource type="Resource" id="BEAT_beat_standing"]
+script = ExtResource("s_story_beat_data")
+id = &"beat_standing"
+objective_key = &"STORY_BEAT_STANDING_OBJECTIVE"
+reveal_layer = 1
+source = "NARRATIVE_MASTER_PLAN.md §8 Act I: KẺ VÔ DANH"
+terminal = true
+
+[sub_resource type="Resource" id="CH_act1"]
+script = ExtResource("s_story_chapter_data")
+id = &"chapter_ke_vo_danh"
+title_key = &"STORY_CHAPTER_KE_VO_DANH_TITLE"
+act = 1
+max_reveal_layer = 3
+beats = Array[ExtResource("s_story_beat_data")]([SubResource("BEAT_beat_standing")])
+
+[resource]
+script = ExtResource("s_story_catalog_data")
+chapters = Array[ExtResource("s_story_chapter_data")]([SubResource("CH_prologue"), SubResource("CH_act1")])
+flags = Array[ExtResource("s_story_flag_data")]([SubResource("F_flag_heard_village_business"), SubResource("F_flag_heard_elder_account"), SubResource("F_flag_heard_road_ahead")])
+choices = Array[ExtResource("s_story_choice_data")]([SubResource("C_choice_lam_readings"), SubResource("C_choice_night_stand")])
+start_beat_id = &"beat_road"

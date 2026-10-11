@@ -97,6 +97,7 @@ SaveFile:
     completed_chapters: Array[StringName]
     completed_beats: Array[StringName]        # in the order they completed
     choices: Array[Dictionary]                # the choice record, in order: {choice_id, option_id}
+    met: Array[StringName]                    # named characters spoken to, in order
     # NO `flags` HERE. Story flags have ONE store: the player's
     # `characters.by_instance_id[player].story_flags` (already serialized by `CharacterState`).
     # `StoryService` is their only writer. A second copy in this block could disagree with

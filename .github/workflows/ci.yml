@@ -61,6 +61,12 @@ jobs:
           selftest_rc=${PIPESTATUS[0]}
           python3 tools/gdscript_lint.py 2>&1 | tee -a _lint.log
           scan_rc=${PIPESTATUS[0]}
+          # The story and origin catalogs are GENERATED (tools/author_story_data.py is their
+          # one source, D-072). A hand-edited or stale .tres would be silently undone by the
+          # next run of the tool, so the same engine-free gate refuses one. Part of this
+          # gate; the gate count does not change.
+          python3 tools/author_story_data.py --check 2>&1 | tee -a _lint.log
+          if [ "${PIPESTATUS[0]}" -ne 0 ]; then scan_rc=1; fi
           set -e
           {
             echo "### GDScript lint (selftest rc=$selftest_rc, scan rc=$scan_rc)"

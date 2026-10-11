@@ -1310,3 +1310,41 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
 - Mutation-checked: 15 (pursuit) + 2 (budget) + 7 (calendar / layer), each red; see the
   handoff for the list.
 
+## Phase 20 (D-072) — Story, Origins and the prologue
+
+### Checkpoint 1 — the story and origin foundation (domain + data; no scene, no runtime)
+
+- `tests/unit/story/test_story_data.gd` (16) — stable ids, including **the Cyrillic-`о`
+  look-alike that was in the canon ledger: same length, unequal, refused**; each closed set
+  uses only its own payload; conditions that can never both hold; an answer whose two
+  consequences write one value; event vs state triggers; a beat needs an objective (a blank
+  one would blank the purpose line — Q19-03), a trigger and a last branch that always
+  applies; the catalog reports duplicates, nulls, dangling references, an undeclared flag, an
+  unknown choice or option, a flag asked for more than it holds, an unreachable beat, a story
+  with nowhere to rest, a loop, and a beat above its chapter's reveal layer; the origin
+  catalog is exactly the five frozen ids.
+- `tests/unit/story/test_story_service.gd` (24) — a run begins once, as one Origin, and its
+  kit goes through the owners exactly once; **a kit that does not fit, or an owner that is
+  missing, gives NOTHING and begins nothing**; flags live on the player's `CharacterState`
+  and the story record does not mention them; an undeclared flag, a wrong value, a flag
+  before the run begins — refused, nothing changed; a state trigger completes its beat the
+  moment it holds; an event counts only while its beat is current and only with the right
+  subject; a beat whose state already holds is passed through; `refresh` after another owner
+  changed; meeting is recorded once; a choice is ONE record and its consequences reach their
+  owners; **a second answer, an answer outside its beat, an unknown answer and an answer
+  whose owner is missing are each refused with nothing written**; a prior choice decides a
+  later branch and the branches converge; a mid-story record round-trips byte-stable beside
+  the character that carries its flags, and restoring grants nothing again; fifteen kinds of
+  bad record are rejected whole; a record is refused beside flags the catalog cannot account
+  for; `content_errors` asks each owner for what it must supply.
+- `tests/unit/story/test_story_shipped.gd` (7) — the shipped catalogs validate; the five
+  Origin ids match `NARRATIVE_MASTER_PLAN.md` §6 and `CANON_LEDGER.md` byte for byte and are
+  pure ASCII; every shipped story id is stable; every line exists in English and Vietnamese;
+  everything named exists in its owner's content, **and every regard meant to fall is on a
+  dimension that can go below zero** (`trust` and `respect` stop at 0 — a first draft
+  authored four consequences nobody could have felt); the authored prologue walks to Act I
+  down BOTH branches (kept her confidence → she tells you; told the elder → you find it) and
+  converges; **read from the source: nothing in `src` but `StoryService` writes
+  `story_flags`.**
+- Mutation-checked: see the handoff.
+
