@@ -147,7 +147,10 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 
 | ID | Status at Gate A |
 |---|---|
-| Q19-03, AUD-14, AUD-13, AUD-09 | owned by this phase; to close with evidence |
+| Q19-03 | **CLOSED** (Checkpoint 5): the purpose line is arbitrated and never blank — `test_quest_journal.gd`, E2E 8a / 8h |
+| AUD-14 | **CLOSED** (D-072 §4): defeat ends the run; the defeat box states it ("This journey ends here. Nothing was saved."); the Night is survivable and leaving it is a recorded answer — E2E 8e, 11 |
+| AUD-13 | **CLOSED** (Checkpoint 3): `FLAG` / `SET_FLAG` + openings; every once-only line is gated — `test_dialogue_content.gd` |
+| AUD-09 | **CLOSED** (Checkpoint 5): the world line names its subject — `test_the_world_line_names_who_it_is_about` |
 | Q19-01, Q19-02, AUD-15 | Phase 25 — untouched |
 | CLV-01, NAV-01 | Phase 21 — untouched; every required prologue path is over open ground |
 | AUD-07 | Phase 26 — untouched |
@@ -162,8 +165,8 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 | 2 | Real New Game, identity, Origins, the sectless start | `8a3bc2f` | 38117230702 — success, `head_sha` `8a3bc2f96e575827f1373835cdb54cdf4eb33365` (15 gates) |
 | 3 | Arrival, contacts, the small problem, the first decision | `d676f51` | 38129290085 — success, `head_sha` `d676f51f1c62f60352d9b432c6684d652b026893` (15 gates) |
 | 4 | The Night, the encounter, the aftermath, cultivation, the sheet | `7daa7f7` | 38130589579 — success, `head_sha` `7daa7f743658d55d202c6e55f0bf4c540c8f5c30` (15 gates) |
-| 5 | Chronicle, purpose arbitration, the way out | *(this commit)* | *(recorded by the next)* |
-| 6 | Audit, real app, close-out | | |
+| 5 | Chronicle, purpose arbitration, the way out | `7103d05` | 38131696310 — success, `head_sha` `7103d051b6e9651e0dff05477db25f65b4f7d98d` (15 gates) |
+| 6 | Audit, real app, close-out | *(this commit)* | *(recorded by the closing commit)* |
 
 ## 10. Non-goals
 
@@ -172,6 +175,44 @@ manager · save file, slots, autosave, Continue · loot or drops · dungeon, bos
 a sect join · per-Origin campaigns · an audio system · anything Phase 21 owns.
 
 ## 11. Evidence
+
+### Checkpoint 6 — audit, the real application, close-out
+
+**Every Origin, every decision.** `test_every_origin_and_every_pair_of_decisions_reaches_act_one`
+drives 5 Origins × (kept | told) × (stood | withdrew) = 20 runs through the runtime's public
+seams to open Act-I play; mutation *a branch ignores the decision* → RED. The real-key E2E
+covers two of those twenty end to end (thủ thư / woman / kept / stood; hộ tiêu / man / kept /
+withdrew). The other eighteen are NOT played with real keys (MỘT PHẦN).
+
+**Architecture audit (checked, not assumed).** Autoloads: 5. `rand*` in `src/`: one
+pre-existing call (`game_state.gd`, the run id), none added. `story_flags` is assigned only
+under `src/domain/story/` (the Checkpoint-1 source test still passes). No `Color` in any
+story / gameplay file added by this phase. New per-session state is owned once: the story
+record (`StoryState`), flags (the player's `CharacterState`), the encounter cursor
+(`WorldRuntime`, runtime only). `SESSION_START_ORDER` is unchanged at 18. Layer-direction and
+leak gates pass in CI.
+
+**Performance.** Nothing added runs per frame except two dictionary reads inside the
+existing pickup loop (`PERFORMANCE.md` PERF-NOTE-20). Presence, the Chronicle view and the
+purpose line are event-driven.
+
+**Real application, four combinations.** `tools/capture_ui.gd` at vi / en × 1280×720 /
+1280×800: 36 captures each, exit 0, no script error. Opened and looked at: vi 720 (the wave
+and the abandoned cart; the rupture caption; Chronicle pages 1 and 4), en 800 (the Chronicle's
+"Who you were" page — framed, bounded, readable), vi 800 (the warning card over the village,
+the world line reading "Thẩm Bất Kỳ: Quan hệ giữa người với người tăng lên" on two rows inside
+the plaque, the purpose "Ra bìa rừng phía đông"). `tools/playtest_flow.gd`: 36/36 at vi 720 and
+en 800 on the Checkpoint-5 tree. Not every one of the 144 captures was opened.
+
+**What the owner asked for after playing Checkpoint 2, against what exists now.**
+
+| Asked | State |
+|---|---|
+| "nothing free to pick up without a reason" | the outpost's three items are held until issued; the manual appears only with the wreck. STILL FREE: the offering pill by the spring, the two vein stones and the pill in the woods (nobody's, by decision) |
+| "the woman cannot be told apart" | re-designed and re-rendered; distinct at 1× in the real window |
+| "deeper story, secrets, twists" | four people with a goal / fear / secret that shows; each Origin tied to the carter's load; the outpost's lie and the removed stake. The twists are PLANTED, not paid off — that is Acts I+ |
+| "graphics still ugly" | only the woman's look, the carter and the cart were made. The world's art, lighting (no night), the wolves and the "wreck" are unchanged — NOT addressed |
+| "engaging, not monotone" | CHƯA VERIFY: nobody but the tools has played Checkpoints 3–5 |
 
 ### Checkpoint 5 — the Chronicle, the purpose line, the way out (built)
 
@@ -457,6 +498,13 @@ pacing are added by the checkpoints that produce them)*
 
 ## 12. Status
 
-Checkpoint 2 built: New Game is the identity screen, the player is a nobody with an Origin,
-and the run opens on its vignette and the arrival. Beats 4–12 are not built.
-**Phase 20 is NOT DONE.**
+All six checkpoints are built: New Game → identity and Origin → vignette → the twelve prologue
+beats → open Act-I play, with the Chronicle and an arbitrated purpose line. Closure (DONE, the
+CI run on the close-out SHA, and integration into `main`) is recorded by the closing commit.
+
+**What a successor should know.** Act I has a standing objective and nothing to do about it.
+Phase 21 (Dungeon) owns CLV-01 and NAV-01; Phase 25 owns Q19-01, Q19-02 and AUD-15; Phase 26
+owns AUD-07. New in this phase and unowned: the people page shows numbers, not words; the
+Chronicle key is not advertised outside the book; there is no night lighting; the wreck is
+not drawn broken; a swing's recovery ended a sitting in the E2E and was not investigated in
+play.

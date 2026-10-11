@@ -445,3 +445,44 @@ func test_ending_the_session_stops_listening_and_is_idempotent() -> void:
 	assert_false(rig.story.meet(SHEN).ok, "nor does a late request do anything")
 	assert_eq(rig.story.to_dict(), {}, "and there is no record")
 	_free(rig)
+
+
+## Phase 20 close-out: NO Origin and NO pair of decisions can leave a run stuck. Every one of
+## the 5 x 2 x 2 runs reaches open Act-I play through the runtime's public seams, in an order
+## a player can produce, and ends holding the mystery and a standing purpose.
+func test_every_origin_and_every_pair_of_decisions_reaches_act_one() -> void:
+	var origins: Array[StringName] = [&"origin_ho_tieu", &"origin_de_tu_bi_loai",
+		&"origin_lang_y", &"origin_nghe_nhan", &"origin_thu_thu"]
+	for origin_id in origins:
+		for readings: StringName in [&"kept", &"told"]:
+			for night: StringName in [&"stood", &"withdrew"]:
+				var rig := _rig()
+				var run := "%s / %s / %s" % [origin_id, readings, night]
+				assert_true(_start(rig, origin_id), "%s starts" % run)
+				_skip_all(rig)
+				for who: StringName in [LIN, &"actor_carter_te", SHEN]:
+					rig.story.meet(who)
+				rig.story.set_flag(&"flag_heard_village_business")
+				assert_true(rig.story.choose(&"choice_lam_readings", readings).ok,
+					"%s: the first decision is taken" % run)
+				_skip_all(rig)
+				rig.world.map_id = &"map_field"
+				rig.world.active_map_ready.emit()
+				_skip_all(rig)
+				assert_true(rig.story.choose(&"choice_night_stand", night).ok,
+					"%s: the Night is answered" % run)
+				_skip_all(rig)
+				rig.story.set_flag(&"flag_heard_elder_account")
+				rig.story.note_cultivated()
+				var service := rig.story.get_service()
+				assert_eq(service.state().beat_id,
+					&"beat_sheet_told" if readings == &"kept" else &"beat_sheet_found",
+					"%s: the sheet beat follows the first decision" % run)
+				rig.knowledge.grant(&"know_survey_fragment", &"source_survey_sheet")
+				rig.story.set_flag(&"flag_heard_road_ahead")
+				_skip_all(rig)
+				assert_eq([service.state().chapter_id, service.state().beat_id],
+					[&"chapter_ke_vo_danh", &"beat_standing"], "%s reaches Act I" % run)
+				assert_ne(service.objective_key(), &"", "%s: with a standing purpose" % run)
+				assert_ne(service.origin().goal_key, &"", "%s: and a goal of their own" % run)
+				_free(rig)

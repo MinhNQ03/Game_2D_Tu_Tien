@@ -8,6 +8,12 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Phase 20, Checkpoint 6: audit and close-out
+
+- 20 runs (5 Origins × 2 × 2 decisions) proved to reach Act I; architecture audit recorded;
+  the four-combination capture matrix run and sampled; Q19-03, AUD-14, AUD-13, AUD-09 closed.
+- Phase 21 (Dungeon) is NOT STARTED.
+
 ### 2026-10-11 — Phase 20, Checkpoint 5: the Chronicle, the purpose line, the way out
 
 - The prologue is playable from New Game to open Act-I play (all twelve beats).

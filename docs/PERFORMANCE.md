@@ -301,6 +301,15 @@ Template:
 
 
 
+### PERF-NOTE-20 — what the story added to the frame  (2026-10-11)
+
+Phase 20 added no node that processes. The one per-frame cost is inside the pickup loop
+`InventoryRuntime.tick` already ran: for a pickup that is HELD or APPEARS WITH a flag, one
+`Callable` into `StoryService.flag_at_least` (a dictionary read). Shipped maps: three such
+pickups in the village, one in the woods. `StoryPresence`, the Chronicle view, the purpose
+line and the story encounter are all event-driven (map ready, the story moved, something was
+learned, a creature fell). Not measured with a profiler; argued from the code (CHƯA ĐO).
+
 ## 5. Relationship to tests
 
 Performance budgets become `tests/performance/` assertions where feasible (e.g. frame
