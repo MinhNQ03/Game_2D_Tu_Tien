@@ -238,12 +238,27 @@ job log the old pattern matches 0 result lines and the new one matches 1.
 
 ## 7. CI
 
-All three code commits and this document were pushed together; CI ran on the pushed tip.
-The run on the commit that carries this file, with its exact `head_sha` and every gate, is
-recorded by the NEXT commit (a document cannot name the run of its own commit). That final
-commit changes this section only; its own run is reported in the session's closing report.
+| | |
+|---|---|
+| Run | **38111877656** — https://github.com/MinhNQ03/Game_2D_Tu_Tien/actions/runs/38111877656 |
+| `head_sha` | `5c8c1faa232c6ce23ab372d094c275c380f72d5d` (branch `fix/pre-phase20-readiness`) — the commit that carries the three fixes and this handoff |
+| Conclusion | `success` |
 
-_Pending: recorded by the following commit._
+Every gate, read from the run's job steps, all `success`: Checkout · GDScript static lint ·
+Download Godot 4.7-stable · Import project · GDScript parse check · Runtime boot smoke ·
+Headless test suite · Real-application E2E · Player sandbox E2E · World/Map E2E · Pet E2E ·
+NPC/Shop E2E · Dialogue E2E · Quest E2E — 14 gates.
+
+Read from the job log itself rather than from the gate's summary (L-051):
+`[tests] ran 1090 test(s): 1090 passed, 0 failed.`; **no `leaked at exit` line in either
+wording** and no `resources still in use` (the Phase-19 run's log had one); no
+`SCRIPT ERROR:` result line; seven `RESULT: PASS` lines for the E2E flows. The detour budget
+on the runner: 1403 ms, 19.5 µs per creature per frame (ceiling 40), 10.07× for a 10× cast —
+and **64 971 look-aheads, the same count as locally**, which is the determinism claim
+checked on a second machine.
+
+The commit that adds this section changes this section only. Its own run is reported in the
+session's closing report, because a document cannot name the run of its own commit.
 
 ## 8. Debt after this task
 
