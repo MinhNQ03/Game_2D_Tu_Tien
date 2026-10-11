@@ -200,7 +200,12 @@ func tick(delta: float) -> void:
 		# interval, and a long frame (already accounted for in `elapsed`) does not queue a
 		# burst of catch-up decisions.
 		_seconds_since_decision = fmod(elapsed, _profile.decision_interval)
-		_intent = _brain.decide(_perceive(), elapsed)
+		var decided := _brain.decide(_perceive(), elapsed)
+		if decided != _intent:
+			# A new intent is a new errand: the way round whatever blocked the last one is
+			# not carried into it.
+			_movement.end_pursuit()
+		_intent = decided
 		_decisions += 1
 		var state_now := _brain.state_name()
 		if state_now != _last_state_name:
@@ -272,7 +277,18 @@ func _execute(intent: int, delta: float) -> void:
 			direction = Vector2.ZERO
 	if _attack != null:
 		speed_scale *= _attack.movement_scale()  # a swing in flight roots the body (D-057B)
-	_movement.apply_intent(direction, _speed * speed_scale, delta)
+	if intent == AiBrain.Intent.APPROACH or intent == AiBrain.Intent.RETURN_HOME:
+		# The two intents that mean "get THERE": the movement seam walks round whatever stands
+		# in the way, and the creature faces the way it is really going (Q19-04). The target
+		# is named so that touching it reads as arriving; home is a point, so nothing is.
+		# A body that was told to stand (rooted by its own swing) keeps looking where it
+		# meant to go, exactly as before.
+		var heading := _movement.apply_pursuit(direction, _speed * speed_scale, delta,
+			_target if intent == AiBrain.Intent.APPROACH else null)
+		if heading != Vector2.ZERO:
+			direction = heading
+	else:
+		_movement.apply_intent(direction, _speed * speed_scale, delta)
 	_face(direction, direction != Vector2.ZERO and speed_scale > 0.0)
 
 
@@ -338,6 +354,8 @@ func stop() -> void:
 		_attack.cancel()
 	if _body != null and is_instance_valid(_body):
 		_body.velocity = Vector2.ZERO
+	if _movement != null and is_instance_valid(_movement):
+		_movement.end_pursuit()
 	_stun_left = 0.0
 	_knock_velocity = Vector2.ZERO
 

@@ -165,3 +165,153 @@ func test_a_large_cast_leaks_no_orphans_while_ticking() -> void:
 	assert_true(after <= before,
 		"ticking and despawning %d enemies leaves no orphan growth (%d -> %d)"
 			% [LARGE_CAST, int(before), int(after)])
+
+
+# === Walking round an obstacle (Q19-04) ======================================
+#
+# The casts above have no target, so they measure wandering. A creature that is PURSUING and
+# finds something in its way makes one look-ahead query a tick while it walks round. This is
+# that cost at its worst: every creature hunting a target shut inside a closed pen, so each
+# one walks round the pen for the whole span and never gets to stop.
+
+## The pen: four slabs round the target, far too small a gap for anything to enter.
+const PEN := Rect2(560, 360, 80, 60)
+const PEN_WALL := 8.0
+## Per creature per frame while it walks round something. MEASURED at 12.8 us — about 2.7x a
+## wandering creature (4.8 us), because it moves at full speed and adds one physics query a
+## tick. The ceiling is ~3x the measurement, as loose as the others for the same reason: it is
+## there to catch a second query, a search or a quadratic, not to time shared CI hardware. For
+## scale: a whole cast of 40 doing nothing but this is 0.5 ms of a 16.6 ms frame.
+const DETOUR_MAX_USEC := 40.0
+
+
+class PennedTarget extends Node2D:
+	func is_dead() -> bool:
+		return false
+
+
+class Pen extends RefCounted:
+	var runtime: CombatRuntime
+	var target: Node2D
+	var walls: Array[Node] = []
+
+
+func _pen(rows: int) -> Pen:
+	var pen := Pen.new()
+	for rect: Rect2 in [
+		Rect2(PEN.position.x, PEN.position.y, PEN.size.x, PEN_WALL),
+		Rect2(PEN.position.x, PEN.end.y - PEN_WALL, PEN.size.x, PEN_WALL),
+		Rect2(PEN.position.x, PEN.position.y, PEN_WALL, PEN.size.y),
+		Rect2(PEN.end.x - PEN_WALL, PEN.position.y, PEN_WALL, PEN.size.y),
+	]:
+		var wall := StaticBody2D.new()
+		wall.collision_layer = CollisionLayers.WORLD
+		wall.collision_mask = 0
+		var shape := CollisionShape2D.new()
+		var box := RectangleShape2D.new()
+		box.size = rect.size
+		shape.shape = box
+		wall.add_child(shape)
+		add_to_tree(wall)
+		wall.global_position = rect.get_center()
+		pen.walls.append(wall)
+	pen.target = PennedTarget.new()
+	add_to_tree(pen.target)
+	pen.target.global_position = PEN.get_center()
+	# The physics space takes the walls on its next step; nothing moves before it has them.
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	pen.runtime = CombatRuntimeScript.new()
+	add_to_tree(pen.runtime)
+	pen.runtime.start_session(RngServiceScript.new(WORLD_SEED))
+	pen.runtime.set_hunt_target(pen.target)
+	var table: EnemySpawnTableData = SpawnTableScript.new()
+	table.map_id = &"map_field"
+	var data := load(ENEMY_PATH) as EnemyData
+	var enemies: Array[EnemyData] = []
+	var positions := PackedVector2Array()
+	for i in rows:
+		enemies.append(data)
+		# A ring round the pen, inside the detect radius, so every creature notices at once.
+		var angle := TAU * float(i) / float(rows)
+		positions.append(PEN.get_center() + Vector2(cos(angle), sin(angle)) * 120.0)
+	table.enemies = enemies
+	table.positions = positions
+	pen.runtime.spawn_from_table(table, pen.runtime)
+	# This test is the only clock (the awaits above would otherwise let the session tick too).
+	pen.runtime.set_physics_process(false)
+	return pen
+
+
+func _free_pen(pen: Pen) -> void:
+	pen.runtime.end_session()
+	free_node(pen.runtime)
+	free_node(pen.target)
+	for wall in pen.walls:
+		free_node(wall)
+
+
+## Returns [milliseconds, look-aheads made by the whole cast, frames any creature stood still
+## while chasing].
+func _measure_pen(rows: int) -> Array:
+	var pen := await _pen(rows)
+	var enemies := pen.runtime.enemies()
+	var last := PackedVector2Array()
+	for enemy in enemies:
+		last.append(enemy.global_position)
+	var stalled := 0
+	var started := Time.get_ticks_usec()
+	for _i in FRAMES:
+		pen.runtime.tick_enemies(FRAME_DELTA)
+		for i in enemies.size():
+			var at := enemies[i].global_position
+			if enemies[i].ai_state_name() == "CHASE" and at.distance_to(last[i]) < 0.01:
+				stalled += 1
+			last[i] = at
+	var msec := float(Time.get_ticks_usec() - started) / 1000.0
+	var probes := 0
+	for enemy in enemies:
+		probes += (enemy.get_node("MovementComponent") as MovementComponent).detour_probes()
+	_free_pen(pen)
+	return [msec, probes, stalled]
+
+
+## Walking round is BOUNDED WORK: never more than one look-ahead per creature per tick, linear
+## in the cast, and under a per-creature ceiling of its own. It is also never a stall — a
+## creature that cannot reach its target keeps moving round the thing in its way.
+func test_walking_round_an_obstacle_is_one_query_a_tick_and_linear() -> void:
+	var small: Array = await _measure_pen(SMALL_CAST)
+	var large: Array = await _measure_pen(LARGE_CAST)
+	var small_msec := float(small[0])
+	var large_msec := float(large[0])
+	var probes := int(large[1])
+	print("[perf][ai-detour] %d frames penned | cast %d: %.2f ms | cast %d: %.2f ms" % [
+		FRAMES, SMALL_CAST, small_msec, LARGE_CAST, large_msec])
+	print("[perf][ai-detour] %d look-aheads by %d creatures (%.2f per creature per frame)" % [
+		probes, LARGE_CAST, float(probes) / float(FRAMES * LARGE_CAST)])
+
+	assert_true(probes > FRAMES * LARGE_CAST / 2,
+		"the staging really holds the cast in a detour (%d look-aheads)" % probes)
+	assert_true(probes <= FRAMES * LARGE_CAST,
+		"at most ONE look-ahead per creature per tick (%d in %d creature-frames)"
+			% [probes, FRAMES * LARGE_CAST])
+	assert_true(large_msec < float(CEILING_MSEC),
+		"%d frames with %d creatures walking round stay under the ceiling (%.2f ms)"
+			% [FRAMES, LARGE_CAST, large_msec])
+	var scaling: float = large_msec / maxf(small_msec, 0.5)
+	print("[perf][ai-detour] scaling factor for a 10x cast: %.2fx" % scaling)
+	assert_true(scaling < MAX_SCALING,
+		"a 10x cast walking round stays LINEAR (got %.2fx, limit %.2fx)"
+			% [scaling, MAX_SCALING])
+	var usec_per_enemy_frame := (large_msec * 1000.0) / float(FRAMES * LARGE_CAST)
+	print("[perf][ai-detour] %.3f us per creature per frame" % usec_per_enemy_frame)
+	assert_true(usec_per_enemy_frame < DETOUR_MAX_USEC,
+		"and each creature stays cheap per frame while it walks round (got %.3f us, limit %.0f)"
+			% [usec_per_enemy_frame, DETOUR_MAX_USEC])
+	# One still frame when a creature first runs into a wall or turns a corner is the rule
+	# finding out; a creature at rest against the pen would add ~1800 of them on its own.
+	var stalled := int(large[2])
+	print("[perf][ai-detour] %d still chase-frames across the cast" % stalled)
+	assert_true(stalled < LARGE_CAST * 30,
+		"nothing comes to rest against the pen (%d still chase-frames for %d creatures)"
+			% [stalled, LARGE_CAST])

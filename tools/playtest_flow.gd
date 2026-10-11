@@ -50,6 +50,16 @@ const FEEDBACK_MAX_MSEC := 100.0
 ## when the session is locked.
 const PACING_MAX_MEAN_MSEC := 20.0
 
+## The rock the hunt-round-an-obstacle step stages across (Q19-04): the field's southern
+## boulder, which stands in open ground with nothing else solid within reach of the walk.
+const HUNT_OBSTACLE_PATH := "Visual/Decor/Prop_RockS"
+## How far from the rock's faces each side is placed.
+const HUNT_STANDOFF_PX := 48.0
+## The staged row, measured up from the rock's front edge. Chosen so that the creature still
+## meets the rock's WEST FACE wherever one decision's worth of wandering leaves it (it may be
+## mid-patrol when it is placed, and covers up to ~11 px before it notices the player).
+const HUNT_ROW_ABOVE_FRONT_PX := 4.0
+
 var _out_dir := "user://playtest"
 var _language := "vi"
 ## One entry per step: name, expected, observed, ok, msec, shot, map, ui.
@@ -91,6 +101,7 @@ func _run() -> void:
 	await _step_attack(map)
 	await _step_enter_field(map)
 	await _step_encounter(main)
+	await _step_hunt_round_obstacle(main)
 	await _step_natural_encounter(main)
 	await _step_return_to_menu(main)
 
@@ -950,6 +961,118 @@ func _step_encounter(main: Node) -> void:
 		still and reset, started)
 
 
+## THE HUNT GOES ROUND A ROCK (Q19-04) — deterministic setup, then NO INPUT AT ALL.
+##
+## Step 19 below stages the player on the creature's own row, wherever the creature happens to
+## have wandered. When a prop stood on that row the creature walked into it and stayed there:
+## a pursuer sliding along a solid face comes to rest where its target is dead ahead through
+## the obstacle (a stable resting point — measured, `tests/integration/test_enemy_detour.gd`),
+## and the harness pressed the player into the same prop from the other side. One run in three
+## failed that way, and which one depended on where the wander had taken the creature by then.
+##
+## This step makes THAT arrangement happen every run instead of some runs: the creature and
+## the player are each placed ONCE, on one row, with the field's southern boulder between
+## them. Then the harness presses NOTHING. The creature must come round the rock and bite,
+## inside a budget computed from its own authored numbers. Both placements are setup and are
+## reported as setup; what is evidence is everything after them — it is the creature's own AI
+## that closes the distance, through the real physics, in the real window.
+func _step_hunt_round_obstacle(main: Node) -> void:
+	var started := Time.get_ticks_msec()
+	var combat := main.get_node_or_null("Systems/CombatRuntime")
+	var router := root.get_node_or_null("SceneRouter")
+	var map: Node = router.call("get_current_scene") if router != null else null
+	var player := _player_of(map)
+	var creature := _first_living_enemy(combat)
+	var rock := map.get_node_or_null(HUNT_OBSTACLE_PATH) as Node2D if map != null else null
+	var rock_data: Resource = rock.get("prop") if rock != null else null
+	if player == null or creature == null or rock_data == null:
+		_record("17b_hunt_round_obstacle",
+			"a living creature, the player and the staged rock all exist",
+			"player=%s creature=%s rock=%s" % [player != null, creature != null,
+				rock_data != null], false, started)
+		return
+
+	var foot: Rect2 = rock_data.get("footprint")
+	var solid := Rect2(rock.global_position + foot.position, foot.size)
+	var row := solid.end.y - HUNT_ROW_ABOVE_FRONT_PX
+	var body_shape := creature.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	var body: Vector2 = (body_shape.shape as RectangleShape2D).size
+	var placements := 0
+	creature.global_position = Vector2(solid.position.x - HUNT_STANDOFF_PX, row)
+	placements += 1
+	player.global_position = Vector2(solid.end.x + HUNT_STANDOFF_PX, row)
+	placements += 1
+	var gap := player.global_position.distance_to(creature.global_position)
+
+	# THE BUDGET, from authored numbers only: the notice pause, the straight gap plus half the
+	# perimeter of the rock grown by the creature's own body at the authored chase speed, the
+	# bite's windup and active window, and four decisions (finish the patrol step it may be
+	# in, notice, chase, swing), each of which can wait a whole interval. Counted in PHYSICS
+	# ticks, which is game time whatever the window's frame rate does.
+	var data: Resource = creature.call("data")
+	var profile: Resource = data.get("ai_profile")
+	var attack: Resource = data.get("attack")
+	var speed := float(data.get("stats").get("move_speed")) \
+		* float(profile.get("chase_speed_scale"))
+	var route := gap + solid.size.x + body.x + solid.size.y + body.y
+	var seconds := float(profile.get("alert_seconds")) + route / speed \
+		+ float(attack.get("windup_seconds")) + float(attack.get("active_seconds")) \
+		+ 4.0 * float(profile.get("decision_interval"))
+	var budget_ticks := ceili(seconds * float(Engine.physics_ticks_per_second))
+
+	var hp_before := int(player.call("get_current_health"))
+	var first_tick := Engine.get_physics_frames()
+	var bitten_after := -1
+	var went_round := ""
+	var shot := ""
+	var farthest_off_row := 0.0
+	# Watched for three budgets, so a late arrival is reported as late rather than as absent.
+	while int(Engine.get_physics_frames() - first_tick) <= budget_ticks * 3:
+		await process_frame
+		var at := creature.global_position
+		farthest_off_row = maxf(farthest_off_row, absf(at.y - row))
+		var rect := Rect2(at + body_shape.position - body * 0.5, body)
+		if went_round == "" and rect.end.x > solid.position.x \
+				and rect.position.x < solid.end.x:
+			# Level with the rock and wholly clear of it: it is going ROUND, on this side.
+			if rect.end.y <= solid.position.y:
+				went_round = "above"
+			elif rect.position.y >= solid.end.y:
+				went_round = "below"
+			if went_round != "":
+				await RenderingServer.frame_post_draw
+				shot = _shot_now("17b_hunt_round_obstacle")
+		if int(player.call("get_current_health")) < hp_before:
+			bitten_after = int(Engine.get_physics_frames() - first_tick)
+			break
+	_record("17b_hunt_round_obstacle",
+		"[SETUP x2, then no input] a creature with a rock on its line walks round it and bites",
+		("setup{placements=%d (creature, player) gap_px=%.0f rock=%s} input{keys=0} "
+			+ "hunt{bitten_after_ticks=%d budget_ticks=%d went_round=%s off_row_px=%.1f "
+			+ "state=%s final_gap_px=%.0f} player_hp %d -> %d") % [
+			placements, gap, HUNT_OBSTACLE_PATH.get_file(), bitten_after, budget_ticks,
+			went_round if went_round != "" else "NO", farthest_off_row,
+			creature.call("ai_state_name"),
+			player.global_position.distance_to(creature.global_position), hp_before,
+			int(player.call("get_current_health"))],
+		bitten_after >= 0 and bitten_after <= budget_ticks and went_round != ""
+			and placements == 2, started, shot)
+
+
+## The first spawned creature that is still alive, or null.
+func _first_living_enemy(combat: Node) -> Node2D:
+	if combat == null or not combat.has_method("enemies"):
+		return null
+	for candidate in combat.call("enemies"):
+		var node := candidate as Node2D
+		if node == null or not is_instance_valid(node):
+			continue
+		if node.has_method("is_dead") and bool(node.call("is_dead")):
+			continue
+		return node
+	return null
+
+
 ## MODE B — PLAYER EXPERIENCE (D-055 §13-14, §F).
 ##
 ## Mode A above proves the MECHANIC reproducibly, and it does so by teleporting the player into
@@ -990,16 +1113,7 @@ func _step_natural_encounter(main: Node) -> void:
 
 	# --- find a LIVING creature for the natural encounter ---
 	started = Time.get_ticks_msec()
-	var living: Node2D = null
-	if combat != null and combat.has_method("enemies"):
-		for candidate in combat.call("enemies"):
-			var node := candidate as Node2D
-			if node == null or not is_instance_valid(node):
-				continue
-			if node.has_method("is_dead") and bool(node.call("is_dead")):
-				continue
-			living = node
-			break
+	var living := _first_living_enemy(combat)
 	if living == null or player == null:
 		_record("19_natural_encounter",
 			"a second living creature exists for an unassisted encounter",
