@@ -19,10 +19,10 @@ const LAYERS: Array[String] = ["data", "domain", "gameplay", "presentation"]
 const GUARDED: Array[String] = ["data", "domain"]
 
 ## Known, RECORDED exceptions — `file -> class` pairs that predate this guard. Each is debt
-## with an owner (`docs/handoff/phase-19-quest.md` §9); the list may only get shorter.
-const KNOWN_EXCEPTIONS := {
-	"res://src/data/worldsim/world_sim_catalog.gd": ["WorldClock"],  # Q19-05 (Phase 08)
-}
+## with an owner; the list may only get shorter, and it is EMPTY: its one entry
+## (`world_sim_catalog.gd` naming `WorldClock`, Q19-05) was fixed, not excused. An entry added
+## here must come with a register row, an owner and a closure criterion.
+const KNOWN_EXCEPTIONS := {}
 
 
 func test_no_lower_layer_names_a_class_an_upper_layer_declares() -> void:
@@ -47,6 +47,53 @@ func test_no_lower_layer_names_a_class_an_upper_layer_declares() -> void:
 		"a lower layer names a class of an upper one — the arrow points the wrong way")
 	assert_eq(excused, _exception_count(),
 		"every recorded exception still exists; one that was fixed must leave the list")
+
+
+## Q19-05, by name. The world simulation's data must not know its own domain exists: the
+## catalog validated its calendar against `WorldClock.MIN_UNIT`, so authored content depended
+## on the code that consumes it. The general scan above reports this too; this test names the
+## pair of folders, so the failure says exactly which boundary was crossed and where.
+func test_world_simulation_data_does_not_depend_on_its_domain() -> void:
+	var domain := _class_names("res://src/domain/worldsim")
+	var data_scripts := _scripts("res://src/data/worldsim")
+	assert_true(domain.has("WorldClock"), "the worldsim domain declares its classes")
+	assert_true(data_scripts.has("res://src/data/worldsim/world_sim_catalog.gd"),
+		"and the worldsim data is where this looks")
+	var violations: Array[String] = []
+	for path in data_scripts:
+		for hit in _names_used(path, domain):
+			violations.append("%s names %s" % [path.trim_prefix("res://"), hit])
+		for hit in _layer_paths_used(path, ["domain"]):
+			violations.append("%s loads %s" % [path.trim_prefix("res://"), hit])
+	assert_eq(violations, [] as Array[String],
+		"src/data/worldsim depends on src/domain/worldsim — the arrow points the wrong way")
+
+
+## A `class_name` is not the only way up: `preload("res://src/domain/...")` reaches an upper
+## layer through a STRING, which the name scan deliberately ignores. No lower layer may load a
+## script from an upper one by path either.
+func test_no_lower_layer_loads_a_script_from_an_upper_layer_by_path() -> void:
+	var violations: Array[String] = []
+	for i in GUARDED.size():
+		for path in _scripts("res://src/%s" % LAYERS[i]):
+			for hit in _layer_paths_used(path, LAYERS.slice(i + 1)):
+				violations.append("%s loads %s" % [path.trim_prefix("res://"), hit])
+	assert_eq(violations, [] as Array[String],
+		"a lower layer loads an upper layer's script by path")
+
+
+## The path scan must be able to fail, and must not fire on a comment.
+func test_the_path_scan_reports_a_load_and_ignores_comments() -> void:
+	var upper: Array[String] = ["domain", "gameplay"]
+	assert_eq(_layer_paths_in(
+		"const C := preload(\"res://src/domain/worldsim/world_clock.gd\")", upper),
+		["res://src/domain/"] as Array[String], "a preload of a domain script is a reference")
+	assert_eq(_layer_paths_in("\tvar s = load(\"res://src/gameplay/x.gd\")  # why", upper),
+		["res://src/gameplay/"] as Array[String], "so is a load")
+	assert_eq(_layer_paths_in("## see res://src/domain/worldsim/world_clock.gd", upper),
+		[] as Array[String], "a doc comment is not")
+	assert_eq(_layer_paths_in("const C := preload(\"res://src/data/x.gd\")", upper),
+		[] as Array[String], "nor is a path into a layer that is allowed")
 
 
 ## The guard must be able to fail: a data line naming a domain service IS reported.
@@ -125,4 +172,34 @@ func _names_in(line: String, names: Array[String]) -> Array[String]:
 		word.compile("(?<![A-Za-z0-9_])%s(?![A-Za-z0-9_])" % class_id)
 		if word.search(code) != null:
 			found.append(class_id)
+	return found
+
+
+## Which `res://src/<layer>/` prefixes, for `layers`, the CODE of `path` mentions, each once.
+func _layer_paths_used(path: String, layers: Array[String]) -> Array[String]:
+	var found: Array[String] = []
+	for line in FileAccess.get_file_as_string(path).split("\n"):
+		for hit in _layer_paths_in(line, layers):
+			if not found.has(hit):
+				found.append(hit)
+	return found
+
+
+## The same, for one line. Unlike `_names_in` this reads INSIDE strings — a path only ever
+## appears in one — and stops at a comment that starts outside a string.
+func _layer_paths_in(line: String, layers: Array[String]) -> Array[String]:
+	var code := ""
+	var in_string := false
+	for i in line.length():
+		var ch := line[i]
+		if ch == "\"":
+			in_string = not in_string
+		elif ch == "#" and not in_string:
+			break
+		code += ch
+	var found: Array[String] = []
+	for layer in layers:
+		var prefix := "res://src/%s/" % layer
+		if code.contains(prefix):
+			found.append(prefix)
 	return found

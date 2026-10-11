@@ -31,10 +31,10 @@ class_name WorldSimulationState
 ## happen to be present.
 const SCHEMA_VERSION := 1
 
-## Fallback calendar unit for an UNCONSTRUCTED state being hydrated (see `from_dict`). Mirrors
-## `WorldClock.MIN_UNIT`; named here so the fallback is explicit at the call site rather than a
-## bare `1`.
-const MIN_CALENDAR_UNIT := 1
+## Fallback calendar unit for an UNCONSTRUCTED state being hydrated (see `from_dict`). It IS
+## `WorldClock.MIN_UNIT` (one fact, stated once, on `WorldSimCatalog`); named here so the
+## fallback is explicit at the call site rather than a bare `1`.
+const MIN_CALENDAR_UNIT: int = WorldClock.MIN_UNIT
 
 var _clock: WorldClock = null
 var _rng: RngService = null

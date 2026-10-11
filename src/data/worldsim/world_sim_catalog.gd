@@ -21,6 +21,16 @@ class_name WorldSimCatalog
 
 # --- Calendar (see `WorldClock`; `WORLD_BIBLE.md` freezes no calendar) -------
 
+## The smallest value a calendar unit may be authored at. Zero or less would make every date
+## derived from the tick divide by zero.
+##
+## IT IS STATED HERE, IN THE DATA LAYER, AND NOWHERE ELSE (Q19-05). The four units below are
+## authored on this resource, so the floor of what may be authored is a fact about this
+## resource; the domain clock that does the arithmetic reads it from here
+## (`WorldClock.MIN_UNIT`), which is the direction the dependency arrow is allowed to point.
+## This file used to read it from `WorldClock` instead — a data resource naming a domain class.
+const MIN_CALENDAR_UNIT: int = 1
+
 @export var ticks_per_hour: int = 1
 @export var hours_per_day: int = 12
 @export var days_per_season: int = 30
@@ -83,8 +93,8 @@ func _validate_calendar(errors: Array[String]) -> void:
 	]:
 		var field := String((pair as Array)[0])
 		var value := int((pair as Array)[1])
-		if value < WorldClock.MIN_UNIT:
-			errors.append("%s must be >= %d (got %d)" % [field, WorldClock.MIN_UNIT, value])
+		if value < MIN_CALENDAR_UNIT:
+			errors.append("%s must be >= %d (got %d)" % [field, MIN_CALENDAR_UNIT, value])
 
 
 func _validate_budgets(errors: Array[String]) -> void:

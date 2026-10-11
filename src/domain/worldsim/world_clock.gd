@@ -26,7 +26,11 @@ class_name WorldClock
 
 ## The smallest calendar a conversion can be built on. Zero or negative would make the
 ## derived fields divide by zero, so an invalid calendar is rejected at construction.
-const MIN_UNIT := 1
+##
+## READ FROM THE CATALOG, not restated: the units are authored there, so that is where their
+## floor is stated, and the clock refuses exactly what the catalog's own validation refuses.
+## Domain reading data is the permitted direction; the reverse was Q19-05.
+const MIN_UNIT: int = WorldSimCatalog.MIN_CALENDAR_UNIT
 
 ## Monotonic tick count since the world began. The ONE stored value.
 var _tick: int = 0
