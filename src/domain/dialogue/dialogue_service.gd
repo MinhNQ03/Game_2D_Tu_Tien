@@ -39,11 +39,14 @@ var _config: RelationshipConfigData = null
 ## Optional: the quest owner, asked for a quest's phase. Without it, content that names a
 ## quest is a content error and a quest condition is never met.
 var _quests: QuestService = null
+## Optional: the story owner, asked for a flag and for the player's Origin (D-072). Without
+## it, content that names a flag, an Origin or a story choice is a content error.
+var _story: StoryService = null
 
 
 func _init(catalog: DialogueCatalogData = null, knowledge: KnowledgeService = null,
 		relationship: RelationshipService = null, config: RelationshipConfigData = null,
-		quests: QuestService = null) -> void:
+		quests: QuestService = null, story: StoryService = null) -> void:
 	if catalog == null or knowledge == null or not knowledge.is_ready() \
 			or relationship == null or config == null:
 		return
@@ -55,6 +58,7 @@ func _init(catalog: DialogueCatalogData = null, knowledge: KnowledgeService = nu
 	_relationship = relationship
 	_config = config
 	_quests = quests if quests != null and quests.is_ready() else null
+	_story = story if story != null and story.is_ready() else null
 
 
 func is_ready() -> bool:
@@ -92,6 +96,10 @@ func content_errors(has_text: Callable = Callable(), keeps_shop: Callable = Call
 				if not bool(has_text.call(key)):
 					errors.append("%s: text '%s' has no translation in every language"
 						% [dialogue.id, key])
+		for i in dialogue.openings.size():
+			for condition in dialogue.openings[i].conditions:
+				errors.append_array(_condition_errors("%s/opening %d" % [dialogue.id, i],
+					condition))
 		for line in dialogue.nodes:
 			for option in line.choices:
 				var where := "%s/%s" % [dialogue.id, option.id]
@@ -123,6 +131,18 @@ func _condition_errors(where: String, condition: DialogueConditionData) -> Array
 			if _quests == null or not _quests.catalog().has(condition.quest_id):
 				errors.append("%s: asks about quest '%s', which the quest catalog does not define"
 					% [where, condition.quest_id])
+		DialogueConditionData.Kind.FLAG:
+			var declared := _story.catalog().flag(condition.flag_id) if _story != null else null
+			if declared == null:
+				errors.append("%s: asks about flag '%s', which the story does not declare"
+					% [where, condition.flag_id])
+			elif condition.value > declared.ceiling():
+				errors.append("%s: asks flag '%s' for %d, more than it can hold (%d)"
+					% [where, condition.flag_id, condition.value, declared.ceiling()])
+		DialogueConditionData.Kind.ORIGIN:
+			if _story == null or not _story.origins().has(condition.origin_id):
+				errors.append("%s: asks about Origin '%s', which does not exist"
+					% [where, condition.origin_id])
 	return errors
 
 
@@ -202,6 +222,20 @@ func _effect_errors(where: String, dialogue: DialogueData, effect: DialogueEffec
 			if keeps_shop.is_valid() and not bool(keeps_shop.call(dialogue.speaker_id)):
 				errors.append("%s: opens the shop of '%s', who keeps none"
 					% [where, dialogue.speaker_id])
+		DialogueEffectData.Kind.SET_FLAG:
+			var declared := _story.catalog().flag(effect.flag_id) if _story != null else null
+			if declared == null:
+				errors.append("%s: sets flag '%s', which the story does not declare"
+					% [where, effect.flag_id])
+			elif effect.flag_value > declared.ceiling():
+				errors.append("%s: sets flag '%s' to %d, more than it can hold (%d)"
+					% [where, effect.flag_id, effect.flag_value, declared.ceiling()])
+		DialogueEffectData.Kind.STORY_CHOICE:
+			var asked := _story.catalog().choice(effect.story_choice_id) \
+				if _story != null else null
+			if asked == null or asked.option(effect.story_option_id) == null:
+				errors.append("%s: answers story choice '%s' with '%s', which does not exist"
+					% [where, effect.story_choice_id, effect.story_option_id])
 	return errors
 
 
@@ -229,9 +263,34 @@ func condition_met(condition: DialogueConditionData, speaker_id: StringName,
 			if _quests == null:
 				return false  # nobody to ask: never met, negated or not
 			met = _quests.phase_of(condition.quest_id) == condition.quest_phase
+		DialogueConditionData.Kind.FLAG:
+			if _story == null:
+				return false
+			met = _story.flag_at_least(condition.flag_id, condition.value)
+		DialogueConditionData.Kind.ORIGIN:
+			if _story == null:
+				return false
+			met = _story.origin_is(condition.origin_id)
 		_:
 			return false  # an unknown kind is never met, negated or not
 	return met != condition.negate
+
+
+## The line a conversation with `listener_id` opens on: the first opening whose conditions
+## all hold, else the dialogue's start node. Reads only.
+func opening_node_id(dialogue_id: StringName, listener_id: StringName) -> StringName:
+	var dialogue := _catalog.entry(dialogue_id) if is_ready() else null
+	if dialogue == null:
+		return &""
+	for opening in dialogue.openings:
+		var holds := true
+		for condition in opening.conditions:
+			if not condition_met(condition, dialogue.speaker_id, listener_id):
+				holds = false
+				break
+		if holds:
+			return opening.node_id
+	return dialogue.start_node_id
 
 
 ## The answers `node_id` offers `listener_id` right now, in authored order.
@@ -277,9 +336,10 @@ func advance(dialogue_id: StringName, node_id: StringName) -> DialogueOutcome:
 ## `grant(knowledge_id, source_id) -> StringName` is the Knowledge Core's grant path.
 ## `quest_op(kind, quest_id, speaker_id) -> StringName` is the quest owner's: empty on
 ## success, else ITS reason — which becomes this refusal's, so the player is told why.
+## `story_op(effect: DialogueEffectData) -> StringName` is the story owner's, same contract.
 func choose(dialogue_id: StringName, node_id: StringName, choice_id: StringName,
-		listener_id: StringName, grant: Callable, quest_op: Callable = Callable()) \
-		-> DialogueOutcome:
+		listener_id: StringName, grant: Callable, quest_op: Callable = Callable(),
+		story_op: Callable = Callable()) -> DialogueOutcome:
 	var dialogue := _catalog.entry(dialogue_id) if is_ready() else null
 	var line := dialogue.node(node_id) if dialogue != null else null
 	if line == null or listener_id == &"":
@@ -309,6 +369,13 @@ func choose(dialogue_id: StringName, node_id: StringName, choice_id: StringName,
 				if why != &"":
 					return DialogueOutcome.refused(why, dialogue_id, node_id, choice_id)
 				outcome.quest_id = option.effect.quest_id
+		DialogueEffectData.Kind.SET_FLAG, DialogueEffectData.Kind.STORY_CHOICE:
+			if not story_op.is_valid():
+				applied = false
+			else:
+				var refusal: StringName = story_op.call(option.effect)
+				if refusal != &"":
+					return DialogueOutcome.refused(refusal, dialogue_id, node_id, choice_id)
 		_:
 			applied = false
 	if not applied:

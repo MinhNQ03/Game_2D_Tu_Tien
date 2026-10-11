@@ -2,6 +2,7 @@
 
     blender -b -P tools/aetheria_art_pipeline/blender/cli.py -- <actor> [<actor> ...]
     blender -b -P tools/aetheria_art_pipeline/blender/cli.py -- --save <actor>
+    blender -b -P tools/aetheria_art_pipeline/blender/cli.py -- --props [<prop> ...]
 
 Resolve the actor first on the system-Python side (`build.py resolve <actor>`), then run this,
 then `build.py pixel <actor>`. `--save` writes the canonical master .blend
@@ -30,6 +31,11 @@ def main(argv):
         build_actor.build(os.path.join(PIPE, "work", actor, "spec.json"))
         build_actor.set_mode("beauty")
         print(build_actor.save(os.path.join(HERE, "aetheria_cultivator.blend")))
+        return 0
+    if args[0] == "--props":
+        import build_props
+        print(build_props.render_props(os.path.join(PIPE, "work", "props", "spec.json"),
+                                       only=args[1:] or None))
         return 0
     for actor in args:
         print(build_actor.build_and_render_all(actor))

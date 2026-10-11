@@ -58,6 +58,14 @@ static func story_of(main: Node) -> StoryRuntime:
 	return main.get_node_or_null("Systems/StoryRuntime") as StoryRuntime
 
 
+## SETUP, not proof: record that the elder has issued the outpost's blade, coat and primer,
+## so a flow that is not about the story can walk onto them. The real path — asking him, with
+## real keys — is proved once, in the Story E2E.
+static func take_outpost_issue(main: Node) -> bool:
+	var story := story_of(main)
+	return story != null and story.set_flag(&"flag_outpost_issue", 1).ok
+
+
 ## Step past every story scene now queued (a scene changes nothing; see `StoryRuntime`).
 static func skip_scenes(main: Node) -> int:
 	var story := story_of(main)

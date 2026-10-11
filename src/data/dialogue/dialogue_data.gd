@@ -14,6 +14,8 @@ class_name DialogueData
 @export var speaker_id: StringName = &""
 @export var start_node_id: StringName = &""
 @export var nodes: Array[DialogueNodeData] = []
+## Conditional first lines, asked in order (`DialogueOpeningData`). Empty for most people.
+@export var openings: Array[DialogueOpeningData] = []
 
 
 func node(node_id: StringName) -> DialogueNodeData:
@@ -77,6 +79,16 @@ func validation_errors() -> Array[String]:
 		errors.append("start_node_id is empty")
 	elif not node_ids.has(start_node_id):
 		errors.append("start_node_id '%s' is not a node of this dialogue" % start_node_id)
+	for i in openings.size():
+		var opening := openings[i]
+		if opening == null:
+			errors.append("opening %d is null" % i)
+			continue
+		for problem in opening.validation_errors():
+			errors.append("opening %d: %s" % [i, problem])
+		if opening.node_id != &"" and not node_ids.has(opening.node_id):
+			errors.append("opening %d starts at '%s', which does not exist"
+				% [i, opening.node_id])
 	for entry in nodes:
 		if entry == null:
 			continue
@@ -118,6 +130,8 @@ func _continues_forever(from: DialogueNodeData) -> bool:
 func _reachable_from_start() -> Dictionary:
 	var reached: Dictionary = {}
 	var frontier: Array[StringName] = [start_node_id]
+	for opening in openings:
+		frontier.append(opening.node_id)
 	while not frontier.is_empty():
 		var node_id: StringName = frontier.pop_back()
 		if reached.has(node_id):

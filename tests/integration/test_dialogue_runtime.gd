@@ -10,6 +10,10 @@ const InventoryScript := preload("res://src/gameplay/world/inventory_runtime.gd"
 const RelationshipScript := preload("res://src/gameplay/world/relationship_runtime.gd")
 const NpcRuntimeScript := preload("res://src/gameplay/world/npc_runtime.gd")
 const DialogueRuntimeScript := preload("res://src/gameplay/world/dialogue_runtime.gd")
+const StoryRuntimeScript := preload("res://src/gameplay/world/story_runtime.gd")
+const TE := &"actor_carter_te"
+const TE_TEMPLATE := "res://data/characters/npc_carter_te.tres"
+const ORIGIN := &"origin_nghe_nhan"
 const QuestRuntimeScript := preload("res://src/gameplay/world/quest_runtime.gd")
 const RewardRuntimeScript := preload("res://src/gameplay/world/reward_runtime.gd")
 const WorldNpcScript := preload("res://src/gameplay/npcs/world_npc.gd")
@@ -22,6 +26,8 @@ const DIALOGUES := "res://data/dialogue/dialogue_catalog.tres"
 const KO := &"actor_scout_ko"
 const SHEN := &"actor_elder_shen"
 const LIN := &"actor_disciple_lin"
+## Somebody with a body and no authored conversation (everyone shipped has one now).
+const STRANGER := &"actor_test_stranger"
 const SHOP := &"shop_ko_than_packs"
 const SWORD := &"item_kiem_thanh_thiet"
 const PILL := &"item_bo_huyet_dan"
@@ -54,6 +60,12 @@ class StubWorld extends Node:
 	func get_enemy_kinds() -> Array[StringName]:
 		return [&"enemy_mist_wolf"]
 
+	func get_map_lookup() -> Dictionary:
+		return {&"map_hub": true, &"map_field": true}
+
+	func get_current_map_id() -> StringName:
+		return &"map_hub"
+
 
 ## What the quest session asks of combat: the defeat announcement and what fell.
 class StubCombat extends Node:
@@ -84,6 +96,7 @@ class Rig extends RefCounted:
 	var progression: StubProgression
 	var rewards: RewardRuntime
 	var quests: QuestRuntime
+	var story: StoryRuntime
 	var dialogue: DialogueRuntime
 	var ko: WorldNpc
 	var shen: WorldNpc
@@ -135,7 +148,9 @@ func _rig(catalog: DialogueCatalogData = null, start: bool = true) -> Rig:
 	rig.world.map.add_child(host)
 	rig.ko = _npc(host, KO, KO_TEMPLATE, Vector2(200, 200))
 	rig.shen = _npc(host, SHEN, SHEN_TEMPLATE, Vector2(600, 200))
-	rig.lin = _npc(host, LIN, LIN_TEMPLATE, Vector2(900, 200))
+	rig.lin = _npc(host, STRANGER, LIN_TEMPLATE, Vector2(900, 200))
+	_npc(host, LIN, LIN_TEMPLATE, Vector2(900, 350))
+	_npc(host, TE, TE_TEMPLATE, Vector2(900, 500))
 	rig.world.player = Node2D.new()
 	rig.world.map.add_child(rig.world.player)
 	rig.world.player.global_position = Vector2(200, 220)
@@ -170,11 +185,17 @@ func _rig(catalog: DialogueCatalogData = null, start: bool = true) -> Rig:
 	add_to_tree(rig.quests)
 	assert_true(rig.quests.start_session(rig.world, rig.knowledge, rig.inventory, rig.combat,
 		rig.progression, rig.relationship, rig.rewards), "the quest session starts")
+	# The shipped conversations ask the story for flags and the Origin (Phase 20).
+	rig.story = StoryRuntimeScript.new()
+	add_to_tree(rig.story)
+	assert_true(rig.story.start_session(rig.world, rig.knowledge, rig.relationship,
+		rig.inventory, ORIGIN), "the story session starts")
 	rig.dialogue = DialogueRuntimeScript.new()
 	add_to_tree(rig.dialogue)
 	if start:
 		assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-			rig.relationship, catalog, rig.quests), "the dialogue session starts")
+			rig.relationship, catalog, rig.quests, rig.story),
+		"the dialogue session starts")
 	rig.dialogue.choice_made.connect(rig.on_made)
 	rig.dialogue.choice_refused.connect(rig.on_refused)
 	rig.dialogue.dialogue_closed.connect(rig.on_closed)
@@ -190,6 +211,7 @@ func _free(rig: Rig) -> void:
 	rig.dialogue.view_changed.disconnect(rig.on_view)
 	rig.knowledge.knowledge_gained.disconnect(rig.on_learned)
 	rig.dialogue.end_session()
+	rig.story.end_session()
 	rig.quests.end_session()
 	rig.npcs.end_session()
 	rig.rewards.end_session()
@@ -197,7 +219,8 @@ func _free(rig: Rig) -> void:
 	rig.inventory.end_session()
 	rig.cultivation.end_session()
 	rig.knowledge.end_session()
-	for node: Node in [rig.dialogue, rig.quests, rig.rewards, rig.progression, rig.combat,
+	for node: Node in [rig.dialogue, rig.story, rig.quests, rig.rewards, rig.progression,
+			rig.combat,
 			rig.npcs, rig.relationship, rig.inventory, rig.cultivation, rig.knowledge, rig.world]:
 		free_node(node)
 
@@ -266,7 +289,8 @@ func test_the_session_starts_on_the_shipped_content_and_owns_no_process() -> voi
 	assert_false(rig.dialogue.has_method("to_dict"),
 		"it has no save boundary: Dialogue owns no persistent state (D-066)")
 	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, null, rig.quests), "a second start is refused")
+		rig.relationship, null, rig.quests, rig.story),
+		"a second start is refused")
 	_free(rig)
 
 
@@ -276,13 +300,14 @@ func test_content_that_names_what_an_owner_lacks_stops_the_session() -> void:
 		.effect.knowledge_id = &"know_nothing_at_all"
 	var rig := _rig(null, false)
 	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, catalog, rig.quests), "a grant of knowledge nobody defines fails closed")
+		rig.relationship, catalog, rig.quests, rig.story),
+		"a grant of knowledge nobody defines fails closed")
 	assert_false(rig.dialogue.is_session_active(), "no half-session")
 	var no_shop: DialogueCatalogData = (load(DIALOGUES) as DialogueCatalogData).duplicate(true)
-	no_shop.entries.append(_small_talk(&"dlg_test_lin", LIN, true))
+	no_shop.entries.append(_small_talk(&"dlg_test_lin", STRANGER, true))
 	assert_eq(no_shop.validation_errors(), [] as Array[String], "structurally fine")
 	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, no_shop, rig.quests),
+		rig.relationship, no_shop, rig.quests, rig.story),
 		"a 'trade' choice for someone who keeps no shop fails closed")
 	var no_quests: DialogueCatalogData = load(DIALOGUES) as DialogueCatalogData
 	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
@@ -312,7 +337,8 @@ func test_a_speaker_nobody_registered_stops_the_session_and_leaves_nothing_behin
 	assert_eq(orphan.validation_errors(), [] as Array[String],
 		"the catalog is structurally fine: only the registry can tell")
 	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, orphan, rig.quests), "a conversation spoken by nobody fails closed")
+		rig.relationship, orphan, rig.quests, rig.story),
+		"a conversation spoken by nobody fails closed")
 	assert_false(rig.dialogue.is_session_active(), "no session")
 	assert_null(rig.dialogue.get_service(), "no service kept")
 	assert_false(rig.dialogue.is_open(), "no conversation")
@@ -325,7 +351,8 @@ func test_a_speaker_nobody_registered_stops_the_session_and_leaves_nothing_behin
 	elsewhere.instance_id = &"actor_nobody_at_all"
 	rig.world.registry.add(elsewhere)
 	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, orphan, rig.quests), "once registered, the same content starts")
+		rig.relationship, orphan, rig.quests, rig.story),
+		"once registered, the same content starts")
 	assert_eq(_listeners(rig), 1, "with its one connection")
 	assert_eq(rig.dialogue.talk(&"actor_nobody_at_all"), NpcRuntime.REFUSE_NOBODY,
 		"and someone with no body here is refused by NpcRuntime, at the talk")
@@ -337,13 +364,14 @@ func test_a_world_with_no_character_registry_refuses_the_session() -> void:
 	var registry := rig.world.registry
 	rig.world.registry = null
 	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, null, rig.quests),
+		rig.relationship, null, rig.quests, rig.story),
 		"nobody to resolve the speakers in: refused, not skipped")
 	assert_false(rig.dialogue.is_session_active(), "no half-session")
 	assert_eq(_listeners(rig), 0, "no connection")
 	rig.world.registry = registry
 	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, null, rig.quests), "and the refusal left it able to start properly")
+		rig.relationship, null, rig.quests, rig.story),
+		"and the refusal left it able to start properly")
 	_free(rig)
 
 
@@ -393,10 +421,10 @@ func test_someone_with_nothing_authored_keeps_npc_runtimes_behaviour() -> void:
 	var greeted: Array[StringName] = []
 	var on_greeted := func(id: StringName) -> void: greeted.append(id)
 	rig.npcs.npc_greeted.connect(on_greeted)
-	assert_eq(rig.dialogue.talk(LIN), &"", "accepted")
+	assert_eq(rig.dialogue.talk(STRANGER), &"", "accepted")
 	rig.npcs.npc_greeted.disconnect(on_greeted)
 	assert_false(rig.dialogue.is_open(), "no conversation: none is authored for her")
-	assert_eq(greeted, [LIN] as Array[StringName], "she acknowledges the player, as before")
+	assert_eq(greeted, [STRANGER] as Array[StringName], "she acknowledges the player, as before")
 	assert_false(rig.npcs.is_shop_open(), "and no shop opened for someone who keeps none")
 	_free(rig)
 
@@ -523,12 +551,13 @@ func test_knowledge_gained_elsewhere_changes_what_the_elder_offers() -> void:
 	assert_eq(rig.dialogue.build_view().mood, DialogueNodeData.Mood.STERN, "he greets sternly")
 	assert_false(rig.shen.is_greeting(), "and without a gesture: a different authored reaction")
 	rig.dialogue.advance()
-	assert_eq(_choice_ids(rig), [&"shen_leave"] as Array[StringName], "nothing read, only the door")
+	assert_eq(_choice_ids(rig), [&"shen_issue_ask", &"shen_leave"] as Array[StringName],
+		"nothing read, only the door")
 	rig.dialogue.leave()
 	rig.knowledge.grant(STELE, &"source_lac_ha_stele")
 	rig.dialogue.talk(SHEN)
 	rig.dialogue.advance()
-	assert_eq(_choice_ids(rig), [&"shen_report", &"shen_task_ask", &"shen_leave"]
+	assert_eq(_choice_ids(rig), [&"shen_report", &"shen_task_ask", &"shen_issue_ask", &"shen_leave"]
 		as Array[StringName],
 		"the stele, read at the stele, opens a line with him — and what he would ask of a reader")
 	rig.dialogue.choose(&"shen_hub", &"shen_report")
@@ -536,7 +565,7 @@ func test_knowledge_gained_elsewhere_changes_what_the_elder_offers() -> void:
 	assert_true(rig.shen.is_greeting(), "now he gestures: the same seam, his own sheet")
 	assert_eq(rig.dialogue.build_view().mood, DialogueNodeData.Mood.WARM, "and warms")
 	rig.dialogue.advance()
-	assert_eq(_choice_ids(rig), [&"shen_ask", &"shen_task_ask", &"shen_leave"]
+	assert_eq(_choice_ids(rig), [&"shen_ask", &"shen_task_ask", &"shen_issue_ask", &"shen_leave"]
 		as Array[StringName], "respect closes one line and opens the next")
 	rig.dialogue.choose(&"shen_hub", &"shen_ask")
 	assert_true(rig.knowledge.get_service().knows(&"know_thanh_dai_precept"), "he teaches")
@@ -677,7 +706,7 @@ func test_a_restarted_session_does_not_repeat_what_was_said() -> void:
 	rig.dialogue.choose(&"ko_price", &"ko_share_stele")
 	rig.dialogue.end_session()
 	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, null, rig.quests),
+		rig.relationship, null, rig.quests, rig.story),
 		"the dialogue session starts again over the same world")
 	_open_ko_hub(rig)
 	rig.dialogue.choose(&"ko_hub", &"ko_talk_price")
@@ -701,4 +730,81 @@ func test_the_view_is_rebuilt_on_changes_only() -> void:
 	assert_eq(rig.views, 2, "a refusal shows no new line")
 	rig.dialogue.leave()
 	assert_eq(rig.views, 3, "closing: one more")
+	_free(rig)
+
+
+## The shipped catalog plus ONE conversation, spoken by the stranger, whose answer carries
+## `condition` and/or `effect`.
+func _story_talk(condition: DialogueConditionData, effect: DialogueEffectData) \
+		-> DialogueCatalogData:
+	var option := DialogueChoiceData.new()
+	option.id = &"say"
+	option.text_key = &"DLG_KO_CHOICE_TRADE"
+	if condition != null:
+		var conditions: Array[DialogueConditionData] = [condition]
+		option.conditions = conditions
+	option.effect = effect
+	var leave := DialogueChoiceData.new()  # a line must always offer a way out
+	leave.id = &"leave"
+	leave.text_key = &"DLG_CHOICE_LEAVE"
+	var dialogue := _small_talk(&"dlg_test_story", STRANGER, false)
+	var options: Array[DialogueChoiceData] = [option, leave]
+	dialogue.nodes[0].choices = options
+	# On top of the shipped catalog, so that everything else it must satisfy (every quest
+	# reachable, every speaker registered) already holds and only this conversation can fail.
+	var catalog: DialogueCatalogData = (load(DIALOGUES) as DialogueCatalogData).duplicate(true)
+	catalog.entries.append(dialogue)
+	return catalog
+
+
+func _flag_condition(flag_id: StringName, value: int = 1) -> DialogueConditionData:
+	var condition := DialogueConditionData.new()
+	condition.kind = DialogueConditionData.Kind.FLAG
+	condition.flag_id = flag_id
+	condition.value = value
+	return condition
+
+
+func _set_flag_effect(flag_id: StringName, value: int = 1) -> DialogueEffectData:
+	var effect := DialogueEffectData.new()
+	effect.kind = DialogueEffectData.Kind.SET_FLAG
+	effect.flag_id = flag_id
+	effect.flag_value = value
+	return effect
+
+
+## Phase 20: a conversation that names a flag, an Origin or a story choice the story does not
+## have - or names any of them in a session that tells no story - never starts.
+func test_content_that_names_what_the_story_lacks_stops_the_session() -> void:
+	var rig := _rig(null, false)
+	var origin := DialogueConditionData.new()
+	origin.kind = DialogueConditionData.Kind.ORIGIN
+	origin.origin_id = &"origin_nobody_wrote"
+	var answer := DialogueEffectData.new()
+	answer.kind = DialogueEffectData.Kind.STORY_CHOICE
+	answer.story_choice_id = &"choice_lam_readings"
+	answer.story_option_id = &"shrugged"
+	var broken := {
+		"a condition on an undeclared flag": _story_talk(_flag_condition(&"flag_nobody_set"), null),
+		"a threshold a BOOL flag cannot reach":
+			_story_talk(_flag_condition(&"flag_outpost_issue", 2), null),
+		"an effect on an undeclared flag": _story_talk(null, _set_flag_effect(&"flag_nobody_set")),
+		"a value a BOOL flag cannot hold":
+			_story_talk(null, _set_flag_effect(&"flag_outpost_issue", 2)),
+		"an Origin that does not exist": _story_talk(origin, null),
+		"an option the story choice does not have": _story_talk(null, answer),
+	}
+	for what: String in broken:
+		var catalog: DialogueCatalogData = broken[what]
+		assert_eq(catalog.validation_errors(), [] as Array[String], "%s is well formed" % what)
+		assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
+			rig.relationship, catalog, rig.quests, rig.story), "%s fails closed" % what)
+		assert_false(rig.dialogue.is_session_active(), "no half-session after %s" % what)
+	var sound := _story_talk(_flag_condition(&"flag_outpost_issue"),
+		_set_flag_effect(&"flag_lam_settled", 2))
+	assert_false(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
+		rig.relationship, sound, rig.quests),
+		"sound story content cannot start in a session that tells no story")
+	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
+		rig.relationship, sound, rig.quests, rig.story), "and starts with the story it names")
 	_free(rig)

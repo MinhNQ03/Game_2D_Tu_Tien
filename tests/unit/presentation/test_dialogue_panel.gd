@@ -249,6 +249,8 @@ func test_the_box_fits_under_the_clear_zone_in_both_languages() -> void:
 func _largest_offer(line: DialogueNodeData) -> Array[DialogueChoiceData]:
 	var quests: Array[StringName] = []
 	var facts: Array[StringName] = []
+	var flag_top: Dictionary = {}
+	var origins: Array[StringName] = []
 	for option in line.choices:
 		for condition in option.conditions:
 			if condition.kind == DialogueConditionData.Kind.QUEST_PHASE \
@@ -257,8 +259,18 @@ func _largest_offer(line: DialogueNodeData) -> Array[DialogueChoiceData]:
 			elif condition.kind == DialogueConditionData.Kind.KNOWS \
 					and not facts.has(condition.knowledge_id):
 				facts.append(condition.knowledge_id)
+			elif condition.kind == DialogueConditionData.Kind.FLAG:
+				# A story flag holds 0..the largest value any answer here asks it for.
+				flag_top[condition.flag_id] = maxi(int(flag_top.get(condition.flag_id, 0)),
+					condition.value)
+			elif condition.kind == DialogueConditionData.Kind.ORIGIN \
+					and not origins.has(condition.origin_id):
+				origins.append(condition.origin_id)
 	var phases := QuestData.Phase.size()
 	var states := int(pow(phases, quests.size())) * int(pow(2, facts.size()))
+	for flag_id: StringName in flag_top:
+		states *= int(flag_top[flag_id]) + 1
+	states *= origins.size() + 1  # a run has ONE Origin: one of these, or another
 	var best: Array[DialogueChoiceData] = []
 	for state in states:
 		var phase_of: Dictionary = {}
@@ -270,6 +282,12 @@ func _largest_offer(line: DialogueNodeData) -> Array[DialogueChoiceData]:
 		for fact in facts:
 			known[fact] = rest % 2 == 1
 			rest /= 2
+		var flag_at: Dictionary = {}
+		for flag_id: StringName in flag_top:
+			var span := int(flag_top[flag_id]) + 1
+			flag_at[flag_id] = rest % span
+			rest /= span
+		var origin_at := rest  # == origins.size() means "none of these"
 		var offered: Array[DialogueChoiceData] = []
 		for option in line.choices:
 			var met := true
@@ -279,6 +297,10 @@ func _largest_offer(line: DialogueNodeData) -> Array[DialogueChoiceData]:
 					holds = int(phase_of[condition.quest_id]) == int(condition.quest_phase)
 				elif condition.kind == DialogueConditionData.Kind.KNOWS:
 					holds = bool(known[condition.knowledge_id])
+				elif condition.kind == DialogueConditionData.Kind.FLAG:
+					holds = int(flag_at[condition.flag_id]) >= condition.value
+				elif condition.kind == DialogueConditionData.Kind.ORIGIN:
+					holds = origins.find(condition.origin_id) == origin_at
 				else:
 					continue  # regard: assumed met
 				if holds == condition.negate:
@@ -297,11 +319,19 @@ func test_the_largest_offer_is_the_widest_set_that_can_be_shown_together() -> vo
 	for option in _largest_offer(hub):
 		ids.append(option.id)
 	assert_eq(hub.choices.size(), 7, "seven answers are authored on the scout's hub")
+	# Phase 20: an answer the story gates is offered to ONE Origin, so the carter's eight
+	# authored answers are never more than four on screen.
+	var carter := catalog.dialogue_of_speaker(&"actor_carter_te").node(&"te_hub")
+	assert_eq(carter.choices.size(), 8, "eight answers are authored on the carter's hub")
+	assert_eq(_largest_offer(carter).size(), 4, "of which a run is offered four")
 	assert_eq(ids.size(), 5, "of which at most five are ever offered together (got %s)" % str(ids))
 	assert_true(ids.has(&"ko_trade") and ids.has(&"ko_leave"), "the unconditional ones always")
 	var elder := catalog.dialogue_of_speaker(&"actor_elder_shen").node(&"shen_hub")
-	assert_true(_largest_offer(elder).size() <= 4,
-		"the elder never offers more than four (got %d)" % _largest_offer(elder).size())
+	# Phase 20 gave the elder one more answer (the outpost's issue, then what he can be told);
+	# the two never show together. Five is what the scout's hub already shows, and the box
+	# test above measures every hub at its largest.
+	assert_true(_largest_offer(elder).size() <= 5,
+		"the elder never offers more than five (got %d)" % _largest_offer(elder).size())
 
 
 ## An answer must say what it is about: none may be cut short by the column (the first English

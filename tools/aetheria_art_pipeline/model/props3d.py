@@ -238,6 +238,36 @@ def weapon_rack(d):
     return parts
 
 
+def cart(d):
+    """A frontier haul cart, standing unhitched: a plank bed on two spoked wheels, shafts
+    resting on a prop-stick, and a load of nailed crates under a tarpaulin roped down. The
+    crates are the point - nobody in Lạc Hà has seen inside one."""
+    parts = [_part("bed", "timber", box(-26, 2, 13, 26, 34, 17)),
+             _part("rail_l", "timber_light", box(-27, 2, 17, -24, 34, 24)),
+             _part("rail_r", "timber_light", box(24, 2, 17, 27, 34, 24)),
+             _part("tail", "timber_light", box(-26, 32, 17, 26, 34, 23))]
+    for sx in (-1, 1):
+        x = sx * 30
+        parts.append(_part("wheel%d" % sx, "timber", tube([(x - 1.6, 18, 13), (x + 1.6, 18, 13)],
+                                                         [13, 13], 18, up=(0, 0, 1))))
+        parts.append(_part("hub%d" % sx, "wood_pale", tube([(x - 2.4, 18, 13), (x + 2.4, 18, 13)],
+                                                         [3.2, 3.2], 8, up=(0, 0, 1))))
+        parts.append(_part("shaft%d" % sx, "timber_light",
+                           tube([(sx * 16, 2, 15), (sx * 13, -30, 12)], [1.6, 1.4], 6,
+                                up=(0, 0, 1))))
+    parts.append(_part("yoke", "timber", box(-15, -31, 10.5, 15, -28.5, 13.5)))
+    parts.append(_part("prop", "timber", box(-1.2, -27, 0, 1.2, -25, 11)))
+    for i, (x0, y0, x1, y1, z1) in enumerate(((-22, 5, -3, 20, 32), (-1, 5, 21, 19, 30),
+                                              (-18, 20, 4, 32, 31), (6, 19, 22, 32, 28))):
+        parts.append(_part("crate%d" % i, "wood_pale", box(x0, y0, 17, x1, y1, z1)))
+        parts.append(_part("band%d" % i, "timber", box(x0 - 0.4, y0 - 0.4, z1 - 5, x1 + 0.4,
+                                                       y1 + 0.4, z1 - 3)))
+    parts.append(_part("tarp", "plaster", box(-24, 16, 31, 24, 34, 33.5)))
+    parts.append(_part("tarp_fall", "plaster", box(-24, 33, 20, 24, 34.6, 33)))
+    parts.append(_part("rope", "timber", box(-25, 24, 33.5, 25, 25.4, 34.6)))
+    return parts
+
+
 def pine(d):
     """A frontier pine: a straight trunk under stacked, ragged tiers of needles — the forest's
     vertical, so Rừng Vỡ Mạch reads as a FOREST and not a park of round trees."""
@@ -341,6 +371,7 @@ BUILDERS = {
     "fence": fence,
     "well": well,
     "weapon_rack": weapon_rack,
+    "cart": cart,
 }
 
 

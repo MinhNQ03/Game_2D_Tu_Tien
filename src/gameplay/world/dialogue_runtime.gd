@@ -47,6 +47,9 @@ var _npcs: NpcRuntime = null
 var _knowledge: KnowledgeRuntime = null
 ## Optional (null = this session has no quests): who carries out a quest effect.
 var _quests: QuestRuntime = null
+## Optional (null = this session tells no story): who is told that the player has met
+## someone, and who carries out a `SET_FLAG` / `STORY_CHOICE` effect (D-072).
+var _story: StoryRuntime = null
 var _service: DialogueService = null
 var _session_active: bool = false
 
@@ -64,7 +67,7 @@ var _line_serial: int = 0
 ## that names a quest cannot start without it.
 func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
 		relationship: RelationshipRuntime, catalog: DialogueCatalogData = null,
-		quests: QuestRuntime = null) -> bool:
+		quests: QuestRuntime = null, story: StoryRuntime = null) -> bool:
 	if _session_active:
 		push_error("[dialogue-rt] start_session while a session is active")
 		return false
@@ -81,9 +84,13 @@ func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
 	if quests != null and not quests.is_session_active():
 		push_error("[dialogue-rt] session NOT started: the quest session is not active")
 		return false
+	if story != null and not story.is_session_active():
+		push_error("[dialogue-rt] session NOT started: the story session is not active")
+		return false
 	var service := DialogueService.new(catalog, knowledge.get_service(),
 		relationship.get_service(), relationship.get_config(),
-		quests.get_service() if quests != null else null)
+		quests.get_service() if quests != null else null,
+		story.get_service() if story != null else null)
 	if not service.is_ready():
 		push_error("[dialogue-rt] session NOT started: the DialogueService refused its catalog")
 		return false
@@ -106,6 +113,7 @@ func start_session(world: Node, npcs: NpcRuntime, knowledge: KnowledgeRuntime,
 	_npcs = npcs
 	_knowledge = knowledge
 	_quests = quests
+	_story = story
 	_service = service
 	_dialogue = null
 	_node_id = &""
@@ -126,6 +134,7 @@ func end_session() -> void:
 	_npcs = null
 	_knowledge = null
 	_quests = null
+	_story = null
 	_service = null
 	_dialogue = null
 	_node_id = &""
@@ -169,11 +178,16 @@ func talk(character_id: StringName) -> StringName:
 	var refusal := _npcs.engage(character_id)
 	if refusal != &"":
 		return refusal
+	# The line is chosen BEFORE the story hears of the meeting: a first greeting is the one
+	# said to somebody not yet met.
+	var first := _service.opening_node_id(dialogue.id, _listener_id())
 	_dialogue = dialogue
 	dialogue_opened.emit(dialogue.id, dialogue.speaker_id)
 	if _dialogue != dialogue:
 		return &""  # a listener ended it as it opened: there is no first line to show
-	_enter(dialogue.start_node_id)
+	_enter(first)
+	if _story != null:
+		_story.meet(dialogue.speaker_id)
 	return &""
 
 
@@ -202,7 +216,8 @@ func choose(node_id: StringName, choice_id: StringName) -> DialogueOutcome:
 		return _refuse(reach)
 	var listener := _listener_id()
 	var outcome := _service.choose(_dialogue.id, _node_id, choice_id, listener,
-		_knowledge.grant, _quest_op if _quests != null else Callable())
+		_knowledge.grant, _quest_op if _quests != null else Callable(),
+		_story_op if _story != null else Callable())
 	if not outcome.ok:
 		return _refuse(outcome.reason)
 	return _follow(outcome)
@@ -219,6 +234,19 @@ func _quest_op(kind: int, quest_id: StringName, speaker_id: StringName) -> Strin
 			outcome = _quests.turn_in(quest_id, speaker_id)
 		DialogueEffectData.Kind.QUEST_ABANDON:
 			outcome = _quests.abandon(quest_id, speaker_id)
+	if outcome == null:
+		return DialogueService.REFUSE_EFFECT_FAILED
+	return &"" if outcome.ok else outcome.reason
+
+
+## Carry out a story effect through the story owner. &"" when it happened, else its reason.
+func _story_op(effect: DialogueEffectData) -> StringName:
+	var outcome: StoryOutcome = null
+	match effect.kind:
+		DialogueEffectData.Kind.SET_FLAG:
+			outcome = _story.set_flag(effect.flag_id, effect.flag_value)
+		DialogueEffectData.Kind.STORY_CHOICE:
+			outcome = _story.choose(effect.story_choice_id, effect.story_option_id)
 	if outcome == null:
 		return DialogueService.REFUSE_EFFECT_FAILED
 	return &"" if outcome.ok else outcome.reason

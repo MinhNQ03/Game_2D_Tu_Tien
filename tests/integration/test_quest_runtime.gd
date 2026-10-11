@@ -12,6 +12,12 @@ const InventoryScript := preload("res://src/gameplay/world/inventory_runtime.gd"
 const RelationshipScript := preload("res://src/gameplay/world/relationship_runtime.gd")
 const NpcRuntimeScript := preload("res://src/gameplay/world/npc_runtime.gd")
 const DialogueRuntimeScript := preload("res://src/gameplay/world/dialogue_runtime.gd")
+const StoryRuntimeScript := preload("res://src/gameplay/world/story_runtime.gd")
+const LIN := &"actor_disciple_lin"
+const LIN_TEMPLATE := "res://data/characters/npc_disciple_lin.tres"
+const TE := &"actor_carter_te"
+const TE_TEMPLATE := "res://data/characters/npc_carter_te.tres"
+const ORIGIN := &"origin_nghe_nhan"
 const QuestRuntimeScript := preload("res://src/gameplay/world/quest_runtime.gd")
 const RewardRuntimeScript := preload("res://src/gameplay/world/reward_runtime.gd")
 const WorldNpcScript := preload("res://src/gameplay/npcs/world_npc.gd")
@@ -54,6 +60,12 @@ class StubWorld extends Node:
 	func get_character_registry() -> CharacterRegistry:
 		return registry
 
+	func get_map_lookup() -> Dictionary:
+		return {&"map_hub": true, &"map_field": true}
+
+	func get_current_map_id() -> StringName:
+		return &"map_hub"
+
 	func get_enemy_kinds() -> Array[StringName]:
 		return kinds
 
@@ -90,6 +102,7 @@ class Rig extends RefCounted:
 	var progression: StubProgression
 	var rewards: RewardRuntime
 	var quests: QuestRuntime
+	var story: StoryRuntime
 	var dialogue: DialogueRuntime
 	var ko: WorldNpc
 	var shen: WorldNpc
@@ -145,6 +158,8 @@ func _rig(quest_catalog: QuestCatalogData = null, start: bool = true) -> Rig:
 	rig.world.map.add_child(host)
 	rig.ko = _npc(host, KO, KO_TEMPLATE, Vector2(200, 200))
 	rig.shen = _npc(host, SHEN, SHEN_TEMPLATE, Vector2(600, 200))
+	_npc(host, LIN, LIN_TEMPLATE, Vector2(900, 350))
+	_npc(host, TE, TE_TEMPLATE, Vector2(900, 500))
 	rig.world.player = Node2D.new()
 	rig.world.map.add_child(rig.world.player)
 	rig.world.character = CharacterState.new()
@@ -176,12 +191,17 @@ func _rig(quest_catalog: QuestCatalogData = null, start: bool = true) -> Rig:
 	rig.rewards.start_session()
 	rig.quests = QuestRuntimeScript.new()
 	add_to_tree(rig.quests)
+	# The shipped conversations ask the story for flags and the Origin (Phase 20).
+	rig.story = StoryRuntimeScript.new()
+	add_to_tree(rig.story)
+	assert_true(rig.story.start_session(rig.world, rig.knowledge, rig.relationship,
+		rig.inventory, ORIGIN), "the story session starts")
 	rig.dialogue = DialogueRuntimeScript.new()
 	add_to_tree(rig.dialogue)
 	if start:
 		assert_true(_start_quests(rig, quest_catalog), "the quest session starts")
 		assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-			rig.relationship, null, rig.quests), "the dialogue session starts")
+			rig.relationship, null, rig.quests, rig.story), "the dialogue session starts")
 	rig.quests.quest_accepted.connect(rig.on_accepted)
 	rig.quests.quest_abandoned.connect(rig.on_abandoned)
 	rig.quests.quest_advanced.connect(rig.on_advanced)
@@ -207,6 +227,7 @@ func _free(rig: Rig) -> void:
 	rig.quests.view_changed.disconnect(rig.on_view)
 	rig.dialogue.choice_refused.disconnect(rig.on_refused)
 	rig.dialogue.end_session()
+	rig.story.end_session()
 	rig.quests.end_session()
 	rig.npcs.end_session()
 	rig.rewards.end_session()
@@ -214,7 +235,8 @@ func _free(rig: Rig) -> void:
 	rig.inventory.end_session()
 	rig.cultivation.end_session()
 	rig.knowledge.end_session()
-	for node: Node in [rig.dialogue, rig.quests, rig.rewards, rig.progression, rig.combat,
+	for node: Node in [rig.dialogue, rig.story, rig.quests, rig.rewards, rig.progression,
+			rig.combat,
 			rig.npcs, rig.relationship, rig.inventory, rig.cultivation, rig.knowledge, rig.world]:
 		free_node(node)
 
@@ -384,7 +406,7 @@ func test_ending_the_session_stops_listening_and_a_restart_listens_once() -> voi
 		"a new session knows nothing of the old one's quests")
 	assert_eq(_connections(rig.combat.enemy_defeated, rig.quests), 1, "connected once, not twice")
 	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, null, rig.quests), "and conversations with it")
+		rig.relationship, null, rig.quests, rig.story), "and conversations with it")
 	_free(rig)
 
 
@@ -393,7 +415,7 @@ func test_ending_the_session_stops_listening_and_a_restart_listens_once() -> voi
 func test_the_elder_offers_only_to_one_who_has_read_and_declining_changes_nothing() -> void:
 	var rig := _rig()
 	_open_hub(rig, rig.shen)
-	assert_eq(_choice_ids(rig), [&"shen_leave"] as Array[StringName],
+	assert_eq(_choice_ids(rig), [&"shen_issue_ask", &"shen_leave"] as Array[StringName],
 		"to someone who has not read the stele he offers nothing")
 	assert_false(_say(rig, &"shen_task_ask").ok, "and asking anyway is refused")
 	assert_eq(_phase(rig, VEIN), QuestData.Phase.AVAILABLE, "nothing was taken")
@@ -778,7 +800,7 @@ func test_a_quest_under_way_round_trips_through_the_runtime_and_stays_paid_once(
 	assert_eq(rig.quests.turn_in(VEIN, SHEN).reason, QuestService.REFUSE_ALREADY_DONE,
 		"the completed quest cannot be answered again")
 	assert_true(rig.dialogue.start_session(rig.world, rig.npcs, rig.knowledge,
-		rig.relationship, null, rig.quests), "conversations resume")
+		rig.relationship, null, rig.quests, rig.story), "conversations resume")
 	_open_hub(rig, rig.ko)
 	assert_true(_say(rig, &"ko_pills_give").ok, "and the one under way is finished normally")
 	assert_eq(rig.inventory.count_of(STONE), 3, "paid once")

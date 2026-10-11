@@ -403,7 +403,7 @@ STORY_BEAT_ROAD_RECORD,You came to the Hoang Vực frontier carrying one trouble
 STORY_BEAT_ARRIVAL_OBJECTIVE,Find someone in Lạc Hà to speak with,Tìm một người ở Lạc Hà để hỏi chuyện
 STORY_BEAT_ARRIVAL_RECORD,You walked into Lạc Hà Village. Nobody was expecting you.,Ngươi bước vào Thôn Lạc Hà. Không ai chờ ngươi cả.
 STORY_BEAT_CONTACTS_OBJECTIVE,Get to know the people of Lạc Hà,Làm quen với người ở Lạc Hà
-STORY_BEAT_CONTACTS_RECORD,"One outpost keeps this whole stretch of frontier: an elder, a disciple and a hired watchman.","Cả dải biên thùy này chỉ có một tiền đồn trông coi: một trưởng lão, một đệ tử và một người gác thuê."
+STORY_BEAT_CONTACTS_RECORD,"One outpost keeps this whole stretch of frontier: an elder, a disciple, a hired watchman — and a carter who belongs to none of them.","Cả dải biên thùy này chỉ có một tiền đồn trông coi: một trưởng lão, một đệ tử, một người gác thuê — và một lão phu xe chẳng thuộc về ai trong số họ."
 STORY_BEAT_BUSINESS_OBJECTIVE,"Hear what troubles the elder, or the watchman at the treeline","Nghe điều Trưởng lão Thẩm bận lòng, hoặc người gác ở bìa rừng"
 STORY_BEAT_BUSINESS_RECORD,"Lạc Hà had business of its own long before you arrived, and you heard it out.","Lạc Hà có việc riêng của nó từ trước khi ngươi tới, và ngươi đã nghe."
 STORY_BEAT_CONFIDENCE_OBJECTIVE,Lin Yue wants a word — find her by the Lạc Hà spring,Lâm Nguyệt có điều muốn nói — tìm nàng bên suối Lạc Hà
@@ -462,7 +462,7 @@ KNOW_SURVEY_NOTATION_NAME,How a Vein Survey Is Set Down,Lối ghi sổ khảo m�
 KNOW_SURVEY_NOTATION_DESC,"A survey keeps two columns: what the surveyor read at the vein, and what the outpost reports. They are meant to agree.","Sổ khảo mạch có hai cột: số người đo đọc được tại mạch, và số tiền đồn báo lên. Hai cột ấy vốn phải khớp nhau."
 STORY_SCENE_ARRIVAL_PLACE,Lạc Hà Village,Thôn Lạc Hà
 STORY_SCENE_ARRIVAL_TIME,Late afternoon,Chiều muộn
-STORY_SCENE_ARRIVAL_1,"One village, one outpost flying the Azure Cloud banner, and a road that goes on toward the woods.","Một ngôi làng, một tiền đồn treo cờ Thanh Vân, và con đường đi tiếp về phía rừng."
+STORY_SCENE_ARRIVAL_1,"Old Qi Mu's cart lets you down at the village edge: one outpost flying the Azure Cloud banner, a few roofs, and a road that goes on toward the woods.","Xe hàng của lão Tề Mộc thả ngươi xuống ở mép làng: một tiền đồn treo cờ Thanh Vân, vài nóc nhà, và con đường đi tiếp về phía rừng."
 STORY_SCENE_ARRIVAL_2,Nobody here knows you. Find someone to ask.,Ở đây không ai biết ngươi. Hãy tìm người mà hỏi.
 STORY_SCENE_VIGNETTE_HO_TIEU_PLACE,The Hoang Vực post road,Đường quan Hoang Vực
 STORY_SCENE_VIGNETTE_HO_TIEU_TIME,Three months ago,Ba tháng trước
@@ -501,3 +501,47 @@ APPEARANCE_WANDERER_M_NAME,Wanderer · man,Lữ khách · nam
 APPEARANCE_WANDERER_F_NAME,Wanderer · woman,Lữ khách · nữ
 UI_STORY_SCENE_KEYS,{next} Continue · {skip} Skip,{next} Tiếp · {skip} Bỏ qua
 UI_IDENTITY_SUMMARY,Chosen: {look} · {origin},Đã chọn: {look} · {origin}
+CHARACTER_CARTER_TE_NAME,Qi Mu,Tề Mộc
+CHARACTER_CARTER_TE_TITLE,Carter of the frontier road,Phu xe đường biên
+CHARACTER_CARTER_TE_ORIGIN,Has hauled the frontier road since before the outpost stood,Chở hàng trên đường biên từ trước khi có tiền đồn
+CHARACTER_CARTER_TE_MOTIVATION,"Deliver the load, and never learn what it is","Giao xong hàng, và đừng bao giờ biết đó là gì"
+UI_PICKUP_HELD_OUTPOST,This is the outpost's. Ask Elder Shen first.,Thứ này của tiền đồn. Hãy hỏi Trưởng lão Thẩm trước.
+DLG_SHEN_CHOICE_ISSUE,Ask about the rack,Hỏi về giá kiếm
+DLG_SHEN_ISSUE,"No sect will take you. But this outpost sends no one into its woods bare-handed. Blade, coat, primer — take them. On account. You will pay in work.","Chẳng tông môn nào nhận ngươi. Nhưng tiền đồn này không để ai tay không vào rừng của nó. Kiếm, áo, sách nhập môn — cầm lấy. Ứng trước. Ngươi sẽ trả bằng việc."
+DLG_SHEN_CHOICE_TELL_LIN,Tell him about Lin Yue,Thưa chuyện Lâm Nguyệt
+DLG_SHEN_TOLD,"…She is measuring again. You were right to tell me. Now forget it — the outpost's book says the vein is level, and level it will be.","…Nó lại đo. Ngươi nói với ta là phải. Còn giờ thì quên đi — sổ của tiền đồn ghi mạch đều, và mạch sẽ đều."
+DLG_KO_CHOICE_CART,Ask about old Qi's cart,Hỏi về xe của lão Tề
+DLG_KO_CART,"I watch the path, not the carts. …Some nights I am paid to sleep soundly. Are you done asking?","Ta gác lối, không gác xe. …Có những đêm người ta trả tiền để ta ngủ cho say. Ngươi hỏi xong chưa?"
+DLG_LIN_GREET,Mind the stone rim. I am taking a reading.,Đừng giẫm lên bờ đá. Ta đang đo.
+DLG_LIN_HUB,You are the one who came in on old Qi's cart. Ask quickly; the water is about to turn.,"Ngươi là người tới theo xe lão Tề. Hỏi nhanh đi, nước sắp đổi nhịp."
+DLG_LIN_CHOICE_MEASURE,What are you measuring?,Cô đo cái gì?
+DLG_LIN_MEASURE,The spring's pulse. The outpost's book has called this vein 'level' for six seasons. For three days my rod has not agreed.,Nhịp suối. Sổ tiền đồn ghi mạch này 'đều' đã sáu mùa. Ba hôm nay thước của ta không ghi thế.
+DLG_LIN_CHOICE_PRESS,Is the book wrong?,"Vậy sổ sai, hay thước sai?"
+DLG_LIN_CONFIDE,"The surveyor before me asked that. Last winter he was 'reassigned'. I have no leave to measure — if anyone asks, you did not see me here. Agreed?","Người đo trước ta cũng hỏi thế. Mùa đông năm ngoái ông ấy 'được điều đi'. Ta chưa được phép đo — nếu ai hỏi, ngươi chưa thấy ta ở đây. Được chứ?"
+DLG_LIN_CHOICE_KEEP,I saw nothing.,Ta chưa thấy gì cả.
+DLG_LIN_CHOICE_REFUSE,I cannot promise that.,Ta không hứa được.
+DLG_LIN_KEPT,"…I will remember this. If the pulse drops again, you will be the second to know.","…Ta sẽ nhớ. Nếu nhịp suối hụt lần nữa, ngươi sẽ là người thứ hai biết."
+DLG_LIN_WARY,Then you know the way to the elder. I will not stop you.,Vậy ngươi biết đường tới chỗ trưởng lão rồi. Ta không cản.
+DLG_LIN_CHOICE_KEEP_LATE,"I saw nothing, after all.",Ta nghĩ lại: ta chưa thấy gì.
+DLG_LIN_AFTER_KEPT,The spring dropped a beat again at noon. I wrote it down — in the book nobody reads.,Lúc trưa suối lại hụt một nhịp. Ta ghi rồi — vào cuốn sổ không ai đọc.
+DLG_LIN_AFTER_TOLD,The elder has taken my rod. You did the proper thing. I hope you were also right.,Trưởng lão đã thu thước của ta. Ngươi làm đúng phép. Ta mong ngươi cũng đúng.
+DLG_LIN_CHOICE_RIVAL,The trial at Cloud Vale.,Kỳ khảo hạch ở Vân Cốc.
+DLG_LIN_RIVAL,…I remember you. You broke the formation half an incense-stick before I did. I still do not know why the name on the board was mine.,…Ta nhớ ngươi. Ngươi phá trận nhanh hơn ta nửa nén hương. Ta vẫn không hiểu vì sao tên trên bảng lại là tên ta.
+DLG_LIN_CHOICE_NOTATION,Glance at her survey book,Liếc cuốn sổ đo của nàng
+DLG_LIN_NOTATION,You can read the old notation? …Then do not let the elder learn of it. The last person here who could is no longer here.,Ngươi đọc được lối ghi cũ? …Vậy đừng để trưởng lão biết. Người cuối cùng ở đây đọc được nó đã không còn ở đây.
+DLG_TE_GREET,"You are off my cart now, and that is the end of it. Tell no one you rode in with me.",Xuống xe rồi thì thôi nhé. Đừng kể với ai là ngươi tới cùng xe ta.
+DLG_TE_HUB,"I am waiting on the last load out of the woods. Come dark, I am gone.",Ta chờ chuyến cuối từ trong rừng ra. Trời tối là ta đi.
+DLG_TE_CHOICE_LOAD,What do you haul?,Xe ông chở gì?
+DLG_TE_LOAD,"Pine. …Nailed shut, yes. Pine is dear out here. Ask less, young one; the road runs longer that way.","Gỗ thông. …Hòm đóng đinh, ừ. Thông ở đây quý. Hỏi ít thôi, người trẻ, đường sẽ dài hơn."
+DLG_TE_CHOICE_ROAD,Ask about the west road,Hỏi về đường phía tây
+DLG_TE_ROAD,"Three days to the province's first toll post. There they weigh the load, not the man. That is why I haul loads.","Ba ngày tới trạm thuế đầu tiên của châu. Ở đó người ta cân hàng, không cân người. Vì thế ta mới chở hàng."
+DLG_TE_CHOICE_MARK,Look at the crate stamp,Nhìn dấu ấn trên nẹp hòm
+DLG_TE_MARK,(Three notches — the stamp on the lot of spirit stone that cost you your workshop.) You are mistaken. Pull the tarpaulin down for me.,(Ba khía — đúng thứ ấn trên lô linh thạch đã làm ngươi mất xưởng.) Ngươi nhìn nhầm rồi. Kéo bạt xuống giùm ta.
+DLG_TE_CHOICE_KNOT,Look at the crate knots,Nhìn nút buộc trên hòm
+DLG_TE_KNOT,(Three turns and a hitch — the way your lost convoy tied its loads.) Plenty tie it so. You have miscounted the turns.,(Ba vòng một gút — đúng kiểu đoàn hàng ngươi từng áp tải.) Nhiều người buộc thế lắm. Ngươi đếm nhầm vòng rồi.
+DLG_TE_CHOICE_HANDS,Look at his hands,Nhìn bàn tay ông ta
+DLG_TE_HANDS,(Nails grey as ash — like the patient you could not save.) Haul this road long enough and everyone gets them. No pain. Only cold.,(Móng tay xám như tro — như người bệnh ngươi không cứu được.) Chở tuyến này lâu thì ai cũng thế. Không đau. Chỉ lạnh.
+DLG_TE_CHOICE_LEDGER,Look at the waybill,Nhìn tờ phiếu hàng
+DLG_TE_LEDGER,(Old survey notation — a hand only your master and a few others still write.) I cannot read. I carry what I am handed.,"(Lối ghi sổ khảo cũ — thứ chữ chỉ thầy ngươi và vài người còn viết.) Ta không biết chữ. Người ta đưa gì, ta cầm nấy."
+DLG_TE_CHOICE_SEATS,Ask about Cloud Vale,Hỏi chuyện Vân Cốc
+DLG_TE_SEATS,"(He looks at you a long while.) Every year, crates, before the trial. Every year the board is written before the candidates arrive.","(Lão nhìn ngươi rất lâu.) Năm nào cũng chở hòm tới, trước kỳ khảo hạch. Năm nào bảng tên cũng viết xong trước khi thí sinh tới."

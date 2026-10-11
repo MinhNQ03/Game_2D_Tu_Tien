@@ -143,7 +143,7 @@ func test_real_dialogue_flow() -> void:
 
 	# --- 5. an answer that needs the stele is not offered -------------------------------
 	await _press_until(INTERACT, func() -> bool: return dialogue.current_node_id() == &"shen_hub")
-	assert_eq(panel.choice_ids(), [&"shen_leave"] as Array[StringName],
+	assert_eq(panel.choice_ids(), [&"shen_issue_ask", &"shen_leave"] as Array[StringName],
 		"with the stele unread, recounting it is NOT offered")
 	_step("5. continue reached his answers; the knowledge-gated one is absent")
 
@@ -173,7 +173,8 @@ func test_real_dialogue_flow() -> void:
 	await _walk_into_reach(player, hub, shen, Vector2(70, 6), MOVE_LEFT)
 	await _press_until(INTERACT, func() -> bool: return dialogue.is_open())
 	await _press_until(INTERACT, func() -> bool: return dialogue.current_node_id() == &"shen_hub")
-	assert_eq(panel.choice_ids(), [&"shen_report", &"shen_task_ask", &"shen_leave"]
+	assert_eq(panel.choice_ids(),
+		[&"shen_report", &"shen_task_ask", &"shen_issue_ask", &"shen_leave"]
 		as Array[StringName],
 		"having read the stele, recounting it IS offered (and what he would ask of a reader)")
 	assert_eq(panel.selected_choice_id(), &"shen_report", "and is the selected answer")
@@ -190,7 +191,7 @@ func test_real_dialogue_flow() -> void:
 
 	# --- 9. respect opens the next answer; he teaches through the Knowledge Core -----------
 	await _press_until(INTERACT, func() -> bool: return dialogue.current_node_id() == &"shen_hub")
-	assert_eq(panel.choice_ids(), [&"shen_ask", &"shen_task_ask", &"shen_leave"]
+	assert_eq(panel.choice_ids(), [&"shen_ask", &"shen_task_ask", &"shen_issue_ask", &"shen_leave"]
 		as Array[StringName], "respect closed one answer and opened another")
 	var learned: Array[StringName] = []
 	var on_learned := func(id: StringName, _source: StringName) -> void: learned.append(id)

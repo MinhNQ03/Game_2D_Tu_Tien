@@ -112,7 +112,7 @@ func test_real_quest_flow() -> void:
 	var shen := hub.get_node_or_null("Interactables/ShenBuqi") as WorldNpc
 	await _talk_to(player, hub, shen, Vector2(70, 6))
 	await _advance_to(&"shen_hub")
-	assert_eq(_panel.choice_ids(), [&"shen_leave"] as Array[StringName],
+	assert_eq(_panel.choice_ids(), [&"shen_issue_ask", &"shen_leave"] as Array[StringName],
 		"with the stele unread there is no task to ask about")
 	await _press_until(OPEN_MENU, func() -> bool: return not _dialogue.is_open())
 	_step("2. unread: the elder offers no task")

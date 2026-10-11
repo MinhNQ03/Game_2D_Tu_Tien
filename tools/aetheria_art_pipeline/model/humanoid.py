@@ -541,7 +541,9 @@ def _skirt(spec):
         rings.append(ring)
     m = Mesh()
     m.add_ring_loft(rings)
-    parts = [_part("skirt", "robe", m, _skirt_weights(spec, m))]
+    # A look may wear a skirt of its own cloth under the jacket (`garment.skirt_material`).
+    skirt_cloth = spec["garment"].get("skirt_material", "robe")
+    parts = [_part("skirt", skirt_cloth, m, _skirt_weights(spec, m))]
     # The hem band: a trim ribbon just outside the last ring, so the floor-length robe ends in
     # a defined edge instead of fading into the shoes.
     hem = rings[-1]

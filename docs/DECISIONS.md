@@ -5721,3 +5721,52 @@ Q19-03 (the blank purpose line), AUD-14 (defeat rule — §4), AUD-13 (a line sa
 with their recorded owners: Q19-01, Q19-02 and AUD-15 (Phase 25), CLV-01 and NAV-01
 (Phase 21), AUD-07 (Phase 26).
 
+
+
+### D-072 addendum (Checkpoint 3) — what the first playtest changed
+
+The owner played the build at Checkpoint 2 and said it plainly: flat, nothing pulls, things lie
+on the ground for no reason, and the woman's look cannot be told from the man's. Four rules
+follow. None changes a decision above; each closes a gap the decisions left open.
+
+**A. Nothing lies free.** A `WorldItem` that belongs to somebody carries `held_by_flag` and
+`held_reason_key`. `InventoryRuntime` (the pickups' owner) does not collect it until the story
+flag is set; walking onto it emits `pickup_withheld` ONCE per approach and takes nothing, and
+`WorldRuntime` says whose it is. The flag is asked through one seam Main hands over
+(`set_pickup_gate`); with nobody to ask, a held item stays held (fail closed). The outpost's
+blade, coat and primer are held by `flag_outpost_issue`, which only Thẩm Bất Kỳ sets, in
+words: *on account — you will pay in work*. What is nobody's (a stone the vein shed, the
+offering pill at the spring) stays free, and the traceability table says why. Rejected: an
+"owner" field read by presentation only (a label, not a rule); deleting the items (they are
+the opening kit, and now they are also the elder's hold over a newcomer).
+
+**B. A conversation opens where the story is.** `DialogueData.openings` is an ordered list of
+(conditions → node); the first that holds is the first line, `start_node_id` the default. An
+opening changes nothing and asks the same closed condition set as a choice. This, with `FLAG`
+on a choice, is how a line is said once (AUD-13) and how Lâm Nguyệt greets someone who kept
+her confidence differently from someone who told. The line is chosen BEFORE the story hears
+of the meeting, so a first greeting is the one said to a stranger.
+
+**C. A decision is never refused for being early.** `choice_lam_readings` is bound to no
+beat. She confides once the player has heard the village's business (a flag), which a player
+who talks to everyone first can reach before beat 6 is current; the beat then completes on
+entry. Refusing her is not the decision: it sets `flag_lam_asked`, which opens both roads —
+promise her later, or tell the elder — and whichever is taken closes the other.
+
+**D. Every Origin's problem runs through this village.** The five Origins were five unrelated
+back-stories. Each now notices ONE thing about the carter's sealed load that nobody else can
+(the workshop stamp, the escort's knot, the grey nails, the survey hand on the waybill, the
+crates that reach Cloud Vale before every trial), said once, denied by him. Nothing is
+revealed (reveal ladder layer 1: *something is wrong*); the player is handed a reason of
+their own to care what is in the crates before the Night makes it everyone's problem. The
+rejected disciple and Lâm Nguyệt sat the same trial; she does not know why the name on the
+board was hers.
+
+**The title.** "Tà Đế" stays what `NARRATIVE_MASTER_PLAN.md` §3 froze: not a hidden identity
+to be unmasked but what the world ends up calling the player. The prologue names nobody; it
+plants the first thing an institution will lie about, and puts the player's hand on it.
+
+**The woman's look** is read by colour blocks, not cut: a lilac-grey jacket over a jade skirt
+split by a cream sash, hair up in a full knot — against one grey-blue robe to the floor. The
+skirt's cloth is design data (`garment.skirt_material`), and it uses the free `accent` slot
+because the id pass holds twelve cloths (L-053).

@@ -99,8 +99,10 @@ func _ready() -> void:
 ##
 ## `player_template` is the look the player chose on the identity screen (Phase 20): the
 ## `CharacterTemplateData` their `CharacterState` and body are built from. Null uses the
-## default template, which is what a harness with no identity screen gets.
-func start_session(player_template: CharacterTemplateData = null) -> bool:
+## default template, which is what a harness with no identity screen gets. `entry_point` is
+## the spawn marker of the first map to stand them on (empty = the map's default spawn).
+func start_session(player_template: CharacterTemplateData = null,
+		entry_point: StringName = &"") -> bool:
 	if _router == null:
 		push_error("[world] cannot start session: SceneRouter missing")
 		return false
@@ -113,7 +115,7 @@ func start_session(player_template: CharacterTemplateData = null) -> bool:
 		end_session()
 		return false
 	_session_active = true
-	if not _enter_map(_start_map_id, &""):
+	if not _enter_map(_start_map_id, entry_point):
 		push_error("[world] failed to enter start map %s" % _start_map_id)
 		# Unwind the half-started session so we don't leave a player with no map.
 		end_session()
@@ -843,6 +845,8 @@ func _connect_inventory_signals() -> void:
 		inventory.inventory_changed.connect(_push_inventory_view_to_active_map)
 	if not inventory.item_gained.is_connected(_on_item_gained):
 		inventory.item_gained.connect(_on_item_gained)
+	if not inventory.pickup_withheld.is_connected(_on_pickup_withheld):
+		inventory.pickup_withheld.connect(_on_pickup_withheld)
 	if not inventory.use_refused.is_connected(_on_item_refused):
 		inventory.use_refused.connect(_on_item_refused)
 	if not inventory.item_used.is_connected(_on_item_used):
@@ -859,6 +863,11 @@ func _connect_inventory_signals() -> void:
 ## turn behind the answers to what the player is doing, and is never dropped.
 func _on_item_gained(item_id: StringName, count: int) -> void:
 	_announce_item(&"announce", &"UI_ITEM_GAINED", item_id, count)
+
+
+## The player walked onto something that is somebody's: say whose, take nothing.
+func _on_pickup_withheld(_pickup_id: StringName, reason_key: StringName) -> void:
+	_notify(&"announce_answer", reason_key)
 
 
 func _on_item_used(item_id: StringName) -> void:

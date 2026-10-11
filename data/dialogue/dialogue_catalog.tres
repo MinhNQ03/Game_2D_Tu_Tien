@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=91 format=3]
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=178 format=3]
 
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_node_data.gd" id="4_node"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_data.gd" id="5_dlg"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_catalog_data.gd" id="6_cat"]
+[ext_resource type="Script" path="res://src/data/dialogue/dialogue_opening_data.gd" id="7_open"]
 
 [sub_resource type="Resource" id="N_ko_greet"]
 script = ExtResource("4_node")
@@ -53,10 +54,16 @@ script = ExtResource("1_cond")
 kind = 2
 quest_id = &"quest_treeline_pills"
 
+[sub_resource type="Resource" id="E_ko_pills_ask"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_heard_village_business"
+
 [sub_resource type="Resource" id="H_ko_pills_ask"]
 script = ExtResource("3_choice")
 id = &"ko_pills_ask"
 text_key = &"DLG_KO_CHOICE_PILLS_ASK"
+effect = SubResource("E_ko_pills_ask")
 conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_pills_ask_0")])
 next_node_id = &"ko_pills_offer"
 
@@ -91,6 +98,26 @@ text_key = &"DLG_KO_CHOICE_PILLS_GIVE"
 conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_pills_give_0")])
 effect = SubResource("E_ko_pills_give")
 next_node_id = &"ko_pills_done"
+
+[sub_resource type="Resource" id="C_ko_cart_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_asked_carter_load"
+
+[sub_resource type="Resource" id="H_ko_ask_cart"]
+script = ExtResource("3_choice")
+id = &"ko_ask_cart"
+text_key = &"DLG_KO_CHOICE_CART"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_cart_0")])
+next_node_id = &"ko_cart"
+
+[sub_resource type="Resource" id="N_ko_cart"]
+script = ExtResource("4_node")
+id = &"ko_cart"
+text_key = &"DLG_KO_CART"
+mood = 3
+next_node_id = &"ko_price"
 
 [sub_resource type="Resource" id="N_ko_hub"]
 script = ExtResource("4_node")
@@ -164,7 +191,7 @@ script = ExtResource("4_node")
 id = &"ko_price"
 text_key = &"DLG_KO_PRICE"
 mood = 3
-choices = Array[ExtResource("3_choice")]([SubResource("H_ko_share_stele"), SubResource("H_ko_press"), SubResource("H_ko_price_back")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_ask_cart"), SubResource("H_ko_share_stele"), SubResource("H_ko_press"), SubResource("H_ko_price_back")])
 
 [sub_resource type="Resource" id="N_ko_pleased"]
 script = ExtResource("4_node")
@@ -276,7 +303,7 @@ script = ExtResource("5_dlg")
 id = &"dlg_scout_ko"
 speaker_id = &"actor_scout_ko"
 start_node_id = &"ko_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart")])
 
 [sub_resource type="Resource" id="N_shen_greet"]
 script = ExtResource("4_node")
@@ -345,10 +372,16 @@ script = ExtResource("1_cond")
 kind = 2
 quest_id = &"quest_unquiet_vein"
 
+[sub_resource type="Resource" id="E_shen_task_ask"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_heard_village_business"
+
 [sub_resource type="Resource" id="H_shen_task_ask"]
 script = ExtResource("3_choice")
 id = &"shen_task_ask"
 text_key = &"DLG_SHEN_CHOICE_TASK_ASK"
+effect = SubResource("E_shen_task_ask")
 conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_task_ask_0"), SubResource("C_shen_task_ask_1")])
 next_node_id = &"shen_task_why"
 
@@ -414,12 +447,79 @@ conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_task_report_fight
 effect = SubResource("E_shen_task_report_fight")
 next_node_id = &"shen_task_done_fight"
 
+[sub_resource type="Resource" id="C_shen_issue_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_outpost_issue"
+negate = true
+
+[sub_resource type="Resource" id="E_shen_issue"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_outpost_issue"
+
+[sub_resource type="Resource" id="H_shen_issue_ask"]
+script = ExtResource("3_choice")
+id = &"shen_issue_ask"
+text_key = &"DLG_SHEN_CHOICE_ISSUE"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_issue_0")])
+effect = SubResource("E_shen_issue")
+next_node_id = &"shen_issue"
+
+[sub_resource type="Resource" id="C_shen_tell_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_asked"
+
+[sub_resource type="Resource" id="C_shen_tell_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_settled"
+negate = true
+
+[sub_resource type="Resource" id="C_shen_tell_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_outpost_issue"
+
+[sub_resource type="Resource" id="E_shen_tell"]
+script = ExtResource("2_effect")
+kind = 7
+story_choice_id = &"choice_lam_readings"
+story_option_id = &"told"
+
+[sub_resource type="Resource" id="H_shen_tell_lin"]
+script = ExtResource("3_choice")
+id = &"shen_tell_lin"
+text_key = &"DLG_SHEN_CHOICE_TELL_LIN"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_shen_tell_0"), SubResource("C_shen_tell_1"), SubResource("C_shen_tell_2")])
+effect = SubResource("E_shen_tell")
+next_node_id = &"shen_told"
+
+[sub_resource type="Resource" id="N_shen_issue"]
+script = ExtResource("4_node")
+id = &"shen_issue"
+text_key = &"DLG_SHEN_ISSUE"
+mood = 2
+next_node_id = &"shen_hub"
+
+[sub_resource type="Resource" id="N_shen_told"]
+script = ExtResource("4_node")
+id = &"shen_told"
+text_key = &"DLG_SHEN_TOLD"
+mood = 2
+next_node_id = &"shen_hub"
+
 [sub_resource type="Resource" id="N_shen_hub"]
 script = ExtResource("4_node")
 id = &"shen_hub"
 text_key = &"DLG_SHEN_HUB"
 mood = 0
-choices = Array[ExtResource("3_choice")]([SubResource("H_shen_report"), SubResource("H_shen_ask"), SubResource("H_shen_task_ask"), SubResource("H_shen_task_about"), SubResource("H_shen_task_report_word"), SubResource("H_shen_task_report_fight"), SubResource("H_shen_leave")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_shen_report"), SubResource("H_shen_ask"), SubResource("H_shen_task_ask"), SubResource("H_shen_task_about"), SubResource("H_shen_task_report_word"), SubResource("H_shen_task_report_fight"), SubResource("H_shen_issue_ask"), SubResource("H_shen_tell_lin"), SubResource("H_shen_leave")])
 
 [sub_resource type="Resource" id="N_shen_approve"]
 script = ExtResource("4_node")
@@ -546,8 +646,466 @@ script = ExtResource("5_dlg")
 id = &"dlg_elder_shen"
 speaker_id = &"actor_elder_shen"
 start_node_id = &"shen_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_shen_greet"), SubResource("N_shen_hub"), SubResource("N_shen_approve"), SubResource("N_shen_teach"), SubResource("N_shen_task_why"), SubResource("N_shen_task_offer"), SubResource("N_shen_task_taken"), SubResource("N_shen_task_waiting"), SubResource("N_shen_task_confirm"), SubResource("N_shen_task_released"), SubResource("N_shen_task_done_word"), SubResource("N_shen_task_done_fight"), SubResource("N_shen_issue"), SubResource("N_shen_told")])
+
+[sub_resource type="Resource" id="H_lin_ask_measure"]
+script = ExtResource("3_choice")
+id = &"lin_ask_measure"
+text_key = &"DLG_LIN_CHOICE_MEASURE"
+next_node_id = &"lin_measure"
+
+[sub_resource type="Resource" id="C_lin_press_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_heard_village_business"
+
+[sub_resource type="Resource" id="C_lin_press_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_settled"
+negate = true
+
+[sub_resource type="Resource" id="C_lin_press_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_asked"
+negate = true
+
+[sub_resource type="Resource" id="H_lin_press"]
+script = ExtResource("3_choice")
+id = &"lin_press"
+text_key = &"DLG_LIN_CHOICE_PRESS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_press_0"), SubResource("C_lin_press_1"), SubResource("C_lin_press_2")])
+next_node_id = &"lin_confide"
+
+[sub_resource type="Resource" id="C_lin_late_0"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_asked"
+
+[sub_resource type="Resource" id="C_lin_late_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_settled"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_keep_late"]
+script = ExtResource("2_effect")
+kind = 7
+story_choice_id = &"choice_lam_readings"
+story_option_id = &"kept"
+
+[sub_resource type="Resource" id="H_lin_keep_late"]
+script = ExtResource("3_choice")
+id = &"lin_keep_late"
+text_key = &"DLG_LIN_CHOICE_KEEP_LATE"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_late_0"), SubResource("C_lin_late_1")])
+effect = SubResource("E_lin_keep_late")
+next_node_id = &"lin_kept"
+
+[sub_resource type="Resource" id="C_lin_rival_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_de_tu_bi_loai"
+
+[sub_resource type="Resource" id="C_lin_rival_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_rival"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lin_origin_said"
+
+[sub_resource type="Resource" id="H_lin_rival"]
+script = ExtResource("3_choice")
+id = &"lin_rival"
+text_key = &"DLG_LIN_CHOICE_RIVAL"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_rival_0"), SubResource("C_lin_rival_1")])
+effect = SubResource("E_lin_rival")
+next_node_id = &"lin_rival_line"
+
+[sub_resource type="Resource" id="C_lin_note_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_thu_thu"
+
+[sub_resource type="Resource" id="C_lin_note_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_note"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lin_origin_said"
+
+[sub_resource type="Resource" id="H_lin_notation"]
+script = ExtResource("3_choice")
+id = &"lin_notation"
+text_key = &"DLG_LIN_CHOICE_NOTATION"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_note_0"), SubResource("C_lin_note_1")])
+effect = SubResource("E_lin_note")
+next_node_id = &"lin_notation_line"
+
+[sub_resource type="Resource" id="H_lin_leave"]
+script = ExtResource("3_choice")
+id = &"lin_leave"
+text_key = &"DLG_CHOICE_LEAVE"
+
+[sub_resource type="Resource" id="E_lin_keep"]
+script = ExtResource("2_effect")
+kind = 7
+story_choice_id = &"choice_lam_readings"
+story_option_id = &"kept"
+
+[sub_resource type="Resource" id="H_lin_keep"]
+script = ExtResource("3_choice")
+id = &"lin_keep"
+text_key = &"DLG_LIN_CHOICE_KEEP"
+effect = SubResource("E_lin_keep")
+next_node_id = &"lin_kept"
+
+[sub_resource type="Resource" id="E_lin_refuse"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lam_asked"
+
+[sub_resource type="Resource" id="H_lin_refuse"]
+script = ExtResource("3_choice")
+id = &"lin_refuse"
+text_key = &"DLG_LIN_CHOICE_REFUSE"
+effect = SubResource("E_lin_refuse")
+next_node_id = &"lin_wary"
+
+[sub_resource type="Resource" id="N_lin_greet"]
+script = ExtResource("4_node")
+id = &"lin_greet"
+text_key = &"DLG_LIN_GREET"
+mood = 3
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="N_lin_hub"]
+script = ExtResource("4_node")
+id = &"lin_hub"
+text_key = &"DLG_LIN_HUB"
+mood = 0
+choices = Array[ExtResource("3_choice")]([SubResource("H_lin_ask_measure"), SubResource("H_lin_press"), SubResource("H_lin_keep_late"), SubResource("H_lin_rival"), SubResource("H_lin_notation"), SubResource("H_lin_leave")])
+
+[sub_resource type="Resource" id="N_lin_measure"]
+script = ExtResource("4_node")
+id = &"lin_measure"
+text_key = &"DLG_LIN_MEASURE"
+mood = 0
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="N_lin_confide"]
+script = ExtResource("4_node")
+id = &"lin_confide"
+text_key = &"DLG_LIN_CONFIDE"
+mood = 3
+choices = Array[ExtResource("3_choice")]([SubResource("H_lin_keep"), SubResource("H_lin_refuse")])
+
+[sub_resource type="Resource" id="N_lin_kept"]
+script = ExtResource("4_node")
+id = &"lin_kept"
+text_key = &"DLG_LIN_KEPT"
+mood = 1
+
+[sub_resource type="Resource" id="N_lin_wary"]
+script = ExtResource("4_node")
+id = &"lin_wary"
+text_key = &"DLG_LIN_WARY"
+mood = 2
+
+[sub_resource type="Resource" id="N_lin_rival_line"]
+script = ExtResource("4_node")
+id = &"lin_rival_line"
+text_key = &"DLG_LIN_RIVAL"
+mood = 3
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="N_lin_notation_line"]
+script = ExtResource("4_node")
+id = &"lin_notation_line"
+text_key = &"DLG_LIN_NOTATION"
+mood = 3
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="N_lin_after_kept"]
+script = ExtResource("4_node")
+id = &"lin_after_kept"
+text_key = &"DLG_LIN_AFTER_KEPT"
+mood = 1
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="N_lin_after_told"]
+script = ExtResource("4_node")
+id = &"lin_after_told"
+text_key = &"DLG_LIN_AFTER_TOLD"
+mood = 2
+next_node_id = &"lin_hub"
+
+[sub_resource type="Resource" id="C_lin_open_told"]
+script = ExtResource("1_cond")
+kind = 3
+value = 2
+flag_id = &"flag_lam_settled"
+
+[sub_resource type="Resource" id="P_lin_told"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_open_told")])
+node_id = &"lin_after_told"
+
+[sub_resource type="Resource" id="C_lin_open_kept"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lam_settled"
+
+[sub_resource type="Resource" id="P_lin_kept"]
+script = ExtResource("7_open")
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_open_kept")])
+node_id = &"lin_after_kept"
+
+[sub_resource type="Resource" id="D_dlg_disciple_lin"]
+script = ExtResource("5_dlg")
+id = &"dlg_disciple_lin"
+speaker_id = &"actor_disciple_lin"
+start_node_id = &"lin_greet"
+nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told")])
+openings = Array[ExtResource("7_open")]([SubResource("P_lin_told"), SubResource("P_lin_kept")])
+
+[sub_resource type="Resource" id="E_te_ask_load"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_asked_carter_load"
+
+[sub_resource type="Resource" id="H_te_ask_load"]
+script = ExtResource("3_choice")
+id = &"te_ask_load"
+text_key = &"DLG_TE_CHOICE_LOAD"
+effect = SubResource("E_te_ask_load")
+next_node_id = &"te_load"
+
+[sub_resource type="Resource" id="H_te_ask_road"]
+script = ExtResource("3_choice")
+id = &"te_ask_road"
+text_key = &"DLG_TE_CHOICE_ROAD"
+next_node_id = &"te_road"
+
+[sub_resource type="Resource" id="C_te_mark_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_nghe_nhan"
+
+[sub_resource type="Resource" id="C_te_mark_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_te_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_te_mark"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_te_origin_said"
+
+[sub_resource type="Resource" id="H_te_mark"]
+script = ExtResource("3_choice")
+id = &"te_mark"
+text_key = &"DLG_TE_CHOICE_MARK"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_mark_0"), SubResource("C_te_mark_1")])
+effect = SubResource("E_te_mark")
+next_node_id = &"te_mark_line"
+
+[sub_resource type="Resource" id="C_te_knot_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_ho_tieu"
+
+[sub_resource type="Resource" id="C_te_knot_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_te_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_te_knot"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_te_origin_said"
+
+[sub_resource type="Resource" id="H_te_knot"]
+script = ExtResource("3_choice")
+id = &"te_knot"
+text_key = &"DLG_TE_CHOICE_KNOT"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_knot_0"), SubResource("C_te_knot_1")])
+effect = SubResource("E_te_knot")
+next_node_id = &"te_knot_line"
+
+[sub_resource type="Resource" id="C_te_hands_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_lang_y"
+
+[sub_resource type="Resource" id="C_te_hands_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_te_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_te_hands"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_te_origin_said"
+
+[sub_resource type="Resource" id="H_te_hands"]
+script = ExtResource("3_choice")
+id = &"te_hands"
+text_key = &"DLG_TE_CHOICE_HANDS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_hands_0"), SubResource("C_te_hands_1")])
+effect = SubResource("E_te_hands")
+next_node_id = &"te_hands_line"
+
+[sub_resource type="Resource" id="C_te_ledger_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_thu_thu"
+
+[sub_resource type="Resource" id="C_te_ledger_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_te_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_te_ledger"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_te_origin_said"
+
+[sub_resource type="Resource" id="H_te_ledger"]
+script = ExtResource("3_choice")
+id = &"te_ledger"
+text_key = &"DLG_TE_CHOICE_LEDGER"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_ledger_0"), SubResource("C_te_ledger_1")])
+effect = SubResource("E_te_ledger")
+next_node_id = &"te_ledger_line"
+
+[sub_resource type="Resource" id="C_te_seats_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_de_tu_bi_loai"
+
+[sub_resource type="Resource" id="C_te_seats_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_te_origin_said"
+negate = true
+
+[sub_resource type="Resource" id="E_te_seats"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_te_origin_said"
+
+[sub_resource type="Resource" id="H_te_seats"]
+script = ExtResource("3_choice")
+id = &"te_seats"
+text_key = &"DLG_TE_CHOICE_SEATS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_seats_0"), SubResource("C_te_seats_1")])
+effect = SubResource("E_te_seats")
+next_node_id = &"te_seats_line"
+
+[sub_resource type="Resource" id="H_te_leave"]
+script = ExtResource("3_choice")
+id = &"te_leave"
+text_key = &"DLG_CHOICE_LEAVE"
+
+[sub_resource type="Resource" id="N_te_greet"]
+script = ExtResource("4_node")
+id = &"te_greet"
+text_key = &"DLG_TE_GREET"
+mood = 3
+gesture = &"talk"
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="N_te_hub"]
+script = ExtResource("4_node")
+id = &"te_hub"
+text_key = &"DLG_TE_HUB"
+mood = 0
+choices = Array[ExtResource("3_choice")]([SubResource("H_te_ask_load"), SubResource("H_te_ask_road"), SubResource("H_te_mark"), SubResource("H_te_knot"), SubResource("H_te_hands"), SubResource("H_te_ledger"), SubResource("H_te_seats"), SubResource("H_te_leave")])
+
+[sub_resource type="Resource" id="N_te_load"]
+script = ExtResource("4_node")
+id = &"te_load"
+text_key = &"DLG_TE_LOAD"
+mood = 3
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="N_te_road"]
+script = ExtResource("4_node")
+id = &"te_road"
+text_key = &"DLG_TE_ROAD"
+mood = 0
+gesture = &"talk"
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="N_te_mark_line"]
+script = ExtResource("4_node")
+id = &"te_mark_line"
+text_key = &"DLG_TE_MARK"
+mood = 2
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="N_te_knot_line"]
+script = ExtResource("4_node")
+id = &"te_knot_line"
+text_key = &"DLG_TE_KNOT"
+mood = 2
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="N_te_hands_line"]
+script = ExtResource("4_node")
+id = &"te_hands_line"
+text_key = &"DLG_TE_HANDS"
+mood = 0
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="N_te_ledger_line"]
+script = ExtResource("4_node")
+id = &"te_ledger_line"
+text_key = &"DLG_TE_LEDGER"
+mood = 3
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="N_te_seats_line"]
+script = ExtResource("4_node")
+id = &"te_seats_line"
+text_key = &"DLG_TE_SEATS"
+mood = 3
+next_node_id = &"te_hub"
+
+[sub_resource type="Resource" id="D_dlg_carter_te"]
+script = ExtResource("5_dlg")
+id = &"dlg_carter_te"
+speaker_id = &"actor_carter_te"
+start_node_id = &"te_greet"
+nodes = Array[ExtResource("4_node")]([SubResource("N_te_greet"), SubResource("N_te_hub"), SubResource("N_te_load"), SubResource("N_te_road"), SubResource("N_te_mark_line"), SubResource("N_te_knot_line"), SubResource("N_te_hands_line"), SubResource("N_te_ledger_line"), SubResource("N_te_seats_line")])
 
 [resource]
 script = ExtResource("6_cat")
-entries = Array[ExtResource("5_dlg")]([SubResource("D_dlg_scout_ko"), SubResource("D_dlg_elder_shen")])
+entries = Array[ExtResource("5_dlg")]([SubResource("D_dlg_scout_ko"), SubResource("D_dlg_elder_shen"), SubResource("D_dlg_disciple_lin"), SubResource("D_dlg_carter_te")])

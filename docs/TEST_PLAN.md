@@ -1312,6 +1312,19 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
 
 ## Phase 20 (D-072) — Story, Origins and the prologue
 
+### Checkpoint 3 — the dialogue/story seam, held pickups, the arrival
+
+| Invariant | Test |
+|---|---|
+| A FLAG / ORIGIN condition is the story's answer, negated or not | `test_dialogue_content.gd::test_lin_confides_only_…`, `…each_origin_notices_…` |
+| A story decision made in conversation is one transaction, made once, refused with the story's reason | `…keeping_lins_confidence_is_one_transaction_made_once` |
+| Refusing is not deciding: both roads stay open until one is taken | `…refusing_lin_leaves_both_roads_open_and_telling_closes_them` |
+| Hearing a problem out is recorded whether or not it is taken (beat 5 cannot deadlock) | `…hearing_a_problem_out_is_recorded_…` |
+| Story content the story lacks, or any story content without a story, never starts | `test_dialogue_runtime.gd::test_content_that_names_what_the_story_lacks_stops_the_session` |
+| A held pickup is refused once per approach, takes nothing, and is taken after it is issued | Story E2E step 8b |
+| Talking is meeting; the run begins on the road; a line is said once | Story E2E steps 8a, 8c |
+| No hub ever offers more answers than the box holds, for any flag state and any one Origin | `test_dialogue_panel.gd::_largest_offer` (flags and Origins enumerated) |
+
 ### Checkpoint 1 — the story and origin foundation (domain + data; no scene, no runtime)
 
 - `tests/unit/story/test_story_data.gd` (16) — stable ids, including **the Cyrillic-`о`

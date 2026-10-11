@@ -159,8 +159,8 @@ One book, non-modal, on the journal's reading-panel pattern. No future tabs.
 |---|---|---|---|
 | 0 | Gate A: D-072, this file, CL-09 id fix, save-format and character-system reconciliation | `89dec88` | 38113654836 — success, `head_sha` `89dec88513e63394d1573ec263e91f2c45af7735` |
 | 1 | Story / Origin domain and data | `d8edcf7` | 38114604673 — success, `head_sha` `d8edcf7…` |
-| 2 | Real New Game, identity, Origins, the sectless start | *(this commit)* | *(recorded by the next)* |
-| 3 | Arrival, contacts, the small problem, the first decision | | |
+| 2 | Real New Game, identity, Origins, the sectless start | `8a3bc2f` | 38117230702 — success, `head_sha` `8a3bc2f96e575827f1373835cdb54cdf4eb33365` (15 gates) |
+| 3 | Arrival, contacts, the small problem, the first decision | *(this commit)* | *(recorded by the next)* |
 | 4 | The Night, the encounter, the aftermath, cultivation, the sheet | | |
 | 5 | Chronicle, purpose arbitration, the way out | | |
 | 6 | Audit, real app, close-out | | |
@@ -172,6 +172,65 @@ manager · save file, slots, autosave, Continue · loot or drops · dungeon, bos
 a sect join · per-Origin campaigns · an audio system · anything Phase 21 owns.
 
 ## 11. Evidence
+
+### Checkpoint 3 — arrival, the people of Lạc Hà, the village's business, whom to trust (built)
+
+**What the owner's playtest of Checkpoint 2 said, and what was done about it** (D-072
+addendum): *flat, nothing pulls* → every named person now has a goal, a fear and a secret that
+shows in what they say (`CONTENT_BIBLE.md` §16), and each Origin notices one thing about the
+carter's load that nobody else can; *things lie around for no reason* → the outpost's blade,
+coat and primer are HELD until the elder issues them in words; *the woman's look cannot be
+told apart* → re-designed by colour blocks and re-rendered.
+
+**What is playable (beats 3–6), with real keys.** The run begins on the west road at the
+bridge (`Spawns/from_road`), where the carter let the player down. Lâm Nguyệt measures the
+spring; Tề Mộc waits by his cart on the east road; Thẩm Bất Kỳ stands in the plaza; Kha Thản
+is at the treeline. The first talk completes *arrival*; three people met completes *contacts*;
+hearing the elder's or the watchman's problem out — taken or declined — completes *the
+village's business*; Lâm Nguyệt then confides, and keeping her confidence or telling the
+elder is ONE recorded decision that moves two people's regard and makes the Night due.
+
+| Rule | Owner | Proof |
+|---|---|---|
+| A conversation asks the story for a flag and the Origin, and hands it `SET_FLAG` / `STORY_CHOICE` | `DialogueService` asks, `StoryRuntime` writes | `test_dialogue_content.gd` (7 story-seam tests on the shipped content) |
+| Story content the story does not have never starts | `DialogueService.content_errors` | `test_content_that_names_what_the_story_lacks_stops_the_session` (6 broken catalogs + no-story) |
+| A first line depends on what is true (`openings`) | `DialogueService.opening_node_id` | kept / told greetings, unit + E2E step 8c |
+| Talking to someone is meeting them | `DialogueRuntime.talk` → `StoryRuntime.meet` | E2E step 8a |
+| What belongs to somebody is not picked up | `InventoryRuntime` (`WorldItem.held_by_flag`) | E2E step 8b: refused once, nothing taken, then issued, then taken |
+| The run arrives by the road | `Main.ARRIVAL_ENTRY` → `WorldRuntime.start_session` | E2E step 8a |
+
+**Tests.** Suite 1182 (was 1174): +7 shipped-content story-seam tests, +1 fail-closed test;
+the Story E2E grew from 10 to 13 real-key steps (8a arrival and a line only this Origin gets,
+8b the held blade, 8c the business and the decision). Re-pinned on the SAME invariant: the
+elder's offered answers (one more: the issue), the dialogue box's largest-offer measurement
+(now enumerates flag values and the one Origin a run has), the rigs that start a dialogue
+session on shipped content (they now start the story it names), "someone with nothing
+authored" (a test stranger: everyone shipped has a conversation now).
+
+**Mutations (15, all RED, all restored):** FLAG condition always true · ORIGIN condition
+always true · openings ignored · story effect not dispatched · story refusal swallowed ·
+undeclared flag in a condition / in an effect accepted · flag threshold / value above its
+ceiling accepted · unknown Origin accepted · unknown story option accepted · held pickup given
+away · held refusal said every tick · talking does not meet · run starts in the plaza.
+
+**Real application (opened and looked at).** `tools/playtest_flow.gd` gained two real-key
+steps: `03e_arrival_road` and `03g_first_people` (walk to three people, ask each a real
+question, take the issue). Seen in the 1280×720 Vietnamese run: the player stands on the
+bridge of the west road in the woman's look (lilac jacket, jade skirt, knot — distinct from
+the grey-blue man at 1×); Lâm Nguyệt in rose by the spring, the elder in grey on the plaza;
+on the east road Tề Mộc in indigo with a bark-brown head-wrap beside a cart of roped crates
+under a tarpaulin; his portrait and his line in the dialogue box, mood "dè chừng".
+
+**Honest limits at this checkpoint.** (1) The purpose line still prefers a quest LEAD over
+the story objective, so on arrival it reads "Gặp Trưởng lão Thẩm" — arbitration is
+Checkpoint 5 (Q19-03). (2) The world line "Quan hệ giữa người với người tăng lên" still has
+no subject (AUD-09, Checkpoint 5). (3) The cart's wheels are seen edge-on by the top-down
+camera and read as dark slabs. (4) Tề Mộc's beard is two pixels at 1×; it reads in the
+portrait, not on the sprite. (5) A story scene that becomes due while a conversation is open
+(the warning, Checkpoint 4) must wait for the conversation to close — not built yet.
+(6) The offering pill by the spring and the vein stones in the woods are still free
+(nobody's, by design); the thunder manual in the woods has no owner yet and gets one with
+the Night's wreck in Checkpoint 4.
 
 ### Checkpoint 2 — the real New Game, identity, the sectless start (built)
 

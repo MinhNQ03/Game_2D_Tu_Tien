@@ -18,6 +18,7 @@ const CAST := {
 	&"actor_elder_shen": "res://data/characters/npc_elder_shen.tres",
 	&"actor_disciple_lin": "res://data/characters/npc_disciple_lin.tres",
 	&"actor_scout_ko": "res://data/characters/npc_scout_ko.tres",
+	&"actor_carter_te": "res://data/characters/npc_carter_te.tres",
 }
 const SHEN := &"actor_elder_shen"
 const LIN := &"actor_disciple_lin"

@@ -22,6 +22,9 @@ signal item_gained(item_id: StringName, count: int)
 signal item_used(item_id: StringName)
 signal use_refused(item_id: StringName, reason_key: StringName)
 signal inventory_changed()
+## The player stepped onto something that is not theirs to take yet. Emitted once per
+## approach, not every tick they stand there.
+signal pickup_withheld(pickup_id: StringName, reason_key: StringName)
 
 const CATALOG_PATH := "res://data/items/item_catalog.tres"
 
@@ -43,6 +46,11 @@ var _world: Node = null
 var _knowledge: KnowledgeRuntime = null
 var _cultivation: CultivationRuntime = null
 var _collected: Dictionary = {}
+## `flag_id -> bool`: has the story handed this over? Given by the session once the story
+## runs. FAIL CLOSED: with nobody to ask, a held item stays held.
+var _flag_holds: Callable = Callable()
+## The held pickup the player is standing on (so the refusal is said once per approach).
+var _standing_on_held: StringName = &""
 var _session_active: bool = false
 
 
@@ -77,6 +85,8 @@ func start_session(character: CharacterState, world: Node, knowledge: KnowledgeR
 
 func end_session() -> void:
 	set_physics_process(false)
+	_flag_holds = Callable()
+	_standing_on_held = &""
 	_catalog = null
 	_bag = null
 	_character = null
@@ -214,6 +224,17 @@ func _physics_process(_delta: float) -> void:
 	tick()
 
 
+## Who answers "has story flag X been set" for held pickups (`WorldItem.held_by_flag`).
+func set_pickup_gate(flag_holds: Callable) -> void:
+	_flag_holds = flag_holds
+
+
+func _is_held(pickup: WorldItem) -> bool:
+	if pickup.held_by_flag == &"":
+		return false
+	return not (_flag_holds.is_valid() and bool(_flag_holds.call(pickup.held_by_flag)))
+
+
 ## Collect every pickup of the active map the player stands on (public for tests).
 func tick() -> void:
 	if not _session_active:
@@ -225,6 +246,7 @@ func tick() -> void:
 	var host := map.get_node_or_null("Pickups")
 	if host == null:
 		return
+	var held_under: StringName = &""
 	for child in host.get_children():
 		var pickup := child as WorldItem
 		if pickup == null or not pickup.visible:
@@ -233,9 +255,15 @@ func tick() -> void:
 			pickup.visible = false
 			continue
 		if pickup.reaches(player.global_position) and pickup.item != null:
+			if _is_held(pickup):
+				held_under = pickup.pickup_id
+				if _standing_on_held != pickup.pickup_id:
+					pickup_withheld.emit(pickup.pickup_id, pickup.held_reason_key)
+				continue
 			if give(pickup.item.id, pickup.count) > 0:
 				_collected[pickup.pickup_id] = true
 				pickup.visible = false
+	_standing_on_held = held_under
 
 
 func to_dict() -> Dictionary:

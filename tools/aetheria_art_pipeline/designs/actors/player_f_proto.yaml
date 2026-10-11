@@ -1,15 +1,17 @@
 # The protagonist as a PHÀM wanderer, the woman's look (Phase 20, D-072 §2).
 #
-# THE SAME PERSON AS player_proto, not a second character: the wanderer's identity is the
-# silver-white hair, the pale layered robe and the one jade accent (D-046, CHARACTER_ART_BIBLE
-# §5), and all three are kept. What changes is the CUT — the narrower shoulders, the flaring
-# hem and the close sleeves the cultivator already knows how to draw (they were authored for
-# lin_yue) — and the hair, worn up in a bun with two front locks.
+# THE SAME PERSON AS player_proto - the silver-white hair and the one jade accent are the
+# wanderer's identity (D-046, CHARACTER_ART_BIBLE §5) and both are kept - but a look the player
+# can TELL APART at 1x, which the first version (the same grey-blue robe in a narrower cut)
+# could not be: from the front the two were one sprite. So this look is read by COLOUR BLOCKS
+# first, cut second:
+#   * a short lilac-grey jacket over a deep jade skirt (the man wears one grey-blue robe to the
+#     floor): two masses split at the waist by a cream sash;
+#   * the hair worn UP in a full high knot with two long front locks, the back fall cut at
+#     the shoulder blades (his hangs loose to the waist).
 #
-# What it deliberately does NOT take from lin_yue: the 披帛 stole (her signature, and the only
-# rose in the cast), her black hair and her rose robe. At 32x48 the two read apart by VALUE
-# first — white hair over grey-blue against black hair over rose — so the player is never
-# mistaken for the disciple standing next to her.
+# What it deliberately does NOT take from lin_yue: the 披帛 stole, her black hair and her rose
+# robe. White hair over lilac-and-jade against black hair over rose: never mistaken.
 id: player_f_proto
 extends: cultivator
 role: "protagonist, PHÀM wanderer (woman's look)"
@@ -32,23 +34,25 @@ garment:
     - [10.0, 6.9, 5.1]
     - [3.0, 8.0, 5.9]
     - [1.1, 8.3, 6.1]
+  skirt_material: accent      # the id pass holds 12 cloths; she wears no cap or stole
   sleeve:
     profile: [[0.0, 1.9], [0.35, 2.0], [0.62, 2.2], [0.85, 2.5], [1.0, 2.6]]
     droop: 2.2
 hair:
-  back: {top_z: 46.4, bottom_z: 24.5, width: [7.6, 6.4, 1.8], thickness: 2.0, flare: 0.6}
-  locks: {from: [4.2, 0.8, 41.6], to_z: 33.5, width: 1.0}
-  bun: {centre: [0.0, 2.6, 47.6], radius: 2.2}
-  pin: {length: 6.0, radius: 0.4}
+  back: {top_z: 46.4, bottom_z: 31.0, width: [7.6, 6.2, 2.6], thickness: 2.0, flare: 0.4}
+  locks: {from: [4.2, 0.8, 41.6], to_z: 29.0, width: 1.2}
+  bun: {centre: [0.0, 2.2, 48.6], radius: 3.1}
+  pin: {length: 7.5, radius: 0.45}
 
-# Ramps are [deep, shadow, base, light] — the wanderer's own (player_proto), unchanged.
+# Ramps are [deep, shadow, base, light]. Hair, skin and jade are the wanderer's own.
 materials:
   skin:       {ramp: ["#a8705f", "#d4a088", "#f0cdb6", "#fbe6d6"], min_tone: 2}
   hair:       {ramp: ["#7b7f98", "#b2b7cb", "#dde1ed", "#f6f7fb"], highlight: true}
-  robe:       {ramp: ["#3f4a66", "#6e7c9c", "#9eabc6", "#c6cfe1"], highlight: true}
+  robe:       {ramp: ["#4a4468", "#77709c", "#a59ec6", "#cdc8e2"], highlight: true}
+  accent:     {ramp: ["#11362f", "#1b5146", "#28705f", "#44957d"], highlight: true}
   robe_inner: {ramp: ["#9298a8", "#c9ced8", "#eceef3", "#ffffff"]}
   trim:       {ramp: ["#242b3d", "#323b53", "#45516c", "#5c6987"], priority: 1.6, flat: true}
-  sash:       {ramp: ["#164638", "#215f4e", "#2d7c64", "#4ca383"], priority: 1.3, flat: true}
+  sash:       {ramp: ["#8a7b5c", "#b8a57c", "#dccb9f", "#f0e4c2"], priority: 1.3, flat: true}
   trousers:   {ramp: ["#1e232e", "#2a303e", "#384052", "#4a5366"]}
   shoe:       {ramp: ["#13151c", "#1d2029", "#2a2e3a", "#3a3f4e"]}
   eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}

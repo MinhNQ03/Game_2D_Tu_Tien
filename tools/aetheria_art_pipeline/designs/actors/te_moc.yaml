@@ -1,0 +1,60 @@
+# Tề Mộc — the carter on the frontier road (Phase 20, D-072 §5 cast). Not a cultivator and
+# not of the outpost: the one named person in Lạc Hà who belongs to nobody the player can see.
+#
+# Identity (CHARACTER_ART_BIBLE §5 "earthy", the working cast): Kha Thản's cut - a knee-length
+# coat over trousers and boots - on a broader, older body; the cloth is road-faded INDIGO where
+# the scout's is ochre, the head-wrap is bark-brown, and he is the only one of the working
+# cast with a grey beard. Read at 1x: dark blue block, dark wrap, grey chin.
+id: te_moc
+extends: cultivator
+role: "carter on the frontier road"
+pieces: [cap, beard]
+
+body:
+  scale: 0.99
+  shoulder_x: 6.7
+  hip_x: 2.9
+garment:
+  bodice:
+    - [25.0, 4.9, 3.5]
+    - [29.0, 5.6, 3.9]
+    - [32.2, 6.3, 4.0]
+    - [33.9, 5.3, 3.5]
+    - [34.8, 2.6, 2.4]
+  skirt:
+    - [25.4, 5.1, 3.7]
+    - [19.0, 5.7, 4.2]
+    - [12.5, 6.2, 4.6]
+    - [10.4, 6.3, 4.7]
+  hem_front_lift: 0.4
+  sleeve:
+    profile: [[0.0, 1.9], [0.35, 1.9], [0.62, 1.9], [0.85, 1.8], [1.0, 1.7]]
+    droop: 0.6
+hair:
+  back: {top_z: 46.0, bottom_z: 36.5, width: [7.2, 6.4, 5.0], thickness: 1.6, flare: 0.2}
+  locks: null
+  fringe: {cut_z: 43.4, scale: 1.05}
+  bangs: null                     # cropped under the head-wrap
+  bun: null
+  pin: null
+
+materials:
+  skin:       {ramp: ["#7a4c3a", "#a06e58", "#c4947a", "#dab59c"], min_tone: 2}
+  hair:       {ramp: ["#4b4a48", "#737270", "#9d9c98", "#c4c3be"]}
+  robe:       {ramp: ["#1c2634", "#2b3a50", "#3f546f", "#5b738f"], highlight: true}
+  robe_inner: {ramp: ["#6f6a5c", "#989280", "#bcb5a0", "#d8d1bd"]}
+  trim:       {ramp: ["#12161d", "#1b212b", "#27303d", "#364252"], priority: 1.6, flat: true}
+  sash:       {ramp: ["#4a3a22", "#6b5533", "#8e7447", "#ad9260"], priority: 1.3, flat: true}
+  accent:     {ramp: ["#3a281d", "#553d2c", "#735640", "#917257"], priority: 1.4}
+  trousers:   {ramp: ["#1d1b18", "#2a2723", "#3a3630", "#4c473f"]}
+  shoe:       {ramp: ["#17120e", "#221a14", "#30251c", "#403226"]}
+  eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
+
+animations:
+  talk: {frames: 6, loops: false}          # the greeting a shopkeeper gives (Phase 17)
+
+outputs:
+  sheet_prefix: carter_proto
+  anchors: carter_anchors
+  profile: carter_visual                 # data/characters/visual/<profile>.tres (checked: anchor_offset)
+  portrait: carter_proto

@@ -75,6 +75,9 @@ const PET_RUNTIME_SCRIPT := "res://src/gameplay/world/pet_runtime.gd"
 const NPC_RUNTIME_SCRIPT := "res://src/gameplay/world/npc_runtime.gd"
 const QUEST_RUNTIME_SCRIPT := "res://src/gameplay/world/quest_runtime.gd"
 const DIALOGUE_RUNTIME_SCRIPT := "res://src/gameplay/world/dialogue_runtime.gd"
+## Where a new run sets the player down in the first map: the west road, where the carter
+## who brought them let them off (D-072, beat 3). A spawn marker of the hub.
+const ARRIVAL_ENTRY := &"from_road"
 const STORY_RUNTIME_SCRIPT := "res://src/gameplay/world/story_runtime.gd"
 ## The identity screen (Phase 20, D-072): who the player is, chosen BEFORE a run exists.
 const IDENTITY_SCRIPT := "res://src/presentation/menus/identity_screen.gd"
@@ -562,7 +565,7 @@ func _start_run(player_template: CharacterTemplateData, origin_id: StringName) -
 	# WorldRuntime registers the map catalog, spawns the persistent player, and loads the
 	# first map (the hub) through SceneRouter. It owns the "why/when"; the router owns the
 	# "how". On any failure, unwind to a usable menu rather than a half-started session.
-	if not bool(_world.call("start_session", player_template)):
+	if not bool(_world.call("start_session", player_template, ARRIVAL_ENTRY)):
 		push_error("[main] world session failed to start; returning to menu")
 		_unwind_failed_session()
 		return
@@ -1072,14 +1075,21 @@ func _start_cultivation_sessions() -> bool:
 	if _story == null or not bool(_story.call("start_session", _world, _knowledge,
 			_relationship, _inventory, _run_origin_id)):
 		return false
+	# What belongs to somebody stays where it is until the story says it was handed over.
+	_inventory.call("set_pickup_gate", _story_flag_is_set)
 	if _world.has_method("refresh_active_map_story_view"):
 		_world.call("refresh_active_map_story_view")
 	if _dialogue == null or not bool(_dialogue.call("start_session", _world, _npcs,
-			_knowledge, _relationship, null, _quests)):
+			_knowledge, _relationship, null, _quests, _story)):
 		return false
 	if _world.has_method("refresh_active_map_dialogue_view"):
 		_world.call("refresh_active_map_dialogue_view")
 	return true
+
+
+func _story_flag_is_set(flag_id: StringName) -> bool:
+	var service: StoryService = _story.call("get_service") if _story != null else null
+	return service != null and service.flag_at_least(flag_id, 1)
 
 
 ## The world seed for the current run: a stable hash of the run id, or the simulation's own

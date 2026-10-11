@@ -78,6 +78,7 @@ func _run() -> void:
 		_fail("the identity screen did not open")
 		_finish()
 		return
+	RunKit.take_outpost_issue(_main)  # setup: these scenarios walk onto the outpost's blade
 	await _settle()
 	await _settle()
 

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CharacterTemplateData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/characters/character_template_data.gd" id="1_template"]
+[ext_resource type="Resource" path="res://data/stats/npc_stats.tres" id="2_stats"]
+
+[resource]
+script = ExtResource("1_template")
+id = &"char_carter_te"
+name_key = &"CHARACTER_CARTER_TE_NAME"
+title_key = &"CHARACTER_CARTER_TE_TITLE"
+gender = 1
+portrait_ref = "res://assets/ui/aetheria_ink/medallion_carter_proto.png"
+sprite_set_ref = "res://data/characters/visual/carter_visual.tres"
+origin_key = &"CHARACTER_CARTER_TE_ORIGIN"
+bloodline_key = &""
+age = 58
+age_category = 4
+profession = 3
+starting_realm = &""
+starting_technique_ids = []
+base_stats = ExtResource("2_stats")
+default_traits = [&"CAUTIOUS"]
+motivation_key = &"CHARACTER_CARTER_TE_MOTIVATION"
+default_goals = []
+default_sect_id = &""
+default_faction_id = &""
+schedule_ref = &"schedule_scout_patrol"

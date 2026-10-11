@@ -1506,3 +1506,29 @@
   (a second run through five downs); `test_a_scene_that_is_elsewhere_covers_the_map…`;
   story E2E step 3 → 4 (Enter on the menu after backing out).
 
+
+## L-053 — A complete system is not an engaging one; and a new cloth silently became another
+
+- **What happened (Phase 20, Checkpoint 3).** (a) The owner played Checkpoint 2 — every gate
+  green, twelve data-driven beats planned — and found it flat: people who stated their job,
+  five Origins that touched nothing in the village, gear lying on the plaza for no reason, and
+  a second look for the player that could not be told from the first. (b) The re-designed look
+  added a thirteenth cloth material; the id pass encodes a material as `id * 20` in 8 bits, so
+  ids above 12 saturate and decode as another material. The skirt rendered terracotta instead
+  of jade, with no error anywhere. (c) The real-window run that followed still showed the old
+  sprite: assets re-generated after the last `--import` are not what the window draws.
+- **Why the tests missed it.** (a) No test can: "is anything pulling me forward" is not an
+  invariant. The earlier look was verified as "narrower cut, hair up" — true, and invisible
+  at 32×48 from the front. (b) The material table refused UNKNOWN names but had no ceiling on
+  how many the pass can carry. (c) Capture tools do not import.
+- **Rules.**
+  - Every named person is authored as goal / fear / secret, and the secret must SHOW in a
+    line the player can reach. Every item in the world has an owner or a stated reason to
+    have none. Every Origin touches the first place it is played in.
+  - A second look is judged at 1× from the front against the first, by colour blocks; "the
+    cut differs" is not a difference.
+  - Before adding a material, check the pass's capacity; reuse a free slot as design data.
+  - Run `--import` after any asset generation and BEFORE any real-window capture.
+- **Guards:** `CONTENT_BIBLE.md` §16 (worked entries); `WorldItem.held_by_flag` + story E2E
+  step 8b; `test_each_origin_notices_its_own_thing_about_the_carters_load_once`; the
+  side-by-side sheet opened for D-072 addendum.

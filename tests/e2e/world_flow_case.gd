@@ -90,6 +90,7 @@ func test_real_world_map_flow() -> void:
 	var menu: Node = ui.get_child(0)
 	assert_true(menu.has_signal("new_game_pressed"), "menu exposes new_game_pressed")
 	assert_true(await RunKit.begin_run(main, scene_tree), "a run began past the identity screen")
+	assert_true(RunKit.take_outpost_issue(main), "setup: the outpost's issue is the player's")
 
 	assert_eq(gs.get_phase(), gs.Phase.RUNNING, "running after New Game")
 	assert_eq(router.get_current_key(), "map_hub", "New Game loads the hub map first (Phase 03)")

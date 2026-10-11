@@ -284,13 +284,21 @@ DialogueChoiceData                        # one thing the player may answer
   next_node_id: StringName                # "" = the conversation ends
 
 DialogueConditionData
-  kind: Kind                              # KNOWS | RELATIONSHIP_AT_LEAST
+  kind: Kind                              # KNOWS | RELATIONSHIP_AT_LEAST | QUEST_PHASE | FLAG | ORIGIN
+  flag_id: StringName                     # FLAG: a declared story flag, at least `value` (>= 1)
+  origin_id: StringName                   # ORIGIN: the run's Origin
   knowledge_id: StringName                # KNOWS
   dimension: StringName, value: int       # RELATIONSHIP_AT_LEAST (the speaker's regard for the player)
   negate: bool
 
+DialogueOpeningData                       # Phase 20: DialogueData.openings, asked in order
+  conditions: Array[DialogueConditionData]  # ALL must hold; the first opening that does is the first line
+  node_id: StringName                     # else DialogueData.start_node_id
+
 DialogueEffectData
-  kind: Kind                              # RELATIONSHIP_DELTA | GRANT_KNOWLEDGE | OPEN_SHOP
+  kind: Kind                              # … | QUEST_* | SET_FLAG | STORY_CHOICE (the story owner applies both)
+  flag_id: StringName, flag_value: int    # SET_FLAG
+  story_choice_id, story_option_id        # STORY_CHOICE: StoryService.choose is the transaction
   dimension: StringName, delta: int       # RELATIONSHIP_DELTA (1..50 in magnitude)
   knowledge_id: StringName                # GRANT_KNOWLEDGE
 ```
@@ -646,3 +654,11 @@ Relationships are authored/tuned as DATA (`docs/RELATIONSHIP_SYSTEM.md`):
   boundary: a width that is not a whole multiple of the frame width is REJECTED (and
   `frame_count_of` returns 0) rather than floored to a half-frame slice. It is PRESENTATION
   data — never copied into `CharacterState` (`docs/CHARACTER_SYSTEM.md` §3).
+
+### WorldItem provenance — IMPLEMENTED (Phase 20, D-072 addendum A)
+
+```
+WorldItem (a node under <map>/Pickups)
+  held_by_flag: StringName      # "" = nobody's, free; else held until this story flag is set
+  held_reason_key: StringName   # what walking onto it says while it is held (required if held)
+```

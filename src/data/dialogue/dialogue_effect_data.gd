@@ -19,10 +19,19 @@ enum Kind {
 	QUEST_TURN_IN,
 	## The player gives quest `quest_id` back to the speaker; its progress is discarded.
 	QUEST_ABANDON,
+	## Set story flag `flag_id` to `flag_value`, through the story owner (D-072): the line
+	## has now been said, the thing has now been heard.
+	SET_FLAG,
+	## Answer story choice `story_choice_id` with `story_option_id`. The story owner records
+	## it once and carries out its authored consequences in the same call (D-072 §7).
+	STORY_CHOICE,
 }
 
 ## The kinds the quest owner carries out.
 const QUEST_KINDS: Array[Kind] = [Kind.QUEST_ACCEPT, Kind.QUEST_TURN_IN, Kind.QUEST_ABANDON]
+
+## The kinds the story owner carries out.
+const STORY_KINDS: Array[Kind] = [Kind.SET_FLAG, Kind.STORY_CHOICE]
 
 ## The largest single move a line may make. A dimension spans at most 200 points; one sentence
 ## does not carry someone from one end to the other.
@@ -34,6 +43,16 @@ const MAX_DELTA := 50
 @export var knowledge_id: StringName = &""
 ## QUEST_ACCEPT / QUEST_TURN_IN / QUEST_ABANDON: a quest in the quest catalog.
 @export var quest_id: StringName = &""
+## SET_FLAG: a flag the story catalog declares, and the value to write (>= 1).
+@export var flag_id: StringName = &""
+@export var flag_value: int = 1
+## STORY_CHOICE: a choice in the story catalog and one of its options.
+@export var story_choice_id: StringName = &""
+@export var story_option_id: StringName = &""
+
+
+func is_story_kind() -> bool:
+	return STORY_KINDS.has(kind)
 
 
 func is_quest_kind() -> bool:
@@ -70,8 +89,24 @@ func validation_errors() -> Array[String]:
 				errors.append("a quest effect names no quest_id")
 			if dimension != &"" or delta != 0 or knowledge_id != &"":
 				errors.append("a quest effect carries a payload it does not use")
+		Kind.SET_FLAG:
+			if flag_id == &"":
+				errors.append("a SET_FLAG effect names no flag_id")
+			if flag_value < 1:
+				errors.append("a SET_FLAG effect must write at least 1")
+			if dimension != &"" or delta != 0 or knowledge_id != &"":
+				errors.append("a SET_FLAG effect carries a payload it does not use")
+		Kind.STORY_CHOICE:
+			if story_choice_id == &"" or story_option_id == &"":
+				errors.append("a STORY_CHOICE effect must name a choice and an option")
+			if dimension != &"" or delta != 0 or knowledge_id != &"":
+				errors.append("a STORY_CHOICE effect carries a payload it does not use")
 		_:
 			errors.append("unknown effect kind %d" % kind)
+	if flag_id != &"" and kind != Kind.SET_FLAG:
+		errors.append("carries a flag_id its kind does not use")
+	if (story_choice_id != &"" or story_option_id != &"") and kind != Kind.STORY_CHOICE:
+		errors.append("carries a story choice its kind does not use")
 	if quest_id != &"" and not is_quest_kind():
 		errors.append("carries a quest_id its kind does not use")
 	return errors

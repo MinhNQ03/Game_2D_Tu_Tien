@@ -22,8 +22,16 @@ const INTERACT := &"interact"
 const OPEN_MENU := &"open_menu"
 const MOVE_RIGHT := &"move_right"
 const SHEN := &"actor_elder_shen"
+const LIN := &"actor_disciple_lin"
+const MOVE_LEFT := &"move_left"
+const MOVE_DOWN := &"move_down"
+const STELE := &"know_lac_ha_stele_record"
+const ISSUE := &"flag_outpost_issue"
 
 var _passed: int = 0
+var _dialogue: DialogueRuntime = null
+var _panel: DialoguePanel = null
+var _withheld: Array[StringName] = []
 
 
 func test_real_story_flow() -> void:
@@ -235,6 +243,106 @@ func test_real_story_flow() -> void:
 			"and does not advertise '%s' to someone with no sect" % row_name)
 	_step("8. the player walks with real keys; no sect is advertised")
 
+	# --- 8a. arrival: the west road, a first person, a line only this Origin gets -------------
+	_dialogue = main.get_node("Systems/DialogueRuntime") as DialogueRuntime
+	_panel = hud.dialogue_panel()
+	var service := story.get_service()
+	assert_true(hub.get_node("Spawns/from_road").global_position.distance_to(before) < 4.0,
+		"the run began on the west road, where the cart let the player down")
+	assert_eq(service.state().beat_id, &"beat_arrival", "the story waits for a first meeting")
+	var lin := hub.get_node_or_null("Interactables/LinYue") as WorldNpc
+	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+	assert_eq(_dialogue.current_node_id(), &"lin_greet", "a stranger's greeting")
+	assert_true(service.state().has_met(LIN), "the story records the meeting")
+	assert_eq(service.state().beat_id, &"beat_contacts", "and the arrival beat is complete")
+	await _advance_to(&"lin_hub")
+	assert_false(_panel.choice_ids().has(&"lin_press"),
+		"she confides nothing to someone who has taken no part in the village")
+	await _say(&"lin_notation", &"lin_notation_line")
+	await _advance_to(&"lin_hub")
+	assert_false(_panel.choice_ids().has(&"lin_notation"),
+		"a line said once is not offered again")
+	await _say(&"lin_leave", &"")
+	_step("8a. arrived by the road; met Lâm Nguyệt; this Origin's line was said once")
+
+	# --- 8b. nothing lies free: the outpost's blade is held until the elder issues it ---------
+	inventory.pickup_withheld.connect(_on_withheld)
+	var sword := hub.get_node("Pickups/HubSword") as WorldItem
+	player.global_position = sword.global_position - Vector2(40, 0)  # setup: beside the rack
+	await scene_tree.physics_frame
+	Input.action_press(MOVE_RIGHT)
+	await _wait_until(func() -> bool: return not _withheld.is_empty(), 120)
+	Input.action_release(MOVE_RIGHT)
+	for _i in 20:
+		await scene_tree.physics_frame  # keep standing on it: it is said once, not every tick
+	assert_eq(_withheld, [&"pickup_hubsword"] as Array[StringName],
+		"walking onto the blade says whose it is - once")
+	assert_eq(inventory.count_of(&"item_kiem_thanh_thiet"), 0, "and takes nothing")
+	assert_true(sword.visible, "the blade is still on the rack")
+
+	# the carter and the elder: three people met completes the contacts beat
+	var carter := hub.get_node_or_null("Interactables/QiMu") as WorldNpc
+	await _talk_to(player, hub, carter, Vector2(30, 0))
+	await _advance_to(&"te_hub")
+	assert_eq(_panel.choice_ids(), [&"te_ask_load", &"te_ask_road", &"te_ledger", &"te_leave"]
+		as Array[StringName], "the carter offers this Origin its own question, and no other's")
+	await _say(&"te_ledger", &"te_ledger_line")
+	await _advance_to(&"te_hub")
+	await _say(&"te_leave", &"")
+	assert_eq(service.state().beat_id, &"beat_contacts", "two met: still getting to know them")
+	var shen := hub.get_node_or_null("Interactables/ShenBuqi") as WorldNpc
+	await _talk_to(player, hub, shen, Vector2(30, 0))
+	assert_eq(service.state().beat_id, &"beat_village_business",
+		"three met: the story moves on to the village's own business")
+	await _advance_to(&"shen_hub")
+	await _say(&"shen_issue_ask", &"shen_issue")
+	assert_true(service.flag_at_least(ISSUE, 1), "the elder issued the blade, in words")
+	await _advance_to(&"shen_hub")
+	await _say(&"shen_leave", &"")
+	player.global_position = sword.global_position - Vector2(40, 0)
+	await scene_tree.physics_frame
+	Input.action_press(MOVE_RIGHT)
+	await _wait_until(func() -> bool:
+		return inventory.count_of(&"item_kiem_thanh_thiet") == 1, 120)
+	Input.action_release(MOVE_RIGHT)
+	assert_eq(inventory.count_of(&"item_kiem_thanh_thiet"), 1, "now the same walk takes it")
+	assert_eq(_withheld.size(), 1, "with no second refusal")
+	inventory.pickup_withheld.disconnect(_on_withheld)
+	_step("8b. the blade was held, the elder issued it, and only then was it the player's")
+
+	# --- 8c. the village's business, then whom to trust ---------------------------------------
+	var stele := hub.get_node("KnowledgeSources/LacHaStele") as Node2D
+	player.global_position = stele.global_position + Vector2(0, 20)  # setup: at the stele
+	await scene_tree.physics_frame
+	await _press_until(INTERACT, func() -> bool: return knowledge.get_service().knows(STELE))
+	await _talk_to(player, hub, shen, Vector2(30, 0))
+	await _advance_to(&"shen_hub")
+	await _say(&"shen_task_ask", &"shen_task_why")
+	assert_true(service.flag_at_least(&"flag_heard_village_business", 1), "heard out")
+	assert_eq(service.state().beat_id, &"beat_confidence", "the story turns to Lâm Nguyệt")
+	_dialogue.leave()
+	await scene_tree.process_frame
+	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+	await _advance_to(&"lin_hub")
+	await _say(&"lin_press", &"lin_confide")
+	var trust_before := RegardRules.read(relationship.get_service(), relationship.get_config(),
+		LIN, character.instance_id, &"trust")
+	await _say(&"lin_keep", &"lin_kept")
+	assert_eq(service.state().option_of(&"choice_lam_readings"), &"kept",
+		"the decision is recorded")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), LIN,
+		character.instance_id, &"trust"), trust_before + 15, "and her trust moved once, by 15")
+	assert_eq(service.state().beat_id, &"beat_warning", "the Night is now due")
+	await _advance_to(&"")
+	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
+	assert_eq(_dialogue.current_node_id(), &"lin_after_kept",
+		"she now greets the player as someone who kept faith")
+	await _advance_to(&"lin_hub")
+	assert_false(_panel.choice_ids().has(&"lin_press"), "and does not ask twice")
+	await _say(&"lin_leave", &"")
+	assert_eq(_count_players(main), 1, "one player throughout")
+	_step("8c. heard the village's business; kept Lâm Nguyệt's confidence; the Night is due")
+
 	# --- 9. leave through the real question; everything is torn down --------------------------
 	await _press_until(OPEN_MENU, func() -> bool:
 		return hud.session_prompt_kind() == GameplayHUD.PROMPT_LEAVE)
@@ -332,6 +440,51 @@ func _all_label_text(node: Node) -> Array:
 	for child in node.get_children():
 		out.append_array(_all_label_text(child))
 	return out
+
+
+func _on_withheld(pickup_id: StringName, _reason_key: StringName) -> void:
+	_withheld.append(pickup_id)
+
+
+## Stand the player beside `npc` (setup), then WALK into reach with a held move key and talk
+## with a real interact.
+func _talk_to(player: Node2D, map: Node, npc: WorldNpc, offset: Vector2,
+		toward: StringName = MOVE_LEFT) -> void:
+	assert_not_null(npc, "the person is in this map")
+	if npc == null:
+		return
+	player.global_position = npc.global_position + offset
+	await scene_tree.physics_frame
+	await scene_tree.physics_frame
+	Input.action_press(toward)
+	await _wait_until(func() -> bool: return map.call("active_interactable") == npc, 180)
+	Input.action_release(toward)
+	await scene_tree.physics_frame
+	await _press_until(INTERACT, func() -> bool: return _dialogue.is_open())
+
+
+## Acknowledge the current line until the conversation is at `node_id` ("" = closed).
+func _advance_to(node_id: StringName) -> void:
+	await _press_until(INTERACT, func() -> bool:
+		return (not _dialogue.is_open()) if node_id == &"" \
+			else _dialogue.current_node_id() == node_id)
+
+
+## Move the cursor to `choice_id` with real move keys, then say it with ONE real interact.
+func _say(choice_id: StringName, then: StringName) -> void:
+	assert_true(_panel.choice_ids().has(choice_id), "'%s' is offered (%s)"
+		% [choice_id, str(_panel.choice_ids())])
+	for _i in 8:
+		if _panel.selected_choice_id() == choice_id:
+			break
+		await _fire_action(MOVE_DOWN)
+		for _j in 3:
+			await scene_tree.process_frame
+	assert_eq(_panel.selected_choice_id(), choice_id, "real move keys selected '%s'" % choice_id)
+	await _press_until(INTERACT, func() -> bool:
+		return (not _dialogue.is_open()) if then == &"" \
+			else _dialogue.current_node_id() == then)
+	assert_eq(_dialogue.current_node_id(), then, "saying '%s' led to '%s'" % [choice_id, then])
 
 
 func _wait_until(predicate: Callable, frames: int) -> void:

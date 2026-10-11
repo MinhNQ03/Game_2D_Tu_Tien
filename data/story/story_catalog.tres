@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StoryCatalogData" load_steps=66 format=3]
+[gd_resource type="Resource" script_class="StoryCatalogData" load_steps=74 format=3]
 
 [ext_resource type="Script" path="res://src/data/story/story_catalog_data.gd" id="s_story_catalog_data"]
 [ext_resource type="Script" path="res://src/data/story/story_chapter_data.gd" id="s_story_chapter_data"]
@@ -26,6 +26,38 @@ script = ExtResource("s_story_flag_data")
 id = &"flag_heard_road_ahead"
 purpose = "The player has been told what is coming to the frontier and where the road leads."
 
+[sub_resource type="Resource" id="F_flag_outpost_issue"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_outpost_issue"
+purpose = "The elder has issued the outpost's blade, coat and primer to the player, on account."
+
+[sub_resource type="Resource" id="F_flag_lam_asked"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_lam_asked"
+purpose = "Lam Nguyet asked the player to keep her re-measuring quiet, and got no promise."
+
+[sub_resource type="Resource" id="F_flag_lam_settled"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_lam_settled"
+purpose = "How the matter of her readings was settled: 1 kept quiet, 2 told to the elder."
+kind = 1
+max_value = 2
+
+[sub_resource type="Resource" id="F_flag_asked_carter_load"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_asked_carter_load"
+purpose = "The player asked the carter what he hauls, and was told pine."
+
+[sub_resource type="Resource" id="F_flag_lin_origin_said"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_lin_origin_said"
+purpose = "Lam Nguyet's one line to this Origin has been said (a line is said once, AUD-13)."
+
+[sub_resource type="Resource" id="F_flag_te_origin_said"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_te_origin_said"
+purpose = "What this Origin notices about the carter's load has been noticed."
+
 [sub_resource type="Resource" id="Q_choice_lam_readings_kept_0"]
 script = ExtResource("s_story_consequence_data")
 kind = 1
@@ -33,11 +65,17 @@ character_id = &"actor_disciple_lin"
 dimension = &"trust"
 delta = 15
 
+[sub_resource type="Resource" id="Q_choice_lam_readings_kept_1"]
+script = ExtResource("s_story_consequence_data")
+kind = 0
+flag_id = &"flag_lam_settled"
+value = 1
+
 [sub_resource type="Resource" id="O_choice_lam_readings_kept"]
 script = ExtResource("s_story_option_data")
 id = &"kept"
 record_key = &"STORY_CHOICE_LAM_READINGS_KEPT"
-consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_lam_readings_kept_0")])
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_lam_readings_kept_0"), SubResource("Q_choice_lam_readings_kept_1")])
 
 [sub_resource type="Resource" id="Q_choice_lam_readings_told_0"]
 script = ExtResource("s_story_consequence_data")
@@ -53,16 +91,22 @@ character_id = &"actor_disciple_lin"
 dimension = &"affinity"
 delta = -15
 
+[sub_resource type="Resource" id="Q_choice_lam_readings_told_2"]
+script = ExtResource("s_story_consequence_data")
+kind = 0
+flag_id = &"flag_lam_settled"
+value = 2
+
 [sub_resource type="Resource" id="O_choice_lam_readings_told"]
 script = ExtResource("s_story_option_data")
 id = &"told"
 record_key = &"STORY_CHOICE_LAM_READINGS_TOLD"
-consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_lam_readings_told_0"), SubResource("Q_choice_lam_readings_told_1")])
+consequences = Array[ExtResource("s_story_consequence_data")]([SubResource("Q_choice_lam_readings_told_0"), SubResource("Q_choice_lam_readings_told_1"), SubResource("Q_choice_lam_readings_told_2")])
 
 [sub_resource type="Resource" id="C_choice_lam_readings"]
 script = ExtResource("s_story_choice_data")
 id = &"choice_lam_readings"
-beat_id = &"beat_confidence"
+beat_id = &""
 title_key = &"STORY_CHOICE_LAM_READINGS"
 options = Array[ExtResource("s_story_option_data")]([SubResource("O_choice_lam_readings_kept"), SubResource("O_choice_lam_readings_told")])
 
@@ -127,7 +171,7 @@ branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_road_0
 script = ExtResource("s_story_trigger_data")
 kind = 4
 subject_id = &""
-subjects = Array[StringName]([&"actor_elder_shen", &"actor_disciple_lin", &"actor_scout_ko"])
+subjects = Array[StringName]([&"actor_elder_shen", &"actor_disciple_lin", &"actor_scout_ko", &"actor_carter_te"])
 count = 1
 
 [sub_resource type="Resource" id="B_beat_arrival_0"]
@@ -151,7 +195,7 @@ branches = Array[ExtResource("s_story_branch_data")]([SubResource("B_beat_arriva
 script = ExtResource("s_story_trigger_data")
 kind = 4
 subject_id = &""
-subjects = Array[StringName]([&"actor_elder_shen", &"actor_disciple_lin", &"actor_scout_ko"])
+subjects = Array[StringName]([&"actor_elder_shen", &"actor_disciple_lin", &"actor_scout_ko", &"actor_carter_te"])
 count = 3
 
 [sub_resource type="Resource" id="B_beat_contacts_0"]
@@ -425,6 +469,6 @@ beats = Array[ExtResource("s_story_beat_data")]([SubResource("BEAT_beat_standing
 [resource]
 script = ExtResource("s_story_catalog_data")
 chapters = Array[ExtResource("s_story_chapter_data")]([SubResource("CH_prologue"), SubResource("CH_act1")])
-flags = Array[ExtResource("s_story_flag_data")]([SubResource("F_flag_heard_village_business"), SubResource("F_flag_heard_elder_account"), SubResource("F_flag_heard_road_ahead")])
+flags = Array[ExtResource("s_story_flag_data")]([SubResource("F_flag_heard_village_business"), SubResource("F_flag_heard_elder_account"), SubResource("F_flag_heard_road_ahead"), SubResource("F_flag_outpost_issue"), SubResource("F_flag_lam_asked"), SubResource("F_flag_lam_settled"), SubResource("F_flag_asked_carter_load"), SubResource("F_flag_lin_origin_said"), SubResource("F_flag_te_origin_said")])
 choices = Array[ExtResource("s_story_choice_data")]([SubResource("C_choice_lam_readings"), SubResource("C_choice_night_stand")])
 start_beat_id = &"beat_road"

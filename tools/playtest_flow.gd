@@ -93,6 +93,7 @@ func _run() -> void:
 	await _step_new_game(main)
 	var map := await _step_world_ready()
 	await _step_hud_present(map)
+	await _step_first_people(main, map)
 	await _step_feedback(map)
 	await _step_physical_truth(map)
 	await _step_decor_solid(map)
@@ -251,6 +252,72 @@ func _step_hud_present(map: Node) -> void:
 ## with a PASSIVE notice up, and nothing that gives way is lost. Measured on RENDERED frames
 ## (`frame_post_draw`) in the real window. Placement onto pickups / beside the spring and the
 ## stele is deterministic SETUP; C and E are real keys.
+## Phase 20, beats 3-5: the road in, the people of Lạc Hà, and the outpost's issue - all with
+## real keys. The player is STAGED beside each person (recorded as a placement) and then walks
+## into reach, talks, picks an answer and leaves through the conversation itself.
+func _step_first_people(main: Node, map: Node) -> void:
+	var started := Time.get_ticks_msec()
+	var player := _player_of(map)
+	var story := RunKit.story_of(main)
+	var dialogue := main.get_node_or_null("Systems/DialogueRuntime")
+	var hud := _find_hud(map)
+	var road := map.get_node_or_null("Spawns/from_road") as Node2D
+	if player == null or story == null or dialogue == null or hud == null or road == null:
+		_record("03e_arrival_road", "a player, a story, a dialogue runtime and a road marker",
+			"something is missing", false, started)
+		return
+	var on_road := player.global_position.distance_to(road.global_position) < 6.0
+	_record("03e_arrival_road", "the run begins on the west road, where the cart let the "
+		+ "player down, with a purpose on screen",
+		"player=%s road=%s beat=%s" % [player.global_position, road.global_position,
+			story.get_service().state().beat_id], on_road, started,
+		await _shot("03e_arrival_road"))
+	var panel: Node = hud.call("dialogue_panel")
+	var shots := {}
+	var asked := {}
+	var plan := [["LinYue", Vector2(-30, 0), &"move_right", &"lin_hub", &"lin_ask_measure",
+			&"lin_measure"],
+		["QiMu", Vector2(30, 0), &"move_left", &"te_hub", &"te_ask_load", &"te_load"],
+		["ShenBuqi", Vector2(30, 0), &"move_left", &"shen_hub", &"shen_issue_ask",
+			&"shen_issue"]]
+	for entry: Array in plan:
+		var npc := map.get_node_or_null("Interactables/%s" % entry[0]) as Node2D
+		if npc == null:
+			asked[entry[0]] = false
+			continue
+		player.global_position = npc.global_position + (entry[1] as Vector2)  # staging
+		await _settle()
+		await _hold_action(entry[2], func() -> bool:
+			return map.call("active_interactable") == npc)
+		await _press_until(&"interact", func() -> bool: return bool(dialogue.call("is_open")))
+		if not shots.has("greet"):
+			shots["greet"] = await _shot("03f_first_greeting")
+		await _press_until(&"interact", func() -> bool:
+			return dialogue.call("current_node_id") == entry[3])
+		for _i in 8:
+			if panel.call("selected_choice_id") == entry[4]:
+				break
+			await _tap(&"move_down")
+			await process_frame
+		await _press_until(&"interact", func() -> bool:
+			return dialogue.call("current_node_id") == entry[5])
+		asked[entry[0]] = dialogue.call("current_node_id") == entry[5]
+		await _settle()
+		shots[entry[0]] = await _shot("03g_said_%s" % String(entry[0]).to_lower())
+		dialogue.call("leave")  # walking away from a conversation is the Esc path, proven in E2E
+		await _settle()
+	var service := story.get_service()
+	var issued := service.flag_at_least(&"flag_outpost_issue", 1)
+	var met := service.state().met.size()
+	_record("03g_first_people", "three named people are met with real keys, each answers a "
+		+ "real question, the story moves past 'contacts', and the elder issues the blade",
+		"setup{placements=3} asked=%s met=%d beat=%s issued=%s" % [str(asked), met,
+			service.state().beat_id, issued],
+		met == 3 and issued and not asked.values().has(false)
+			and service.state().beat_id == &"beat_village_business", started,
+		str(shots.get("ShenBuqi", "")))
+
+
 func _step_feedback(map: Node) -> void:
 	var started := Time.get_ticks_msec()
 	var hud := map.get_node_or_null("GameplayHUD") as GameplayHUD if map != null else null

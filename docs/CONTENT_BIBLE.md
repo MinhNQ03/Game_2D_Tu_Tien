@@ -187,3 +187,58 @@ Hypothetical addition of **10 quests · 5 NPCs · 3 maps · 2 dungeons · 2 boss
 
 Everything else passes. The result: **the design does not require core edits for content growth**,
 which was the condition for freezing it.
+
+
+## 16. The Lạc Hà cast (Phase 20, D-072) — worked entries
+
+Each entry answers §2: what they want, what they hide, and when they die, flee or join. What
+the player can OBSERVE in the prologue is marked ▸; the rest is the author's and stays unsaid.
+
+### Thẩm Bất Kỳ — elder of the Thanh Đài outpost (`actor_elder_shen`)
+- **Goal.** Keep the outpost open. Its pills, its watch and its right to stand here are an
+  allocation that follows the figures it sends up.
+- **Fear.** A closed outpost: he has seen a village after its sect left.
+- **Secret.** He has signed "level" over a falling vein for six seasons.
+- **Public belief.** The covenant holds; read the stele. **Private belief.** A true figure
+  would kill Lạc Hà faster than a false one.
+- ▸ Issues a stranger a blade *on account*; ▸ told about the re-measuring, says "the book
+  says level, and level it will be".
+- **Dies** defending the hall. **Flees** never. **Joins** nobody; can be made an ally only by
+  someone who gives him a way to tell the truth and keep the village.
+- **Callback.** The account he gives of the Night (beat 9) is the version that reaches the
+  great sects.
+
+### Lâm Nguyệt — inner disciple, surveyor (`actor_disciple_lin`)
+- **Goal.** Prove the open road is not heterodoxy — by being right, on the record.
+- **Fear.** That her place at Cloud Vale was not earned.
+- **Secret.** She measures without leave; the surveyor before her was "reassigned" last
+  winter and she has his rod.
+- **Public belief.** Measure, then speak. **Private belief.** The book is wrong.
+- ▸ Confides only in someone who has taken part in the village; ▸ greets a keeper of her
+  confidence and a teller differently for the rest of the run; ▸ to the rejected disciple:
+  "I still do not know why the name on the board was mine."
+- **Dies** if she goes to the vein alone. **Flees** if the elder takes her readings and the
+  player told. **Joins** a player who kept faith and brings her the sheet.
+- **Callback.** Beat 11: the sheet is hers to give (kept) or the player's to find (told).
+
+### Kha Thản — hired watchman of the crossing (`actor_scout_ko`)
+- **Goal.** Be paid what the risk is worth. **Fear.** Being the one left holding the path.
+- **Secret.** Some nights he is paid to sleep soundly; he knows when the pulse dips because
+  something makes it dip.
+- ▸ Sells what he carries; ▸ asked about the cart (only after the carter was asked), counts
+  his stones and says it.
+- **Dies** at the treeline if the player withdraws and the watch is alone too long (not in the
+  prologue). **Flees** when the money stops. **Joins** whoever pays and does not lie to him.
+- **Callback.** Beat 8: how he regards the player depends on whether they stood.
+
+### Tề Mộc — carter of the frontier road (`actor_carter_te`) — NEW
+- **Goal.** Deliver the load and never learn what it is. **Fear.** Learning it.
+- **Secret.** The crates are not pine. He has hauled them out of the woods at night for
+  years, and to Cloud Vale before every trial.
+- **Public belief.** A carter weighs loads, not men. **Private belief.** The cold in his
+  hands is the price, and it is nearly paid.
+- ▸ "Tell no one you rode in with me"; ▸ "Pine"; ▸ denies the one thing each Origin notices.
+- **Dies** of the grey in his hands, within the year. **Flees** the morning after the Night.
+  **Joins** nobody; **talks** to a healer who can name what is wrong with him.
+- **Callback.** Beat 12: he is the road out, and the first living witness to what was drawn
+  from the vein.

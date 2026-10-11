@@ -39,6 +39,7 @@ props:
   fence_long:     {kind: fence, params: {length: 150}}
   well:           {kind: well}
   weapon_rack:    {kind: weapon_rack}
+  cart:           {kind: cart}
   pine:           {kind: pine, params: {seed: 5, scale: 1.0}}
   pine_small:     {kind: pine, params: {seed: 11, scale: 0.75}}
   boulder:        {kind: boulder, params: {seed: 7, scale: 1.0}}

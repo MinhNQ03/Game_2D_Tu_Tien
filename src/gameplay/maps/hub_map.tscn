@@ -54,6 +54,9 @@
 [ext_resource type="Script" path="res://src/gameplay/pets/pet_encounter.gd" id="60_petenc"]
 [ext_resource type="Script" path="res://src/gameplay/npcs/world_npc.gd" id="62_npc"]
 [ext_resource type="Resource" path="res://data/characters/npc_elder_shen.tres" id="63_shen"]
+[ext_resource type="Resource" path="res://data/characters/npc_disciple_lin.tres" id="64_lin"]
+[ext_resource type="Resource" path="res://data/characters/npc_carter_te.tres" id="65_te"]
+[ext_resource type="Resource" path="res://data/world/props/cart.tres" id="p_cart"]
 [ext_resource type="Resource" path="res://data/pets/pet_hoang_khuyen.tres" id="61_hound"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
 shader = ExtResource("30_sway")
@@ -136,6 +139,11 @@ prop = ExtResource("p_well")
 position = Vector2(740, 382)
 script = ExtResource("p_script")
 prop = ExtResource("p_weapon_rack")
+
+[node name="Prop_Cart" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(872, 250)
+script = ExtResource("p_script")
+prop = ExtResource("p_cart")
 
 [node name="Prop_YardFence" type="StaticBody2D" parent="Visual/Decor"]
 position = Vector2(700, 480)
@@ -565,6 +573,9 @@ position = Vector2(496, 304)
 [node name="from_field" type="Marker2D" parent="Spawns"]
 position = Vector2(900, 304)
 
+[node name="from_road" type="Marker2D" parent="Spawns"]
+position = Vector2(150, 304)
+
 [node name="Exits" type="Node2D" parent="."]
 
 [node name="ExitToField" type="Area2D" parent="Exits"]
@@ -655,6 +666,8 @@ script = ExtResource("50_witem")
 item = ExtResource("51_1")
 count = 1
 pickup_id = &"pickup_hubmanualphong"
+held_by_flag = &"flag_outpost_issue"
+held_reason_key = &"UI_PICKUP_HELD_OUTPOST"
 
 [node name="Look" type="Node2D" parent="Pickups/HubPill1"]
 script = ExtResource("52_pickuplook")
@@ -668,6 +681,8 @@ script = ExtResource("50_witem")
 item = ExtResource("53_sword")
 count = 1
 pickup_id = &"pickup_hubsword"
+held_by_flag = &"flag_outpost_issue"
+held_reason_key = &"UI_PICKUP_HELD_OUTPOST"
 
 [node name="Look" type="Node2D" parent="Pickups/HubSword"]
 script = ExtResource("52_pickuplook")
@@ -678,6 +693,8 @@ script = ExtResource("50_witem")
 item = ExtResource("54_robe")
 count = 1
 pickup_id = &"pickup_hubrobe"
+held_by_flag = &"flag_outpost_issue"
+held_reason_key = &"UI_PICKUP_HELD_OUTPOST"
 
 [node name="Look" type="Node2D" parent="Pickups/HubRobe"]
 script = ExtResource("52_pickuplook")
@@ -695,3 +712,15 @@ position = Vector2(468, 352)
 script = ExtResource("62_npc")
 character_id = &"actor_elder_shen"
 character_template = ExtResource("63_shen")
+
+[node name="LinYue" type="Node2D" parent="Interactables"]
+position = Vector2(362, 350)
+script = ExtResource("62_npc")
+character_id = &"actor_disciple_lin"
+character_template = ExtResource("64_lin")
+
+[node name="QiMu" type="Node2D" parent="Interactables"]
+position = Vector2(824, 264)
+script = ExtResource("62_npc")
+character_id = &"actor_carter_te"
+character_template = ExtResource("65_te")

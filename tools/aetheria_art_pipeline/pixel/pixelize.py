@@ -560,6 +560,8 @@ def _footprint(spec, meta):
         w, d = 44.0, 40.0
     elif kind == "weapon_rack":
         w, d = 64.0, 8.0
+    elif kind == "cart":
+        w, d = 64.0, 34.0
     else:
         return (0, 0, 0, 0)
     return (-w * ppu / 2, -d * ppu * squash, w * ppu, d * ppu * squash)

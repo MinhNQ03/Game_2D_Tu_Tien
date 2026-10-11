@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://data/worldsim/actor_elder_shen.tres" id="5_actor_elder"]
 [ext_resource type="Resource" path="res://data/worldsim/actor_disciple_lin.tres" id="6_actor_disciple"]
 [ext_resource type="Resource" path="res://data/worldsim/actor_scout_ko.tres" id="7_actor_scout"]
+[ext_resource type="Resource" path="res://data/worldsim/actor_carter_te.tres" id="12_actor_carter"]
 [ext_resource type="Resource" path="res://data/worldsim/wevent_azure_standing.tres" id="8_ev_sect"]
 [ext_resource type="Resource" path="res://data/worldsim/wevent_terrace_drill.tres" id="9_ev_faction"]
 [ext_resource type="Resource" path="res://data/worldsim/wevent_elder_disciple_bond.tres" id="10_ev_bond"]
@@ -22,6 +23,6 @@ ticks_per_map_transition = 6
 ticks_on_session_start = 0
 catch_up_budget_ticks = 64
 schedules = [ExtResource("2_sched_elder"), ExtResource("3_sched_disciple"), ExtResource("4_sched_scout")]
-actors = [ExtResource("5_actor_elder"), ExtResource("6_actor_disciple"), ExtResource("7_actor_scout")]
+actors = [ExtResource("5_actor_elder"), ExtResource("6_actor_disciple"), ExtResource("7_actor_scout"), ExtResource("12_actor_carter")]
 events = [ExtResource("8_ev_sect"), ExtResource("9_ev_faction"), ExtResource("10_ev_bond"), ExtResource("11_ev_friction")]
 event_log_capacity = 16

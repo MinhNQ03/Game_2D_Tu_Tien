@@ -8,6 +8,19 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Phase 20, Checkpoint 3: the road in, the people of Lạc Hà, whom to trust (D-072 addendum)
+
+- **Dialogue ↔ Story.** `FLAG` / `ORIGIN` conditions, `SET_FLAG` / `STORY_CHOICE` effects,
+  conditional `openings`; talking to someone is meeting them. Fail closed on story content
+  the story does not have.
+- **Nothing lies free.** `WorldItem.held_by_flag`: the outpost's blade, coat and primer are
+  held until the elder issues them; walking onto one says whose it is, once.
+- **Cast.** Lâm Nguyệt placed by the spring with a conversation; Tề Mộc the carter (new actor,
+  sheets, portrait, cart prop) on the east road. Every Origin notices one thing about his load.
+- **The run arrives by the west road.** The woman's look re-designed (lilac over jade, hair
+  up) so it reads apart from the man's at 1×.
+- Suite 1182; Story E2E 13 real-key steps; 15 mutations red. Phase 20 remains IN PROGRESS.
+
 ### 2026-10-11 — Phase 20, Checkpoint 2: who the player is, and the nobody's start (D-072)
 
 - **Changed (the default flow).** New Game opens the IDENTITY SCREEN: a look and one of the

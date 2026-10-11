@@ -26,7 +26,8 @@ G_ITEM, G_KNOWLEDGE, G_REGARD = range(3)
 S_CARD, S_CAPTION, S_LINE = range(3)
 
 SHEN, LIN, KO = "actor_elder_shen", "actor_disciple_lin", "actor_scout_ko"
-PEOPLE = [SHEN, LIN, KO]
+TE = "actor_carter_te"
+PEOPLE = [SHEN, LIN, KO, TE]
 
 FLAGS = [
     ("flag_heard_village_business",
@@ -35,14 +36,32 @@ FLAGS = [
      "The elder has given his account of the Night to the player."),
     ("flag_heard_road_ahead",
      "The player has been told what is coming to the frontier and where the road leads."),
+    ("flag_outpost_issue",
+     "The elder has issued the outpost's blade, coat and primer to the player, on account."),
+    ("flag_lam_asked",
+     "Lam Nguyet asked the player to keep her re-measuring quiet, and got no promise."),
+    ("flag_lam_settled",
+     "How the matter of her readings was settled: 1 kept quiet, 2 told to the elder.", 2),
+    ("flag_asked_carter_load",
+     "The player asked the carter what he hauls, and was told pine."),
+    ("flag_lin_origin_said",
+     "Lam Nguyet's one line to this Origin has been said (a line is said once, AUD-13)."),
+    ("flag_te_origin_said",
+     "What this Origin notices about the carter's load has been noticed."),
 ]
 
 # (id, beat, title_key, [(option, record_key, [consequences])])
 CHOICES = [
-    ("choice_lam_readings", "beat_confidence", "STORY_CHOICE_LAM_READINGS", [
-        ("kept", "STORY_CHOICE_LAM_READINGS_KEPT", [(Q_REGARD, LIN, "trust", 15)]),
+    # Bound to no beat: she confides when the player has taken part in the village's
+    # business, which a player who talks to everyone first may reach before beat 6 is current.
+    # The beat then completes the moment it is entered - a decision is never refused for
+    # having been made early.
+    ("choice_lam_readings", "", "STORY_CHOICE_LAM_READINGS", [
+        ("kept", "STORY_CHOICE_LAM_READINGS_KEPT",
+         [(Q_REGARD, LIN, "trust", 15), (Q_SET_FLAG, "flag_lam_settled", "", 1)]),
         ("told", "STORY_CHOICE_LAM_READINGS_TOLD",
-         [(Q_REGARD, SHEN, "trust", 10), (Q_REGARD, LIN, "affinity", -15)]),
+         [(Q_REGARD, SHEN, "trust", 10), (Q_REGARD, LIN, "affinity", -15),
+          (Q_SET_FLAG, "flag_lam_settled", "", 2)]),
     ]),
     ("choice_night_stand", "beat_night", "STORY_CHOICE_NIGHT_STAND", [
         ("stood", "STORY_CHOICE_NIGHT_STAND_STOOD", [(Q_REGARD, KO, "respect", 10)]),
@@ -185,18 +204,24 @@ def story_catalog():
         "story_catalog_data", "story_chapter_data", "story_beat_data", "story_trigger_data",
         "story_branch_data", "story_condition_data", "story_flag_data", "story_choice_data",
         "story_option_data", "story_consequence_data"])
-    flags = [doc.sub("story_flag_data", "F_%s" % fid,
-                     [("id", sn(fid)), ("purpose", '"%s"' % purpose)])
-             for fid, purpose in FLAGS]
+    flags = []
+    for fid, purpose, *ceiling in FLAGS:
+        fields = [("id", sn(fid)), ("purpose", '"%s"' % purpose)]
+        if ceiling:  # an INT flag holding 0..ceiling
+            fields += [("kind", 1), ("max_value", ceiling[0])]
+        flags.append(doc.sub("story_flag_data", "F_%s" % fid, fields))
     choices = []
     for cid, beat, title, options in CHOICES:
         option_refs = []
         for oid, record, consequences in options:
             refs = []
             for i, (kind, who, dimension, delta) in enumerate(consequences):
-                refs.append(doc.sub("story_consequence_data", "Q_%s_%s_%d" % (cid, oid, i), [
-                    ("kind", kind), ("character_id", sn(who)), ("dimension", sn(dimension)),
-                    ("delta", delta)]))
+                fields = [("kind", kind), ("character_id", sn(who)),
+                          ("dimension", sn(dimension)), ("delta", delta)]
+                if kind == Q_SET_FLAG:
+                    fields = [("kind", kind), ("flag_id", sn(who)), ("value", delta)]
+                refs.append(doc.sub("story_consequence_data", "Q_%s_%s_%d" % (cid, oid, i),
+                                    fields))
             option_refs.append(doc.sub("story_option_data", "O_%s_%s" % (cid, oid), [
                 ("id", sn(oid)), ("record_key", sn(record)),
                 ("consequences", doc.array("story_consequence_data", refs))]))
