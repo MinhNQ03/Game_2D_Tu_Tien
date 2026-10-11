@@ -238,6 +238,46 @@ def weapon_rack(d):
     return parts
 
 
+# The carts stand a little askew to the camera (D-073 follow-up, H21-17). Seen square-on from
+# above-front a cart's wheels are edge-on: two dark slabs, and the thing reads as a box on
+# posts. Turned this far, each wheel shows its FACE - a rim, a hub, spokes - which is what
+# says "cart" at 1x.
+CART_YAW_DEG = 34.0
+# How far each is moved back after the turn so its bed's nearest corner sits on y = 0. The
+# turned bed is a rectangle seen corner-on; its solid base (pixel/pixelize.py `_footprint`)
+# is the rectangle INSIDE that diamond, so the two walkable corners are not walls.
+CART_BACK = 10.0
+WRECK_BACK = 14.0
+
+
+def _wheel(name, cx, cy, cz, r, axis="x", rim="timber", spoke="timber_light", hub="wood_pale"):
+    """A spoked cart wheel centred at (cx, cy, cz): a rim, six spokes, a hub. `axis` is the
+    axle's direction - "x" for a wheel standing on its cart, "z" for one lying on the ground."""
+    parts = []
+    seg = 16
+    ring = []
+    for i in range(seg + 1):
+        a = math.tau * i / seg
+        u, v = r * math.cos(a), r * math.sin(a)
+        ring.append((cx, cy + u, cz + v) if axis == "x" else (cx + u, cy + v, cz))
+    up = (1, 0, 0) if axis == "x" else (0, 0, 1)
+    parts.append(_part(name + "_rim", rim, tube(ring, [1.9] * len(ring), 6, up=up)))
+    for k in range(3):                                   # three bars across = six spokes
+        a = math.pi * k / 3 + 0.26
+        u, v = (r - 1.0) * math.cos(a), (r - 1.0) * math.sin(a)
+        if axis == "x":
+            ends = [(cx, cy - u, cz - v), (cx, cy + u, cz + v)]
+        else:
+            ends = [(cx - u, cy - v, cz), (cx + u, cy + v, cz)]
+        parts.append(_part("%s_spoke%d" % (name, k), spoke, tube(ends, [1.0, 1.0], 5, up=up)))
+    if axis == "x":
+        ends = [(cx - 2.6, cy, cz), (cx + 2.6, cy, cz)]
+        parts.append(_part(name + "_hub", hub, tube(ends, [3.0, 3.0], 8, up=(0, 0, 1))))
+    else:
+        parts.append(_part(name + "_hub", hub, cylinder(cx, cy, cz - 1.2, cz + 2.4, 3.0, 8)))
+    return parts
+
+
 def cart(d):
     """A frontier haul cart, standing unhitched: a plank bed on two spoked wheels, shafts
     resting on a prop-stick, and a load of nailed crates under a tarpaulin roped down. The
@@ -248,10 +288,7 @@ def cart(d):
              _part("tail", "timber_light", box(-26, 32, 17, 26, 34, 23))]
     for sx in (-1, 1):
         x = sx * 30
-        parts.append(_part("wheel%d" % sx, "timber", tube([(x - 1.6, 18, 13), (x + 1.6, 18, 13)],
-                                                         [13, 13], 18, up=(0, 0, 1))))
-        parts.append(_part("hub%d" % sx, "wood_pale", tube([(x - 2.4, 18, 13), (x + 2.4, 18, 13)],
-                                                         [3.2, 3.2], 8, up=(0, 0, 1))))
+        parts += _wheel("wheel%d" % sx, x, 18, 13, 13)
         parts.append(_part("shaft%d" % sx, "timber_light",
                            tube([(sx * 16, 2, 15), (sx * 13, -30, 12)], [1.6, 1.4], 6,
                                 up=(0, 0, 1))))
@@ -265,7 +302,9 @@ def cart(d):
     parts.append(_part("tarp", "plaster", box(-24, 16, 31, 24, 34, 33.5)))
     parts.append(_part("tarp_fall", "plaster", box(-24, 33, 20, 24, 34.6, 33)))
     parts.append(_part("rope", "timber", box(-25, 24, 33.5, 25, 25.4, 34.6)))
-    return parts
+    # turned about the bed's middle, then moved back so the turned bed's nearest corner is on
+    # the origin line (y = 0): the origin stays "the front of the thing", as for every prop
+    return _tilt(parts, (0.0, 18.0, 0.0), yaw_deg=CART_YAW_DEG, shift=(0.0, CART_BACK, 0.0))
 
 
 def _tilt(parts, pivot, roll_deg=0.0, pitch_deg=0.0, yaw_deg=0.0, shift=(0.0, 0.0, 0.0)):
@@ -298,11 +337,6 @@ def cart_wreck(d):
            _part("rail_l", "timber_light", box(-27, 2, 17, -24, 34, 24)),
            _part("rail_r", "timber_light", box(24, 2, 17, 27, 34, 24)),
            _part("tail", "timber_light", box(-26, 32, 17, 26, 34, 23)),
-           # the wheel that held: still on its axle, taking the whole weight
-           _part("wheel_on", "timber", tube([(28.4, 18, 13), (31.6, 18, 13)], [13, 13], 18,
-                                            up=(0, 0, 1))),
-           _part("hub_on", "wood_pale", tube([(27.6, 18, 13), (32.4, 18, 13)], [3.2, 3.2], 8,
-                                           up=(0, 0, 1))),
            # the bare axle stub where the other wheel was
            _part("axle", "timber_light", tube([(-34, 18, 13), (-24, 18, 13)], [1.8, 1.8], 6,
                                              up=(0, 0, 1))),
@@ -315,13 +349,12 @@ def cart_wreck(d):
            _part("band_a", "timber", box(-23.4, 15.6, 26, -4.6, 31.4, 28)),
            _part("crate_b", "wood_pale", box(-3, 17, 17, 14, 30, 29)),
            _part("band_b", "timber", box(-3.4, 16.6, 24, 14.4, 30.4, 26))]
+    # the wheel that held: still on its axle, taking the whole weight
+    bed += _wheel("wheel_on", 30, 18, 13, 13)
     # down on the stub: the bed rolls about the standing wheel's foot until the axle end lands
     parts = _tilt(bed, (30.0, 18.0, 0.0), roll_deg=-21.0, shift=(0.0, 0.0, 0.0))
     # the wheel that came off, flat in the litter, a spoke's length from where it broke
-    parts.append(_part("wheel_off", "timber", tube([(-46, 2, 0.0), (-46, 2, 3.2)], [13, 13], 18,
-                                                    up=(1, 0, 0))))
-    parts.append(_part("hub_off", "wood_pale", tube([(-46, 2, 3.2), (-46, 2, 5.0)], [3.4, 3.4], 8,
-                                                    up=(1, 0, 0))))
+    parts += _wheel("wheel_off", -46, 2, 1.9, 13, axis="z")
     # the snapped half of the shaft, thrown forward
     parts.append(_part("shaft_piece", "timber_light",
                        tube([(-22, -14, 1.4), (-6, -27, 1.4)], [1.5, 1.3], 6, up=(0, 0, 1))))
@@ -358,7 +391,7 @@ def cart_wreck(d):
     parts.append(_part("tarp", "plaster", tarp))
     parts.append(_part("rope", "timber", tube([(-20, 44, 0.6), (-4, 40, 0.6), (10, 44, 0.6)],
                                               [0.8, 0.8, 0.8], 5, up=(0, 0, 1))))
-    return parts
+    return _tilt(parts, (0.0, 18.0, 0.0), yaw_deg=CART_YAW_DEG, shift=(0.0, WRECK_BACK, 0.0))
 
 
 def survey_shaft(d):

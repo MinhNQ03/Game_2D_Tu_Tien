@@ -7,6 +7,6 @@
 script = ExtResource("1_prop")
 id = &"cart_wreck"
 texture = ExtResource("2_tex")
-origin = Vector2(56, 34)
-footprint = Rect2(-31.3846, -15.6923, 61.8462, 14.7692)
+origin = Vector2(51, 43)
+footprint = Rect2(-27.6923, -26.3077, 55.3846, 23.0769)
 sways = false

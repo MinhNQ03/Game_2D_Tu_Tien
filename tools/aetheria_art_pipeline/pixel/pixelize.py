@@ -561,12 +561,17 @@ def _footprint(spec, meta):
     elif kind == "weapon_rack":
         w, d = 64.0, 8.0
     elif kind == "cart":
-        w, d = 64.0, 34.0
+        # The bed (52 x 32) stands turned 34 degrees (model/props3d.py CART_YAW_DEG) with its
+        # nearest corner on y = 0: its bounding diamond is 61 x 56. Solid is the rectangle
+        # inside it - x -26..26, y 6..50 - so the diamond's two corners can be walked round.
+        return (-26.0 * ppu, -50.0 * ppu * squash, 52.0 * ppu, 44.0 * ppu * squash)
     elif kind == "cart_wreck":
         # The canted bed on its one wheel (model/props3d.py cart_wreck): x -34..33, y 2..34.
         # What lies round it — the wheel, the lid, the shards, the tarpaulin — is flat on the
         # ground and is walked over (INTANGIBLE_BY_DESIGN: litter, not an obstacle).
-        return (-34.0 * ppu, -34.0 * ppu * squash, 67.0 * ppu, 32.0 * ppu * squash)
+        # ...turned 34 degrees like the cart it was: the canted bed's diamond is 73 x 64; solid
+        # is the rectangle inside it, x -30..30, y 7..57.
+        return (-30.0 * ppu, -57.0 * ppu * squash, 60.0 * ppu, 50.0 * ppu * squash)
     elif kind == "survey_shaft":
         # The outcrop the door is set in: x -54..53, from just behind the sill to its back.
         return (-54.0 * ppu, -52.0 * ppu * squash, 107.0 * ppu, 49.0 * ppu * squash)
