@@ -1427,3 +1427,55 @@
 - **Guards:** the gate script's verdict line (local); `test_layer_direction.gd`;
   `npc_flow_case.gd` / `quest_flow_case.gd` / `world_flow_case.gd` (the teardown trace).
 
+## L-050 — A frame names a place, a trace names a cause; and a harness can manufacture its own worst case
+
+- **Context:** Pre-Phase-20 readiness (D-071), closing Q19-04 ("a Vụ Lang gets stuck behind
+  a tree").
+- **What happened:**
+  - *The cause had been read off a screenshot.* The frame showed where the creature stood.
+    It could not show that the stall was a STABLE resting point of `move_and_slide` (the
+    slide of a pursuer points at its target's row and dies there), so the register filed it
+    as a rare alignment that "favours the player". A 20-line probe logging position, velocity,
+    state and collision normal per tick showed it holding from 0, 0.01, 0.5 and 2 px off-row.
+  - *The harness built the worst case and then called it flaky.* The step placed the player
+    at `creature + (96, 0)` — exactly on the creature's row — after a wander whose length
+    depended on real-time pacing. Whenever a prop stood on that row the run failed; otherwise
+    it passed. One in three red is what a deterministic bug looks like through a
+    nondeterministic staging.
+  - *A first guess at the dynamics was backwards.* Before measuring, the working theory was
+    "an unstable equilibrium the body escapes exponentially". The probe showed the opposite
+    sign. A fix designed on the guess would have been a nudge; the real one needed a held hand.
+- **Rules:**
+  - A register entry whose cause is "inferred" is not a diagnosis. Before designing a fix,
+    log the quantities per tick and state which hypotheses the numbers rule OUT.
+  - Perturb the reproduction (a hair off, on both sides). Whether the failure survives the
+    perturbation tells you if it is a knife edge or an attractor — and those need different
+    fixes.
+  - A "flaky" real-app step gets its staging made deterministic FIRST. Then it is either
+    always red (a bug with a reproduction) or always green (a test defect).
+  - Code that no test can be made to need is removed, not kept "for safety" (here: a
+    half-second hand memory).
+- **Guards:** `tests/integration/test_enemy_detour.gd` (the measured staging, six offsets,
+  sixteen bearings); `tools/playtest_flow.gd` step `17b_hunt_round_obstacle` (both bodies
+  placed once, then no input).
+
+## L-051 — A gate that greps for a message must match every wording the message has
+
+- **Context:** Pre-Phase-20 readiness (D-071), running the baseline gates before any edit.
+- **What happened:** the leak gate (D-047) greps the suite log for
+  `ObjectDB instances were leaked`. For exactly ONE leaked object the engine writes
+  `1 ObjectDB instance was leaked at exit`. The Phase-19 suite ended with that line on every
+  run — locally and in the CI run that closed the phase — because one test passed
+  `Node.new()` inline and nothing could free it. The gate counted zero, the report said "0
+  leak lines", and both were the pattern's answer rather than the suite's. It was found by
+  READING the tail of the suite log instead of the gate's summary of it.
+- **Rules:**
+  - A grep-shaped gate is a claim about an exact string. Feed it the message in each wording
+    the producer can emit (singular, plural, zero) before trusting a zero from it.
+  - "The gate says 0" and "the log has no such line" are different statements. A report
+    states the one that was actually checked.
+  - A `Node` handed to a call as an inline `X.new()` has no name to free it by. In a test,
+    hold it in a local and free it.
+- **Guards:** the widened pattern in `.github/workflows/ci.yml` (suite and four E2E gates);
+  `test_quest_runtime.gd` frees the node.
+

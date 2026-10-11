@@ -69,6 +69,11 @@
 > with the XP-per-defeat guard (and, from Phase 21, drops); a line of purpose in the place
 > plaque and a non-modal journal; CI gate 14. All 14 gates green in CI run 38069906502 on
 > that exact SHA (1064 tests). `docs/handoff/phase-19-quest.md`.
+> **Pre-Phase-20 readiness (D-071, not a phase, no gameplay added):** the two debts that
+> would have followed Phase 19 into Story are closed — a pursuing creature (and a following
+> companion) walks ROUND a solid prop on its line instead of resting against it (Q19-04), and
+> the world-simulation data no longer depends on its own domain (Q19-05). 1090 tests;
+> `docs/handoff/pre-phase-20-readiness.md`.
 > Phase 20+ (Story, Dungeon, Boss, Save) is NOT STARTED.
 > **Foundation hardening before it (not phases, no gameplay):** D-056 froze the
 > production/multiplayer contract and the presentation spine; **D-057** froze the motion design
@@ -541,7 +546,9 @@ effects in the Dialogue seam; the plaque's purpose line and the non-modal journa
 owners' in-memory `to_dict()` / `from_dict()` for quests and the ledger; isolated quest E2E as
 CI gate 14. Not built (by decision, D-070 / D-069): flags, loot tables and drops, any file,
 `SaveService`, a Continue button, an EventBus gameplay event, a quest popup, a tracker box.
-Carried debt: CLV-01, Q19-01 … Q19-05 (`docs/handoff/phase-19-quest.md` §9).
+Carried debt: CLV-01, Q19-01, Q19-02, Q19-03, NAV-01 (`docs/handoff/phase-19-quest.md` §9).
+**Q19-04 and Q19-05 are CLOSED** (D-071, pre-Phase-20 readiness — not a phase):
+`docs/handoff/pre-phase-20-readiness.md`.
 
 ## Phase 20 — Story
 Story/flag engine; branches read character/sect/faction state + flags; chapter loop +

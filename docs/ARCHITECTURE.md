@@ -111,6 +111,10 @@
 > - **Enemy AI (Phase 10, D-052/D-053):** `src/domain/ai/ai_brain.gd` is a pure state machine
 >   returning INTENTS, not vectors; `AIComponent` executes them through the same movement and
 >   attack seams the player uses, on a throttled cadence, seeded from the `enemy_ai` stream.
+>   The two intents that mean "reach a place" (`APPROACH`, `RETURN_HOME`) go through
+>   `MovementComponent.apply_pursuit`, which walks ROUND a solid thing standing squarely on
+>   the line (D-071); the brain never learns the obstacle exists. Routes through rooms are
+>   not built (NAV-01).
 >   `src/presentation/combat/damage_feedback.gd` owns the entity's whole `modulate` channel, so
 >   no gameplay entity authors a colour (asserted by a structural walk of `src/gameplay`).
 > - **Progression (Phase 11, D-054/D-055):** `CharacterState.xp` is the single stored

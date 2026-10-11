@@ -8,6 +8,35 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-11 — Pre-Phase-20 readiness: Q19-04 and Q19-05 closed (D-071)
+
+Not a phase. No gameplay, content, story, save file, event or autoload was added.
+
+- **Fixed (Q19-04).** A creature pursuing its target — and one walking home, and a companion
+  following its owner — walks ROUND a solid prop that stands squarely on its line instead of
+  coming to rest against it. Traced before it was fixed: the rest was a stable point of
+  `move_and_slide`, not a rare alignment. `MovementComponent.apply_pursuit` (new) holds one
+  hand round the obstacle, looks one step ahead while it does, and reverses once if that way
+  is shut; `AIComponent` sends `APPROACH` and `RETURN_HOME` through it. `AiBrain`, collision
+  layers, shapes, props, leash, telegraph and swing timing are unchanged.
+- **Fixed (Q19-05).** `WorldSimCatalog` no longer names `WorldClock`. The smallest calendar
+  unit is stated once, in the data layer (`WorldSimCatalog.MIN_CALENDAR_UNIT`); the clock and
+  the simulation state read it downward.
+- **Fixed (found while verifying the gates).** The suite's leak gate matched only
+  `N ObjectDB instances were leaked`; for exactly one object the engine prints
+  `1 ObjectDB instance was leaked`, which read as clean. The Phase-19 suite had been ending
+  with that line — locally and in CI run 38069906502 — from one test node that was never
+  freed (`test_quest_runtime.gd`; no shipped code involved). The node is freed and the
+  pattern takes both wordings, in all seven places the workflow uses it.
+- **Tests.** 1064 → 1090: `test_enemy_detour.gd` (15), `test_calendar_contract.gd` (4),
+  three pure pursuit rules in `test_movement_component.gd`, the worst-case detour budget in
+  `test_ai_budget.gd`, and three layer guards in `test_layer_direction.gd` (its exception
+  list is now empty; a new scan catches an upper layer loaded by PATH). The real-window
+  playtest gains step `17b_hunt_round_obstacle` (31 steps).
+- **Recorded.** NAV-01: a route through a concave pocket is navigation, owned by the phase
+  that first authors rooms. Lessons L-050, L-051.
+- Phase 19 remains DONE. Phase 20 gameplay has NOT started.
+
 ### 2026-10-10 — Phase 19: quests, the one reward ledger, the journal (D-070)
 
 - **Added.** `QuestData` / `QuestObjectiveData` / `QuestCatalogData`, `QuestState`,

@@ -1264,3 +1264,49 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
 - Real app: `tools/capture_motion.gd -- <dir> quest <vi|en>` at `--resolution 1280x720` and
   `1280x800` (18 frames each); findings in `docs/handoff/phase-19-quest.md`.
 
+## Pre-Phase-20 readiness (D-071) — pursuit round an obstacle, and the calendar floor
+
+Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to **31** steps.
+
+- `tests/integration/test_enemy_detour.gd` (15) — a REAL `CombatRuntime` session, REAL Vụ
+  Lang from the shipped `.tres`, the REAL field footprints (`WorldProp` + `PropData`) in the
+  real physics space, stepped at exact 1/60 s. The measured staging of Q19-04 (a pine on the
+  line, the target 0 / 0.01 / 0.5 / 2 px either side of the creature's row): reaches the
+  player and bites; never motionless for more than 2 frames while chasing out of reach; takes
+  ONE hand; faces the way it walks. Every field footprint (pine, small pine, round rock) from
+  all four sides; sixteen bearings through the trunk; the body never overlaps the trunk and
+  does pass beside it; a head-on tie resolves the same way and two runs match frame for
+  frame; a target flush behind the trunk is bitten, not circled; a pursuit with no brain
+  comes to rest against its goal and does not orbit it; chasing along the map's edge slides
+  and takes no hand; a shut way is reversed once; **a pocket shut on both sides is rested in,
+  not paced, and the creature still goes home when the target is lost (NAV-01, pinned)**; the
+  leash ends a pursuit that is walking round; home is reached round the trunk; a second
+  creature on the same line arrives too; a companion follows its owner round the trunk; an
+  open fight takes no hand and makes no query.
+  **The budget is derived, not tuned:** notice pause + (straight gap + half the perimeter of
+  the footprint grown by the creature's body) / authored chase speed + windup + active window
+  + three decision intervals.
+- `tests/unit/gameplay/test_movement_component.gd` (+3) — the two pure rules with LITERAL
+  directions: following a surface is a quarter turn of its normal and one hand goes all the
+  way round; the hand is the side the target lies toward; a head-on tie takes hand +1.
+- `tests/performance/test_ai_budget.gd` (+1) — 40 creatures hunting a target shut in a closed
+  pen for 1800 frames: at most one look-ahead per creature per tick, linear in the cast,
+  under its own ceiling, and no chasing creature ever still.
+- `tests/unit/worldsim/test_calendar_contract.gd` (4) — the floor is stated once and read
+  downward; the shipped calendar is accepted by both; for every unit × {-30, -1, 0, 1, 2, 30}
+  the catalog's validation, the clock's constructor and the clock's hydration give the same
+  answer.
+- `tests/unit/core/test_layer_direction.gd` (2 → 5) — the exception list is EMPTY (the test
+  still fails if a listed exception no longer exists); the worldsim data/domain pair by name;
+  **no lower layer may load an upper layer's script by path** (the name scan ignores strings,
+  so a `preload` was invisible to it); the path scan can fail and ignores comments.
+- `tests/integration/test_quest_runtime.gd` — frees the node whose leak the gate could not
+  see (L-051).
+- **Real window** — `tools/playtest_flow.gd` step `17b_hunt_round_obstacle`: the creature and
+  the player are each placed ONCE on one row with the field's southern boulder between them,
+  then NO key is pressed; the creature must come round and bite inside a budget computed from
+  its own authored numbers, counted in physics ticks. Red on the old pursuit code, green on
+  the fix (`docs/handoff/pre-phase-20-readiness.md` has every run).
+- Mutation-checked: 15 (pursuit) + 2 (budget) + 7 (calendar / layer), each red; see the
+  handoff for the list.
+

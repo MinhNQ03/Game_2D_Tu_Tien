@@ -29,6 +29,19 @@
   Measured: **40 creatures × 1800 frames = 289 ms**, scaling **10.3×** for a 10× cast
   (linear, as designed), **4.0 µs per enemy per frame**, 149 decisions where 150 were
   expected. It produced **PERF-003**.
+- **Walking round an obstacle has a budget (D-071)**: the same file,
+  `test_walking_round_an_obstacle_is_one_query_a_tick_and_linear`. A pursuing creature makes
+  NO extra query in the open (`test_enemy_detour.gd` asserts zero look-aheads across a 10 s
+  fight and along a wall). While it walks round something it makes at most ONE `test_move` per
+  tick, and nothing else: no search, no path, no node, no timer. Worst case measured locally
+  (2026-10-11, headless): 40 creatures hunting a target shut in a closed pen, so every one of
+  them walks round it for all 1800 frames — **0.90 look-aheads per creature per frame,
+  919–936 ms, ~13 µs per creature per frame** (wandering: 4.8 µs), scaling **10.0–10.2×** for
+  a 10× cast, and 0 frames in which a chasing creature stood still. A whole cast doing
+  nothing but this is ~0.5 ms of a 16.6 ms frame. The existing wander budget did not move
+  (344 ms / 4.78 µs after, 347 ms / 4.82 µs before). The ceiling for this case is its own
+  (40 µs), not the wander ceiling: a detouring creature moves at full speed and queries, so
+  it honestly costs ~2.7× a wandering one. No optimization was needed, so §4 has no entry.
 - **Still true, and still deliberate:** no Godot *profiler* session has been run on a
   representative combat scene. The budgets that exist are in-suite timing assertions, not
   profiler captures, and the shipped world has one combat target — so these numbers bound the

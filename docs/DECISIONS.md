@@ -5397,3 +5397,110 @@ checks. CLV-01 stays open with its owner and its no-later-than-Phase-21 criterio
   "there are hours to cross". Reporting a fight: "no one crosses unarmed". Same reward; the
   difference is what the player actually found out, said back to them.
 
+---
+
+## D-071 — Pre-Phase-20 readiness: a pursuit walks round, and the calendar floor is data's
+
+**Status:** DONE — not a phase and not Phase 20. Two findings carried out of Phase 19
+(Q19-04, Q19-05) closed on `fix/pre-phase20-readiness`, branched from the Phase-19 tip
+`b768935`. Commits, CI runs and evidence: `docs/handoff/pre-phase-20-readiness.md`.
+
+### Q19-04 — what was actually wrong
+
+The register said "a Vụ Lang chasing in a straight line stops against a tree trunk … cause
+inferred from the frame, not traced". Traced, the inference was right about the symptom and
+wrong about how common it is.
+
+`move_and_slide` slides a blocked body along a surface by the part of its velocity that lies
+along it. A pursuer's velocity points at its target, so that part points at the target's own
+row: the slide carries the body to the place where the target is dead ahead through the
+obstacle, and there it is zero. **The stall is a stable resting point.** Measured on the
+shipped pine footprint with the target 96 px away: a creature started 0, 0.01, 0.5 and 2 px
+off the target's row came to rest against the trunk at the same x every time, in `CHASE`,
+velocity `(0, 0)`, colliding with normal `(-1, 0)`, for the whole 20 s run. It never swung,
+because it never came inside `engage_distance`. So "stand behind a tree" was a safe spot from
+which a creature could be killed at leisure, and the same held for `RETURN` (a creature that
+could not get home never looked at the player again) and for a companion following its owner.
+
+The playtest's one-in-three failure was the same defect seen through a harness that
+manufactures its worst case: step 19 places the player at `creature + (96, 0)` — exactly on
+the creature's row — and then walks the player in with the dominant-axis key only, pressing
+the player into the far side of the same prop. Which run failed depended on where the
+creature's patrol had taken it by then (real-time pacing of the earlier steps), which is why
+it looked flaky. Both are true: the AI defect is real and deterministic; the *sighting* was
+nondeterministic.
+
+### The decision
+
+**"Get there" is a different request from "go this way", and it belongs to the movement
+seam.** `MovementComponent.apply_intent` is unchanged: the player's keys, a patrol heading, a
+retreat — a wall stops it, and the player steers. `MovementComponent.apply_pursuit` is new:
+the two intents that mean *reach a place* (`APPROACH`, `RETURN_HOME`) go through it.
+
+1. Nothing in the way: identical to `apply_intent`. No query.
+2. A surface met squarely (cosine beyond `DETOUR_START_DOT`): take a **hand** — the side the
+   target lies toward; on an exact head-on tie a constant, `DETOUR_DEFAULT_HAND`. Hold it.
+3. While a hand is held: one `test_move` along the straight line per tick. Blocked → walk
+   along that surface on the held hand at full speed. Clear → let go, walk straight.
+4. The way round is itself shut → reverse the hand, once.
+
+The body being pursued is never "in the way": touching it is arriving.
+
+**What stayed where it was.** `AiBrain` is untouched — still scalars in, an intent out, no
+node, no vector, no query. It still says `APPROACH`; it does not know a tree exists. The
+session still owns the one tick; decisions are still throttled; no enemy or pet has a frame
+callback or a timer. Leash, lose-interest, telegraph, reach, recover and the swing lifecycle
+are unchanged and re-asserted with an obstacle on the line. No collision layer, mask, shape or
+prop was touched; no stream draws a number for this.
+
+**Why a hand that is held, not a side re-chosen each tick.** "The side the target is on"
+changes sign exactly at the resting point. A rule that re-chose would turn the stall into a
+tremble around the same spot. (A separate "remember the hand for 0.5 s after the line clears"
+was written, could not be made to matter by any test, and was removed.)
+
+**Why not pathfinding.** D-052 deferred it because "the field is open ground"; the field has
+since gained more than twenty solid props and that reason no longer holds for *single* obstacles. It
+still holds for routes: nothing shipped has a corridor, and a navigation layer built before a
+room exists would be designed against nothing. Every footprint this project builds is convex
+(`PropBody.make_footprint`: a rectangle or a 16-point ellipse), and a convex obstacle is
+rounded by following its surface on one hand.
+
+**The limit, stated and pinned.** A pocket shut on both sides — one obstacle plugging a gap —
+is not solved: the creature reverses once and then rests there. It does not pace, the work
+stays bounded, and the brain is still in charge (lose the target and it walks home). Getting
+out of a room is navigation and is recorded as **NAV-01** for the phase that first authors
+rooms. `test_a_pocket_shut_on_both_sides_is_rested_in_not_paced` pins the behaviour so it
+cannot quietly become worse.
+
+**Cost.** Zero in the open (asserted: no hand, no look-ahead across a 10 s fight). While
+walking round: one query per creature per tick — measured with 40 creatures held in a detour
+for 1800 frames, 0.90 look-aheads per creature-frame, ~13 µs per creature per frame against
+4.8 µs wandering, linear in the cast (`docs/PERFORMANCE.md`).
+
+### Q19-05 — who owns the smallest calendar unit
+
+`WorldSimCatalog` (data) validated its calendar against `WorldClock.MIN_UNIT` (domain): a
+data resource naming a domain class. The fact — "a calendar unit is at least 1" — was also
+restated a third time as a literal in `WorldSimulationState`.
+
+**Decision: the floor is a fact about what may be AUTHORED, so the data layer states it,
+once.** `WorldSimCatalog.MIN_CALENDAR_UNIT` is the only place the number is written.
+`WorldClock.MIN_UNIT` reads it, and `WorldSimulationState.MIN_CALENDAR_UNIT` reads the
+clock's: domain reading data, the permitted direction. Not flipped into a reverse dependency
+(nothing in `src/data` names anything above it), not a magic number (typed, named, documented
+where it is stated), not a constants manager (one constant on the resource it describes), and
+validation is not weaker — the catalog and the clock's constructor and hydration refuse the
+same calendars, value by value, by test.
+
+The recorded exception is gone from `test_layer_direction.gd` (the list is empty and says
+what an entry must come with). Two guards were added there: the worldsim pair by name, and a
+scan for `res://src/<upper layer>/` **paths** — the name scan ignores strings on purpose, so
+a `preload` of a domain script from data would have passed it.
+
+### Recorded for later
+
+- **NAV-01** (new, narrower than Q19-04): routes through concave space. Owner: the phase that
+  first authors rooms (Phase 21). `apply_pursuit` is the one seam to replace.
+- The hand is "toward the target", not "the shorter way". Round a wide obstacle it can take
+  the longer side. Correct, bounded, and not worth a shape query today.
+
