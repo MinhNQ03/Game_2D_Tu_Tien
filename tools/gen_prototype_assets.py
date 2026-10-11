@@ -95,6 +95,7 @@ def gen_props():
     props.gen_rock(ROOT)
     props.gen_planter(ROOT)
     props.gen_stake_socket(ROOT)
+    props.gen_wolf_sign(ROOT)
     props.gen_emblems(ROOT)
     props.gen_prototype_tileset(ROOT)
 

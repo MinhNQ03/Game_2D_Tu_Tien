@@ -7,4 +7,4 @@
 script = ExtResource("1_table")
 map_id = &"map_field"
 enemies = [ExtResource("2_wolf"), ExtResource("2_wolf")]
-positions = PackedVector2Array(632, 168, 360, 536)
+positions = PackedVector2Array(680, 76, 360, 536)

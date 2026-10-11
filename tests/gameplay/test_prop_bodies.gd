@@ -34,10 +34,13 @@ const INTANGIBLE_BY_DESIGN := {
 		"hangs from the post; the post's foot is the body",
 	"res://assets/sprites/props/prop_stake_socket.png":
 		"a mark on the ground where the survey stake stood (D-073): flat, walked over",
+	"res://assets/sprites/props/prop_wolf_sign.png":
+		"gnawed bones and claw gouges at the edge of a creature's ground (H21-16): flat",
 }
 
 ## Where the world's drawn things live in a map (the training post is a combat target).
-const WORLD_HOLDERS: Array[String] = ["Visual/Decor", "Visual/Atmosphere", "KnowledgeSources",
+const WORLD_HOLDERS: Array[String] = ["Visual/Decor", "Visual/Decals", "Visual/Atmosphere",
+	"KnowledgeSources",
 	"CultivationSites", "CombatTargets"]
 
 ## A pixel is DRAWN MASS from this alpha up; a baked cast shadow is lighter and is not mass.

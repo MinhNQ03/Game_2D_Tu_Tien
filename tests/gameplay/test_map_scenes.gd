@@ -805,3 +805,70 @@ func test_the_cart_that_waits_is_whole_and_the_cart_that_was_left_is_a_wreck() -
 	hub.free()
 	field.free()
 
+
+# === Creature territory against what the player MUST reach (PX-2; H21-16) =====================
+
+const FIELD_SPAWNS := "res://data/enemies/spawn_table_field.tres"
+## A required thing must be this far outside a standing creature's detect radius: a body's
+## width, so the player does not trip it by standing at the far edge of the prompt's reach.
+const TERRITORY_MARGIN_PX := 24.0
+## The uncontested way from the village entrance to the Survey Shaft, in world pixels: along
+## the forest road east, then up the surveyors' footpath to the door. (The old haul track from
+## the wreck is the CONTESTED way: it crosses the cairn wolf's ground, and is marked as such.)
+const SAFE_WAY_TO_THE_SHAFT: Array[Vector2] = [Vector2(92, 304), Vector2(230, 318),
+	Vector2(360, 300), Vector2(496, 304), Vector2(600, 300), Vector2(700, 322),
+	Vector2(860, 300), Vector2(902, 300), Vector2(898, 200)]
+
+
+## "Nobody is spawned on a route the player must take or within detection range of a safe
+## service" (PLAYER_EXPERIENCE_STANDARD PX-2). Measured, because it was false twice over: the
+## socket the bridge REQUIRES the player to examine stood 127 px from a wolf that notices at
+## 170 — and "from the wolf" meant nothing, because its patrol was a random walk that took it
+## up to its 340 px leash from where the map put it (real window: 205 px from its den, on the
+## player at the socket and again on the footpath; handoff H21-16). A creature's REACH is now
+## a number its data owns — how far it strays (`AiProfileData.stray_radius`) plus how far it
+## notices — and everything the player must reach stands outside it.
+func test_nothing_the_player_must_reach_in_the_woods_is_inside_a_creatures_territory() -> void:
+	var table := load(FIELD_SPAWNS) as EnemySpawnTableData
+	assert_true(table != null and table.is_valid(), "the woods' standing creatures load")
+	var field: Node = FieldScene.instantiate()
+	var required := {}
+	for path: String in ["Spawns/from_hub", "Spawns/spawn_default", "Exits/ExitToHub",
+			"KnowledgeSources/StakeSocket", "KnowledgeSources/ShaftSeal",
+			"Interactables/KoThan"]:
+		var node := field.get_node_or_null(path) as Node2D
+		assert_not_null(node, "the woods have '%s'" % path)
+		if node != null:
+			required[path] = node.position
+	for i in table.size():
+		var creature := table.enemies[i]
+		var profile := creature.ai_profile
+		assert_true(profile.patrol_radius > 0.0,
+			"'%s' keeps to a ground of its own, or its reach is its whole leash" % creature.id)
+		var reach := profile.stray_radius(creature.stats.move_speed) + profile.detect_radius
+		var den := table.positions[i]
+		for what: String in required:
+			var gap := den.distance_to(required[what])
+			assert_true(gap >= reach + TERRITORY_MARGIN_PX,
+				"'%s' is %.0f px from the den at %s; the creature reaches %.0f (+%.0f)"
+				% [what, gap, den, reach, TERRITORY_MARGIN_PX])
+		# ...and there is a WAY to the door that never enters its reach at all.
+		for k in SAFE_WAY_TO_THE_SHAFT.size() - 1:
+			var a := SAFE_WAY_TO_THE_SHAFT[k]
+			var b := SAFE_WAY_TO_THE_SHAFT[k + 1]
+			var nearest := Geometry2D.get_closest_point_to_segment(den, a, b)
+			assert_true(den.distance_to(nearest) > reach,
+				"the safe way %s -> %s passes %.0f px from the den at %s (reach %.0f)"
+				% [a, b, den.distance_to(nearest), den, reach])
+		# The wreck and the old haul track ARE its ground: the contested way stays contested,
+		# or "safe" would only mean the creature had been taken out of the woods.
+	var seal := field.get_node("KnowledgeSources/ShaftSeal") as Node2D
+	assert_true(SAFE_WAY_TO_THE_SHAFT.back().distance_to(seal.position) < 16.0,
+		"the safe way leads to the seal")
+	var wreck := field.get_node("Visual/Decor/CartWreck") as Node2D
+	var cairn_wolf := table.enemies[0]
+	assert_true(table.positions[0].distance_to(wreck.position)
+			< cairn_wolf.ai_profile.detect_radius,
+		"the cairn wolf still holds the wreck: the contested way is still contested")
+	field.free()
+

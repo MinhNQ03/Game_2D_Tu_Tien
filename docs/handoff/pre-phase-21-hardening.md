@@ -754,8 +754,8 @@ anything left". (2) The wreck's standing wheel reads as a dark slab, like the wh
 |---|---|---|---|---|---|
 | H21-14 | nobody but tools has played the opening: "engaging", pacing, attachment are UNPROVEN | it needs a person, not a tool | the project owner (checklist §11) | the owner has played it and written down the first point of confusion, any ignored key, and the three timings | yes if skipped: Phase 21 would build on an opening nobody has felt |
 | H21-15 — **CLOSED** (follow-up §15.1) | after all of a person's trail lines are said they still open on the trail line with only *Nói chuyện khác*: one wasted press per talk | an opening's conditions are AND-only; "any line left" needs an OR or a derived flag — a dialogue-data change with its own tests | Dialogue data; Phase 21 (the first phase that adds the next lines to these three people) | a test opens each of the three with every trail flag set and lands on the hub | no |
-| H21-16 | the old cart track passes within the cairn wolf's 170 px detect radius: reaching the door usually means a fight or a detour (seen in the real-window playtest: the wolf follows the player to the door) | it is the shipped creature in its shipped territory; moving either changes Phase-19 quest content and the Night's staging | Map / encounter design; Phase 21 (which authors the approach to its own entrance) | Phase 21's Gate A states whether the approach is meant to be contested and places the wolf or the track accordingly | no |
-| H21-17 | the wreck's standing wheel reads as a dark slab (as the whole cart's wheels do, seen edge-on by the top-down camera) | a wheel that reads as a wheel from this camera is a cart re-model, shared by the standing cart | art pipeline (`props3d.cart`, `cart_wreck`); Phase 25 (production polish) | both carts' wheels are judged readable at 1× in a real capture | no |
+| H21-16 — **CLOSED** (follow-up §15.2) | reaching the socket or the shaft's door usually meant a fight: the wolf followed the player to both (real window) | *recorded reason was wrong*: it was not "the shipped creature in its shipped territory" — the creature HAD no territory (its patrol was a random walk to its 340 px leash) | AI domain (`AiProfileData.patrol_radius`) + the field's layout | the socket, the door and a way between them are outside the wolf's reach by test, and a real-window walk shows it never notices | no |
+| H21-17 — **CLOSED** (follow-up §15.2) | both carts' wheels read as dark slabs (discs seen edge-on by the top-down camera) | — | art pipeline (`props3d.cart`, `cart_wreck`) | both carts' wheels judged readable at 1× in real captures (done: village cart, wreck) | no |
 | H21-18 | the wolf's wind-up under the night tint was looked at in stills, not as a motion strip | `capture_motion.gd` has no night scenario | presentation; Phase 22 (whose contract requires each telegraph in a motion strip) | a motion strip of the bite under `night` is opened and the wind-up frame is named | no |
 | H21-19 | no frame-time measurement of the 2D lights | no profiler session in this pass (Phase 29 owns profiling) | Phase 29 | PERF-NOTE-21 gains measured numbers | no |
 
@@ -844,3 +844,70 @@ with real keys.
 again · a broken start keeps its items · keeps its first impressions · knowledge no longer
 last · no settled opening · an opening ignores "already said" · the door line opens the
 trail before the door is found).
+
+### 15.2 Checkpoint B — the wolf has a ground (H21-16); wheels that read as wheels (H21-17)
+
+**H21-16. BUG → ROOT CAUSE → WHY THE TESTS MISSED IT → INVARIANT → TEST.**
+
+- *Bug (real window, real keys).* Standing at the stake's socket, the clue the bridge makes
+  the player examine, started a chase. Measured: socket 127 px from the wolf's spawn point,
+  the wolf notices at 170.
+- *First fix, and why it was not one.* The wolf was moved north (700,132), a surveyors'
+  footpath was painted from the road to the door, and a test held every required thing
+  170 px + 24 from the spawn point. Green. Then the real window: ten seconds at the socket
+  → `ALERT → CHASE → ATTACK`, HP 100 → 46; on the footpath the player died. The wolf was
+  **205 px from its den** when it noticed.
+- *Root cause.* `AiBrain` PATROL was documented "wandering near home" and implemented as a
+  random walk: 1.5 s legs at 53 px/s, each starting where the last ended, nothing bringing
+  it back but the LEASH (340 px). A wolf's real reach was 340 + 170 = **510 px** on a
+  960×576 map. No den position could have kept it off the clue; "its territory" did not
+  exist as a thing the game knew.
+- *Why the tests missed it.* Every AI test stepped a brain for a few decisions or placed a
+  target; none let a creature alone for minutes and asked where it was. The first territory
+  test measured from the spawn point — a number the creature does not keep to.
+- *Fix, at the layer that owns it.* `AiProfileData.patrol_radius` (0 = none, the shipped
+  ally behaviour; must be inside the leash). In PATROL, past its ground, the leg ends and it
+  walks HOME (RETURN — it still notices someone on the way). `stray_radius(move_speed)` is
+  the one place "how far from where it was put" is worked out: ground + one decision's
+  travel, or the leash. `ai_frontier_skirmisher` authors 32 px → stray 42.6 px → reach
+  212.6 px. The den is (680,76), the glade north of the wreck.
+- *Not weakened.* Detect 170, lose-interest 280, leash 340, speeds, alert 0.35 s, the bite:
+  unchanged. A chase still goes to the leash. The wreck (138 px from the den) and the west
+  half of the old haul track are inside its notice; claw furrows and a gnawed bone
+  (`WolfSign`, `Visual/Decals`, walked over) mark the two edges of that ground. The Night's
+  table is its own (wolves ON the road, by the story) and untouched.
+
+| Real window, 1280×720, real keys, origin_lang_y | wolf states seen | nearest | HP |
+|---|---|---|---|
+| road → socket, examine, stand 10 s | IDLE, PATROL, RETURN | 216 px | 100 → 100 |
+| road → footpath → door, examine, stand 5 s | IDLE, PATROL, RETURN | 214 px | 100 → 100 |
+| door → west along the haul track to the wreck | ALERT, CHASE, ATTACK, RECOVER | 16 px | 100 → 91 |
+
+Wolf's farthest from its den while alone: 42 px (authored edge 42.6). The same walk before
+the fix: `ALERT/CHASE/ATTACK` at the socket (HP 46) and death on the footpath.
+
+Tests (+6; suite **1235**): the brain alone for ten simulated minutes stays inside
+`stray_radius` and still walks its ground; the contrast (no ground → far from home, and
+reports its leash); one step past the ground → RETURN, and a target on the way home still
+alerts it; a ground must be inside the leash; the SHIPPED wolf on a real body at 60 fps for
+five minutes (PATROL, RETURN and IDLE all seen); and the field: every spawn, the exit, Kha
+Thản, the socket and the seal ≥ reach + 24 px from every den, the named safe way never
+inside any reach, the wreck still inside the cairn wolf's notice. Mutations 8/8 red (no
+ground check in the brain ×2 targets; no ground in the data; den back at (632,168); den
+taken out of the contested way; a 64 px ground; a ground at the leash accepted; the stray
+radius without its step). Playtest 38/38 in the real window; all eight E2E flows pass.
+
+**H21-17.** Cause: each wheel was a solid disc on an axle parallel to the screen, so the
+top-down camera saw its tread — a dark slab. Both carts are re-modelled in the canonical
+pipeline (`model/props3d.py`): `_wheel` = rim + six spokes + hub, and the cart stands turned
+34° so one wheel shows its face; the wreck's lost wheel lies spokes-up beside the canted
+bed. Sprites, origins and footprints regenerated from the same model (cart 76×60, origin
+(33,53), foot 48×20; wreck 110×54, origin (51,43), foot 55×23). *Opened:* the sprites at 5×
+and 1×; the wreck in the field (playtest `21b_where_the_stake_stood`, and cropped 4×): a
+round spoked wheel on the ground, canted bed, canvas, burst crate, pale shards; the village
+cart in the real window with the player walked into it by held keys from four sides — spoked
+wheel on the near end, striped canvas, shafts and yoke; the body stops the walk at
+x = ±33 (foot ±24 + the player's 9) and at the foot's north and south edges, drawn in front
+when south of it and behind (head showing) when north. The generic body invariants
+(`test_each_body_sits_under_the_mass_that_is_drawn`, the eight-way walk) hold both. No new
+test: "reads as a wheel" is a judgement, recorded here as one.

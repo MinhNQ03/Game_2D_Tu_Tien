@@ -64,6 +64,14 @@ class_name AiProfileData
 ## How long one patrol leg lasts before picking a new direction.
 @export var patrol_seconds: float = 1.5
 
+## How far from home a patrol leg may carry it, in pixels: its GROUND. Past this it walks home
+## before wandering again, so "where this creature is" means "within its ground" and a map
+## can put a clue, a door or a road outside its notice (D-073 follow-up, H21-16). 0 = no
+## ground of its own: each leg starts where the last ended and only the leash turns it back,
+## which is right for an ally (its home is an owner, held by `follow_radius`) and wrong for
+## anything a map places.
+@export var patrol_radius: float = 0.0
+
 ## Distance it tries to keep while recovering, in pixels — it backs off to about here.
 @export var recover_distance: float = 72.0
 
@@ -91,6 +99,16 @@ class_name AiProfileData
 ## Speed scale while RETURNING home. 0 = use `patrol_speed_scale` (an enemy ambles back). An
 ## ally must be able to keep up with an owner who walks faster than it patrols.
 @export var return_speed_scale: float = 0.0
+
+
+## The farthest from home this archetype is ever found with nobody in sight, for a body that
+## walks at `move_speed`: its ground plus the one decision's travel it takes to be told to
+## turn — or, with no ground authored, its leash. The ONE place this is worked out; a map's
+## "is this spot inside a creature's notice" adds `detect_radius` to it.
+func stray_radius(move_speed: float) -> float:
+	if patrol_radius <= 0.0:
+		return leash_radius
+	return patrol_radius + maxf(0.0, move_speed) * patrol_speed_scale * decision_interval
 
 
 ## The speed scale a RETURN actually uses.
@@ -124,6 +142,13 @@ func is_valid() -> bool:
 			problems.append("%s must be > 0 (got %.3f)" % [field, value])
 	if recover_distance <= 0.0:
 		problems.append("recover_distance must be > 0 (got %.1f)" % recover_distance)
+	if patrol_radius < 0.0:
+		problems.append("patrol_radius must be >= 0 (got %.1f)" % patrol_radius)
+	# At the leash or beyond, the leash would turn it back first and the ground would be a
+	# number nobody obeys.
+	if patrol_radius >= leash_radius:
+		problems.append("patrol_radius (%.1f) must be inside leash_radius (%.1f)"
+			% [patrol_radius, leash_radius])
 	if follow_radius < 0.0:
 		problems.append("follow_radius must be >= 0 (got %.1f)" % follow_radius)
 	if home_arrival_radius <= 0.0:

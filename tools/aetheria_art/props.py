@@ -210,6 +210,30 @@ def gen_stake_socket(root):
     _save(root, "assets/sprites/props/prop_stake_socket.png", px)
 
 
+def gen_wolf_sign(root):
+    """What a Vụ Lang leaves at the edge of the ground it holds (D-073 follow-up, H21-16): old
+    bones gnawed pale and three claw gouges in the earth. The oldest warning there is, readable
+    without a word: past this, something lives. FLAT - a mark on the ground with no body,
+    drawn on the decal layer."""
+    w, h = 26, 14
+    px = raster.blank(w, h)
+    gouge = (58, 48, 38, 255)
+    for x0 in (3, 7, 11):                                   # three raking strokes
+        raster.line(px, x0, 11, x0 + 5, 3, gouge)
+        raster.put(px, x0 + 5, 2, raster.shade(gouge, 1.35))
+    bone = (224, 216, 196, 255)
+    dark = raster.shade(bone, 0.70)
+    raster.line(px, 14, 9, 22, 6, bone)                     # a long bone, knobbed at both ends
+    raster.oval(px, 14, 9.4, 1.5, 1.4, bone)
+    raster.oval(px, 22.4, 5.8, 1.5, 1.4, bone)
+    raster.line(px, 15, 10, 21, 8, dark)
+    for (x, y) in ((17, 3), (19, 12), (23, 10)):            # splinters
+        raster.line(px, x, y, x + 2, y + 1, bone)
+    raster.oval(px, 8, 12, 1.6, 1.2, bone)                  # a knuckle
+    raster.put(px, 8, 12, dark)
+    _save(root, "assets/sprites/props/prop_wolf_sign.png", px)
+
+
 def gen_planter(root):
     w, h = 16, 16
     px = raster.blank(w, h)

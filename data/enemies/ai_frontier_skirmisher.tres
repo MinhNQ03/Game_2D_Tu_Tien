@@ -15,4 +15,5 @@ alert_seconds = 0.35
 recover_seconds = 0.65
 idle_seconds = 1.2
 patrol_seconds = 1.5
+patrol_radius = 32.0
 recover_distance = 76.0

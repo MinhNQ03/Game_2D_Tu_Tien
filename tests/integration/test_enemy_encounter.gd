@@ -587,6 +587,35 @@ func test_decisions_are_throttled_but_movement_is_not() -> void:
 	free_node(runtime)
 
 
+## THE SHIPPED WOLF, left alone, stays on its ground (D-073 follow-up, H21-16). Real body,
+## real movement component, real profile, 60 fps for five minutes: its patrol used to be a
+## random walk bounded only by the leash, so "where the wolf is" was anywhere within 340 px
+## of where the map put it, and no clue could be placed outside its notice.
+func test_the_shipped_wolf_left_alone_stays_on_its_ground() -> void:
+	var runtime := _runtime()
+	var den := Vector2(400, 300)
+	runtime.spawn_from_table(_table(den), runtime)
+	var enemy := runtime.enemies()[0]
+	var profile := _enemy_data().ai_profile
+	assert_true(profile.patrol_radius > 0.0, "the shipped archetype authors a patrol ground")
+	var speed := _enemy_data().stats.move_speed
+	# The authored edge, plus the one frame of travel a 60 fps body adds to a 0.2 s decision.
+	var edge := profile.stray_radius(speed) + speed * profile.patrol_speed_scale / 60.0
+	var farthest := 0.0
+	var states := {}
+	for _i in 60 * 300:
+		runtime.tick_enemies(1.0 / 60.0)
+		farthest = maxf(farthest, enemy.global_position.distance_to(den))
+		states[enemy.ai_state_name()] = true
+	assert_true(farthest <= edge,
+		"five minutes alone keep it within %.1f px of its den (got %.1f)" % [edge, farthest])
+	assert_true(farthest >= profile.patrol_radius * 0.5,
+		"and it does walk its ground rather than stand (got %.1f)" % farthest)
+	assert_true(states.has("PATROL") and states.has("RETURN") and states.has("IDLE"),
+		"pacing out, coming back, resting: got %s" % str(states.keys()))
+	free_node(runtime)
+
+
 ## A LONG FRAME must not break the interaction between the brain and the attack lifecycle:
 ## no double swing, no stuck ATTACK, no resurrection.
 func test_a_long_frame_does_not_double_swing_or_stick() -> void:

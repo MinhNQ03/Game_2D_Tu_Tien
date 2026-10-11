@@ -194,6 +194,14 @@ unique ids, every entry valid).
 follow; must exceed `home_arrival_radius` and stay under `leash_radius`), `home_arrival_radius`,
 `return_speed_scale` (0 = use `patrol_speed_scale`).
 
+`patrol_radius` (D-073 follow-up, H21-16): a creature's GROUND — how far from home a patrol
+leg may carry it before it walks back (0 = none: only the leash turns it, which is right for
+an ally and wrong for anything a map places; must be inside `leash_radius`).
+`stray_radius(move_speed)` is the one place "how far from where it was put can it be found"
+is worked out (`patrol_radius` + one decision's travel, or the leash); a map's question "is
+this spot inside its notice" is that plus `detect_radius`. `ai_frontier_skirmisher` authors
+32 px, so a mist wolf reaches 212.6 px from its den.
+
 ### ShopData (`shop_*`) — IMPLEMENTED (Phase 17, D-065)
 ```
 id: StringName                    # must start with "shop_"

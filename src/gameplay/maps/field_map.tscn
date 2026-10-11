@@ -1,5 +1,6 @@
-[gd_scene load_steps=49 format=3]
+[gd_scene load_steps=50 format=3]
 
+[ext_resource type="Texture2D" path="res://assets/sprites/props/prop_wolf_sign.png" id="20_wolfsign"]
 [ext_resource type="Script" path="res://src/presentation/ambient/map_ambience.gd" id="am_map"]
 [ext_resource type="Script" path="res://src/presentation/ambient/ambience_light.gd" id="am_light"]
 [ext_resource type="Script" path="res://src/gameplay/maps/map_base.gd" id="1_map"]
@@ -92,6 +93,20 @@ texture_filter = 1
 centered = false
 script = ExtResource("p_ground")
 layout = ExtResource("p_layout")
+
+[node name="Decals" type="Node2D" parent="Visual"]
+z_index = -1
+
+[node name="WolfSignW" type="Sprite2D" parent="Visual/Decals"]
+texture_filter = 1
+position = Vector2(622, 274)
+texture = ExtResource("20_wolfsign")
+
+[node name="WolfSignE" type="Sprite2D" parent="Visual/Decals"]
+texture_filter = 1
+position = Vector2(840, 198)
+texture = ExtResource("20_wolfsign")
+flip_h = true
 
 [node name="Decor" type="Node2D" parent="Visual"]
 y_sort_enabled = true

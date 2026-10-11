@@ -30,7 +30,7 @@ class_name AiBrain
 ## (`03-architecture.md`: no speculative generality).
 enum State {
 	IDLE,     ## no target, standing still — the resting state
-	PATROL,   ## no target, wandering near home — makes an idle creature look alive
+	PATROL,   ## no target, wandering on its ground — makes an idle creature look alive
 	ALERT,    ## just noticed a target, pausing — the TELEGRAPH that it saw you
 	CHASE,    ## closing on a target
 	ATTACK,   ## in range and swinging
@@ -165,6 +165,13 @@ func decide(perception: Dictionary, delta: float) -> int:
 			if has_target and distance <= _profile.detect_radius:
 				_enter(State.ALERT)
 				return Intent.HOLD
+			# ITS GROUND. A leg that has carried it past the patrol radius ends, and it walks
+			# HOME before wandering again. Without this each leg started where the last one
+			# stopped — a random walk whose only edge was the leash — so a creature could be
+			# met anywhere within `leash_radius` of where the map put it (H21-16).
+			if _profile.patrol_radius > 0.0 and home > _profile.patrol_radius:
+				_enter(State.RETURN)
+				return Intent.RETURN_HOME
 			if _elapsed >= _profile.patrol_seconds:
 				_enter(State.IDLE)
 				return Intent.HOLD

@@ -7,7 +7,21 @@
 #
 # Fixed anchors (scene + tests): spawn (496,304), from_hub (92,304), exit to hub (48,304), the
 # broken vein site (616,472), pickups (598,486) (640,462) (420,300) (690,190); wolves spawn at
-# (632,168) and (360,536) (data/enemies/spawn_table_field.tres).
+# (680,76) and (360,536) (data/enemies/spawn_table_field.tres).
+#
+# TERRITORY (PX-2; D-073 follow-up, H21-16). The cairn wolf lies up in the glade NORTH of the
+# wreck, off the road, at (680,76). Its REACH is how far it strays plus how far it notices:
+# a 32 px patrol ground (+ one decision's step, 42.6 px) + 170 px = 212.6 px. That holds the
+# wreck and the west half of the old haul track - the CONTESTED way to the Survey Shaft,
+# marked at its two edges by what the wolf has left on the ground (`WolfSign`) - and does
+# NOT reach the forest road, the clearing where the survey stake stood, or the surveyors'
+# footpath up to the shaft's door: the SAFE way.
+# Two things were wrong before, both measured in the real window: it stood at (632,168),
+# 127 px from the socket the bridge makes the player examine; and its patrol was a random
+# walk bounded only by its 340 px leash, so no den position could have kept it off the clue
+# (seen 205 px from home). The patrol ground is `AiProfileData.patrol_radius`;
+# `test_nothing_the_player_must_reach_in_the_woods_is_inside_a_creatures_territory` holds the
+# placement to it.
 #
 # D-073: the Survey Shaft (Hầm Khảo Mạch) is set into the NE rocks — the fourth and last point
 # of the survey line whose third stake stood in the clearing at (548,262). Its door faces the
@@ -32,6 +46,10 @@ regions:
   # the old haul track (D-073): from the cairn on up to the Survey Shaft in the rocks. Narrow —
   # one cart wide — and off every road: the way the crates came out, for years, at night
   - {kind: earth, path: [[690, 198], [744, 190], [800, 193], [856, 196], [886, 198]], width: 11}
+  # the surveyors' footpath: from the forest road up to the shaft's door. Narrower than the
+  # haul track (a path walked, not driven), and wholly outside the cairn wolf's notice - the
+  # way a person goes to the door who does not want to cross the cairn
+  - {kind: earth, path: [[902, 304], [906, 262], [900, 226], [898, 204]], width: 8}
   - {kind: rock, poly: [[800, 40], [960, 40], [960, 168], [900, 186], [824, 150]]}   # NE rocks
   - {kind: fissure, poly: [[574, 450], [626, 436], [664, 458], [652, 500], [604, 508], [570, 486]]}
   - {kind: litter, poly: [[600, 160], [700, 150], [736, 200], [690, 226], [620, 212]]}

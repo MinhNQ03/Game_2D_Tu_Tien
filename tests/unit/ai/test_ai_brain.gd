@@ -266,6 +266,87 @@ func test_the_same_seed_produces_the_same_patrol_headings() -> void:
 		"the headings differ from each other, got %s" % str(first))
 
 
+# === A patrol keeps to its ground ============================================
+
+## Walk a brain's own intents on a plane for `seconds`, nobody in sight, and return how far
+## from home it ever got. The same arithmetic `AiComponent` does: the heading while it
+## wanders, the straight line home while it returns.
+func _farthest_stray(profile: AiProfileData, speed: float, seconds: float) -> float:
+	var brain := _brain(profile)
+	var at := Vector2.ZERO
+	var farthest := 0.0
+	var step := profile.decision_interval
+	for _i in int(seconds / step):
+		var intent := brain.decide(_blind(at.length()), step)
+		if intent == AiBrain.Intent.WANDER:
+			at += Vector2.RIGHT.rotated(brain.patrol_angle()) \
+				* speed * profile.patrol_speed_scale * step
+		elif intent == AiBrain.Intent.RETURN_HOME:
+			at = at.move_toward(Vector2.ZERO,
+				speed * profile.effective_return_speed_scale() * step)
+		farthest = maxf(farthest, at.length())
+	return farthest
+
+
+## "Wandering near home" was a random walk with nothing to bring it back: each leg started
+## where the last one ended, so the only limit was the LEASH, and a creature authored to
+## notice at 170 px could be met 340 px from where it was placed. Nothing the player must
+## reach could be put outside that (D-073 follow-up, H21-16: seen in the real window, the
+## cairn wolf 205 px from its den and on the player at the stake's socket).
+func test_a_patrolling_creature_keeps_to_its_ground() -> void:
+	var profile := _profile()
+	profile.patrol_radius = 40.0
+	var speed := 130.0
+	# One decision's travel is the most it can overshoot the edge before it is told to turn.
+	var edge := profile.stray_radius(speed)
+	assert_true(absf(edge - (40.0 + 130.0 * 0.5 * 0.2)) < 0.001,
+		"the edge is the ground plus one decision's step (got %.2f)" % edge)
+	var farthest := _farthest_stray(profile, speed, 600.0)
+	assert_true(farthest <= edge + 0.001,
+		"ten minutes of patrolling stay within %.0f px of home (got %.0f)" % [edge, farthest])
+	assert_true(farthest > profile.patrol_radius * 0.5,
+		"and it does still walk its ground (got %.0f)" % farthest)
+
+
+## The contrast that makes the test above mean something: a profile that authors NO ground
+## wanders as it always did (an ally's home is its owner; `follow_radius` is its bound).
+func test_a_profile_with_no_patrol_ground_wanders_to_its_leash() -> void:
+	var profile := _profile()
+	assert_eq(profile.patrol_radius, 0.0, "the fixture authors no patrol ground")
+	assert_eq(profile.stray_radius(130.0), profile.leash_radius,
+		"so the only edge it has is its leash, and that is what it reports")
+	assert_true(_farthest_stray(profile, 130.0, 600.0) > 100.0,
+		"unbounded, the same ten minutes take it far from home")
+
+
+func test_a_creature_past_its_ground_walks_home_before_wandering_again() -> void:
+	var profile := _profile()
+	profile.patrol_radius = 40.0
+	var brain := _brain(profile)
+	for _i in 10:
+		brain.decide(_blind(), 0.2)
+		if brain.state() == AiBrain.State.PATROL:
+			break
+	assert_eq(brain.state(), AiBrain.State.PATROL, "it is on a patrol leg")
+	assert_eq(brain.decide(_blind(41.0), 0.2), AiBrain.Intent.RETURN_HOME,
+		"one step past its ground and the leg is over: it turns for home")
+	assert_eq(brain.state(), AiBrain.State.RETURN, "in RETURN, which ends AT home")
+	# It still notices someone on the way back: keeping to its ground is not being blind.
+	assert_eq(brain.decide(_see(50.0, 30.0), 0.2), AiBrain.Intent.HOLD)
+	assert_eq(brain.state(), AiBrain.State.ALERT, "a target seen on the way home alerts it")
+
+
+func test_a_patrol_ground_must_be_inside_the_leash() -> void:
+	var profile := _profile()
+	profile.patrol_radius = -1.0
+	assert_false(profile.is_valid(), "a negative patrol ground is rejected")
+	profile = _profile()
+	profile.patrol_radius = profile.leash_radius
+	assert_false(profile.is_valid(),
+		"a patrol ground as wide as the leash would be returned from by the leash, never "
+			+ "by the patrol")
+
+
 ## Collect `count` patrol headings by cycling IDLE → PATROL repeatedly.
 func _patrol_headings(world_seed: int, count: int) -> Array:
 	var rng: RngService = RngServiceScript.new(world_seed)
