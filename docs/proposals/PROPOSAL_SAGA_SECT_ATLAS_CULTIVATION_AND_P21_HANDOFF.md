@@ -283,7 +283,7 @@ The saga's engine, stated once so every act can reference it: **the suppressed s
 - **Narrative purpose (EXISTING CANON):** preserve, reform, destroy, or replace the covenant?
 - **Player's main goal (C2 PROPOSAL):** the saga's central decision — now informed by six acts of evidence about what the covenant rations, who it serves, and what it costs. This is the act the whole suppressed-survey thread was built to serve.
 - **Central conflict:** the four covenant positions, each defensible (C-005 discipline at the largest scale): preservation (Vân Đài's logic writ large), reform (Khai Lộ's), exit/frontier (Biên Vân's), and the heterodox critique (Xích Diễm's canonical doctrine: "the Thiên Khế rations cultivation to preserve the institutions that administer it").
-- **What changes:** the player's stance becomes world-chronicle state (per shard) — the first act whose outcome is allowed to touch the shared chronicle, because the covenant is definitionally shared.
+- **What changes:** the player's stance becomes world-chronicle state (scope unresolved — Q-02) — the first act whose outcome is allowed to touch the shared chronicle, because the covenant is definitionally shared.
 - **Cultivation significance:** Trọng Thiên approaches — "a world-scale actor; politics is now between peers."
 - **Withheld:** the historical Tà Đế's truth (layer 8); CL-15 (who authored the Thiên Khế stays open — the act asks what to *do* with it, not who *made* it). **Layers:** 7.
 
@@ -554,7 +554,7 @@ Each joinable sect gets a proposed questline spine (beats, not scripts — no di
 
 **Tán tu questline (C2 PROPOSAL):** *The Unallocated.* No initiation — the absence of one is the point. Early life: manuals, favors, knowledge arbitrage (K-11's Thunder-Finger is the prototype: power without a sect's permission). Central tension: freedom vs. protection — every sect offers a door the tán tu walked past. Turning points: the first time no sect will shelter the player; the first combination no sect teaches. Connection to the saga: the control group — the saga's questions asked without institutional answers.
 
-**State-scope discipline (§17):** questline progress is personal story state (never shared); faction-standing changes are social state (shared); the covenant stance (Act VII) is world-chronicle state (per shard). A player of another sect sees the *consequences* (changed standings, changed NPC behavior) without their own story being rewritten.
+**State-scope discipline (§17):** questline progress is personal story state (never shared); faction-standing changes are social state (shared); the covenant stance (Act VII) is world-chronicle state (scope unresolved — Q-02). A player of another sect sees the *consequences* (changed standings, changed NPC behavior) without their own story being rewritten.
 
 ### D. Multiplayer fairness and social interaction
 
@@ -579,7 +579,7 @@ Designed for the D-074 direction (server-authoritative production world) without
 
 1. **No dominant mandatory sect.** *Example:* a speedrunner takes Huyết Thực methods for raw pace; a completionist takes Vân Đài for archive access; a duelist stays tán tu for combination freedom — each is the best answer to a different question. *Failure case avoided:* a sect whose techniques are numerically superior in all situations, making affiliation a solved problem rather than an identity choice.
 2. **No superficial sect questlines.** *Example:* the Examination questline's turning point (who sees the field book first) changes faction influence and closes real doors. *Failure case avoided:* three questlines that differ only in NPC names and reward labels.
-3. **No accidental shared-world canon fragmentation.** *Example:* the player's covenant stance (Act VII) is world-chronicle state per shard; their kept/told choice is personal and never replicated. *Failure case avoided:* Player A's book-burning erasing Player B's evidence.
+3. **No accidental shared-world canon fragmentation.** *Example:* the player's covenant stance (Act VII) is world-chronicle state (scope unresolved — Q-02); their kept/told choice is personal and never replicated. *Failure case avoided:* Player A's book-burning erasing Player B's evidence.
 4. **One connected saga.** *Example:* the Xích Diễm questline's victim trail feeds the Act VII debate without replacing the ten acts. *Failure case avoided:* a sect storyline that answers a CL-15 question or renumbers the reveal ladder.
 
 ### F. Acceptance criteria (self-check)
@@ -756,7 +756,7 @@ The post-boss world change, stated as observable facts (not dialogue claims):
 - Faction influence moves: the field book's contents (in whichever faction's hands the player's Act III choice put them) become political facts; the deterministic influence rules (`influence_share`, `dominant_faction_of`, `is_contested`) reflect the shift.
 - The elder's authority is broken *as an observable social fact* — his account is contradicted by the world, not by a cutscene line.
 
-**What must persist (narrative terms):** the shaft's open/worked state; the elder's discrediting; the faction influence shift — subject to the authority model (world-chronicle state per shard, §17) and the unresolved persistence implementation (OPEN QUESTION — D-074 explicitly reserves persistence technology).
+**What must persist (narrative terms):** the shaft's open/worked state; the elder's discrediting; the faction influence shift — subject to the authority model (world-chronicle state, scope unresolved — Q-02; §17) and the unresolved persistence implementation (OPEN QUESTION — D-074 explicitly reserves persistence technology).
 
 ### 16.5 Effects on subsequent acts
 
@@ -785,7 +785,7 @@ Authority note: the frozen four-way split (`NARRATIVE_MASTER_PLAN.md` §14) is E
 | Event / clue | Narrative scope (frozen split) | Why this scope |
 |---|---|---|
 | kept/told choice; clue *interpretation* | Personal story (per player, never shared) | a player's inference must never rewrite another's; spoiler guards apply |
-| Clue *existence* (the door, the wreck, the fragment as world objects) | World chronicle (per world/shard) | the objects are in the shared world; every player can observe them |
+| Clue *existence* (the door, the wreck, the fragment as world objects) | World chronicle (scope unresolved — Q-02) | the objects exist in the player's current world/instance and are observable there; whether that world is shared across players depends on the unresolved chronicle scope |
 | K-13: who stands at the door | Personal (whose run) + Social (the NPC's relationship edge to the player) | companionship is personal; the NPC's regard is a relationship edge |
 | The shaft run itself (Phase 21) | Party/instance (temporary per run) | co-op acceptance test: different personal-story points, one run, no forced story match |
 | Field book's disposition (who the player shows it to) | Personal (the decision) + Social (faction standing changes) | the choice is yours; the factions' reactions are shared |
@@ -801,11 +801,11 @@ Authority note: the frozen four-way split (`NARRATIVE_MASTER_PLAN.md` §14) is E
 
 ### 17.2 Shared-world fairness (design-level)
 
-- **Observable by all:** world objects (door, wreck, stakes), NPC public behavior, faction postings, the open shaft, market prices, threat markers.
+- **Observable in the player's current world/instance:** world objects (door, wreck, stakes), NPC public behavior, faction postings, the open shaft, market prices, threat markers. Whether another player's world shows the same state depends on the unresolved chronicle scope (Q-02) — the design must not assume one identical shared world for all players.
 - **Character-specific:** clue interpretations, kept/told, questline progress, Origin observations, personal ledger of promises kept/broken.
-- **Faction outcomes without global rewrite:** influence moves through the deterministic rules over shared edges — every player sees the *same* influence shift, but each player's *standing* with the factions is their own edge. The world changes once; relationships change per player.
+- **Faction outcomes without global rewrite:** influence moves through the deterministic rules over shared edges — within a shared scope, every player sees the *same* influence shift, but each player's *standing* with the factions is their own edge. The world changes once *per scope*; relationships change per player. (The scope across players is Q-02 — unresolved.)
 - **Personal account vs. objective event:** the Chronicle records *what happened* (objective, shared where chronicle-scoped); the player's *account* of what it means is personal. The UI must never present another player's interpretation as world fact.
-- **Understandable difference:** when players' personal states differ, the shared world shows the *consequences* (the elder discredited, the book in Khai Lộ's hands) without asserting a single story — other players see what *is*, not what *was meant*.
+- **Understandable difference:** when players' personal states differ, each player's world shows the *consequences visible in their scope* (the elder discredited; the book in whichever faction's hands *that player's* Act III choice put it) without asserting a single universal story — other players see what *is in their world*, not what *was meant*. The book's disposition is personal-story state (the decision) with social consequences (faction standing); it is not a universal world fact.
 - **Party/instance sharing:** within a run, the party shares tactical information (positions, threats, loot splits) — never personal story state. The loot split is per the reward ledger; the story each player tells afterward is their own.
 
 ### 17.3 Admin Offline Test Mode compatibility
@@ -873,10 +873,13 @@ Branches read state, never scattered booleans (NARRATIVE_DIRECTION §5). Converg
 
 C2 completion is not among them. The dependencies below are evidence-backed; C2's only contribution is naming them honestly.
 
-**Hard gates (must close before Phase 21 starts):**
+**Existing hardening gate (from the pre-Phase-21 handoff):**
 
 - **H21-14 — OPEN / OWNER REQUIRED.** The owner plays the §17.6 checklist and writes down what happened. No substitute exists. (R-04)
-- **Q-01 resolved** (kept/told definitions) — the entry handoff's route semantics depend on it.
+
+**C2 design dependency (not a hardening gate):**
+
+- **Q-01 resolved** (kept/told definitions) — the entry handoff's route semantics (§15.4) depend on it. Q-01 was raised by this proposal; it is not a gate in the original pre-Phase-21 hardening handoff. It must be resolved before the kept/told entry-route behavior is finalized for implementation.
 
 **Not entry gates:** Q-04 (sect-selection trigger) and Q-05 (sect switching/exit/defection policy) are sect-system design questions for Act II content. They are tracked in §19 and must be decided before sect-affiliation content is finalized, but they do not block Phase 21 entry.
 
@@ -890,6 +893,8 @@ C2 completion is not among them. The dependencies below are evidence-backed; C2'
 
 **Explicitly not started:** Phase 21 implementation; Phase 22 implementation; any networking; any persistence implementation.
 
+**Completeness note:** the items above are the dependencies this proposal can name. They are not the complete set of Phase 21 entry conditions: entry is governed by the live phase-execution and gate protocol (`docs/PHASE_EXECUTION_PROTOCOL.md` and `docs/handoff/pre-phase-21-hardening.md` §18.5), including the outstanding debt classifications above and any protocol requirements this design document does not cover.
+
 ---
 
 ## 21. Acceptance checklist
@@ -898,7 +903,7 @@ Against C2.13:
 
 1. Proposal exists at `docs/proposals/PROPOSAL_SAGA_SECT_ATLAS_CULTIVATION_AND_P21_HANDOFF.md`: **yes** (this file).
 2. Explicitly a proposal, not canon: **yes** (§1, header).
-3. Required sources inspected (steering docs 01, 02, 03, 08, 09, 10; protocol; freeze; roadmap; game flow; decisions; narrative/canon set; progression/economy/social/sect set; dungeon doc; multiplayer plan; handoff; both C1 proposals): **yes** — five parallel readers, full reads; missing/ambiguous sources reported in §4. Steering files 04–07 (coding standards, performance testing, art assets, localization) were not read; no claim in this proposal depends on them.
+3. Required sources inspected (steering docs 01, 02, 03, 08, 09, 10; protocol; freeze; roadmap; game flow; decisions; narrative/canon set; progression/economy/social/sect set; dungeon doc; multiplayer plan; handoff; both C1 proposals): **yes** — five parallel readers, full reads; missing/ambiguous sources reported in §4. Steering files 04–07 (coding standards, performance testing, art assets, localization) were **not read by the original C2 coordinator before drafting** — the original source-reading sequence therefore did not fully comply with C2.0.2's "all ten steering files" requirement. A subsequent reviewer read all four files in full during the post-draft audit and found **no material design impact**: the proposal is design-only and makes no code, performance-budget, asset-pipeline, or localization-mechanism claims that 04–07 would constrain (see §22).
 4. Acts I–III detailed, IV–X scaffolded: **yes** (§7).
 5. Every act has purpose, conflict, clue movement, progression significance, consequences, reveal constraints, dependencies: **yes** (§7 per-act template).
 6. Clue ledger preserves IDs, connects clues to observable events and timed payoffs: **yes** (§8).
@@ -917,7 +922,7 @@ Against C2.13:
 
 ## 22. Source references
 
-**Steering:** `.kiro/steering/01-product.md` (D-074 direction) · `02-game-design.md` (glossary, two-axis contract, C-002) · `03-architecture.md` (layers, autoload budget, D-056 target) · `08-ai-review-protocol.md` (review gates) · `09-lessons-learned.md` (L-014, L-040, L-042, L-046, L-049, L-053, L-054, L-057) · `10-ci-failure-protocol.md` (diagnostic discipline). *(04–07 not read: coding standards, performance testing, art assets, localization — no proposal claim depends on them.)*
+**Steering:** `.kiro/steering/01-product.md` (D-074 direction) · `02-game-design.md` (glossary, two-axis contract, C-002) · `03-architecture.md` (layers, autoload budget, D-056 target) · `08-ai-review-protocol.md` (review gates) · `09-lessons-learned.md` (L-014, L-040, L-042, L-046, L-049, L-053, L-054, L-057) · `10-ci-failure-protocol.md` (diagnostic discipline). *(04–07 — `04-coding-standards.md`, `05-performance-testing.md`, `06-art-assets.md`, `07-localization.md` — were not read by the original C2 coordinator before drafting (see §21 item 3). A subsequent reviewer read all four in full during the post-draft audit: no material design impact found — the proposal makes no code, performance, asset, or localization claims these files would constrain.)*
 
 **Governance:** `docs/PHASE_EXECUTION_PROTOCOL.md` (phase contract, nine dimensions of done) · `docs/GAME_DESIGN_FREEZE.md` v2.1 (frozen elements §5; change control) · `docs/ROADMAP.md` (phase status; Phase 21/22 definitions) · `docs/GAME_FLOW.md` (flow; "the Survey Shaft's door does not open") · `docs/DECISIONS.md` (D-039, D-056, D-064–D-074).
 
