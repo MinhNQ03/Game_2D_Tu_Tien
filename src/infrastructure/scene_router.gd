@@ -19,6 +19,12 @@ extends Node
 ## GameState, never on the outgoing scene.
 
 signal transition_started(from_key: String, to_key: String)
+## The new scene is loaded and instantiated and the old one is about to be freed: the point
+## of no return. Nothing that can fail lies between this signal and `transition_completed`.
+## A caller with consequences it cannot undo (leaving a map answers the story's encounter)
+## performs them HERE, while the old scene is still alive — so a scene that fails to load is
+## a transition in which nothing happened at all (Gate B2, closing GB1-01).
+signal transition_committing(from_key: String, to_key: String)
 signal transition_completed(to_key: String)
 signal transition_failed(to_key: String, reason: String)
 
@@ -117,6 +123,9 @@ func request_transition(
 		_transitioning = false
 		_fail(scene_key, "failed to instantiate: %s" % path)
 		return false
+
+	# --- commit: everything that could fail has succeeded ---
+	transition_committing.emit(from_key, scene_key)
 
 	# --- replace (free old first, no orphan) ---
 	_free_current_scene()

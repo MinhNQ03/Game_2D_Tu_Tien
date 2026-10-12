@@ -179,3 +179,29 @@ func test_a_transition_asked_for_inside_a_transition_is_refused() -> void:
 	assert_eq(_host.get_child_count(), 1, "exactly one content scene")
 	assert_false(_router.is_transitioning(), "and the router is idle again")
 	assert_true(_router.request_transition("second"), "afterwards the second is accepted")
+
+
+## The point of no return (GB1-01): announced once, after the new scene exists and while the
+## old one is still alive, and NEVER for a transition that fails — including a scene whose
+## file exists and then does not load as a scene.
+func test_the_commit_is_announced_only_when_nothing_can_fail_any_more() -> void:
+	var heard: Array = []
+	_router.transition_committing.connect(func(from_key: String, to_key: String) -> void:
+		var old: Node = _router.get_current_scene()
+		heard.append([from_key, to_key, old == null or is_instance_valid(old),
+			_host.get_child_count()]))
+	assert_true(_router.request_transition("prologue"), "the first scene loads")
+	assert_eq(heard, [["", "prologue", true, 0]], "announced once, before anything is replaced")
+	heard.clear()
+	_router.register_scene("not_a_scene", "res://data/story/origin_catalog.tres")
+	assert_eq(_router.transition_refusal("not_a_scene"), "",
+		"a file that exists cannot be foretold as a failure")
+	assert_false(_router.request_transition("not_a_scene"), "but it does not load as a scene")
+	_router.register_scene("ghost", "res://src/presentation/scenes/does_not_exist.tscn")
+	assert_false(_router.request_transition("ghost"), "nor does a missing one")
+	assert_eq(heard, [], "and no failed transition ever reached its commit")
+	assert_eq(_router.get_current_key(), "prologue", "the scene that was there still is")
+	_router.register_scene("second", PROLOGUE_PATH)
+	assert_true(_router.request_transition("second"), "a good one after them")
+	assert_eq(heard, [["prologue", "second", true, 1]],
+		"commits with the old scene still alive under the host")

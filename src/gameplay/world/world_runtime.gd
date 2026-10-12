@@ -88,6 +88,8 @@ var _active_map: Node = null         # the currently loaded map scene (owned by 
 var _session_active: bool = false
 ## The beat whose encounter is in the active map right now ("" = none), and the instance-id
 ## prefix of its creatures. Runtime only: an encounter is not resumed, it is re-met.
+## True once this transition has done its irreversible leaving (see `_enter_map`).
+var _left_for_transition := false
 var _encounter_beat_id: StringName = &""
 var _encounter_prefix: String = ""
 ## A hint a completed beat asked for, waiting for the conversation it completed in to close.
@@ -334,20 +336,28 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	if _player is Node2D:
 		prev_position = (_player as Node2D).global_position
 
-	_leave_story_encounter()
-	active_map_leaving.emit()
-	# Park the player under WorldRuntime BEFORE the router frees the old map scene, so the
-	# persistent player is never freed with the content scene.
-	_detach_player()
+	# LEAVING happens at the router's point of no return, not before it. The router loads and
+	# instantiates the new scene first; only when nothing can fail any more does it say so,
+	# and `_leave_active_map` runs then, with the old map still alive. A transition that fails
+	# anywhere before that has therefore changed nothing: the encounter is unanswered, nobody
+	# was told the map is being left, the player was never moved (GB1-01).
+	_left_for_transition = false
+	var staged: bool = _router.has_signal("transition_committing")
+	if staged:
+		_router.connect("transition_committing", _on_transition_committing, CONNECT_ONE_SHOT)
+	else:
+		_leave_active_map()
 
 	var ok: bool = _router.call("request_transition", data.scene_key, WORLD_ID, map_id)
+	if staged and _router.is_connected("transition_committing", _on_transition_committing):
+		_router.disconnect("transition_committing", _on_transition_committing)
 	if not ok:
-		# ROLLBACK: the router rejected the request and did NOT free the old scene, so the
-		# previous map is still alive. Put the player back exactly where it was.
-		push_error("[world] router rejected transition to %s; rolling back" % map_id)
-		_restore_player(prev_parent, prev_position)
-		# _active_map / GameState location unchanged (router didn't touch them on failure).
-		active_map_ready.emit()
+		push_error("[world] router rejected transition to %s" % map_id)
+		if _left_for_transition:
+			# Only a router with no commit point (a test double) gets here having left:
+			# the old scene is still alive, so put the player back and re-announce the map.
+			_restore_player(prev_parent, prev_position)
+			active_map_ready.emit()
 		return false
 
 	# --- success: bind new map, place player, wire -----------------------------
@@ -420,6 +430,21 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 	# The story may have moved on arrival (a beat that waited for this place).
 	_push_story_scene_to_active_map()
 	return true
+
+
+## The router's point of no return (`SceneRouter.transition_committing`).
+func _on_transition_committing(_from_key: String, _to_key: String) -> void:
+	_leave_active_map()
+
+
+## Everything leaving a map MEANS, none of which can be taken back: walking out answers the
+## story's encounter, the map's listeners are told, and the persistent player is parked under
+## this node so the router's free of the old scene cannot take it.
+func _leave_active_map() -> void:
+	_left_for_transition = true
+	_leave_story_encounter()
+	active_map_leaving.emit()
+	_detach_player()
 
 
 ## Re-arm combat for the map that just became active (Phase 10).
