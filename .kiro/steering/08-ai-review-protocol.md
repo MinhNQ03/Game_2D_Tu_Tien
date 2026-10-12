@@ -69,7 +69,9 @@ Before declaring a feature complete, explicitly review and report each:
 - **Test review** — high-risk logic covered; suite green headless; a failing assertion
   actually fails the suite (non-zero exit).
 - **Documentation review** — all affected docs updated; no doc now contradicts another
-  (if it does, log in `DECISIONS.md`, don't silently pick one).
+  (if it does, log in `DECISIONS.md`, don't silently pick one). Follow the
+  mandatory checklist in `docs/knowledge/DOCS_SYNC_CONTRACT.md` (before/after
+  editing, dependency-map sweep, generated-index refresh, validation).
 
 A feature that cannot pass every gate is not done; report which gate failed and why.
 
