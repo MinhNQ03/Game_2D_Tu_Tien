@@ -105,6 +105,7 @@ func _run() -> void:
 	await _step_hunt_round_obstacle(main)
 	await _step_natural_encounter(main)
 	await _step_act_one_bridge(main)
+	await _step_safe_way(main)
 	await _step_return_to_menu(main)
 
 	_write_report()
@@ -1496,6 +1497,111 @@ func _step_act_one_bridge(main: Node) -> void:
 			and service.state().beat_id == &"beat_standing"
 			and purpose_after == String(loc.call("t", "STORY_BEAT_STANDING_OBJECTIVE")),
 		started, door_shot)
+
+
+## The route the map's own test holds clear of every creature's reach — walked here, so the
+## test and the window are judged on one list of points.
+const SAFE_WAY: Array[Vector2] = preload(
+	"res://tests/gameplay/test_map_scenes.gd").SAFE_WAY_TO_THE_SHAFT
+
+
+## Steer toward `point` with HELD move keys (real key events), one physics frame at a time,
+## calling `watch` every frame. True when the player arrived.
+func _walk_to(player: Node2D, point: Vector2, watch: Callable, frames: int = 900) -> bool:
+	for _i in frames:
+		var gap := point - player.global_position
+		if gap.length() < 5.0:
+			break
+		_send_key(&"move_right", gap.x > 3.0)
+		_send_key(&"move_left", gap.x < -3.0)
+		_send_key(&"move_down", gap.y > 3.0)
+		_send_key(&"move_up", gap.y < -3.0)
+		await physics_frame
+		watch.call()
+	for action: StringName in [&"move_right", &"move_left", &"move_down", &"move_up"]:
+		_send_key(action, false)
+	await physics_frame
+	return player.global_position.distance_to(point) < 8.0
+
+
+## H21-16 in the real window (GB1-03): the uncontested way from the village entrance to the
+## socket and on to the Survey Shaft's door, WALKED with held keys — not staged by placement,
+## as 21b is — while every standing creature is watched every frame. Then the contested way,
+## which must still be contested.
+func _step_safe_way(main: Node) -> void:
+	var started := Time.get_ticks_msec()
+	var world: Node = main.get_node("Systems/WorldRuntime")
+	var combat := main.get_node("Systems/CombatRuntime") as CombatRuntime
+	# SETUP: come into the woods afresh, so their standing creatures are alive and at home
+	# (earlier steps hunted them).
+	world.call("request_map_transition", &"map_hub", &"from_field")
+	await _settle()
+	world.call("request_map_transition", &"map_field", &"from_hub")
+	await _settle()
+	var field: Node = root.get_node("SceneRouter").call("get_current_scene")
+	var player := _player_of(field)
+	var socket := field.get_node_or_null("KnowledgeSources/StakeSocket") as Node2D
+	var seal := field.get_node_or_null("KnowledgeSources/ShaftSeal") as Node2D
+	if player == null or socket == null or seal == null or combat.enemies().is_empty():
+		_record("21c_safe_way_walked", "the woods, their creatures, a socket and a door",
+			"missing", false, started)
+		return
+	var seen := {}
+	var nearest := [1e9]
+	var watch := func() -> void:
+		for enemy in combat.enemies():
+			if is_instance_valid(enemy) and not bool(enemy.call("is_dead")):
+				seen[enemy.ai().brain_state_name()] = true
+				nearest[0] = minf(nearest[0],
+					enemy.global_position.distance_to(player.global_position))
+	var hp_before := int(player.call("get_current_health"))
+	var arrived := true
+	for index in SAFE_WAY.size():
+		arrived = (await _walk_to(player, SAFE_WAY[index], watch)) and arrived
+		if index == 3:   # the socket lies a few steps off the road here
+			arrived = (await _walk_to(player, socket.global_position + Vector2(0, 16), watch)) \
+				and arrived
+			for _i in 300:   # five seconds standing on the clue
+				await physics_frame
+				watch.call()
+	_send_key(&"move_up", true)   # the last steps: into the door until it stops the walk
+	for _i in 60:
+		await physics_frame
+		watch.call()
+	_send_key(&"move_up", false)
+	for _i in 180:   # three seconds at the door
+		await physics_frame
+		watch.call()
+	var at_the_door: bool = field.call("active_knowledge_source") == seal
+	var safe_shot := await _shot("21c_at_the_door_by_the_safe_way")
+	var safe_states: Array = seen.keys()
+	safe_states.sort()
+	var safe_nearest: float = nearest[0]
+	var hp_after_safe := int(player.call("get_current_health"))
+	var noticed := safe_states.has("ALERT") or safe_states.has("CHASE") \
+		or safe_states.has("ATTACK")
+	# The CONTESTED way: down the footpath and west along the old haul track to the wreck.
+	seen.clear()
+	nearest[0] = 1e9
+	for point: Vector2 in [Vector2(902, 262), Vector2(820, 240), Vector2(740, 232),
+			Vector2(690, 250)]:
+		await _walk_to(player, point, watch, 600)
+	for _i in 240:
+		await physics_frame
+		watch.call()
+	var contested_states: Array = seen.keys()
+	contested_states.sort()
+	var came := contested_states.has("CHASE") or contested_states.has("ATTACK")
+	await _shot("21c_on_the_contested_track")
+	_record("21c_safe_way_walked", "held keys walk road -> socket (5 s) -> footpath -> door "
+		+ "(3 s) with no creature ever alert and no health lost; the old haul track to the "
+		+ "wreck is still contested",
+		"setup{re-entered=1} arrived=%s at_the_door=%s safe_states=%s nearest=%.0fpx hp=%d->%d "
+		% [arrived, at_the_door, str(safe_states), safe_nearest, hp_before, hp_after_safe]
+		+ "| contested_states=%s nearest=%.0fpx hp=%d"
+		% [str(contested_states), nearest[0], int(player.call("get_current_health"))],
+		arrived and at_the_door and not noticed and hp_after_safe == hp_before and came,
+		started, safe_shot)
 
 
 func _step_return_to_menu(main: Node) -> void:

@@ -253,6 +253,7 @@ func test_real_story_flow() -> void:
 		assert_false((hud.find_child(row_name, true, false) as Control).visible,
 			"and does not advertise '%s' to someone with no sect" % row_name)
 	_step("8. the player walks with real keys; no sect is advertised")
+	await _judge_reach(main, "the village, day one")
 
 	# --- 8a. arrival: the west road, a first person, a line only this Origin gets -------------
 	_dialogue = main.get_node("Systems/DialogueRuntime") as DialogueRuntime
@@ -376,6 +377,18 @@ func test_real_story_flow() -> void:
 	await _talk_to(player, hub, lin, Vector2(-30, 0), MOVE_RIGHT)
 	assert_eq(_dialogue.current_node_id(), &"lin_after_kept",
 		"she now greets the player as someone who kept faith")
+	# GB1-04: the exit claims the player WHILE she is speaking (its own signal, as the engine
+	# would raise it). The interact key belongs to the conversation: it answers her, and the
+	# map does not change under a line.
+	var exit_zone := hub.get_node("Exits/ExitToField") as Node2D
+	exit_zone.emit_signal("body_entered", player)
+	await scene_tree.process_frame
+	await _advance_to(&"lin_hub")
+	assert_eq(str(world.call("get_current_map_id")), "map_hub",
+		"a press under a conversation spoke to her; it did not use the exit")
+	assert_true(_dialogue.is_open(), "and she is still speaking")
+	exit_zone.emit_signal("body_exited", player)
+	await scene_tree.process_frame
 	await _advance_to(&"lin_hub")
 	assert_false(_panel.choice_ids().has(&"lin_press"), "and does not ask twice")
 	await _say(&"lin_leave", &"")
@@ -429,6 +442,7 @@ func test_real_story_flow() -> void:
 	assert_true(field_light.is_pulsing(), "and it flared as the wave came: the rupture is SEEN")
 	assert_true(hud is CanvasLayer, "the HUD is its own layer: the tint is not drawn over it")
 	_step("8d. the vein broke on arrival; the wave came only after the scene; the way back is open")
+	await _judge_reach(main, "the woods, in the Night")
 
 	# --- 8e. standing: real attack keys, until the last of the Night's creatures is down ------
 	var attack := player.get_node_or_null("AttackComponent") as AttackComponent
@@ -747,6 +761,7 @@ func test_real_story_flow() -> void:
 		"examining it again teaches nothing new")
 	assert_false(story.is_scene_playing(), "and tells nothing twice")
 	_step("8i. the bridge with real keys: declined, shown, asked again, the stake, the door")
+	await _judge_reach(main, "the woods, the morning after")
 
 	# --- 8j. bringing it back: who answers, and what only this Origin notices ------------------
 	await _go_through_exit(player)
@@ -883,6 +898,26 @@ func test_real_story_flow() -> void:
 	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), KO,
 		character.instance_id, &"affinity"), affinity_before, "nobody was left alone yet")
 	_step("11a. a way out that failed answered nothing: the Night, its wave and its dark stand")
+	# --- 11b. the same, for a failure nobody can foresee: the village's file EXISTS and is not
+	# a scene. The router only finds out while loading; leaving must not have happened yet.
+	var heard_leaving := [0]
+	var count_leaving := func() -> void: heard_leaving[0] += 1
+	world.connect("active_map_leaving", count_leaving)
+	router.call("register_scene", "map_hub", "res://data/story/origin_catalog.tres")
+	assert_eq(str(router.call("transition_refusal", "map_hub")), "",
+		"setup: this failure cannot be asked about beforehand")
+	await _go_through_exit(player)
+	router.call("register_scene", "map_hub", hub_scene)
+	world.disconnect("active_map_leaving", count_leaving)
+	assert_eq(str(world.call("get_current_map_id")), "map_field", "the broken way led nowhere")
+	assert_eq(heard_leaving[0], 0, "nobody was told the woods were being left")
+	assert_eq(_count_players(main), 1, "the player was never moved")
+	assert_eq([service.state().option_of(&"choice_night_stand"), service.state().beat_id,
+		int(world.call("story_encounter_remaining"))], [&"", &"beat_night", 2],
+		"and the Night stands unanswered, both creatures alive")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), KO,
+		character.instance_id, &"affinity"), affinity_before, "the watchman still has company")
+	_step("11b. a way out that broke while loading changed nothing at all")
 	await _go_through_exit(player)
 	assert_eq(str(world.call("get_current_map_id")), "map_hub", "the way back was open")
 	assert_eq(service.state().option_of(&"choice_night_stand"), &"withdrew",
@@ -1026,13 +1061,91 @@ func test_real_story_flow() -> void:
 		"and no story card opens over it")
 	assert_eq(hud.session_prompt_kind(), GameplayHUD.PROMPT_DEFEAT,
 		"one surface holds the player: the defeat")
+	# GB1-04: fallen ON the exit. The one key the defeat leaves goes to the defeat — a body
+	# does not walk out of the woods.
+	var arrivals_before := _arrivals
+	var way_out := router.call("get_current_scene").get_node("Exits/ExitToHub") as Node2D
+	player.global_position = way_out.global_position
+	way_out.emit_signal("body_entered", player)
+	await scene_tree.process_frame
+	var hunting := false
+	for _i in 90:
+		await scene_tree.physics_frame
+		for enemy in combat.enemies():
+			if is_instance_valid(enemy) and not bool(enemy.call("is_dead")) \
+					and ["ALERT", "CHASE", "ATTACK"].has(enemy.ai().brain_state_name()):
+				hunting = true
+	assert_false(hunting, "nothing hunts the fallen: the woods' own wolves go back to their ground")
 	await _press_until(INTERACT, func() -> bool: return gs.get_phase() == gs.Phase.MENU)
 	assert_eq(gs.get_phase(), gs.Phase.MENU, "acknowledged with a real key: back at the menu")
 	assert_false(story.is_session_active() or bool(world.call("is_story_encounter_live")),
 		"with no story and no encounter left behind")
+	assert_eq(_arrivals, arrivals_before, "and the key that acknowledged it changed no map")
 	_step("13. a bolt outlives its caster and kills: nothing answered, nothing over the defeat")
 	_teardown(main)
 	await scene_tree.process_frame
+
+
+## EVERY THING THE PLAYER IS MEANT TO REACH CAN BE WALKED TO (Gate B1 probe, kept as a check in
+## B2 — GB1-04). The walkable ground is flooded from where the player stands with the real
+## body against the real shapes (`test_move` between 6 px cells; creatures are not ground),
+## and each interactable, pickup, cultivation site and exit that is in the world NOW must
+## have walkable ground inside its own reach. A prop moved onto a path, a body grown over a
+## pickup, a clue fenced in by a new footprint: all of them fail here, by name.
+func _judge_reach(main: Node, where: String) -> void:
+	var router := scene_tree.root.get_node("SceneRouter")
+	var world: Node = main.get_node("Systems/WorldRuntime")
+	var combat := main.get_node("Systems/CombatRuntime") as CombatRuntime
+	var map: Node = router.call("get_current_scene")
+	var player := world.call("get_player") as CharacterBody2D
+	var parked: Array = []
+	for enemy in combat.enemies():
+		if is_instance_valid(enemy):
+			parked.append([enemy, enemy.collision_layer])
+			enemy.collision_layer = 0
+	for _i in 3:
+		await scene_tree.physics_frame
+	var bounds: Rect2 = (map.call("get_map_data") as MapData).bounds
+	var step := 6.0
+	var start := player.global_position
+	var seen := {Vector2i.ZERO: true}
+	var queue: Array[Vector2i] = [Vector2i.ZERO]
+	var head := 0
+	while head < queue.size():
+		var cell := queue[head]
+		head += 1
+		var at := start + Vector2(cell) * step
+		for dir: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.UP, Vector2i.DOWN]:
+			var next := cell + dir
+			if seen.has(next) or not bounds.has_point(start + Vector2(next) * step) \
+					or player.test_move(Transform2D(0.0, at), Vector2(dir) * step):
+				continue
+			seen[next] = true
+			queue.append(next)
+	for row in parked:
+		row[0].collision_layer = row[1]
+	assert_true(queue.size() > 2000, "%s: the player can walk (%d cells)" % [where, queue.size()])
+	var judged := 0
+	for host: String in ["KnowledgeSources", "Interactables", "Pickups", "CultivationSites",
+			"Exits"]:
+		for thing in (map.get_node(host).get_children() if map.has_node(host) else []):
+			if not (thing is Node2D) or not (thing as Node2D).visible:
+				continue   # not in the world now (taken, or not yet put there by the story)
+			var reach := 16.0   # an exit zone
+			if "reach_px" in thing:
+				reach = float(thing.get("reach_px"))
+			elif thing is CultivationSite and (thing as CultivationSite).site != null:
+				reach = (thing as CultivationSite).site.radius_px
+			var nearest := 1e9
+			for cell: Vector2i in queue:
+				nearest = minf(nearest, (start + Vector2(cell) * step).distance_to(
+					(thing as Node2D).global_position))
+			judged += 1
+			assert_true(nearest <= reach, "%s: '%s' can be walked to (nearest ground %.0f px, "
+				% [where, thing.name, nearest] + "its reach %.0f px)" % reach)
+	assert_true(judged >= 5, "%s: %d things were judged" % [where, judged])
+	_step("reach. %s: %d things, each with ground to stand on within its reach"
+		% [where, judged])
 
 
 var _arrivals := 0

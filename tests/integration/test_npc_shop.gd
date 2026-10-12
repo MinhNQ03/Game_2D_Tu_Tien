@@ -488,3 +488,54 @@ func test_shop_stock_round_trips_through_the_runtime() -> void:
 		"and the sword is still sold")
 	_free(other)
 	_free(rig)
+
+
+# === CLV-01: a shop is somebody's, and that somebody stands somewhere ========
+
+## Who can be met in the shipped world: every `WorldNpc` of every map in the map catalog that
+## carries a template (the runtime realizes such a person when their map is entered).
+func _people_who_stand_somewhere() -> Dictionary:
+	var people := {}
+	var maps := load("res://data/maps/map_catalog.tres") as MapCatalog
+	assert_true(maps != null and not maps.maps.is_empty(), "the map catalog loads")
+	if maps == null:
+		return people
+	for data: MapData in maps.maps:
+		var scene := load(data.scene_path) as PackedScene
+		assert_not_null(scene, "%s has a scene" % data.id)
+		if scene == null:
+			continue
+		var map := scene.instantiate()
+		var host := map.get_node_or_null("Interactables")
+		for child in (host.get_children() if host != null else []):
+			if child is WorldNpc and (child as WorldNpc).character_template != null:
+				people[(child as WorldNpc).character_id] = data.id
+		map.free()
+	return people
+
+
+## The keepers of `catalog` nobody could ever walk up to.
+func _keepers_nobody_can_meet(catalog: ShopCatalogData, people: Dictionary) -> Array[StringName]:
+	var missing: Array[StringName] = []
+	for shop in catalog.entries:
+		if shop != null and not people.has(shop.keeper_id):
+			missing.append(shop.keeper_id)
+	return missing
+
+
+## CLV-01. A shop authored for a keeper who stands in no map starts cleanly and is simply never
+## reachable — nothing at runtime can see that, because a keeper who lives in another map is
+## realized only when that map is entered. So it is a CONTENT rule, held here: every shipped
+## shop's keeper is a person placed in a shipped map.
+func test_every_shipped_shop_is_kept_by_someone_who_stands_in_a_map() -> void:
+	var people := _people_who_stand_somewhere()
+	var shipped := load(SHIPPED) as ShopCatalogData
+	assert_true(shipped != null and not shipped.entries.is_empty(), "the shipped shops load")
+	assert_eq(_keepers_nobody_can_meet(shipped, people), [] as Array[StringName],
+		"every shop has a keeper the player can walk up to (people: %s)" % str(people.keys()))
+	assert_eq(people.get(KO), &"map_field", "the pack seller stands in the woods")
+	# The check sees what it is for: the same shop given to somebody who is nowhere.
+	var orphaned := shipped.duplicate(true) as ShopCatalogData
+	orphaned.entries[0].keeper_id = &"actor_nobody_at_all"
+	assert_eq(_keepers_nobody_can_meet(orphaned, people), [&"actor_nobody_at_all"]
+		as Array[StringName], "a keeper who stands nowhere is reported")
