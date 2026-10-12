@@ -898,8 +898,13 @@ func _push_inventory_view_to_active_map() -> void:
 	var inventory := _find_sibling_of(InventoryRuntime) as InventoryRuntime
 	if inventory == null or not inventory.is_session_active():
 		return
+	# The body as drawn now, so the satchel's card shows the garment the world shows.
+	var drawn: CharacterVisualComponent = _player.call("get_visual_component") \
+		if _player != null and is_instance_valid(_player) \
+		and _player.has_method("get_visual_component") else null
 	_active_map.call("set_inventory_view", InventoryView.make(inventory,
-		_find_sibling_of(EquipmentRuntime) as EquipmentRuntime))
+		_find_sibling_of(EquipmentRuntime) as EquipmentRuntime,
+		drawn.profile() if drawn != null else null))
 	_push_chronicle_view_to_active_map()  # what is worn changes the stats the book reads
 
 

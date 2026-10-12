@@ -704,6 +704,12 @@ static func _opposite(direction: int) -> int:
 
 # === Readouts (tests / debug) ================================================
 
+## The profile this component draws with now (null before `setup`). Read by whoever shows the
+## same body elsewhere — the character card draws the player in what the player wears.
+func profile() -> CharacterVisualProfileData:
+	return _profile
+
+
 ## The animation column currently showing: the action's while one plays, else locomotion's.
 func get_column() -> int:
 	return _action_column if _action != ACTION_NONE else _column

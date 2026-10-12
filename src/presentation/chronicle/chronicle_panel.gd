@@ -42,12 +42,17 @@ const STYLE_MUTED := &"muted"
 ## The gap between the lines of ONE block (a person and their regard, a thing known and what
 ## it says) and between two blocks: lines that belong together sit together, and the eye finds
 ## where one thing ends. (At one uniform gap a person took a page to themselves.)
+## A line with this key is drawn as the `CharacterCard`, at `CARD_HEIGHT`.
+const CARD := &"card"
+const CARD_HEIGHT := float(CharacterCard.WELL_SIZE.y) + 4.0
 const LINE_GAP := 2
 const BLOCK_GAP := UIPalette.SPACE_MD
 ## Rounding room per label: a Label's minimum height is a whole number of pixels.
 const LABEL_SLACK := 1.0
 ## The least room a page is ever packed for, whatever the window (a guard, not a target).
 const MIN_BODY_HEIGHT := 120.0
+## Under this share of a page's room, a page reads as empty.
+const SPARSE_FRACTION := 1.0 / 3.0
 
 var _loc: Node = null
 var _input: Node = null
@@ -271,6 +276,8 @@ func page_lines() -> Array[String]:
 			for child in block.get_children():
 				if child is Label:
 					out.append((child as Label).text)
+				elif child is CharacterCard:
+					out.append(String(child.get_meta(&"line", "")))
 	return out
 
 
@@ -366,6 +373,9 @@ func _render() -> void:
 		group.add_theme_constant_override("separation", LINE_GAP)
 		group.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		for line: Dictionary in block:
+			if line.has(CARD):
+				group.add_child(_character_card(String(line["text"])))
+				continue
 			var label := _styled(line["style"])
 			label.text = String(line["text"])
 			group.add_child(label)
@@ -393,6 +403,30 @@ func _pack(blocks: Array, room: float) -> Array:
 		used += gap + height
 	if not current.is_empty():
 		pages.append(current)
+	return _even_out(pages, room)
+
+
+## A page that holds two lines at the end of a section is a page turned for nothing (H21-20:
+## three such pages in a ten-page book at 1280x720). While the last page is under a third
+## full, the block before it comes over to it, as long as that leaves the page it came from
+## at least as full as the one it joins — so nothing is split, nothing is dropped, and a
+## short tail becomes two pages that both read as pages.
+func _even_out(pages: Array, room: float) -> Array:
+	for _move in 8:
+		if pages.size() < 2:
+			break
+		var last: Array = pages[-1]
+		var before: Array = pages[-2]
+		if _blocks_height(last) >= room * SPARSE_FRACTION or before.size() < 2:
+			break
+		var moved: Array = before[-1]
+		var joined: Array = [moved]
+		joined.append_array(last)
+		var left: Array = before.slice(0, before.size() - 1)
+		if _blocks_height(joined) > room or _blocks_height(left) < _blocks_height(last):
+			break
+		pages[-2] = left
+		pages[-1] = joined
 	return pages
 
 
@@ -407,6 +441,9 @@ func _blocks_height(blocks: Array) -> float:
 	var spacing := float(get_theme_constant(&"line_spacing", &"Label"))
 	for block: Array in blocks:
 		for line: Dictionary in block:
+			if line.has(CARD):
+				total += CARD_HEIGHT
+				continue
 			var font_px := _font_size(line["style"])
 			var wrapped := font.get_multiline_string_size(String(line["text"]),
 				HORIZONTAL_ALIGNMENT_LEFT, width, font_px).y
@@ -499,9 +536,13 @@ func _body_blocks() -> Array:
 		vital.append(_row(_t_args("UI_CHRONICLE_REALM", {
 			"realm": _t(String(_cultivation.realm_name_key)), "layer": _cultivation.layer,
 			"progress": _cultivation.progress, "cost": _cultivation.step_cost}), STYLE_LINE))
+	# The figure and its numbers lead the page: the same card the satchel shows. Its line
+	# keeps the sentence (for whoever reads the page as text) and is DRAWN as the card.
 	if _view.stats_available:
-		vital.append(_row(_t_args("UI_CHRONICLE_STATS", {"attack": _view.attack,
-			"defense": _view.defense, "speed": _view.move_speed}), STYLE_ACCENT))
+		var figure := _row(_t_args("UI_CHRONICLE_STATS", {"attack": _view.attack,
+			"defense": _view.defense, "speed": _view.move_speed}), STYLE_ACCENT)
+		figure[CARD] = true
+		blocks.append([figure])
 	if not vital.is_empty():
 		blocks.append(vital)
 	var worn: Array = [_row(_t("UI_CHRONICLE_WORN"), STYLE_HEAD)]
@@ -573,6 +614,18 @@ func _people_blocks() -> Array:
 
 
 # --- Drawing -----------------------------------------------------------------------
+
+## The character as a figure, fed from the views this book already holds.
+func _character_card(line: String) -> CharacterCard:
+	var card := CharacterCard.new()
+	card.name = "CharacterCard"
+	card.set_meta(&"line", line)
+	card.custom_minimum_size.y = CARD_HEIGHT
+	card.set_body(_inventory.body_profile if _inventory != null else null)
+	card.set_worn(_inventory.rows if _inventory != null else ([] as Array[Dictionary]))
+	card.set_stats(_view.stats_available, _view.attack, _view.defense, _view.move_speed)
+	return card
+
 
 func _row(text: String, style: StringName) -> Dictionary:
 	return {"text": text, "style": style}

@@ -25,6 +25,7 @@ var _desc: Label
 var _keys: Label
 var _view: InventoryView = null
 var _selected: int = 0
+var _card: CharacterCard = null
 
 
 func _ready() -> void:
@@ -44,6 +45,26 @@ func _ready() -> void:
 	_title = _label(UIPalette.FONT_SIZE_SUBTITLE, UIPalette.COLOR_TITLE)
 	column.add_child(_title)
 	column.add_child(UITheme.ornament_divider())
+	# WHO is carrying it, beside WHAT is carried: the body as drawn, what it wears and the
+	# numbers combat reads stand in a column of their own, pinned; the list is to its right.
+	var sheet := HBoxContainer.new()
+	sheet.name = "Sheet"
+	sheet.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sheet.add_theme_constant_override("separation", UIPalette.SPACE_MD)
+	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(sheet)
+	_card = CharacterCard.new()
+	_card.name = "CharacterCard"
+	_card.tall = true
+	_card.custom_minimum_size.x = UIPalette.SHEET_FIGURE_COLUMN
+	_card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	sheet.add_child(_card)
+	column = VBoxContainer.new()
+	column.name = "Carried"
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sheet.add_child(column)
 	var box := UITheme.scroll_body(column)
 	_scroll = box.get_parent().get_parent() as ScrollContainer
 	_list = VBoxContainer.new()
@@ -67,6 +88,16 @@ func _ready() -> void:
 func set_view(view: InventoryView) -> void:
 	_view = view
 	refresh()
+
+
+## The numbers combat reads, from the feed that already carries them (`ChronicleView`).
+func set_stats(available: bool, attack: int, defense: int, speed: int) -> void:
+	if _card != null:
+		_card.set_stats(available, attack, defense, speed)
+
+
+func character_card() -> CharacterCard:
+	return _card
 
 
 func selected_index() -> int:
@@ -121,6 +152,9 @@ func refresh() -> void:
 	if _title == null:
 		return
 	_title.text = _t("UI_INVENTORY_TITLE")
+	if _card != null:
+		_card.set_body(_view.body_profile if _view != null else null)
+		_card.set_worn(_view.rows if _view != null else ([] as Array[Dictionary]))
 	for child in _list.get_children():
 		child.queue_free()
 	var rows: Array[Dictionary] = _view.rows if _view != null else ([] as Array[Dictionary])

@@ -764,6 +764,7 @@ func _build_ui() -> void:
 	_inventory_panel = InventoryPanel.new()
 	_inventory_panel.name = "InventoryPanel"
 	_bound_side_panel(_inventory_panel, true)
+	_inventory_panel.offset_right = UIPalette.HUD_MARGIN + UIPalette.SHEET_PANEL_WIDTH
 	_inventory_panel.visible = false
 	_inventory_panel.use_requested.connect(func(item_id: StringName, equipped: bool) -> void:
 		inventory_use_requested.emit(item_id, equipped))
@@ -1968,6 +1969,10 @@ func set_chronicle_view(view: ChronicleView) -> void:
 	_chronicle_view = view
 	if _chronicle_panel != null:
 		_chronicle_panel.set_view(view)
+	# The satchel's card shows the same numbers, from this same feed (one feed per fact).
+	if _inventory_panel != null and view != null:
+		_inventory_panel.set_stats(view.stats_available, view.attack, view.defense,
+			view.move_speed)
 	_refresh_purpose()
 
 

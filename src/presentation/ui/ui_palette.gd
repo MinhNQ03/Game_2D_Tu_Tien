@@ -151,6 +151,14 @@ const HUD_MARGIN := 18
 ## bounded boxes on the screen edges, and a content-driven width would make the two sides
 ## disagree and jump as content changes.
 const SIDE_PANEL_WIDTH := 330
+## The satchel is a SHEET: the character's figure in a column beside the list of what is
+## carried. Wider than a reading panel, and it may be — it is modal (the player does not walk
+## while choosing), so the playfield it covers is not being played on.
+const SHEET_FIGURE_COLUMN := 136
+## 460 px: its right edge stays left of where a centred notice of ordinary length begins.
+const SHEET_PANEL_WIDTH := SIDE_PANEL_WIDTH + SHEET_FIGURE_COLUMN - 6
+## Under a figure drawn in a panel's well (the character card): ink, mostly transparent.
+const FIGURE_CONTACT_SHADOW := Color(0.02, 0.03, 0.05, 0.45)
 
 ## The dialogue box (Phase 18): one bounded box at the bottom centre. Wide enough for a
 ## three-line sentence beside the medallion and the answers; `DIALOGUE_LINE_MIN_HEIGHT` holds

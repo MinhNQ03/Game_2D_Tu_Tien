@@ -416,10 +416,13 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 		assert_eq(int(panel.offset_bottom),
 			-(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE),
 			"and stops short of the bottom so the control prompts are never covered")
-		# Its width is fixed by the anchors, so content can never widen it either.
-		assert_eq(int(absf(panel.offset_right - panel.offset_left)),
-			UIPalette.SIDE_PANEL_WIDTH,
-			"its width comes from SIDE_PANEL_WIDTH, not from its content")
+		# Its width is fixed by the anchors, so content can never widen it either. The satchel
+		# is a SHEET (figure column + list) since the UI refresh: a different named token,
+		# the same rule — a width that is a constant, never the content's.
+		var named_width := UIPalette.SHEET_PANEL_WIDTH if panel is InventoryPanel \
+			else UIPalette.SIDE_PANEL_WIDTH
+		assert_eq(int(absf(panel.offset_right - panel.offset_left)), named_width,
+			"'%s' takes its width from a named token, not from its content" % panel.name)
 	assert_eq(side_panels, 6, ("all six side panels (sect, politics, satchel, shop, journal, "
 		+ "chronicle) are bounded boxes (got %d)")
 			% side_panels)

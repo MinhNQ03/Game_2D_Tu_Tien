@@ -384,11 +384,14 @@ func test_a_page_uses_the_room_it_has_at_the_smallest_window() -> void:
 		per_section[book.page_id()] = int(per_section.get(book.page_id(), 0)) + 1
 		if not book.advance_page():
 			break
-	for section: StringName in [ChroniclePanel.PAGE_STORY, ChroniclePanel.PAGE_BODY,
-			ChroniclePanel.PAGE_KNOWLEDGE]:
+	for section: StringName in [ChroniclePanel.PAGE_STORY, ChroniclePanel.PAGE_KNOWLEDGE]:
 		assert_eq(int(per_section.get(section, 0)), 1,
 			"an ordinary run's '%s' is ONE page, not a few lines over an empty one" % section)
-	for section: StringName in [ChroniclePanel.PAGE_SELF, ChroniclePanel.PAGE_PEOPLE]:
+	# The body page is headed by the character's figure since the UI refresh, which takes the
+	# room a few lines did: it may run to two pages. "Not a few lines over an empty one" is
+	# held for EVERY page by `test_no_page_but_the_last_is_nearly_empty`.
+	for section: StringName in [ChroniclePanel.PAGE_SELF, ChroniclePanel.PAGE_PEOPLE,
+			ChroniclePanel.PAGE_BODY]:
 		assert_true(int(per_section.get(section, 0)) in [1, 2],
 			"'%s' (long lines, kept together per person) takes one page or two" % section)
 	assert_true(book.page_count() <= 7, "seven pages at most, not fourteen (%d)"
@@ -398,6 +401,55 @@ func test_a_page_uses_the_room_it_has_at_the_smallest_window() -> void:
 	assert_true(book.tallest_page_height() <= laid_out + 0.5, "and nothing overflows it")
 	window.size = was
 	free_node(hud)
+
+
+## H21-20. No page but the book's last reads as empty: at both shipped windows and in both
+## languages, every page that is followed by another is at least a third full. (It was 10
+## pages at 1280x720 with 3/10 and 5/10 holding two or three lines.)
+func test_no_page_but_the_last_is_nearly_empty() -> void:
+	var window := scene_tree.root
+	var was := window.size
+	for size: Vector2i in [Vector2i(1280, 720), Vector2i(1280, 800)]:
+		for code: String in ["vi", "en"]:
+			_use_language(code)
+			window.size = size
+			var hud := _hud()
+			var book := hud.chronicle_panel()
+			hud.set_chronicle_view(_view())
+			hud.set_health(100, 100)
+			book.visible = true
+			for _i in 4:
+				await scene_tree.process_frame
+			var room := book.body_height()
+			book.reset_page()
+			var count := book.page_count()
+			var everything := book.all_lines()
+			var per_section := {}
+			for _i in count:
+				per_section[book.page_id()] = int(per_section.get(book.page_id(), 0)) + 1
+				if not book.advance_page():
+					break
+			book.reset_page()
+			var read: Array[String] = []
+			for index in count:
+				await scene_tree.process_frame   # the page just turned to is laid out
+				read.append_array(book.page_lines())
+				var filled := book.rendered_height()
+				# A LEFTOVER is what H21-20 was: a section that ran a few lines over onto a
+				# page of its own. (A section whose one page is short holds little — that is
+				# what its owner has to say, not a page turned for nothing.)
+				if index < count - 1 and int(per_section[book.page_id()]) > 1:
+					assert_true(filled >= room / 3.0 - 0.5,
+						"[%s %dx%d] page %d of %d ('%s') is %.0f px of %.0f: it reads as a page"
+						% [code, size.x, size.y, index + 1, count, book.page_id(), filled, room])
+				assert_true(filled <= room + 0.5, "[%s %dx%d] page %d fits its room"
+					% [code, size.x, size.y, index + 1])
+				if not book.advance_page():
+					break
+			assert_eq(read, everything, "[%s %dx%d] evening the pages out dropped and "
+				% [code, size.x, size.y] + "reordered nothing")
+			free_node(hud)
+	window.size = was
 
 
 ## A closed book costs nothing: its sources may change any number of times and nothing is

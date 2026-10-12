@@ -6,11 +6,17 @@ class_name InventoryView
 ## One row per distinct item held, in first-acquired order:
 ## { "item_id": StringName, "name_key": StringName, "desc_key": StringName,
 ##   "icon": Texture2D, "count": int, "usable": bool }
+## A worn row also carries "equipped": true and "slot": int (`EquipmentData.Slot`).
 var rows: Array[Dictionary] = []
+## The body as it is drawn in the world now — the chosen look in whatever it wears. Null when
+## nobody said (an isolated harness): the card then shows an empty well.
+var body_profile: CharacterVisualProfileData = null
 
 
-static func make(runtime: InventoryRuntime, equipment: EquipmentRuntime = null) -> InventoryView:
+static func make(runtime: InventoryRuntime, equipment: EquipmentRuntime = null,
+		body: CharacterVisualProfileData = null) -> InventoryView:
 	var view := InventoryView.new()
+	view.body_profile = body
 	if runtime == null or not runtime.is_session_active():
 		return view
 	var catalog := runtime.get_catalog()
@@ -22,6 +28,8 @@ static func make(runtime: InventoryRuntime, equipment: EquipmentRuntime = null) 
 				view.rows.append({
 					"item_id": worn.id, "name_key": worn.name_key, "desc_key": worn.desc_key,
 					"icon": worn.icon, "count": 1, "usable": true, "equipped": true,
+					"slot": (worn.equipment as EquipmentData).slot
+						if worn.equipment is EquipmentData else -1,
 				})
 	for item_id in runtime.get_bag().item_ids():
 		var item := catalog.entry(item_id)

@@ -207,6 +207,11 @@ ITEM_DAO_BAO_THANH_VAN_NAME,Thanh Vân Outer Robe,Đạo bào Thanh Vân
 ITEM_DAO_BAO_THANH_VAN_DESC,The jade-blue robe of a Thanh Vân outer disciple. Defense +4.,Đạo bào xanh ngọc của ngoại môn đệ tử Thanh Vân. Thủ +4.
 ATTACK_PLAYER_KIEM_NAME,Jian Thrust,Kiếm Thích
 UI_INVENTORY_WORN,worn,đang mang
+UI_SHEET_SLOT_WEAPON,Bare hands,Tay không
+UI_SHEET_SLOT_BODY,Travelling clothes,Áo đi đường
+UI_SHEET_ATTACK,Attack,Công
+UI_SHEET_DEFENSE,Defense,Thủ
+UI_SHEET_SPEED,Speed,Tốc
 UI_EQUIP_NOT_EQUIPMENT,That cannot be worn.,Thứ này không mang được.
 UI_EQUIP_REALM,Your realm is too low to wield that.,Cảnh giới chưa đủ để dùng thứ này.
 UI_EQUIP_BUSY,Not in the middle of a strike.,Không thể đổi giữa đòn đánh.
