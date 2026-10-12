@@ -190,6 +190,43 @@ Nine layers, strictly ordered. A phase may not reveal layer N+1 to make a scene 
 Layers 1–3 are Acts I–III; 4–5 are IV–V; 6–8 are VI–VIII; 9 is IX–X. The permanently open
 questions (CL-15) sit *past* layer 9 and are never closed.
 
+### 9a. Clue-to-payoff ledger (the ONE place it is kept)
+
+A clue the player can hold is a promise. This ledger lists every one that has SHIPPED, where
+it is planted, what the player holds afterwards, the reveal layer it belongs to (§9), and
+where it is owed an answer. **A phase that plants a clue adds its row; a phase that pays one
+marks it PAID and names the scene; no phase may pay above the layer it is allowed (§9).**
+Nothing here is new lore: every payoff is one this plan, `CANON_LEDGER.md` or a phase
+handoff already states. A clue with no owed payoff is not allowed to ship (§11).
+
+| # | Clue (what the player met) | Planted (phase · in-game source) | Held as | Layer | Owed payoff | Owner | Status |
+|---|---|---|---|---|---|---|---|
+| K-01 | the woods' vein "does not run quietly" | P12 · the Lạc Hà stele | `know_lac_ha_stele_record` | 1 | Đêm Vỡ Mạch itself — the vein breaks | Phase 20 | **PAID** (beat 7, the Night) |
+| K-02 | Lâm Nguyệt's readings do not match the hall's | P20 · her confidence, `choice_lam_readings` | `flag_lam_settled` 1 kept / 2 told | 2 | who was drawing on the vein, shown as evidence | Phase 21 (the shaft's field book) | OPEN |
+| K-03 | the creatures of the Night are not themselves | P20/D-073 · the wave's look, the vein's light | seen; no knowledge entry | 1 → 2 | what the over-drawn vein made of the thing nearest it | Phase 22 (the shaft's boss) | OPEN |
+| K-04 | the outpost puts away what was found after the Night | P20 · the elder's account, beat 9 | `flag_heard_elder_account` | 3 | the outpost can no longer say the shaft was sealed (the shaft's post-boss world consequence); behind it, the falsified survey of §4 | Phase 22 (the consequence); the survey itself per §9, layer 3 | OPEN |
+| K-05 | one torn page of the Terrace's survey | P20 · under the weighted stone, beat 11 | `know_survey_fragment` | 2 | the rest of the survey — the old surveyor's field book | Phase 21 | OPEN |
+| K-06 | a survey is a line of four stakes; this is the old surveyor's hand | D-073 · showing the sheet to Lâm Nguyệt | `know_surveyors_line` | 2 | the fourth point is the shaft; his book is where he measured | Phase 21 | OPEN |
+| K-07 | carts went up the track on nights the scout was paid to sleep | D-073 · showing the sheet to Kha Thản | `know_night_wheels` | 2 | what was taken out of the shaft (evidence, not a confession); WHO bought it is §4 ACTORS 2 and layer 3 | Phase 21 (what); layer 3 per §9 (who) | OPEN |
+| K-08 | the elder says no such page was written and the shaft is sealed | D-073 · showing the sheet to the elder | `know_shaft_claim` | 3 | his word against the fresh wax on the door | Phase 22's post-boss world consequence | OPEN |
+| K-09 | the third stake was pulled and the ground raked | D-073 · the socket in the clearing | `know_stake_socket` | 2 | the line was removed on purpose: physical evidence for K-04 (§4 SOCIAL CONSEQUENCE — the outpost suppresses the evidence) | Phase 21–22, with K-04 | OPEN |
+| K-10 | the "sealed" shaft: fresh wax, ruts to the sill, a lock that takes a surveyor's rod | D-073 · the door in the NE rocks | `know_sealed_shaft` | 2 | the door opens (rod, never a level); the shaft was worked | Phase 21 | OPEN |
+| K-11 | the carter's cart, wrecked, with pale vein-stone in its split crates | D-073 · the wreck in the woods | seen; the Thunder-Finger manual spilled from it | 2 | unsurveyed qi-dense material was being hauled out (§4 ACTORS 2: a trading interest buying it) — the buyer is layer 3 | Phase 21 (the material); layer 3 per §9 (the buyer) | OPEN |
+| K-12 | each Origin's own problem, and the one thing only that Origin notices on the trail | P20 · the vignette; D-073 · the five Origin observations | `OriginData.observation_flags` | 2 | §6: each Origin's long-term callback; every personal thread resolves into the Thiên Khế question | per Origin, per §6 | OPEN |
+| K-13 | who saw the sheet first | D-073 · `choice_sheet_shown` (lin / ko / shen) | the choice's record + one knowledge each | — | who stands with the player at the door; must never gate entry | Phase 21 | OPEN |
+
+**The survey is the long thread (§4 FUTURE PAYOFF):** K-05 → K-06 → K-10 → the field book
+(Phase 21) → "orthodox records are edited for institutional convenience" → Acts VI–VII. Each
+step may show only its own layer.
+
+**Continuity and capability, not restated here.** The ten-act map is §8 and the reveal
+ladder §9 of this document. What the player CAN DO, and how the four kinds of growth stay
+apart — combat level and EXP, cảnh giới and tầng, technique mastery, knowledge — is owned by
+`PROGRESSION_CULTIVATION_DESIGN.md` (§1 two axes, §4 the capability contract, §6 threat
+rating in place of a level gate, §7 knowledge, §9 the master realm table, §10 dependencies)
+and frozen in `CANON_LEDGER.md` CL-13 / CL-14. This ledger records only what the player has
+been TOLD and is OWED.
+
 ## 10. Branching and convergence policy
 
 **Branches read STATE, never scattered booleans:** relationships · sect state · faction state ·
@@ -261,6 +298,7 @@ state being forced to match. Detail: `MULTIPLAYER_PLAN.md`.
 
 ## 15. What this document does NOT do
 
-No dialogue, no quest definitions, no story engine, no scripted scenes, no chapter data. Those are
+No dialogue, no quest definitions, no story engine, no scripted scenes, no chapter data (the
+clue ledger of §9a lists what shipped content has promised; it authors none). Those are
 Phases 17–20. This is the architecture those phases must satisfy — and the reason a chapter will
 be *content* rather than an engine edit.

@@ -50,7 +50,7 @@ UI_SECT_PANEL_REPUTATION,Reputation,Danh Vọng
 UI_SECT_PANEL_INFLUENCE,Influence,Thế Lực
 UI_SECT_PANEL_TERRITORY,Territory,Lãnh Địa
 UI_SECT_PANEL_RESOURCES,Resources,Tài Nguyên
-UI_SECT_PANEL_NONE,You do not belong to a sect.,Bạn chưa gia nhập tông môn nào.
+UI_SECT_PANEL_NONE,You do not belong to a sect.,Ngươi chưa gia nhập tông môn nào.
 UI_SECT_PANEL_TOGGLE,Sect,Tông Môn
 UI_SECT_PANEL_RESOURCE_UNKNOWN,Unknown Resource,Tài nguyên khác
 SECT_RESOURCE_SPIRIT_STONES,Spirit Stones,Linh Thạch
@@ -92,7 +92,7 @@ UI_FACTION_PANEL_CONTESTED,Contested,Đang giằng co
 UI_FACTION_PANEL_SETTLED,Settled,Đã an định
 UI_FACTION_PANEL_DIRECTION,Sect direction,Hướng đi tông môn
 UI_FACTION_PANEL_YOUR_SIDE,Your side,Phe của bạn
-UI_FACTION_PANEL_NO_SIDE,You have taken no side.,Bạn chưa chọn phe nào.
+UI_FACTION_PANEL_NO_SIDE,You have taken no side.,Ngươi chưa chọn phe nào.
 UI_FACTION_PANEL_RELATION_ALLIED,Allied with your side,Đồng minh với phe bạn
 UI_FACTION_PANEL_RELATION_RIVAL,Rival of your side,Đối đầu với phe bạn
 CHARACTER_ELDER_SHEN_NAME,Shen Buqi,Thẩm Bất Kỳ

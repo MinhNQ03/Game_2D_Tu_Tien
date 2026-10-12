@@ -8,6 +8,24 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-12 — D-073 follow-up close-out (`hardening/pre-phase21-closeout`; not a phase)
+
+- **A creature has a ground** (`AiProfileData.patrol_radius`, H21-16): patrol was a random
+  walk bounded only by the 340 px leash, so the cairn wolf reached the clue the bridge makes
+  the player examine. The socket, the shaft's door and a way between them are now outside
+  its reach by test; the old haul track stays contested and is marked.
+- **Carts whose wheels read as wheels** (H21-17); **the bite's telegraph keeps its colour
+  under the Night** and `capture_motion night_bite` (H21-18); **the Night's light measured**:
+  `tools/measure_ambience_frame_time.gd`, PERF-NOTE-21 (H21-19).
+- **The commit boundary re-audited:** knowledge is taught as one batch, an Origin's start
+  undoes itself; **no dead trail opener** (H21-15).
+- **Everything lying in the world audited:** a pickup is taken whole or left whole, a refusal
+  is said once per approach, nothing absent is drawn when a map arrives.
+- **Every arrival on the New Game path is judged** against the story (light, presence,
+  pickups, spawn, creatures); `NARRATIVE_MASTER_PLAN.md` §9a: the clue-to-payoff ledger.
+- 1241 tests, eight E2E flows, 30 mutations red. H21-14 stays OPEN / OWNER REQUIRED; a new
+  small debt H21-20. Phase 21 and 22 NOT STARTED.
+
 ### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 4: regression, the real window, close-out (D-073)
 
 - All local gates green on the closing tree: 1224 tests, eight E2E flows, 0 script errors,

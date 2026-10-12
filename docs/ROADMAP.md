@@ -175,6 +175,11 @@
 > only; it does **not** authorize implementing those systems early. Older documents that
 > referenced the previous numbering (Character=11 … Save=22 … MP=27) were updated to this
 > numbering.
+> **D-073 follow-up close-out (not a phase) — DONE on `hardening/pre-phase21-closeout`:**
+> H21-15 … H21-19 closed, the commit boundary and every pickup re-audited, each arrival on
+> the New Game path judged against the story, the clue-to-payoff ledger added
+> (`NARRATIVE_MASTER_PLAN.md` §9a). **Gate: WAITING FOR OWNER PLAYTEST (H21-14).** Phase 21
+> and Phase 22 are NOT STARTED. See `docs/handoff/pre-phase-21-hardening.md` §15.
 
 ## Phase 00 — Foundation *(CLOSED — CI-verified 2026-10-02)*
 Documentation, standards, process. Project renamed → `Aetheria` (D-006); 2D config cleaned,

@@ -759,6 +759,8 @@ anything left". (2) The wreck's standing wheel reads as a dark slab, like the wh
 | H21-18 — **CLOSED** (follow-up §15.3) | the wolf's wind-up under the night tint had been looked at in stills, not as a motion strip | — | presentation (`capture_motion.gd night_bite`, `AttackFeedback`) | the strip is opened and the tell frame named (done; and the telegraph it showed to be dimmed is fixed) | no |
 | H21-19 — **CLOSED** (follow-up §15.3) | no frame-time measurement of the 2D lights | — | `tools/measure_ambience_frame_time.gd`; `docs/PERFORMANCE.md` PERF-NOTE-21 | measured numbers recorded (done: simple frame-time sampling, one machine; the engine profiler's split stays Phase 29's) | no |
 
+| H21-20 (new, follow-up §15.6) | at 1280×720 the Chronicle runs to 10 pages and three of them hold two or three lines (3/10, 5/10, 10/10); at 1280×800 the same book is 7 pages | found in the last review; the packer keeps a block whole and breaks before it — repacking is a presentation change with its own measurements | presentation (`ChroniclePanel` paging); Phase 25, or the UI pass the owner has announced | no page of the book at 1280×720 is under a third full unless it is the last | no |
+
 Closed by this pass: H21-01 … H21-13. Carried unchanged with their recorded owners: Q19-01,
 Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
 
@@ -787,7 +789,8 @@ Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
 `main` at that SHA. Nothing was rewritten. See §15 for what was done after that.
 
 **The next action is a person's, not a tool's:** play §11's checklist once. Then author the
-Phase-21 Gate A against §10.
+Phase-21 Gate A against §10. (After the follow-up of §15 the gate still reads
+**WAITING FOR OWNER PLAYTEST**.)
 
 ## 15. Follow-up close-out (`hardening/pre-phase21-closeout`, from `4358c78`)
 
@@ -1013,3 +1016,149 @@ solid again, and with no story to ask it fails closed.
 Tests (+6; suite **1241**), world E2E extended (21 arrivals looked at). Mutations 10/10
 red (telegraph ×2; partial take; per-tick "bag full"; the set forgotten; `room_for` without
 free slots; no ask at arrival; a removed thing keeps its body / stays drawn; a shared id).
+
+### 15.4 Checkpoint D — every transition on the New Game path (FG-4)
+
+Walked by the Story E2E with real keys (three runs: two Origins, both answers to the Night,
+told-and-withdrew), and now JUDGED at every arrival: a deferred check from
+`active_map_ready` — after every owner has wired the new map, before the frame that shows
+it — holds five agreements (light = the beat's ambience; each `StoryPresence` drawn and
+solid exactly when its flag says; no collected or not-yet-existing pickup drawn; the player
+on a named spawn; nothing of the story's encounter in the map under a playing scene).
+**9 arrivals, 0 disagreements.** Mutations 4/4 red (no light at arrival; no presence at
+arrival; the bag not asked at arrival; the Night's creatures under its scene).
+
+| Transition | Trigger → owner | Committed BEFORE anything is shown | Where the player lands | Input while it happens | Light / presence handoff | Skip · back · re-entry | If it fails |
+|---|---|---|---|---|---|---|---|
+| menu → identity | New Game (`ui_accept`) → `Main` | nothing: no session, no story | the identity screen | menu context; gameplay keys dead | — | Esc returns to the menu, still nothing started (E2E 3) | — |
+| identity → run | Begin → `Main` starts every session in the frozen order; `StoryService.begin` | the Origin's kit (one bag exchange), regards, knowledge — or nothing at all (§15.1) | hub `spawn_default`, map covered by the vignette | a doubled confirm starts exactly ONE run (E2E 4) | hub as authored (day); presences applied at arrival | — | a breach undoes kit, regards and knowledge; the session is discarded |
+| Origin vignette → arrival | advance (`interact`) or Esc → `StoryRuntime` | a scene changes nothing: no flag, no reward | unchanged | only advance / skip; movement and attack held; Esc SKIPS, never leaves (E2E 7) | — | skip lands on the same state as watching | — |
+| hub ↔ woods | walk onto the exit + `interact` → `WorldRuntime._enter_map` (transactional) | the old map is announced as leaving; the player parked | the named spawn of the exit (`from_hub` / `from_field`) | router refuses a second request while one runs (20 round trips) | ambience and presence re-derived from the story at arrival; the bag asked before the map is announced (§15.3) | re-entry draws nothing already taken | router rejects → player restored to the old map at the old position |
+| day → dusk (village) | `choice_lam_readings` answered → story moves to `beat_warning` | the choice: flag, regards, knowledge, all or nothing (D-073 §2) | unchanged | the card and caption are a scene | `dusk` eases in over 0.9 s where the player stands (E2E 379) | — | a refused choice leaves the beat where it was |
+| dusk → the Night (woods) | entering the woods on `beat_night` | `flag_vein_broke` when the rupture scene is reached | `from_hub` | the rupture caption holds the player; **the wave spawns only after the scene ends** (E2E 8d) | the woods ARRIVE in night (no ease at a door); the vein pulses once; the wreck present, the whole cart gone | walking out IS an answer (withdrew): the encounter is left with the map and the beat moves on, so the wave is never met twice (E2E 11) | — |
+| the Night → morning | last creature down, OR walking out (withdrawing is an answer) → `StoryRuntime.choose` | the outcome (stood / withdrew), once | where the player is; or hub `from_field` | — | day again: "no night is left behind" (E2E 455); `flag_vein_broke` keeps the wreck and the spilled manual | the Night cannot be replayed in a run | — |
+| morning → the bridge | the elder's account, first cultivation, the sheet → `beat_whose_hand` | each as its own beat | — | a conversation is a modal context; closing returns the gameplay context (E2E 9: "no modal context survived") | the stake gone and its socket present from `know_survey_fragment` on; the shaft's seal examinable in any order | the beats complete on what is KNOWN, so a socket or door examined before anyone sent the player there is already an answer (`test_story_shipped`: "found the door before asking anyone"; in order: E2E 8i) | a refused `choice_sheet_shown` changes nothing |
+| leave → menu | Esc with nothing open → the leave question → confirm | — | the menu | the question is a prompt; one press, one answer | — | Esc again stays in the run (Quest E2E 5) | sessions end in exact reverse order (E2E 9) |
+| second New Game | as the first | a new story; nothing of the first survives (E2E 10) | hub `spawn_default` | — | day | — | — |
+
+Branches covered by tests: all five Origins × kept / told × who saw the sheet first, each
+person's lines to exhaustion (`test_dialogue_content`, §15.1); told-and-withdrew, refused by
+Lâm Nguyệt and answered by the elder (E2E 12); socket and door pre-examined vs in order
+(E2E 8i). **Not walked with real keys:** the other three Origins' full paths (they are
+driven through the owners in the integration tests, and their identity screens and
+vignettes are captured); a map transition attempted WHILE a conversation is open (the
+conversation is modal: `interact` goes to it, and no test presses the exit under it).
+
+### 15.5 Checkpoint E — canon audit and the way into the Survey Shaft (FG-5)
+
+**Audit of the canonical documents.**
+
+| Asked for | Found | Action |
+|---|---|---|
+| one ten-act continuity map | `NARRATIVE_MASTER_PLAN.md` §8 (ten acts, scale, core question) with §9 (the nine-layer reveal ladder, mapped onto the acts) | complete — linked, not restated |
+| a capability / progression ledger | `PROGRESSION_CULTIVATION_DESIGN.md` §1 (two axes), §4 (what a realm changes), §6 (threat rating instead of a level gate), §7 (knowledge), §8 (what a technique is), §9 (master realm table), §10 (dependencies); frozen in `CANON_LEDGER.md` CL-13 / CL-14 | complete — linked |
+| a clue-to-payoff ledger | **absent.** §4 names one FUTURE PAYOFF and §11 the causality rule, but nothing listed what shipped content has promised | **added as `NARRATIVE_MASTER_PLAN.md` §9a** (the single owner): 13 rows K-01…K-13, each with its in-game source, what the player holds, its reveal layer, the payoff owed and by whom. One is PAID (the stele's warning → the Night). No new lore: every payoff cites §4, §6, §9 or §10 of this handoff |
+
+**Design note — a believable way into the Survey Shaft (not built; for Phase 21's Gate A).**
+
+*The rule it must satisfy.* `MAP_DUNGEON_DESIGN.md` §3: level is never a gate; at least one
+gate is non-numeric; legible before passable; "you may enter and die" over "you may not
+enter"; an advisory threat rating in realm vocabulary (`PROGRESSION_CULTIVATION_DESIGN.md`
+§6), never a `min_level`.
+
+*What the build already gives the approach (verified in §15.2).*
+- Two ways to the door, told apart on the ground: the forest road and the surveyors'
+  footpath never enter the cairn wolf's reach; the old haul track does, and is marked at
+  both edges by what the wolf leaves. Risk is chosen, and can be read before it is taken.
+- The door says what kind of key it takes (a surveyor's rod) before it can be opened, and
+  the Chronicle keeps that (`know_sealed_shaft`).
+- A creature now has a ground (`patrol_radius`): "safe" and "contested" are properties of
+  the map that a test holds, not accidents of a random walk.
+
+*What Phase 21 should author, in this order.*
+1. **Telegraphed risk at the sill, in the world.** The threat rating is shown where the
+   player decides — at the door, in the realm vocabulary (e.g. *Phàm · cao*), with the
+   Night's own signs (raised hackles, the vein's light) visible through the boards. No
+   number, no level.
+2. **Preparation the player can DO, each from a different kind of growth, none required:**
+   - *knowledge:* what Lâm Nguyệt, Kha Thản or the elder said about the shaft changes what
+     the player is warned of at the door (who saw the sheet first already differs);
+   - *technique mastery:* the Wind Palm and the Thunder Finger are the answers to the
+     Night's creatures; using them is what improves them, not a gate;
+   - *cảnh giới / tầng:* one more deliberate cultivation step raises the body the player
+     brings — advisory, as the threat rating says;
+   - *combat level / EXP:* whatever the woods have already taught; never checked;
+   - *supplies:* pills from the village (the shop is the sink), stones for the step.
+   These four axes stay four numbers with four owners. The door reads NONE of them.
+3. **The one real gate is the rod, and it is a story gate with two shapes** (§10): she
+   brings it (kept), or it must be earned back (told). Both reach the same door.
+4. **A fair retreat, always.** A way out from every room (the Phase-21 contract); leaving
+   is a state of the INSTANCE; nothing in the story is lost by walking out, and the
+   first room must be survivable long enough to turn round in (the wolf's 0.35 s alert and
+   0.26 s wind-up are the model: seen, then answerable).
+5. **The first room teaches the dungeon's one idea before it tests it** (§5: the gimmick is
+   the acceptance test), in the light of a place that is dark by the same ambience data.
+
+*What it must not do:* gate on level; hide the gate; make the contested track the only
+way; reveal above layer 2 (§9a K-05, K-06, K-10 are what it may pay); move a story outcome
+into the instance.
+
+### 15.6 Checkpoint F — what was opened and judged (FG-2); close-out (FG-6)
+
+**Real-window runs on the final code.** `capture_ui`: vi / en × 1280×720 / 1280×800, 0 script
+errors, 51 / 51 / 48 / 48 frames (the Chronicle is 10 pages at 720 and 7 at 800).
+`playtest_flow`: 38 / 38 steps in all four combinations. `capture_motion`: `night_bite` ×4,
+`field_fight`, `dialogue`, `quest` (vi 720). Frames generated in the follow-up: **about 400**.
+
+**Opened and judged (about 75 frames, most as 2×2 sheets at full size):**
+
+| Surface | Seen |
+|---|---|
+| identity: five Origins, both looks (vi 720; Origin 3 en 800) | each Origin shows its problem, what it gives, what it costs; the focus ring previews while ◆ stays on what is chosen and the "chosen" line agrees; the second look changes sprite and medallion; no clipped text in either language |
+| Origin vignette, steps 1–4 (vi 720) | card then three captions, step counter and key hints on every one |
+| dusk card and caption, the rupture caption, the wave by the wreck, the morning card, the sheet under the stone | dusk is a visibly dimmer village; the woods at night are cool and dark with player, wolves, wreck and lantern posts all readable; the wave wears the crested look |
+| satchel, equipped + dock | five rows, counts, the selected row's description and keys |
+| Chronicle, all 10 pages (vi 720) + People (en 800) | story with the decision lines ("you kept quiet about…", "you withdrew…"), who you are, body and path, what you know, people with named bands and numbers and the decision that moved them, history oldest last |
+| the bridge: the road-ahead card, "ask who wrote it", whom to show (vi 720, en 800), she reads the hand (vi 720, en 800), the socket, the wreck and track, the shaft, the sealed caption, the standing purpose | the purpose line changes at each step; her mood tag goes *wary → warm* after the sheet; the socket, the wreck with its spoked wheel, the claw marks at both edges of the haul track, the footpath and the boarded door are all in frame and readable |
+| H21-16 / H21-17 probes | §15.2 |
+| the bite under the Night, three of four strips | §15.3 |
+| dialogue prompt → open with choices → closed; the quest journal | the prompt names the person; closing returns the same prompt; the journal shows objective, the alternative, and the reward |
+| the sect panel | — and a wrong voice: it said *Bạn* where the whole game says *ngươi* |
+
+**Found in the review.**
+- *Fixed:* `UI_SECT_PANEL_NONE` and `UI_FACTION_PANEL_NO_SIDE` addressed the player as *Bạn*
+  (2 strings against 148 uses of *ngươi*). Now *Ngươi*.
+- *Recorded, H21-20:* three near-empty Chronicle pages at 1280×720.
+- *Not a defect, stated:* in `capture_ui` frames 35–38 a wolf's plaque is up and the wolf
+  walks into frame at the door. The capture STAGES the player at the wreck — inside the
+  wolf's notice by design — before the door; the real-key walk by the safe way (§15.2) draws
+  no wolf.
+
+**Generated and NOT opened** (no claim is made about them): the full en 1280×720 and
+vi 1280×800 capture sets beyond the frames above (~95 + ~45 + ~44); vignette steps 5–7;
+main menu, settings, hub gameplay / HUD, faction panel; 14 of 16 dialogue frames and 17 of
+18 quest frames; the en 1280×800 `night_bite` strip (its timings were read); the playtest
+frames of en 720, vi 800, en 800 and the second vi 720 run; `field_fight` beyond the pixels
+measured. The other three Origins' vignettes are not captured by any tool.
+
+**Gates on the closing tree.** import · parse_check PASS · gdlint PASS (363 files) + selftest ·
+`author_story_data --check` up to date · `ambience-check` up to date · **1241 / 1241** tests,
+0 script errors, 0 leak lines · eight E2E flows PASS (0 script errors, 0 leak lines) ·
+real window as above. Mutations in the follow-up: **30 applied, 30 red**
+(A 8 · B 8 · C 10 · D 4).
+
+**Debts after the follow-up.**
+
+| ID | State |
+|---|---|
+| H21-14 | **OPEN / OWNER REQUIRED** — nobody but tools has played the opening. §11 is the checklist; launch `~/Downloads/Godot_v4.7.2-stable_linux.x86_64 --path . --resolution 1280x720`. No finding about fun, pacing or attachment is claimed anywhere in this document |
+| H21-15 … H21-19 | CLOSED (§15.1–§15.3) |
+| H21-20 | new, recorded (§13) |
+| CLV-01, NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | unchanged |
+
+Additions to §11 for the owner, from what the follow-up changed: walk to the socket and to
+the shaft's door by the road and the footpath (nothing should come for you), then once by
+the old haul track past the claw marks (something should); fight a wolf of the Night and say
+whether you saw the bite coming; fill the satchel and walk onto a pickup.
+
+**Gate: WAITING FOR OWNER PLAYTEST. Phase 21 and Phase 22 have not started.**
