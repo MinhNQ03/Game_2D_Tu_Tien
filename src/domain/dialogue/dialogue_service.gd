@@ -20,6 +20,9 @@ class_name DialogueService
 ## the same conditions again before it changes anything, so a stale list cannot commit a
 ## choice the state no longer allows. One effect per choice: there is no half-applied choice.
 
+## An intent that arrived from INSIDE another one (a listener of an effect's announcement).
+## Returned, never announced: no player can cause it.
+const REFUSE_BUSY := &"dialogue_busy"
 const REFUSE_NOT_READY := &"UI_DIALOGUE_UNAVAILABLE"
 ## The choice is not (or no longer) one the current line offers.
 const REFUSE_CHOICE_GONE := &"UI_DIALOGUE_CHOICE_GONE"

@@ -157,6 +157,10 @@ func get_service() -> DialogueService:
 	return _service
 
 
+## True while the service is carrying out an answer's effects (see `_unheard`).
+var _answering := false
+
+
 func is_open() -> bool:
 	return _dialogue != null
 
@@ -205,6 +209,8 @@ func talk(character_id: StringName) -> StringName:
 func advance() -> DialogueOutcome:
 	if _dialogue == null:
 		return _refuse(DialogueService.REFUSE_NOT_READY)
+	if _answering:
+		return _unheard()
 	var outcome := _service.advance(_dialogue.id, _node_id)
 	if not outcome.ok:
 		return _refuse(outcome.reason)
@@ -218,6 +224,8 @@ func advance() -> DialogueOutcome:
 func choose(node_id: StringName, choice_id: StringName) -> DialogueOutcome:
 	if _dialogue == null:
 		return _refuse(DialogueService.REFUSE_NOT_READY)
+	if _answering:
+		return _unheard()
 	if node_id != _node_id:
 		return _refuse(DialogueService.REFUSE_CHOICE_GONE)
 	var reach := _npcs.reach_refusal(_dialogue.speaker_id)
@@ -225,9 +233,11 @@ func choose(node_id: StringName, choice_id: StringName) -> DialogueOutcome:
 		_close(REASON_OUT_OF_REACH)
 		return _refuse(reach)
 	var listener := _listener_id()
+	_answering = true
 	var outcome := _service.choose(_dialogue.id, _node_id, choice_id, listener,
 		_knowledge.grant, _quest_op if _quests != null else Callable(),
 		_story_op if _story != null else Callable())
+	_answering = false
 	if not outcome.ok:
 		return _refuse(outcome.reason)
 	return _follow(outcome)
@@ -311,6 +321,13 @@ func _close(reason: StringName) -> void:
 	view_changed.emit()
 	if _story != null and _session_active:
 		_story.set_conversation_open(false)  # after the panel is gone: a waiting scene may open
+
+
+## An intent that arrived while an answer's effects were being carried out by their owners
+## (who announce from inside the call, with the conversation still on the answered line).
+## Refused WITHOUT being announced: it is not something a player did. GA-02.
+func _unheard() -> DialogueOutcome:
+	return DialogueOutcome.refused(DialogueService.REFUSE_BUSY, open_dialogue_id(), _node_id)
 
 
 func _refuse(reason: StringName) -> DialogueOutcome:

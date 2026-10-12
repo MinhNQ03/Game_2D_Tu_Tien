@@ -53,6 +53,12 @@ func is_session_active() -> bool:
 	return _session_active
 
 
+## True while an item is moving between the satchel and a slot. The satchel announces each
+## half of that move from inside the call, with the slot not yet agreeing with it; a change
+## asked for by whoever hears that is refused, or one worn thing could come off twice (GA-02).
+var _changing := false
+
+
 func get_state() -> EquipmentState:
 	return _state
 
@@ -65,6 +71,8 @@ func is_worn(item_id: StringName) -> bool:
 func equip(item_id: StringName) -> StringName:
 	if not _session_active:
 		return REFUSE_NOT_EQUIPMENT
+	if _changing:
+		return REFUSE_BUSY   # asked from inside a change (GA-02): returned, never announced
 	var item := _inventory.get_catalog().entry(item_id)
 	if item == null or item.category != ItemData.Category.EQUIPMENT \
 			or _inventory.count_of(item_id) < 1:
@@ -76,10 +84,12 @@ func equip(item_id: StringName) -> StringName:
 	if _player_busy():
 		return _refuse(item_id, REFUSE_BUSY)
 	var previous := _state.item_in(equipment.slot)
+	_changing = true
 	_inventory.take(item_id, 1)
 	if previous != &"":
 		_inventory.give(previous, 1)
 	_state.set_slot(equipment.slot, item_id)
+	_changing = false
 	_apply()
 	return &""
 
@@ -88,14 +98,20 @@ func equip(item_id: StringName) -> StringName:
 func unequip(slot: int) -> StringName:
 	if not _session_active:
 		return REFUSE_NOT_EQUIPMENT
+	if _changing:
+		return REFUSE_BUSY   # asked from inside a change (GA-02): returned, never announced
 	var item_id := _state.item_in(slot)
 	if item_id == &"":
 		return &""
 	if _player_busy():
 		return _refuse(item_id, REFUSE_BUSY)
-	if _inventory.give(item_id, 1) < 1:
+	_changing = true
+	var returned := _inventory.give(item_id, 1)
+	if returned >= 1:
+		_state.set_slot(slot, &"")
+	_changing = false
+	if returned < 1:
 		return _refuse(item_id, REFUSE_BAG_FULL)
-	_state.set_slot(slot, &"")
 	_apply()
 	return &""
 

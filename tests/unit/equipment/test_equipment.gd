@@ -142,6 +142,43 @@ func test_equipping_moves_items_and_tells_the_body_once() -> void:
 	_end(parts)
 
 
+## GA-02 (pre-Phase-21 Gate B2). Taking something off puts it in the satchel, and the satchel
+## announces that from inside the call — while the slot still says it is worn. Whoever hears it
+## and takes it off again must not get a second one.
+func test_one_worn_thing_comes_off_as_one_thing_even_for_a_listener_inside() -> void:
+	var parts := _session()
+	var inventory: InventoryRuntime = parts[3]
+	var equipment: EquipmentRuntime = parts[4]
+	inventory.give(&"item_kiem_thanh_thiet", 1)
+	assert_eq(equipment.equip(&"item_kiem_thanh_thiet"), &"", "the jian is wielded")
+	var inside: Array = []
+	var again := func() -> void:
+		if inside.size() < 3:
+			inside.append(equipment.unequip_item(&"item_kiem_thanh_thiet"))
+			inside.append(equipment.equip(&"item_kiem_thanh_thiet"))
+	inventory.inventory_changed.connect(again)
+	assert_eq(equipment.unequip_item(&"item_kiem_thanh_thiet"), &"", "it comes off")
+	inventory.inventory_changed.disconnect(again)
+	var busy := EquipmentRuntime.REFUSE_BUSY
+	assert_eq(inside.slice(0, 2), [busy, busy], "nothing changes hands from inside the change")
+	assert_eq(inventory.count_of(&"item_kiem_thanh_thiet"), 1, "ONE jian in the satchel")
+	assert_false(equipment.is_worn(&"item_kiem_thanh_thiet"), "and none worn")
+	# ...and the same for putting one on over another.
+	inventory.give(&"item_kiem_thanh_thiet", 1)
+	assert_eq(inventory.count_of(&"item_kiem_thanh_thiet"), 2, "setup: two jian")
+	assert_eq(equipment.equip(&"item_kiem_thanh_thiet"), &"", "one is wielded")
+	inside.clear()
+	inventory.inventory_changed.connect(again)
+	assert_eq(equipment.equip(&"item_kiem_thanh_thiet"), &"", "swapped for the other")
+	inventory.inventory_changed.disconnect(again)
+	assert_eq([inventory.count_of(&"item_kiem_thanh_thiet"),
+		equipment.is_worn(&"item_kiem_thanh_thiet")], [1, true],
+		"still two jian in the world: one worn, one carried")
+	assert_eq(equipment.unequip_item(&"item_kiem_thanh_thiet"), &"", "afterwards it answers")
+	assert_eq(inventory.count_of(&"item_kiem_thanh_thiet"), 2, "and both are back")
+	_end(parts)
+
+
 func test_the_realm_gate_reads_cultivation() -> void:
 	var parts := _session()
 	var inventory: InventoryRuntime = parts[3]

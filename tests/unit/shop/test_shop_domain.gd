@@ -350,6 +350,36 @@ func test_a_plan_transacts_once_and_a_stale_plan_is_refused() -> void:
 	assert_false(bool(no_exchange["ok"]), "with no bag to move the goods nothing trades")
 
 
+## GA-02 (pre-Phase-21 Gate B2). The real bag ANNOUNCES an exchange from inside it, and the
+## shop's stock is written only after the bag has agreed. A trade made by whoever hears that
+## announcement would be planned on a stock that is about to change: the last sword, twice.
+func test_the_last_one_cannot_be_bought_twice_from_inside_its_own_sale() -> void:
+	var service := _service()
+	var bag := _bag(200)
+	assert_eq(service.state().remaining(SHOP, SWORD), 1, "setup: one sword on the shelf")
+	var inside: Array = []
+	var move := _exchange(bag)
+	var announcing := func(take: Dictionary, give: Dictionary) -> bool:
+		var moved := bool(move.call(take, give))
+		if moved and inside.is_empty():   # what a listener of the bag's announcement would do
+			inside.append(&"asked")
+			var second := service.plan_buy(SHOP, SWORD, 1, bag.count_of(COIN), _affinity(0))
+			inside.append(service.transact(second, move)["reason"])
+		return moved
+	var plan := service.plan_buy(SHOP, SWORD, 1, bag.count_of(COIN), _affinity(0))
+	assert_true(bool(service.transact(plan, announcing)["ok"]), "the sword is bought")
+	assert_eq(inside, [&"asked", ShopService.REFUSE_STALE] as Array,
+		"a trade from inside the trade is refused as stale")
+	assert_eq(bag.count_of(SWORD), 1, "ONE sword changed hands")
+	assert_eq(service.state().remaining(SHOP, SWORD), 0, "and the shelf is empty, not below")
+	assert_eq(bag.count_of(COIN), 200 - int(plan["total"]), "paid for once")
+	# A refused trade does not leave the shop refusing.
+	var poor := service.plan_buy(SHOP, PILL, 1, bag.count_of(COIN), _affinity(0))
+	assert_false(bool(service.transact(poor, Callable())["ok"]), "no bag: refused")
+	var fine := service.plan_buy(SHOP, PILL, 1, bag.count_of(COIN), _affinity(0))
+	assert_true(bool(service.transact(fine, move)["ok"]), "and the next trade goes through")
+
+
 func test_a_shop_cannot_be_sold_more_than_it_can_hold() -> void:
 	var service := _service()
 	service.state().set_remaining(SHOP, SWORD, ShopEntryData.MAX_STOCK)

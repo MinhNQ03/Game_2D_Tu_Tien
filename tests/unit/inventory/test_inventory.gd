@@ -226,6 +226,39 @@ func test_two_held_things_underfoot_are_each_said_once() -> void:
 	_end(parts)
 
 
+## GA-02 (pre-Phase-21 Gate B2). An item's effect is carried out by ANOTHER owner, which
+## announces it from inside the call — before the item has left the bag. Whoever hears that
+## announcement and uses the item again must not get a second effect out of the one item.
+func test_one_item_gives_one_effect_even_to_a_listener_inside_its_use() -> void:
+	var parts := _session()
+	var knowledge: KnowledgeRuntime = parts[1]
+	var cultivation: CultivationRuntime = parts[2]
+	var inventory: InventoryRuntime = parts[3]
+	var state: CharacterState = parts[4]
+	knowledge.grant(&"know_dan_khi_quyet", &"t")
+	inventory.give(&"item_linh_thach", 1)
+	var inside: Array = []
+	var again := func() -> void:
+		if inside.is_empty():   # once: the announcement of the FIRST use
+			inside.append(inventory.use(&"item_linh_thach"))
+	cultivation.view_changed.connect(again)
+	assert_eq(inventory.use(&"item_linh_thach"), &"", "the one stone is absorbed")
+	cultivation.view_changed.disconnect(again)
+	assert_eq(inside, [InventoryRuntime.REFUSE_BUSY], "a use from inside the use is refused")
+	assert_eq(state.cultivation_progress, 7, "ONE stone's worth was gathered, not two")
+	assert_eq(inventory.count_of(&"item_linh_thach"), 0, "and the stone is gone, once")
+	inventory.give(&"item_linh_thach", 1)
+	assert_eq(inventory.use(&"item_linh_thach"), &"", "afterwards the bag answers again")
+	assert_eq(state.cultivation_progress, 14, "with one more stone's worth")
+	# A use that is REFUSED leaves the bag answering too.
+	inventory.give(&"item_bo_huyet_dan", 1)
+	(parts[5] as StubPlayer).hp = (parts[5] as StubPlayer).max_hp
+	assert_eq(inventory.use(&"item_bo_huyet_dan"), InventoryRuntime.REFUSE_FULL_HEALTH, "refused")
+	(parts[5] as StubPlayer).hp = 10
+	assert_eq(inventory.use(&"item_bo_huyet_dan"), &"", "and usable the moment it can help")
+	_end(parts)
+
+
 func test_uses_go_through_their_owners_and_a_wasted_use_burns_nothing() -> void:
 	var parts := _session()
 	var knowledge: KnowledgeRuntime = parts[1]

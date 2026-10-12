@@ -34,6 +34,9 @@ const REFUSE_FULL_HEALTH := &"UI_ITEM_FULL_HEALTH"
 const REFUSE_NO_METHOD := &"UI_ITEM_NO_METHOD"
 const REFUSE_STEP_FULL := &"UI_ITEM_STEP_FULL"
 const REFUSE_ALREADY_KNOWN := &"UI_ITEM_ALREADY_KNOWN"
+## A use asked for from INSIDE another use (a listener of the effect's own announcement).
+## Returned, never emitted: no player can cause it, so there is nothing to tell one.
+const REFUSE_BUSY := &"inventory_busy"
 const REFUSE_BAG_FULL := &"UI_ITEM_BAG_FULL"
 
 ## The knowledge a body needs to absorb qi from a stone: the same breathing method a vein needs.
@@ -55,6 +58,10 @@ var _flag_holds: Callable = Callable()
 ## the other look new every tick.
 var _refused_underfoot: Dictionary = {}
 var _session_active: bool = false
+
+
+## True while an item's effect is being carried out by its owner (see `use`).
+var _using := false
 
 
 func _ready() -> void:
@@ -169,10 +176,17 @@ func exchange(take: Dictionary, give: Dictionary) -> bool:
 func use(item_id: StringName) -> StringName:
 	if not _session_active:
 		return REFUSE_NOT_HELD
+	# The effect is another owner's, and that owner announces it from inside the call below —
+	# while the item is still in the bag (it is removed only once the effect is known to have
+	# been taken: a refused use burns nothing). A listener using an item from there would get
+	# a second effect out of the one item (measured: one stone, the whole step). GA-02.
+	if _using:
+		return REFUSE_BUSY
 	var item := _catalog.entry(item_id)
 	if item == null or _bag.count_of(item_id) < 1:
 		return _refuse(item_id, REFUSE_NOT_HELD)
 	var reason := &""
+	_using = true
 	match item.use_kind:
 		ItemData.UseKind.HEAL:
 			reason = _use_heal(item)
@@ -182,6 +196,7 @@ func use(item_id: StringName) -> StringName:
 			reason = _use_read(item)
 		_:
 			reason = REFUSE_NOT_USABLE
+	_using = false
 	if reason != &"":
 		return _refuse(item_id, reason)
 	_bag.remove(item_id, 1)

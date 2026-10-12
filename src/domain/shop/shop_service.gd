@@ -158,6 +158,10 @@ func plan_sell(shop_id: StringName, item_id: StringName, quantity: int, held: in
 	return plan
 
 
+## True while the bag is being asked to carry out a planned trade (see `transact`).
+var _transacting := false
+
+
 # --- Committing -----------------------------------------------------------------
 
 ## Carry out an accepted plan. `exchange` is `func(take: Dictionary, give: Dictionary) -> bool`,
@@ -172,7 +176,15 @@ func transact(plan: Dictionary, exchange: Callable) -> Dictionary:
 	var item_id: StringName = plan["item_id"]
 	if not is_ready() or _state.remaining(shop_id, item_id) != int(plan["stock_before"]):
 		return _refuse(plan, REFUSE_STALE)
-	if not exchange.is_valid() or not bool(exchange.call(plan["take"], plan["give"])):
+	# The bag announces the exchange from inside it, and the stock below is written only once
+	# the bag has agreed. A trade asked for from there was planned on a shelf that is about
+	# to change — it is stale by definition (GA-02: the last sword, sold twice).
+	if _transacting:
+		return _refuse(plan, REFUSE_STALE)
+	_transacting = true
+	var moved := exchange.is_valid() and bool(exchange.call(plan["take"], plan["give"]))
+	_transacting = false
+	if not moved:
 		return _refuse(plan, REFUSE_NO_ROOM)
 	# The bag has changed; the stock write below cannot fail.
 	plan["done"] = true

@@ -468,6 +468,33 @@ func test_an_answer_to_a_line_that_is_not_current_is_refused() -> void:
 	_free(rig)
 
 
+## GA-02 (pre-Phase-21 Gate B2). An answer's effect is carried out by its owner, which
+## announces it from inside the call — while the conversation is still on the line that was
+## answered. Whoever hears that and answers again must not be heard: one press, one answer.
+func test_an_answer_given_from_inside_an_answer_is_not_heard() -> void:
+	var rig := _rig()
+	_open_ko_hub(rig)
+	var inside: Array = []
+	var again := func(_id: StringName, _source: StringName) -> void:
+		inside.append(rig.dialogue.choose(&"ko_hub", &"ko_ask_woods").reason)
+		inside.append(rig.dialogue.choose(&"ko_hub", &"ko_leave").reason)
+		inside.append(rig.dialogue.advance().reason)
+	rig.knowledge.knowledge_gained.connect(again)
+	rig.refused.clear()
+	var asked := rig.dialogue.choose(&"ko_hub", &"ko_ask_woods")
+	rig.knowledge.knowledge_gained.disconnect(again)
+	assert_true(asked.ok, "he is asked about the woods")
+	var busy := DialogueService.REFUSE_BUSY
+	assert_eq(inside, [busy, busy, busy], "nothing said from inside the answer is heard")
+	assert_eq(rig.refused, [] as Array[StringName], "nor is the player told about it")
+	assert_true(rig.dialogue.is_open(), "the conversation was not ended from inside")
+	assert_ne(rig.dialogue.current_node_id(), &"ko_hub", "and went where the ONE answer leads")
+	assert_true(rig.knowledge.get_service().knows(WOODS), "with what he said learned once")
+	assert_true(rig.dialogue.advance().ok or not rig.dialogue.is_open()
+		or not _choice_ids(rig).is_empty(), "afterwards the conversation answers again")
+	_free(rig)
+
+
 func test_with_nothing_open_every_intent_is_refused() -> void:
 	var rig := _rig()
 	assert_false(rig.dialogue.advance().ok, "continue")
