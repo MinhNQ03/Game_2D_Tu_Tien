@@ -22,6 +22,8 @@ const FIGURE_SCALE := 2
 const WELL_SIZE := Vector2(76, 116)
 ## Between a number and its name on a stat plate.
 const STAT_PAIR_GAP := 4
+## The least width a slot's name is laid out at (the figure column less its slot).
+const SLOT_NAME_MIN_WIDTH := 84.0
 ## What a slot is called when nothing is in it, by `EquipmentData.Slot`.
 const SLOT_CAPTIONS := {
 	EquipmentData.Slot.WEAPON: "UI_SHEET_SLOT_WEAPON",
@@ -124,8 +126,12 @@ func _build_slot_row(slot: int) -> Control:
 	var name_label := _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	name_label.clip_text = true
+	# A name WRAPS (two lines stand beside one slot); it is never cut. The first English
+	# capture read "Travelling c..." here.
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# An autowrap label measures its height at the width it HAS; with none yet it would stand
+	# one letter wide and a page tall. This is the least the satchel's column leaves it.
+	name_label.custom_minimum_size.x = SLOT_NAME_MIN_WIDTH
 	_slot_names[slot] = name_label
 	row.add_child(name_label)
 	return row
@@ -214,6 +220,12 @@ func slot_icon(slot: int) -> Texture2D:
 	if not _slots.has(slot):
 		return null
 	return ((_slots[slot] as Control).get_node("Icon") as TextureRect).texture
+
+
+## How many lines a slot's name takes, and how many of them are shown (equal = nothing cut).
+func slot_name_lines(slot: int) -> Vector2i:
+	var label := _slot_names[slot] as Label
+	return Vector2i(label.get_line_count(), label.get_visible_line_count())
 
 
 func slot_is_filled(slot: int) -> bool:

@@ -143,3 +143,38 @@ func test_the_satchel_and_the_book_show_the_same_person_from_the_same_feeds() ->
 		"UI_CHRONICLE_STATS", {"attack": 20, "defense": 9, "speed": 180}))),
 		"and the page still SAYS the numbers for whoever reads it as text")
 	free_node(hud)
+
+
+## Found in the first English capture: "Travelling c...". A slot's name wraps beside its slot —
+## at most two lines, all of them shown — for every caption and every shipped thing that can
+## be worn, in both languages, at the width the satchel's figure column gives it.
+func test_no_slot_name_is_cut_in_either_language_at_the_satchels_width() -> void:
+	var catalog := load(ITEMS) as ItemCatalogData
+	var wearable: Array[StringName] = []
+	for item in catalog.entries:
+		if item != null and item.equipment is EquipmentData:
+			wearable.append(item.id)
+	assert_true(wearable.size() >= 2, "there are things to wear (%d)" % wearable.size())
+	for code: String in ["vi", "en"]:
+		_use_language(code)
+		var card := CharacterCard.new()
+		card.tall = true
+		card.custom_minimum_size.x = UIPalette.SHEET_FIGURE_COLUMN
+		card.size = Vector2(UIPalette.SHEET_FIGURE_COLUMN, 320)
+		add_to_tree(card)
+		var cases: Array = [[] as Array[Dictionary]]
+		for item_id in wearable:
+			var one: Array[Dictionary] = [_worn_row(item_id)]
+			cases.append(one)
+		for rows: Array[Dictionary] in cases:
+			card.set_worn(rows)
+			await scene_tree.process_frame
+			await scene_tree.process_frame
+			for slot: int in [WEAPON, BODY]:
+				var lines := card.slot_name_lines(slot)
+				assert_true(lines.x <= 2 and lines.y == lines.x,
+					"[%s] '%s' takes %d line(s), %d shown, in a %.0f px column"
+					% [code, card.slot_text(slot), lines.x, lines.y, card.size.x])
+		assert_true(card.size.x <= float(UIPalette.SHEET_FIGURE_COLUMN) + 0.5,
+			"[%s] and no name widened the column (%.0f px)" % [code, card.size.x])
+		free_node(card)
