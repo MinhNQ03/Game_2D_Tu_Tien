@@ -24,7 +24,8 @@ Dates are ISO (YYYY-MM-DD).
 - **Every arrival on the New Game path is judged** against the story (light, presence,
   pickups, spawn, creatures); `NARRATIVE_MASTER_PLAN.md` §9a: the clue-to-payoff ledger.
 - 1241 tests, eight E2E flows, 30 mutations red. H21-14 stays OPEN / OWNER REQUIRED; a new
-  small debt H21-20. Phase 21 and 22 NOT STARTED.
+  small debt H21-20, and H21-21: one unexplained intermittent CI failure in
+  `test_pet_companion` (red once, green on re-run of the same SHA). Phase 21 and 22 NOT STARTED.
 
 ### 2026-10-11 — Pre-Phase-21 hardening, Checkpoint 4: regression, the real window, close-out (D-073)
 

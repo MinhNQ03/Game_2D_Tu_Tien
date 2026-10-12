@@ -760,6 +760,7 @@ anything left". (2) The wreck's standing wheel reads as a dark slab, like the wh
 | H21-19 — **CLOSED** (follow-up §15.3) | no frame-time measurement of the 2D lights | — | `tools/measure_ambience_frame_time.gd`; `docs/PERFORMANCE.md` PERF-NOTE-21 | measured numbers recorded (done: simple frame-time sampling, one machine; the engine profiler's split stays Phase 29's) | no |
 
 | H21-20 (new, follow-up §15.6) | at 1280×720 the Chronicle runs to 10 pages and three of them hold two or three lines (3/10, 5/10, 10/10); at 1280×800 the same book is 7 pages | found in the last review; the packer keeps a block whole and breaks before it — repacking is a presentation change with its own measurements | presentation (`ChroniclePanel` paging); Phase 25, or the UI pass the owner has announced | no page of the book at 1280×720 is under a third full unless it is the last | no |
+| H21-21 (new, follow-up §15.6) — **ROOT CAUSE NOT FOUND** | `test_pet_companion::test_a_kill_pays_the_enemy_reward_once_and_the_pet_its_share_once` failed ONCE on CI (run 38155239816, `a015036`, first attempt): in 2400 simulated frames the hound never resolved a swing on a wolf 60 px from its owner. The re-run of the same run on the same SHA passed; the runs before and after it passed | not reproduced: 12 isolated runs and 6 full-suite runs locally, 0 failures; locally the kill takes exactly 423 frames every time | AI / test infrastructure; Phase 21 (NAV-01 already owns creature pathing) | the failure is reproduced and explained, or the test is shown to depend on wall-clock physics stepping and is re-driven without it | **yes** — an intermittent red in the gate hides real ones |
 
 Closed by this pass: H21-01 … H21-13. Carried unchanged with their recorded owners: Q19-01,
 Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
@@ -1160,5 +1161,17 @@ Additions to §11 for the owner, from what the follow-up changed: walk to the so
 the shaft's door by the road and the footpath (nothing should come for you), then once by
 the old haul track past the claw marks (something should); fight a wolf of the Night and say
 whether you saw the bite coming; fill the satchel and walk onto a pickup.
+
+**An intermittent CI failure, not explained (H21-21).** One of the six CI runs of this
+branch went red in the suite, on a test this follow-up did not touch, and green when the
+same run was re-run. What was excluded: the test's logic is seeded and stepped with a fixed
+delta (no RNG outside the stream, no wall clock in the test); target choice is
+deterministic (`_choose_hostile`); the failure does not reproduce in 18 local runs.
+What is NOT excluded, and is only a hypothesis: `MovementComponent.apply_pursuit` asks the
+physics space (`test_move`), and the test drives bodies outside physics frames, so what the
+space holds may depend on whether an engine physics step fell between two tests — which is
+wall-clock. The patrol ground of §15.2 changed how the wolf moves in that test (it now
+walks home), which may be why it surfaced now. No fix was attempted without a
+reproduction.
 
 **Gate: WAITING FOR OWNER PLAYTEST. Phase 21 and Phase 22 have not started.**
