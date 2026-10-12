@@ -30,6 +30,11 @@ GD002 private-access  `other._member` where `_member` is declared in a DIFFERENT
                       allowed (that is legal same-class access). Godot engine virtuals
                       (`_ready`, `_process`, ...) are exempt here.
 GD003 line-too-long   Over the project line budget, which Godot's own diagnostics flag.
+GD004 unguarded-move  `move_and_slide()` / `move_and_collide()` in `src/` without an
+                      `assert(...in_fixed_step()...)` on one of the two code lines above
+                      it. Those calls take no delta: outside a physics frame they integrate
+                      against the wall-clock length of the last rendered frame (H21-21,
+                      L-055). Route movement through `MovementComponent`, or guard the call.
 
 USAGE
 -----
@@ -346,7 +351,17 @@ def check_file(
     code_lines = scrub_file(text)
     problems: list[str] = []
 
+    guards_moves = rel.startswith("src/")
     for num, (raw, code) in enumerate(zip(raw_lines, code_lines), start=1):
+        # GD004 — a body moved with no fixed-step guard above it.
+        if guards_moves and unguarded_move(code_lines, num - 1):
+            problems.append(
+                f"{rel}:{num}:{code.index('move_and_') + 1}: GD004 a body is moved with no "
+                f"'assert(MovementComponent.in_fixed_step(), ...)' on the two lines above -> "
+                f"outside a physics frame this integrates against wall-clock frame time "
+                f"(H21-21). Use MovementComponent.apply_intent, or guard the call."
+            )
+
         # GD003 — line budget (tabs expanded so the measure matches what an editor shows).
         width = len(raw.expandtabs(TAB_WIDTH))
         if width > max_line_length:
@@ -385,6 +400,32 @@ def check_file(
             )
 
     return problems
+
+
+RE_MOVE_CALL = re.compile(r"\bmove_and_(?:slide|collide)\s*\(")
+MOVE_GUARD = "in_fixed_step()"
+MOVE_GUARD_LOOKBACK = 2
+
+
+def unguarded_move(code_lines: list[str], index: int) -> bool:
+    """True when line `index` moves a body and no fixed-step assert stands just above it.
+
+    "Just above" is the previous MOVE_GUARD_LOOKBACK non-blank code lines: the guard is
+    meant to be read WITH the call, not found somewhere in the function.
+    """
+    if not RE_MOVE_CALL.search(code_lines[index]):
+        return False
+    seen = 0
+    cursor = index - 1
+    while cursor >= 0 and seen < MOVE_GUARD_LOOKBACK:
+        line = code_lines[cursor].strip()
+        cursor -= 1
+        if not line:
+            continue
+        seen += 1
+        if line.startswith("assert(") and MOVE_GUARD in line:
+            return False
+    return True
 
 
 # --- Self-test ---------------------------------------------------------------
@@ -482,6 +523,26 @@ def selftest() -> int:
     check("indexes 'static func _x'", bool(RE_DEF_FUNC.match("static func _edge_id(a):")), True)
     check("indexes 'const _X'", bool(RE_DEF_CONST.match("const _LIMIT := 3")), True)
     check("ignores public 'var x'", bool(RE_DEF_VAR.match("var territory: Array = []")), False)
+
+    # GD004: a bare move fires; the guarded shape used in the two shipped call sites does not;
+    # a guard too far above does not count; prose about the call is not the call.
+    check("GD004 fires on a bare move_and_slide",
+          unguarded_move(["\tbody.velocity = v", "\tbody.move_and_slide()"], 1), True)
+    check("GD004 fires on a bare move_and_collide",
+          unguarded_move(["\tvar hit := body.move_and_collide(step)"], 0), True)
+    check("GD004 silent under the fixed-step assert",
+          unguarded_move(["\tassert(in_fixed_step(), FIXED_STEP_ONLY)",
+                          "\tbody.move_and_slide()"], 1), False)
+    check("GD004 silent with one line between guard and call",
+          unguarded_move(["\tassert(MovementComponent.in_fixed_step(), WHY)",
+                          "\t_body.velocity = v", "", "\t_body.move_and_slide()"], 3), False)
+    check("GD004 fires when the guard is three lines up",
+          unguarded_move(["\tassert(in_fixed_step(), WHY)", "\ta = 1", "\tb = 2",
+                          "\tbody.move_and_slide()"], 3), True)
+    check("GD004 ignores a line that only mentions the guard in passing",
+          unguarded_move(["\tvar ok := in_fixed_step()", "\tbody.move_and_slide()"], 1), True)
+    code, _ = strip_noncode("\t# call move_and_slide() from the fixed step", None)
+    check("GD004 does not see a comment", bool(RE_MOVE_CALL.search(code)), False)
 
     if failures:
         print("[gdlint] SELFTEST FAIL:")
