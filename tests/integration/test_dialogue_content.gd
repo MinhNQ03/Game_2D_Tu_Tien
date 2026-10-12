@@ -517,3 +517,92 @@ func test_someone_with_no_trail_line_left_opens_on_their_hub() -> void:
 	# The hub she opens on offers its ordinary answers and no dead line.
 	assert_true(_ids(DLG_LIN, &"lin_hub").has(&"lin_leave"), "a hub always has a way out")
 
+
+
+# === The §6 hook beats (NARRATIVE_MASTER_PLAN.md §6, PROPOSAL — NOT CANON) =====================
+# Each Origin's hook into Đêm Vỡ Mạch is a playable beat: one choice, said once, on the record.
+
+
+func test_the_escort_walks_guard_on_the_last_load_once_before_the_night() -> void:
+	_begin_story(&"origin_ho_tieu")
+	var dialogue := _service.catalog().dialogue_of_speaker(TE)
+	assert_true(_ids(dialogue.id, &"te_hub").has(&"te_guard"),
+		"the escort is offered the guard")
+	assert_true(_choose(dialogue.id, &"te_hub", &"te_guard").ok, "takes up the guard")
+	assert_true(_story.flag_at_least(&"flag_te_guard_said", 1), "said once, on the record")
+	assert_false(_ids(dialogue.id, &"te_hub").has(&"te_guard"), "and only once")
+	_begin_story(&"origin_nghe_nhan")
+	dialogue = _service.catalog().dialogue_of_speaker(TE)
+	assert_false(_ids(dialogue.id, &"te_hub").has(&"te_guard"),
+		"no other Origin is offered it")
+
+
+func test_the_guard_is_not_offered_once_the_night_has_come() -> void:
+	_begin_story(&"origin_ho_tieu")
+	_story.set_flag(&"flag_night_over", 1)
+	var dialogue := _service.catalog().dialogue_of_speaker(TE)
+	assert_false(_ids(dialogue.id, &"te_hub").has(&"te_guard"),
+		"the load is gone by morning")
+
+
+func test_the_healer_tends_the_watchmans_wounds_after_the_night() -> void:
+	_begin_story(&"origin_lang_y")
+	_story.set_flag(&"flag_night_over", 1)  # stood: the watch fought beside the player
+	var dialogue := _service.catalog().dialogue_of_speaker(KO)
+	assert_true(_ids(dialogue.id, &"ko_night_stood").has(&"ko_wounds"),
+		"the healer may tend him")
+	assert_true(_choose(dialogue.id, &"ko_night_stood", &"ko_wounds").ok, "tends the wounds")
+	assert_true(_story.flag_at_least(&"flag_ko_wounds_said", 1), "said once, on the record")
+	assert_false(_ids(dialogue.id, &"ko_night_stood").has(&"ko_wounds"), "and only once")
+	_begin_story(&"origin_lang_y")
+	_story.set_flag(&"flag_night_over", 2)  # withdrew: he held the treeline alone
+	dialogue = _service.catalog().dialogue_of_speaker(KO)
+	assert_true(_ids(dialogue.id, &"ko_night_left").has(&"ko_wounds_left"),
+		"him too, on the other branch of the Night")
+	assert_true(_choose(dialogue.id, &"ko_night_left", &"ko_wounds_left").ok, "tends the wounds")
+	assert_true(_story.flag_at_least(&"flag_ko_wounds_said", 1), "said once, on the record")
+	_begin_story(&"origin_ho_tieu")
+	_story.set_flag(&"flag_night_over", 1)
+	dialogue = _service.catalog().dialogue_of_speaker(KO)
+	assert_false(_ids(dialogue.id, &"ko_night_stood").has(&"ko_wounds"),
+		"no other Origin may tend him")
+
+
+func test_the_artisan_appraises_what_spilled_from_the_cart() -> void:
+	_begin_story(&"origin_nghe_nhan")
+	_story.set_flag(&"flag_night_over", 1)
+	var dialogue := _service.catalog().dialogue_of_speaker(TE)
+	assert_true(_ids(dialogue.id, &"te_morning").has(&"te_morning_appraise"),
+		"the artisan may read the spill")
+	assert_true(_choose(dialogue.id, &"te_morning", &"te_morning_appraise").ok, "reads it")
+	assert_true(_story.flag_at_least(&"flag_te_appraise_said", 1), "said once, on the record")
+	assert_false(_ids(dialogue.id, &"te_morning").has(&"te_morning_appraise"), "and only once")
+	_begin_story(&"origin_lang_y")
+	_story.set_flag(&"flag_night_over", 1)
+	dialogue = _service.catalog().dialogue_of_speaker(TE)
+	assert_false(_ids(dialogue.id, &"te_morning").has(&"te_morning_appraise"),
+		"no other Origin may read it")
+
+
+func test_the_keeper_reads_the_mark_in_the_veins_residue() -> void:
+	_begin_story(&"origin_thu_thu")
+	var dialogue := _service.catalog().dialogue_of_speaker(LIN)
+	assert_false(_ids(dialogue.id, &"lin_hub").has(&"lin_residue"),
+		"before the Night there is no residue to read")
+	_story.set_flag(&"flag_night_over", 1)
+	assert_true(_ids(dialogue.id, &"lin_hub").has(&"lin_residue"), "the keeper may ask")
+	assert_true(_choose(dialogue.id, &"lin_hub", &"lin_residue").ok, "asks")
+	assert_true(_story.flag_at_least(&"flag_lin_residue_said", 1), "said once, on the record")
+	assert_false(_ids(dialogue.id, &"lin_hub").has(&"lin_residue"), "and only once")
+	_begin_story(&"origin_de_tu_bi_loai")
+	_story.set_flag(&"flag_night_over", 1)
+	dialogue = _service.catalog().dialogue_of_speaker(LIN)
+	assert_false(_ids(dialogue.id, &"lin_hub").has(&"lin_residue"), "no other Origin may ask")
+
+
+func test_the_wandering_healer_begins_with_a_healers_craft() -> void:
+	_begin_story(&"origin_lang_y")
+	assert_true(_knowledge.knows(&"know_drawn_pulse"), "the healer reads a drawn pulse")
+	_fresh_owners()  # a new run: nothing an earlier Origin knew is carried over
+	_begin_story(&"origin_ho_tieu")
+	assert_false(_knowledge.knows(&"know_drawn_pulse"), "and no other Origin does")

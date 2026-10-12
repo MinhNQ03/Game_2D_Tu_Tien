@@ -66,6 +66,15 @@ FLAGS = [
     ("flag_shen_shaft_said", "Tham Bat Ky has answered the news of the sealed shaft."),
     ("flag_trail_origin_said",
      "What this Origin alone notices on the trail to the shaft has been noticed."),
+    # --- the §6 hook beats (one per Origin with a playable canon hook line) ---
+    ("flag_te_guard_said",
+     "What the Hộ Tiêu alone notices about the carter's guard has been noticed."),
+    ("flag_ko_wounds_said",
+     "What the Lang Y alone notices about wounds on the trail has been noticed."),
+    ("flag_te_appraise_said",
+     "What the Nghệ Nhân alone notices appraising the carter's goods has been noticed."),
+    ("flag_lin_residue_said",
+     "What the Thủ Thư alone notices in Lam Nguyet's residue has been noticed."),
 ]
 
 # (id, beat, title_key, [(option, record_key, [consequences])])
@@ -229,6 +238,8 @@ ORIGINS = [
     ("origin_lang_y", "LANG_Y", [
         (G_ITEM, "item_bo_huyet_dan", 2,
          "A travelling healer carries what they compound (§6: herbal knowledge)."),
+        (G_KNOWLEDGE, "know_drawn_pulse",
+         "A healer reads a drawn pulse — the skill that names what is wrong (§6: can treat)."),
     ]),
     ("origin_nghe_nhan", "NGHE_NHAN", [
         (G_KNOWLEDGE, "know_vein_stone_grades",
@@ -247,6 +258,18 @@ ORIGINS = [
 # raises, the stem of its record key). Every Origin has one of each - which line that is
 # differs per Origin and lives in the conversations; the Chronicle shows the ones said.
 OBSERVATIONS = [("flag_te_origin_said", "CARTER"), ("flag_trail_origin_said", "TRAIL")]
+
+# Per-origin extra observations (D-073): only origins with actual content get
+# the flag. Lâm Nguyệt has Origin-specific lines for Đệ Tử (lin_rival) and
+# Thủ Thư (lin_notation); the §6 hook beats add one more per Origin where the
+# canon hook now has a playable line. The other origins have no such lines yet.
+EXTRA_OBSERVATIONS = {
+    "origin_ho_tieu": [("flag_te_guard_said", "GUARD")],
+    "origin_de_tu_bi_loai": [("flag_lin_origin_said", "LIN")],
+    "origin_lang_y": [("flag_ko_wounds_said", "WOUNDS")],
+    "origin_nghe_nhan": [("flag_te_appraise_said", "APPRAISE")],
+    "origin_thu_thu": [("flag_lin_origin_said", "LIN"), ("flag_lin_residue_said", "RESIDUE")],
+}
 
 # Scenes that happen somewhere else (the map behind them is covered): every vignette.
 # Scenes that happen somewhere or somewhen else are drawn over an opaque ground.
@@ -407,9 +430,9 @@ def origin_catalog():
             ("problem_key", sn(key + "PROBLEM")), ("edge_key", sn(key + "EDGE")),
             ("cost_key", sn(key + "COST")), ("goal_key", sn(key + "GOAL")),
             ("vignette_scene_id", sn("scene_vignette_%s" % oid[len("origin_"):])),
-            ("observation_flags", names(flag for flag, _stem in OBSERVATIONS)),
+            ("observation_flags", names(flag for flag, _s in OBSERVATIONS + EXTRA_OBSERVATIONS.get(oid, []))),
             ("observation_keys", names("STORY_NOTICED_%s_%s" % (place, stem)
-                                       for _flag, place in OBSERVATIONS)),
+                                       for _flag, place in OBSERVATIONS + EXTRA_OBSERVATIONS.get(oid, []))),
             ("grants", doc.array("origin_grant_data", refs))]))
     return doc.render("origin_catalog_data",
                       [("entries", doc.array("origin_data", entries))])

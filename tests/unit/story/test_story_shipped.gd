@@ -65,6 +65,44 @@ func test_the_five_origins_match_canon_byte_for_byte() -> void:
 			"%s no longer carries the Cyrillic look-alike" % doc)
 
 
+## AUDIT FIX: `flag_lin_origin_said` is raised by Lam Nguyet's lines to exactly two Origins —
+## `lin_rival` for the Rejected Candidate, `lin_notation` for the Keeper — so exactly those two
+## Origins must map the flag to a Chronicle observation, index-aligned like every other one.
+## Before the fix the flag was raised and never mapped, so the lines never reached the record.
+func test_lam_nguyets_origin_lines_reach_the_chronicle() -> void:
+	var mapped := {}
+	for origin in _origins().entries:
+		for i in origin.observation_flags.size():
+			if origin.observation_flags[i] == &"flag_lin_origin_said":
+				mapped[origin.id] = origin.observation_keys[i]
+	assert_eq(mapped.keys(), [&"origin_de_tu_bi_loai", &"origin_thu_thu"] as Array,
+		"the two Origins Lam Nguyet speaks her Origin line to map the flag")
+	for origin_id in mapped:
+		assert_true(bool(_translated().get(String(mapped[origin_id]), false)),
+			"'%s' has an English and a Vietnamese line" % mapped[origin_id])
+
+
+## The §6 hook beats are Chronicle-visible: each new flag is mapped to exactly one observation
+## on exactly the Origin whose line raises it — the same contract as every older observation.
+func test_the_hook_beats_reach_the_chronicle() -> void:
+	var expected := {
+		&"flag_te_guard_said": [&"origin_ho_tieu", &"STORY_NOTICED_GUARD_HO_TIEU"],
+		&"flag_ko_wounds_said": [&"origin_lang_y", &"STORY_NOTICED_WOUNDS_LANG_Y"],
+		&"flag_te_appraise_said": [&"origin_nghe_nhan", &"STORY_NOTICED_APPRAISE_NGHE_NHAN"],
+		&"flag_lin_residue_said": [&"origin_thu_thu", &"STORY_NOTICED_RESIDUE_THU_THU"],
+	}
+	for flag_id in expected:
+		var mapped := []
+		for origin in _origins().entries:
+			for i in origin.observation_flags.size():
+				if origin.observation_flags[i] == flag_id:
+					mapped.append([origin.id, origin.observation_keys[i]])
+		assert_eq(mapped, [expected[flag_id]],
+			"'%s' is mapped once, by '%s'" % [flag_id, expected[flag_id][0]])
+		assert_true(bool(_translated().get(String(expected[flag_id][1]), false)),
+			"'%s' has an English and a Vietnamese line" % expected[flag_id][1])
+
+
 func test_every_shipped_story_id_is_stable_ascii() -> void:
 	var ids: Array[StringName] = []
 	var story := _story()
