@@ -59,6 +59,11 @@ func test_real_story_flow() -> void:
 	var knowledge := main.get_node("Systems/KnowledgeRuntime") as KnowledgeRuntime
 	var inventory := main.get_node("Systems/InventoryRuntime") as InventoryRuntime
 	var relationship := main.get_node("Systems/RelationshipRuntime") as RelationshipRuntime
+	# FG-4: every arrival in this whole walk — three runs, two Origins, both answers to the
+	# Night — is held to "what the map shows is what the story says" before a frame is drawn.
+	world.connect("active_map_ready", func() -> void:
+		_arrivals += 1
+		_judge_arrival.call_deferred(main, _arrivals))
 
 	# --- 1. the menu's New Game opens the identity screen — and starts nothing ----------------
 	assert_not_null(RunKit.menu_of(main), "the menu is up")
@@ -924,6 +929,13 @@ func test_real_story_flow() -> void:
 	await _say(&"ko_leave", &"")
 	_step("12. told and withdrew: refused by her, answered by him — recorded once, no dead end")
 
+	assert_true(_arrivals >= 9 and _arrivals_judged == _arrivals,
+		"every arrival of the walk was judged (%d of %d)" % [_arrivals_judged, _arrivals])
+	assert_eq(_arrival_faults, [] as Array[String],
+		"at every arrival the map agreed with the story: %s" % str(_arrival_faults))
+	_step("FG-4. %d arrivals: light, presence, pickups, spawn and creatures agree with the story"
+		% _arrivals)
+
 	var last_map: Node = router.call("get_current_scene")
 	last_map.emit_signal("return_to_menu_requested")
 	await scene_tree.process_frame
@@ -931,6 +943,80 @@ func test_real_story_flow() -> void:
 	assert_eq(gs.get_phase(), gs.Phase.MENU, "back at the menu")
 	_teardown(main)
 	await scene_tree.process_frame
+
+
+var _arrivals := 0
+var _arrivals_judged := 0
+var _arrival_faults: Array[String] = []
+
+
+## WHAT A MAP SHOWS ON ARRIVAL IS WHAT THE STORY SAYS (D-073 follow-up, FG-4). Run deferred
+## from `active_map_ready`: after every owner has wired the new map, before the frame that
+## shows it. Five agreements, each a way a transition can lie to the player:
+##   light     the map wears the ambience of the story's current beat (no night left behind,
+##             no day over a Night);
+##   presence  each thing the story puts in or takes out of the map is there exactly when its
+##             flag says, and solid exactly when it is there;
+##   pickups   nothing already taken, and nothing not yet in the world, is drawn;
+##   spawn     the player stands on one of the map's own named spawn points;
+##   creatures while a scene is still playing over the map, nothing of the story's encounter
+##             is in it (a fight never starts under a caption).
+func _judge_arrival(main: Node, arrival: int) -> void:
+	var story := main.get_node_or_null("Systems/StoryRuntime") as StoryRuntime
+	var world := main.get_node_or_null("Systems/WorldRuntime")
+	var bag := main.get_node_or_null("Systems/InventoryRuntime") as InventoryRuntime
+	var combat := main.get_node_or_null("Systems/CombatRuntime") as CombatRuntime
+	if story == null or world == null or not story.is_session_active():
+		return  # a map arriving as the session is torn down has no story to agree with
+	var map := world.call("get_active_map") as Node
+	var player := world.call("get_player") as Node2D
+	if map == null or player == null:
+		return
+	_arrivals_judged += 1
+	var where := "arrival %d (%s, %s)" % [arrival, map.name,
+		story.get_service().state().beat_id]
+	var light := map.get_node_or_null("Visual/Ambience") as MapAmbience
+	if light == null or light.ambience_id() != story.ambience_id():
+		_arrival_faults.append("%s: light '%s' but the story says '%s'" % [where,
+			light.ambience_id() if light != null else &"<none>", story.ambience_id()])
+	for found in map.find_children("*", "", true, false):
+		var presence := found as StoryPresence
+		if presence == null:
+			continue
+		var host := presence.get_parent() as CanvasItem
+		var there := story.get_service().flag_at_least(presence.flag_id, 1) \
+			== presence.present_when_set
+		if host.visible != there:
+			_arrival_faults.append("%s: %s drawn=%s but the story says there=%s" % [where,
+				host.name, host.visible, there])
+		for body in host.find_children("*", "CollisionObject2D", true, false):
+			for owner_id in (body as CollisionObject2D).get_shape_owners():
+				if (body as CollisionObject2D).is_shape_owner_disabled(owner_id) == there:
+					_arrival_faults.append("%s: %s solid=%s but there=%s" % [where,
+						host.name, not there, there])
+	var pickups := map.get_node_or_null("Pickups")
+	for child in pickups.get_children() if pickups != null else []:
+		var pickup := child as WorldItem
+		if pickup == null or not pickup.visible:
+			continue
+		if bag != null and bag.is_collected(pickup.pickup_id):
+			_arrival_faults.append("%s: %s drawn, already collected" % [where, pickup.name])
+		elif pickup.appears_with_flag != &"" \
+				and not story.get_service().flag_at_least(pickup.appears_with_flag, 1):
+			_arrival_faults.append("%s: %s drawn, not in the world yet" % [where, pickup.name])
+	var on_a_spawn := false
+	var spawns := map.get_node_or_null("Spawns")
+	for marker in spawns.get_children() if spawns != null else []:
+		if (marker as Node2D).global_position.distance_to(player.global_position) < 2.0:
+			on_a_spawn = true
+	if not on_a_spawn:
+		_arrival_faults.append("%s: the player is at %s, on no named spawn" % [where,
+			player.global_position])
+	if story.is_scene_playing() and combat != null:
+		for enemy in combat.enemies():
+			if enemy.look() != enemy.data().visual_profile:
+				_arrival_faults.append("%s: '%s' is in the map under a playing scene"
+					% [where, enemy.instance_id()])
 
 
 func _step(step_name: String) -> void:
