@@ -1,17 +1,19 @@
 # MULTIPLAYER_PLAN — Aetheria
 
-> **Stage 2, future.** This document describes the architectural zones we keep clean now
-> so that introducing multiplayer later is **designed to minimize changes to core
-> gameplay/domain code** — a design goal, not a guarantee that no changes will be needed.
-> It is a plan, not a design to implement.
+> **Product direction: online multiplayer-first** (D-074, 2026-10-12). This document
+> describes the architectural zones we keep clean now so that introducing multiplayer
+> is **designed to minimize changes to core gameplay/domain code** — a design goal,
+> not a guarantee that no changes will be needed. It is a plan, not a design to
+> implement.
 >
-> **No networking code and no networking dependency is added in Stage 1.** Offline is the
-> source of truth for all gameplay until the offline game is complete and stable
-> (`.kiro/steering/01-product.md`).
+> **No networking code and no networking dependency is added until a multiplayer phase
+> begins.** Online multiplayer is the primary production target; offline play is the
+> secondary Admin Offline Test Mode (`.kiro/steering/01-product.md`).
 
 ## 1. Stance
 
-- Build the best offline game first.
+- Build toward the server-authoritative shared world; keep the offline build as the
+  admin test executable of the same domain rules.
 - Do not add multiplayer complexity (RPCs, replication, lobby, netcode libs) now.
 - Instead, keep a small set of **seams** clean and serializable so authority and
   replication can be layered on later. These seams cost us nothing offline — they are
@@ -108,7 +110,7 @@ this stays possible: **presentation never decides outcomes; domain does.** That 
 discipline (already in `.kiro/steering/03-architecture.md`) is what keeps the boundary
 movable later.
 
-## 5. Explicit non-work for Stage 1
+## 5. Explicit non-work until a multiplayer phase begins
 
 - No `MultiplayerAPI` / `RPC` / `MultiplayerSpawner` / `MultiplayerSynchronizer` usage.
 - No lobby, matchmaking, transport, or server code.
@@ -125,7 +127,7 @@ movable later.
 > **`docs/PRODUCTION_ARCHITECTURE_CONTRACT.md`**. This section previously said the model "is
 > undecided and will be a `DECISIONS.md` entry"; that entry is D-056.
 >
-> What is frozen is the TARGET. **Nothing is implemented**, and the Stage-1 non-work list in §5
+> What is frozen is the TARGET. **Nothing is implemented**, and the non-work list in §5
 > below is unchanged and still binding.
 
 Research + readiness only (`docs/ROADMAP.md` Phase 32):

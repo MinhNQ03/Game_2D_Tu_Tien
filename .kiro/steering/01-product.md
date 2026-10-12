@@ -8,11 +8,12 @@
 
 ## Elevator pitch
 
-A single-player, offline-first 2D top-down fantasy / tu tiên (cultivation) RPG. The
-player grows from a mortal into a cultivator, advancing through **cảnh giới**
-(realms) by **tu luyện** (cultivation), learning **công pháp** (techniques) and
-**skills**, collecting **equipment / items / pets**, and progressing a **branching
-story** across many maps, dungeons, and bosses.
+An online multiplayer-first, persistent-world 2D top-down fantasy / tu tiên
+(cultivation) RPG. The player grows from a mortal into a cultivator, advancing
+through **cảnh giới** (realms) by **tu luyện** (cultivation), learning **công pháp**
+(techniques) and **skills**, collecting **equipment / items / pets**, and progressing
+a **branching story** across many maps, dungeons, and bosses — in a shared,
+server-authoritative world.
 
 ## The player fantasy (frozen, D-039)
 
@@ -36,13 +37,19 @@ dependencies — is frozen. **Master index: `docs/GAME_DESIGN_FREEZE.md`.**
 4. **Longevity by design** — adding a map / chapter / enemy / boss / skill / item
    must be *data + content*, not a rewrite of existing systems.
 
-## Scope by stage
+## Product direction (D-074, 2026-10-12)
 
-- **Stage 1 — Offline (current):** the entire game is single-player and offline.
-  This is the primary source of truth for all gameplay rules.
-- **Stage 2 — Multiplayer (future, not now):** only *after* the offline game is
-  complete and stable do we research online multiplayer. No networking code or
-  networking dependency is added during Stage 1. See `docs/MULTIPLAYER_PLAN.md`.
+- **Primary — online multiplayer (production):** the shared, server-authoritative
+  world is the main production experience and the architecture's main optimization
+  target.
+- **Secondary — Admin Offline Test Mode:** authorized administrators run the game
+  end-to-end locally to reproduce issues, test features, validate content, and
+  evaluate updates. Isolated from production data; never an alternative authority
+  over the production world.
+- Online and offline use the **same domain rules**; they differ in authority and
+  transport only (D-056). Do not describe Aetheria as offline-first.
+- No networking code or networking dependency is added until a multiplayer phase
+  begins. See `docs/MULTIPLAYER_PLAN.md`.
 
 ## Audience & platform
 
@@ -73,7 +80,7 @@ are built (Phases 04–08) *before* the NPC/Dialogue/Quest/Story systems that de
 ## Explicit non-goals (for now)
 
 - No gameplay implementation during the foundation step.
-- No multiplayer / networking code in Stage 1.
+- No multiplayer / networking code until a multiplayer phase begins (D-074).
 - No 3D. (The 3D physics engine that the project template had enabled was removed in the
   foundation fix — `docs/DECISIONS.md` D-002 Accepted; `project.godot` has no `[physics]`
   section now.)
