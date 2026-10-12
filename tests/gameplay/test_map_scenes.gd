@@ -981,3 +981,102 @@ func test_what_the_story_removes_leaves_no_picture_and_no_body() -> void:
 	assert_true(presences >= 6, "every StoryPresence in both maps was tried (%d)" % presences)
 	assert_true(with_bodies >= 3,
 		"the cart, the wreck and the stake had real shapes to switch (%d)" % with_bodies)
+
+
+## The court's paving as a band of its ellipse (foreshortened like all ground: the layout's
+## radii), between the wet ring round the basin and the kerb.
+const COURT_RADIUS := Vector2(54, 31)
+const COURT_PAVING_BAND := Vector2(0.64, 0.9)
+## How much lighter (mean luminance, 0-1) each quarter of the paving must be than the ground
+## it is compared with. Measured on the painted floor when written: the four quarters 0.61 to
+## 0.66, the square beside it 0.54, the meadow 0.45. (The first court painted measured 0.51
+## — DARKER than the square, under its own mortar; this test is what found it.)
+const COURT_LIGHTER_BY := 0.05
+
+
+## Mean luminance of the floor inside an ellipse's band `band` (fractions of its radius),
+## over one quarter turn starting at `turn` (0 = east, in quarter turns), or all of it (-1).
+func _band_luminance(image: Image, centre: Vector2, band: Vector2, turn: int = -1) -> float:
+	var total := 0.0
+	var count := 0
+	for y in range(int(centre.y - COURT_RADIUS.y), int(centre.y + COURT_RADIUS.y) + 1):
+		for x in range(int(centre.x - COURT_RADIUS.x), int(centre.x + COURT_RADIUS.x) + 1):
+			var unit := (Vector2(x, y) - centre) / COURT_RADIUS
+			if unit.length() < band.x or unit.length() > band.y:
+				continue
+			# a quarter is centred on its direction: east is -45 to +45 degrees
+			if turn >= 0 and posmod(int(floor((unit.angle() + PI / 4.0) / (PI / 2.0))), 4) != turn:
+				continue
+			total += image.get_pixel(x, y).get_luminance()
+			count += 1
+	return total / float(maxi(count, 1))
+
+
+## THE SPRING THAT BEARS THE VILLAGE'S NAME IS ITS FOCAL POINT
+## (docs/VISUAL_CRAFT_WORKFLOW.md, proof W1). The Lạc Hà spring stands at the CENTRE of a
+## laid court, and that court is the lightest ground round it: lighter than the worn
+## square beside it and than the meadow. Until this test the
+## spring was a 52 px basin on the corner of the square, on the square's own flags — nothing
+## on the floor said it mattered. Each quarter of the paving is judged on its own, so a court
+## that drifts off the spring (or a spring moved off its court) fails by the side it left.
+func test_the_lac_ha_spring_stands_at_the_centre_of_the_floors_lightest_ground() -> void:
+	var map: Node = HubScene.instantiate()  # NOT added to the tree (L-010)
+	var ground := map.get_node("Visual/Ground") as PaintedGround
+	ground.apply_layout()
+	assert_true(ground.layout.materials.has("court"), "the hub's floor has a laid court")
+	var image := ground.layout.texture.get_image()
+	if image.is_compressed():
+		image.decompress()
+	var spring := (map.get_node("CultivationSites/LacHaSpring") as Node2D).position \
+		- ground.position
+	var whole := Vector2(0.0, COURT_PAVING_BAND.y)
+	var square := _band_luminance(image, spring + Vector2(150, -30), whole)
+	var meadow := _band_luminance(image, spring + Vector2(-40, 110), whole)
+	for turn in 4:
+		var court := _band_luminance(image, spring, COURT_PAVING_BAND, turn)
+		assert_true(court >= square + COURT_LIGHTER_BY,
+			"quarter %d of the court (%.3f) is lighter than the square (%.3f)"
+			% [turn, court, square])
+		assert_true(court >= meadow + COURT_LIGHTER_BY,
+			"quarter %d of the court (%.3f) is lighter than the meadow (%.3f)"
+			% [turn, court, meadow])
+	map.free()
+
+
+## How many swaying grass tufts the hub's scene holds. The scene sync drops a tuft the floor
+## no longer has turf under; when undergrowth was added as a floor kind and the sync did not
+## count it as turf, six tufts vanished from exactly the ground they belong on. Seen in the
+## scene diff, pinned here.
+const HUB_TUFTS := 27
+
+
+func test_the_hub_keeps_every_swaying_tuft_that_stands_on_turf() -> void:
+	var map: Node = HubScene.instantiate()  # NOT added to the tree (L-010)
+	var tufts := 0
+	for node in map.get_node("Visual/Decor").get_children():
+		if String(node.name).begins_with("Grass"):
+			tufts += 1
+	assert_eq(tufts, HUB_TUFTS, "the hub's tufts (a sync that stops counting a kind of turf "
+		+ "drops the tufts standing on it)")
+	map.free()
+
+
+## The spring's overflow is a runnel a hand deep: painted, stepped over, never a wall. It is
+## on the floor ("rill") and it floods no cell and lies under no blocker along its run
+## (INTANGIBLE_BY_DESIGN) — a line that leads to the spring must not fence the meadow.
+func test_the_springs_runnel_is_drawn_but_never_blocks() -> void:
+	var map: Node = HubScene.instantiate()  # NOT added to the tree (L-010)
+	var ground := map.get_node("Visual/Ground") as PaintedGround
+	ground.apply_layout()
+	var layout := ground.layout
+	assert_true(layout.materials.has("rill"), "the hub's floor has the spring's runnel")
+	var spring := (map.get_node("CultivationSites/LacHaSpring") as Node2D).position
+	# along the runnel, from below the court to short of the stream's bank
+	for along: Vector2 in [Vector2(-70, 36), Vector2(-112, 44), Vector2(-164, 36)]:
+		var at := spring + along
+		var cell := Vector2i((at / float(layout.tile_px)).floor())
+		assert_false(ground.is_flooded_cell(cell), "the runnel floods no cell (%s)" % str(cell))
+		for poly in layout.blockers:
+			assert_false(Geometry2D.is_point_in_polygon(at, poly),
+				"the runnel at %s is under no blocker" % str(at))
+	map.free()

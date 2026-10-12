@@ -21,6 +21,13 @@ fill_rect: [1, 1, 60, 36]          # tiles — must equal MapData.bounds / 16 (t
 walkway_half_height: 3              # tiles either side of the centre row that stay dry
 
 regions:
+  # undergrowth: where nobody walks the meadow stands tall and dark, so the trees and the
+  # water have a mass under them (VISUAL_CRAFT_WORKFLOW proof W1; roads painted later win)
+  - {kind: lush, poly: [[24, 100], [122, 96], [142, 170], [122, 284], [30, 292]]}     # west bank
+  - {kind: lush, poly: [[24, 432], [112, 440], [130, 520], [118, 592], [24, 592]]}
+  - {kind: lush, poly: [[384, 498], [470, 492], [482, 550], [398, 562]]}             # south grove
+  - {kind: lush, poly: [[640, 150], [722, 148], [730, 206], [650, 212]]}             # north-east
+  - {kind: lush, path: [[366, 358], [338, 378], [296, 386], [244, 378], [204, 386]], width: 30}
   # the paved square in front of the outpost (worn flagstones)
   - {kind: stone, poly: [[392, 236], [628, 236], [652, 262], [652, 360], [626, 384],
                          [404, 384], [380, 362], [380, 258]]}
@@ -31,6 +38,14 @@ regions:
   - {kind: earth, path: [[382, 312], [300, 318], [210, 310], [150, 312], [14, 306]], width: 40}
   - {kind: earth, path: [[300, 316], [292, 260], [292, 214]], width: 26}       # to the NW house
   - {kind: earth, path: [[520, 384], [516, 452], [500, 540]], width: 24}       # south lane
+  # THE SPRING COURT — this water bears the village's name (suối Lạc Hà) and the first deliberate
+  # cultivation happens here, so the floor says so: stones laid in rings round the basin, where
+  # the west road meets the square. Foreshortened like everything on the ground (ry ~ 0.57 rx).
+  - {kind: court, ellipse: [408, 336, 54, 31]}
+  # ...and its overflow, a stone-lined runnel back to the stream: the line that leads a player
+  # arriving over the bridge to the spring. INTANGIBLE_BY_DESIGN (a hand deep, stepped over).
+  - {kind: rill, path: [[362, 352], [338, 372], [296, 380], [244, 372], [204, 380], [176, 388]],
+     width: 8}
   # the training yard (beaten earth) around the post
   - {kind: yard, poly: [[618, 372], [760, 366], [790, 392], [784, 470], [626, 476], [606, 440]]}
   # the stream, and its plank bridge on the west road
@@ -64,10 +79,13 @@ props:
   - {name: YardFence, prop: fence_long, at: [700, 480]}
   - {name: TreeW1, prop: tree_broadleaf, at: [70, 140]}       # the west bank, beyond the stream
   - {name: TreeW2, prop: tree_broadleaf, at: [84, 470]}
-  - {name: TreeW3, prop: tree_small, at: [56, 262]}
-  - {name: TreeW4, prop: tree_small, at: [100, 572]}
+  # trees stand in GROVES over the undergrowth, a big one and its smaller neighbour — never
+  # one to a lawn (aetheria_style: "vegetation clusters, never sprinkles")
+  - {name: TreeW3, prop: tree_small, at: [108, 182]}
+  - {name: TreeW4, prop: tree_small, at: [52, 512]}
   - {name: TreeNE, prop: tree_broadleaf, at: [690, 196]}
   - {name: TreeS, prop: tree_broadleaf, at: [430, 522]}
+  - {name: TreeS2, prop: tree_small, at: [398, 550]}
   - {name: TreeSE, prop: tree_small, at: [780, 566]}
   - {name: TreeN, prop: tree_small, at: [384, 132]}
 

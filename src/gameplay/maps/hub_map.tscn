@@ -160,12 +160,12 @@ script = ExtResource("p_script")
 prop = ExtResource("p_tree_broadleaf")
 
 [node name="Prop_TreeW3" type="StaticBody2D" parent="Visual/Decor"]
-position = Vector2(56, 262)
+position = Vector2(108, 182)
 script = ExtResource("p_script")
 prop = ExtResource("p_tree_small")
 
 [node name="Prop_TreeW4" type="StaticBody2D" parent="Visual/Decor"]
-position = Vector2(100, 572)
+position = Vector2(52, 512)
 script = ExtResource("p_script")
 prop = ExtResource("p_tree_small")
 
@@ -178,6 +178,11 @@ prop = ExtResource("p_tree_broadleaf")
 position = Vector2(430, 522)
 script = ExtResource("p_script")
 prop = ExtResource("p_tree_broadleaf")
+
+[node name="Prop_TreeS2" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(398, 550)
+script = ExtResource("p_script")
+prop = ExtResource("p_tree_small")
 
 [node name="Prop_TreeSE" type="StaticBody2D" parent="Visual/Decor"]
 position = Vector2(780, 566)

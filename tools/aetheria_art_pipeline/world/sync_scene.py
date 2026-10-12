@@ -92,7 +92,7 @@ def sync(layout_id, scene_rel):
                 if pos:
                     x, y = int(float(pos.group(1))) - ox, int(float(pos.group(2))) - oy
                     if not (0 <= x < w and 0 <= y < h) or \
-                            mat[y * w + x] not in (ground.GRASS, ground.FOREST):
+                            mat[y * w + x] not in (ground.GRASS, ground.FOREST, ground.LUSH):
                         continue
         kept.append(b)
     # the floor: a tiled Ground becomes the PaintedGround drawn from this layout

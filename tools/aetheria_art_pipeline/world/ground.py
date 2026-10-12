@@ -35,12 +35,17 @@ ST = style.load()
 
 # Material codes (the order is the paint priority when two shapes overlap: later wins).
 GRASS, STONE, STONE_DARK, EARTH, YARD, WATER, BRIDGE, PADDY, BUND, FOREST, LITTER, \
-    FISSURE, ROCK = range(13)
+    FISSURE, ROCK, COURT, RILL, LUSH = range(16)
 KINDS = {"grass": GRASS, "stone": STONE, "stone_dark": STONE_DARK, "earth": EARTH,
          "yard": YARD, "water": WATER, "bridge": BRIDGE, "paddy": PADDY, "forest": FOREST,
-         "litter": LITTER, "fissure": FISSURE, "rock": ROCK}
+         "litter": LITTER, "fissure": FISSURE, "rock": ROCK, "court": COURT, "rill": RILL,
+         "lush": LUSH}
 ROUGH = {EARTH: 2.2, YARD: 2.5, WATER: 2.0, STONE: 0.0, STONE_DARK: 0.0, BRIDGE: 0.0,
-         PADDY: 0.0, FOREST: 3.0, LITTER: 3.2, FISSURE: 1.6, GRASS: 2.5, ROCK: 3.0}
+         PADDY: 0.0, FOREST: 3.0, LITTER: 3.2, FISSURE: 1.6, GRASS: 2.5, ROCK: 3.0,
+         COURT: 0.0, RILL: 0.0, LUSH: 3.0}
+# Everything that is turf to its neighbours (a path's shadow lip, a bank's wet ring).
+TURF = (GRASS, LUSH)
+PAVED = (STONE, STONE_DARK, COURT)
 
 # Ramps [deep, shadow, base, light] — the DNA world roles where one exists, their neighbours
 # where the ramp needs a step the palette does not name.
@@ -69,6 +74,22 @@ MORTAR = (70, 72, 80)
 WET_BANK = (60, 54, 46)
 RICE = [(62, 110, 52), (86, 138, 62), (112, 160, 76)]
 FLOWERS = [(232, 224, 168), (214, 198, 230), (236, 236, 228)]
+# A LAID COURT (docs/VISUAL_CRAFT_WORKFLOW.md, proof W1): stones set in rings round one centre,
+# so the paving itself points at what stands there. Paler and warmer than the square's worn
+# flags — the one place in a village somebody dressed the stone — and it is the floor's
+# brightest material, which is what gives a frame of meadow a light end to its value range.
+RAMPS[COURT] = [(104, 100, 100), (134, 130, 126), (160, 156, 148), (186, 182, 170),
+                (208, 204, 190)]
+# ring edges as a fraction of the court's radius, and how many stones each ring is cut into:
+# the basin's bed, the wet ring the water darkens, two rings of paving, the kerb
+COURT_RINGS = [0.44, 0.62, 0.78, 0.92]
+COURT_STONES = [8, 12, 16, 20, 28]
+COURT_WET_RING = 1
+# Undergrowth: the meadow where nobody walks — a darker, taller sward thick with tufts and
+# flowers. It is how trees and water get a MASS under them instead of standing on a lawn.
+LUSH_DARKER = 0.3
+LUSH_TUFTS = 2.5
+LUSH_FLOWERS = 0.004
 
 
 def _hash(x, y, seed):
@@ -92,7 +113,10 @@ def _mask(w, h, ox, oy, shape, roughen=0.0, seed=0):
     materials meet in an organic line instead of a ruler edge."""
     m = Image.new("L", (w, h), 0)
     d = ImageDraw.Draw(m)
-    if "poly" in shape:
+    if "ellipse" in shape:
+        cx, cy, rx, ry = shape["ellipse"]
+        d.ellipse([cx - ox - rx, cy - oy - ry, cx - ox + rx, cy - oy + ry], fill=255)
+    elif "poly" in shape:
         d.polygon([(x - ox, y - oy) for x, y in shape["poly"]], fill=255)
     elif "rect" in shape:
         x, y, rw, rh = shape["rect"]
@@ -167,6 +191,7 @@ def paint(layout_path):
     base = KINDS[L.get("base", "grass")]
     mat = [base] * (w * h)
     region_masks = {}
+    courts = [shape["ellipse"] for shape in L["regions"] if shape["kind"] == "court"]
     for k, shape in enumerate(L["regions"]):
         code = KINDS[shape["kind"]]
         rough = ROUGH[code]
@@ -201,6 +226,19 @@ def paint(layout_path):
         if 0 <= x < w and 0 <= y < h:
             return mat[y * w + x]
         return GRASS
+
+    def court_stone(wx, wy):
+        """(ring, stone) of the court paving under a world pixel: rings round the centre of
+        the court it lies in, each ring cut into its own count of stones, alternate rings
+        turned half a stone so no joint runs straight through two of them."""
+        for cx, cy, rx, ry in courts:
+            u, v = (wx - cx) / float(rx), (wy - cy) / float(ry)
+            r = math.hypot(u, v)
+            if r <= 1.02:
+                ring = sum(1 for edge in COURT_RINGS if r >= edge)
+                turn = (math.atan2(v, u) / math.tau + 0.5 + 0.5 * (ring % 2) / COURT_STONES[ring])
+                return ring, int(turn * COURT_STONES[ring]) % COURT_STONES[ring]
+        return 0, 0
 
     for y in range(h):
         for x in range(w):
@@ -242,21 +280,61 @@ def paint(layout_path):
                     c = ramp[max(0, min(3, base_t))]
                     if (y - 1) >= 0 and stone_mortar[i - w]:
                         c = ramp[min(3, base_t + 1)]
-            elif m == GRASS:
+            elif m in TURF:
                 # broad sunlit drifts, a little mid-scale clumping, a whisper of grain: a
                 # meadow, not camouflage (the first pass had the contrast of a pattern)
                 t = 0.5 + 0.62 * (n_big[i] - 0.5) + 0.38 * (n_mid[i] - 0.5) \
                     + 0.18 * (n_fine[i] - 0.5)
+                if m == LUSH:
+                    t -= LUSH_DARKER
                 c = _tone(RAMPS[GRASS], t)
                 # the grass's shadow on lower ground just below it is painted on THAT ground;
                 # here: a darker blade line where grass meets a raised paving to its south
-                if at(x, y + 1) in (STONE, STONE_DARK):
+                if at(x, y + 1) in PAVED:
                     c = RAMPS[GRASS][0]
+            elif m == COURT:
+                ramp = RAMPS[COURT]
+                ring, stone = court_stone(wxp, wyp)
+                here = (ring, stone)
+                if at(x, y + 1) != COURT:
+                    c = ramp[0]              # the dais's own thickness, in shadow on the near side
+                elif at(x, y - 1) != COURT:
+                    c = ramp[4]              # ...and its far edge catching the key light
+                elif court_stone(wxp + 1, wyp) != here or court_stone(wxp, wyp + 1) != here:
+                    damp = ring <= COURT_WET_RING and _hash(wxp, wyp, 121) < 0.6
+                    # moss where the water reaches; elsewhere a tight pale joint — dressed
+                    # stone is laid close, and the square's dark mortar would grey the court
+                    c = RAMPS[GRASS][1] if damp else (MORTAR if ring <= COURT_WET_RING
+                                                     else ramp[0])
+                else:
+                    wet = ring <= COURT_WET_RING
+                    ramp = RAMPS[STONE_DARK] if wet else ramp
+                    base = 1 + int(_hash(ring * 131 + stone, 7, 123) * 2.6)
+                    if not wet and ring < len(COURT_RINGS):
+                        base += 1                                # the paving: the pale end
+                    c = ramp[base]
+                    if court_stone(wxp, wyp - 1) != here:
+                        c = ramp[min(len(ramp) - 1, base + 1)]   # the lit bevel
+            elif m == RILL:
+                # a stone-lined runnel a hand deep: the spring's overflow, stepped over, never
+                # waded (INTANGIBLE_BY_DESIGN — no blocker, no flooded cell)
+                above, below = at(x, y - 1), at(x, y + 1)
+                open_to = (RILL, COURT, WATER, BRIDGE)
+                laid = int(_hash(wxp // 4, 3, 125) * 1.99)       # kerb stones, 4 px each
+                if above not in open_to:
+                    c = RAMPS[COURT][3 + laid]      # the far kerb, lit
+                elif below not in open_to:
+                    c = RAMPS[COURT][1 - laid]      # the near kerb
+                elif at(x, y - 2) not in open_to:
+                    c = RAMPS[WATER][2]      # the kerb's shadow on the water
+                else:
+                    glint = _hash(wxp // 3, wyp, 127) < 0.16
+                    c = RAMPS[WATER][4] if glint else RAMPS[WATER][3]
             elif m in (EARTH, YARD):
                 ramp = RAMPS[m]
                 t = 0.45 * n_big[i] + 0.4 * n_mid[i] + 0.3 * (n_fine[i] - 0.5) + 0.12
                 c = _tone(ramp, t)
-                if at(x, y - 1) == GRASS or at(x, y - 2) == GRASS:
+                if at(x, y - 1) in TURF or at(x, y - 2) in TURF:
                     c = ramp[0]          # the turf edge casts its lip of shadow on the path
                 elif _hash(wxp, wyp, 31) < 0.012:
                     c = ramp[3]          # a pebble catching the light...
@@ -265,11 +343,11 @@ def paint(layout_path):
             elif m in (STONE, STONE_DARK):
                 ramp = RAMPS[m]
                 edge = [at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)]
-                if any(e not in (STONE, STONE_DARK) for e in edge):
+                if any(e not in PAVED for e in edge):
                     # the kerb: paving ends in a laid edge, lit on its far side
-                    c = ramp[3] if at(x, y - 1) not in (STONE, STONE_DARK) else ramp[0]
+                    c = ramp[3] if at(x, y - 1) not in PAVED else ramp[0]
                 elif stone_mortar[i]:
-                    mossy = _hash(stone_ids[i] % 997, 3, 41) < 0.18 or at(x, y - 3) == GRASS
+                    mossy = _hash(stone_ids[i] % 997, 3, 41) < 0.18 or at(x, y - 3) in TURF
                     c = RAMPS[GRASS][1] if mossy and _hash(wxp, wyp, 43) < 0.6 else MORTAR
                 else:
                     base = 1 + int(_hash(stone_ids[i], 7, 47) * 2.6)     # a tone per stone
@@ -326,7 +404,7 @@ def paint(layout_path):
                 if _hash(wxp, wyp, 73) < 0.25 and not below_water:
                     c = RAMPS[GRASS][2]      # grass on the bund's crown
             # wet earth: one ring of dark bank around open water
-            if m in (GRASS, EARTH, FOREST):
+            if m in (GRASS, EARTH, FOREST, LUSH):
                 if WATER in (at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)):
                     c = WET_BANK
             px[x, y] = c + (255,)
@@ -336,12 +414,16 @@ def paint(layout_path):
     for y in range(2, h - 2):
         for x in range(1, w - 1):
             i = y * w + x
-            if mat[i] not in (GRASS, FOREST):
+            if mat[i] not in (GRASS, FOREST, LUSH):
                 continue
-            ramp = RAMPS[mat[i]]
+            lush = mat[i] == LUSH
+            ramp = RAMPS[GRASS if lush else mat[i]]
             wxp, wyp = x + ox, y + oy
             hsh = _hash(wxp, wyp, 81)
-            if hsh < 0.010 * (0.4 + n_big[i]) and mat[i - 2 * w] == mat[i]:
+            if lush and hsh > 1.0 - LUSH_FLOWERS:
+                px[x, y] = FLOWERS[int(_hash(wxp, wyp, 83) * 2.99)] + (255,)
+            elif hsh < 0.010 * (LUSH_TUFTS if lush else 0.4 + n_big[i]) \
+                    and mat[i - 2 * w] == mat[i]:
                 px[x, y] = ramp[0] + (255,)
                 px[x, y - 1] = ramp[3] + (255,)
                 px[x - 1, y - 1] = ramp[4] + (255,)
