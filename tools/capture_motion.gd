@@ -18,7 +18,8 @@ extends SceneTree
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_motion.gd -- out/dir
 ##
 ## Scenarios: walk_stop_turn, strike_the_post, slash_the_post, ambient, cultivation,
-## techniques, golden, field_fight, pet, shop, dialogue, session, quest, night_bite (second
+## techniques, golden, field_fight, vein_disturbance, pet, shop, dialogue, session, quest,
+## night_bite (second
 ## user argument runs one; a third picks the language, `vi` or `en`, default the saved
 ## setting). `night_bite` is the vein-touched wolf's bite under the Night's ambience, every
 ## rendered frame from before its wind-up to after its recovery, each cell marked with the
@@ -127,6 +128,9 @@ func _run() -> void:
 	if _only == "" or _only == "field_fight":
 		print("[capture_motion] scenario field_fight")
 		await _scenario_field_fight()
+	if _only == "" or _only == "vein_disturbance":
+		print("[capture_motion] scenario vein_disturbance")
+		await _scenario_vein_disturbance()
 	_finish()
 
 
@@ -452,6 +456,43 @@ func _hold(action: StringName) -> void:
 
 
 ## Into the field through the real exit, then a mist wolf: its telegraphed bite on the player,
+## The broken vein's disturbance beat: stand at the fissure, wait for a surge's crest,
+## and photograph the pulse it throws — the ring and the streaks — as it settles.
+func _scenario_vein_disturbance() -> void:
+	var player := _player()
+	if player == null:
+		_fail("vein: no player")
+		return
+	if not await _travel_through_first_exit(player):
+		_fail("vein: the exit did not transition")
+		return
+	await _settle()
+	var vein := _map_node("CultivationSites/BrokenVein") as Node2D
+	if vein == null:
+		_fail("vein: no BrokenVein site")
+		return
+	var disturbance := vein.get_node_or_null("Disturbance")
+	if disturbance == null or not disturbance.has_method("is_pulsing"):
+		_fail("vein: no Disturbance feedback on the site")
+		return
+	# Stand south of the fissure: the camera frames it, and the pulse never covers the body.
+	player.global_position = vein.global_position + Vector2(0, 70)
+	await _settle()
+	await _shot("scene_vein_calm")
+	# Wait for a crest (bounded: the beat is uneven, but a crest comes within seconds).
+	var waited := 0
+	while not bool(disturbance.call("is_pulsing")) and waited < 600:
+		await process_frame
+		waited += 1
+	if not bool(disturbance.call("is_pulsing")):
+		_fail("vein: no surge crest within 600 frames")
+		return
+	var focus := func() -> Vector2: return vein.global_position + Vector2(0, -10)
+	var pulse := await _strip(focus, 12, 3)
+	_save_strip("motion_vein_surge", pulse)
+	await _settle()
+
+
 ## and the player's strike landing on it.
 func _scenario_field_fight() -> void:
 	var player := _player()
