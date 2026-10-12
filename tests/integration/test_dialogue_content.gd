@@ -487,30 +487,33 @@ func test_someone_with_no_trail_line_left_opens_on_their_hub() -> void:
 	for origin_id: StringName in [&"origin_lang_y", &"origin_thu_thu", &"origin_nghe_nhan",
 			&"origin_ho_tieu", &"origin_de_tu_bi_loai"]:
 		for readings: StringName in [&"kept", &"told"]:
-			_to_act_one(origin_id, readings, &"stood")
-			_end_prologue()
-			var run := "%s/%s" % [origin_id, readings]
-			for stage: String in ["sheet in hand", "door found"]:
-				if stage == "door found":
-					_knowledge.grant(SHAFT, &"source_shaft_seal")
-				# Say everything each person has to say, checking the opening before each line.
-				for pair: Array in TRAILS:
-					for _line in 8:
-						var real: Array[StringName] = []
-						for id in _ids(pair[0], pair[1]):
-							if not String(id).ends_with("_trail_back"):
-								real.append(id)
-						var opens_on := _service.opening_node_id(pair[0], PLAYER)
-						assert_eq(opens_on == pair[1], not real.is_empty(),
-							"%s, %s: %s opens on '%s' with %d line(s) left to say"
-							% [run, stage, pair[0], opens_on, real.size()])
-						if real.is_empty():
-							assert_eq(opens_on, hubs[pair[0]],
-								"%s, %s: with nothing left, %s opens on the hub itself"
-								% [run, stage, pair[0]])
-							break
-						assert_true(_choose(pair[0], pair[1], real[0]).ok,
-							"%s, %s: '%s' is said" % [run, stage, real[0]])
+			# Both answers to the Night (Gate B1): the watchman's lines differ by it
+			# (`ko_show_stood` / `ko_show_left`), and "nothing left to say" must hold either way.
+			for night: StringName in [&"stood", &"withdrew"]:
+				_to_act_one(origin_id, readings, night)
+				_end_prologue()
+				var run := "%s/%s/%s" % [origin_id, readings, night]
+				for stage: String in ["sheet in hand", "door found"]:
+					if stage == "door found":
+						_knowledge.grant(SHAFT, &"source_shaft_seal")
+					# Say everything each person has to say, checking the opening before each line.
+					for pair: Array in TRAILS:
+						for _line in 8:
+							var real: Array[StringName] = []
+							for id in _ids(pair[0], pair[1]):
+								if not String(id).ends_with("_trail_back"):
+									real.append(id)
+							var opens_on := _service.opening_node_id(pair[0], PLAYER)
+							assert_eq(opens_on == pair[1], not real.is_empty(),
+								"%s, %s: %s opens on '%s' with %d line(s) left to say"
+								% [run, stage, pair[0], opens_on, real.size()])
+							if real.is_empty():
+								assert_eq(opens_on, hubs[pair[0]],
+									"%s, %s: with nothing left, %s opens on the hub itself"
+									% [run, stage, pair[0]])
+								break
+							assert_true(_choose(pair[0], pair[1], real[0]).ok,
+								"%s, %s: '%s' is said" % [run, stage, real[0]])
 	# The hub she opens on offers its ordinary answers and no dead line.
 	assert_true(_ids(DLG_LIN, &"lin_hub").has(&"lin_leave"), "a hub always has a way out")
 
