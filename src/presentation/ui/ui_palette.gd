@@ -159,6 +159,10 @@ const SHEET_FIGURE_COLUMN := 136
 const SHEET_PANEL_WIDTH := SIDE_PANEL_WIDTH + SHEET_FIGURE_COLUMN - 6
 ## Under a figure drawn in a panel's well (the character card): ink, mostly transparent.
 const FIGURE_CONTACT_SHADOW := Color(0.02, 0.03, 0.05, 0.45)
+## The dais a figure stands on in the satchel's stage: the plate's own blue-grey a tone up
+## (ground, not a glow), and the one lit line on its far rim.
+const FIGURE_DAIS := Color(0.52, 0.60, 0.70, 0.16)
+const FIGURE_DAIS_RIM := Color(0.72, 0.80, 0.88, 0.38)
 
 ## The dialogue box (Phase 18): one bounded box at the bottom centre. Wide enough for a
 ## three-line sentence beside the medallion and the answers; `DIALOGUE_LINE_MIN_HEIGHT` holds

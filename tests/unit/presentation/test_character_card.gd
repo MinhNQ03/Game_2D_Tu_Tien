@@ -181,3 +181,60 @@ func test_no_slot_name_is_cut_in_either_language_at_the_satchels_width() -> void
 		assert_true(card.size.x <= float(UIPalette.SHEET_FIGURE_COLUMN) + 0.5,
 			"[%s] and no name widened the column (%.0f px)" % [code, card.size.x])
 		free_node(card)
+
+
+func _satchel_card() -> CharacterCard:
+	var card := CharacterCard.new()
+	card.tall = true
+	card.custom_minimum_size.x = UIPalette.SHEET_FIGURE_COLUMN
+	card.size = Vector2(UIPalette.SHEET_FIGURE_COLUMN, 320)
+	add_to_tree(card)
+	return card
+
+
+## THE SATCHEL'S SUBJECT IS THE PERSON (docs/VISUAL_CRAFT_WORKFLOW.md, proof U1). In the sheet
+## the figure is drawn larger than in the Chronicle's band, stands in the MIDDLE of its stage,
+## fills most of it, and none of its frame is outside the plate. The first sheet drew it at the
+## band's size, off-centre in a well a third of the column wide.
+func test_the_satchels_figure_is_the_largest_centred_and_drawn_whole() -> void:
+	var band := _card()
+	var card := _satchel_card()
+	card.set_body(load(ROBED) as CharacterVisualProfileData)
+	await scene_tree.process_frame
+	await scene_tree.process_frame
+	assert_true(card.figure_scale() > band.figure_scale(),
+		"the sheet draws the figure larger (%dx) than the band (%dx)"
+		% [card.figure_scale(), band.figure_scale()])
+	var stage := card.stage_rect()
+	var drawn := card.figure_rect()
+	assert_true(stage.grow(0.5).encloses(drawn),
+		"the whole frame %s is inside its stage %s" % [drawn, stage])
+	assert_true(absf(drawn.get_center().x - stage.get_center().x) <= 1.0,
+		"the figure stands in the middle (%.1f px off)"
+		% (drawn.get_center().x - stage.get_center().x))
+	assert_true(drawn.size.y >= 0.8 * stage.size.y,
+		"the figure fills its stage (%.0f of %.0f px)" % [drawn.size.y, stage.size.y])
+	assert_true(stage.size.x >= float(UIPalette.SHEET_FIGURE_COLUMN) - 0.5,
+		"the stage is as wide as the column (%.0f px)" % stage.size.x)
+	assert_true(card.size.x <= float(UIPalette.SHEET_FIGURE_COLUMN) + 0.5,
+		"and the column did not widen (%.0f px)" % card.size.x)
+
+
+## The three numbers are read DOWN a column: their right edges share one x, every name is
+## whole in both languages, and the column keeps its width.
+func test_the_satchels_numbers_stand_in_one_column_with_whole_names() -> void:
+	for code: String in ["vi", "en"]:
+		_use_language(code)
+		var card := _satchel_card()
+		card.set_stats(true, 23, 9, 180)
+		card.refresh_language()
+		await scene_tree.process_frame
+		await scene_tree.process_frame
+		var edges := card.stat_value_right_edges()
+		assert_eq(edges.size(), 3, "[%s] three numbers" % code)
+		assert_true(absf(edges[0] - edges[1]) <= 0.5 and absf(edges[1] - edges[2]) <= 0.5,
+			"[%s] the numbers end on one line %s" % [code, edges])
+		assert_true(card.stat_names_are_whole(), "[%s] no stat name is cut" % code)
+		assert_true(card.size.x <= float(UIPalette.SHEET_FIGURE_COLUMN) + 0.5,
+			"[%s] the column kept its width (%.0f px)" % [code, card.size.x])
+		free_node(card)
