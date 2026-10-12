@@ -114,6 +114,7 @@ func test_movement_moves_body_in_tree() -> void:
 	# Apply rightward intent across a few physics frames. Pass delta (3-arg contract); it is
 	# intentionally unused by apply_intent (move_and_slide owns integration), but the call
 	# site uses the full signature the Player uses.
+	await fixed_step()
 	for _i in range(5):
 		mover.apply_intent(Vector2.RIGHT, 200.0, 0.016)
 		await scene_tree.physics_frame
@@ -136,9 +137,22 @@ func test_zero_intent_keeps_body_still() -> void:
 
 	mover.setup(body)
 	var start := body.global_position
+	await fixed_step()
 	for _i in range(5):
 		mover.apply_intent(Vector2.ZERO, 200.0)
 		await scene_tree.physics_frame
 	assert_true(body.global_position.is_equal_approx(start), "no intent => body stays put")
 
 	free_node(body)
+
+
+## H21-21. The predicate production asserts on before it moves a body: false between physics
+## frames (where `move_and_slide()` would integrate against wall-clock frame time), true inside
+## one. A test steps a body only after `await fixed_step()`.
+func test_the_fixed_step_is_only_inside_a_physics_frame() -> void:
+	await scene_tree.process_frame
+	assert_false(MovementScript.in_fixed_step(), "a process frame is not the fixed step")
+	await fixed_step()
+	assert_true(MovementScript.in_fixed_step(), "fixed_step() enters it")
+	await scene_tree.process_frame
+	assert_false(MovementScript.in_fixed_step(), "and a process frame leaves it again")

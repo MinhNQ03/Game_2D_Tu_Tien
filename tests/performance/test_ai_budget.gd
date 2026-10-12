@@ -92,6 +92,7 @@ func test_no_enemy_runs_its_own_frame_callback() -> void:
 ## Counted over a known span rather than inferred from the interval: "the code reads the
 ## interval" is not evidence that the interval is honoured.
 func test_decisions_are_throttled_not_per_frame() -> void:
+	await fixed_step()
 	var runtime := _runtime(SMALL_CAST)
 	var interval: float = (load(ENEMY_PATH) as EnemyData).ai_profile.decision_interval
 	for _i in FRAMES:
@@ -113,6 +114,7 @@ func test_decisions_are_throttled_not_per_frame() -> void:
 
 ## The tick must be LINEAR in the population, and cheap per enemy per frame.
 func test_the_ai_tick_is_linear_in_the_population() -> void:
+	await fixed_step()
 	var small_msec := _measure(SMALL_CAST)
 	var large_msec := _measure(LARGE_CAST)
 	print("[perf][ai] %d frames | cast %d: %.2f ms | cast %d: %.2f ms" % [
@@ -151,6 +153,7 @@ func _measure(rows: int) -> float:
 ## A large cast must create no NODES beyond the creatures themselves — no per-enemy timer, no
 ## per-decision allocation of a helper object. The orphan count is the cheapest honest proxy.
 func test_a_large_cast_leaks_no_orphans_while_ticking() -> void:
+	await fixed_step()
 	var before := Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
 	var runtime := _runtime(LARGE_CAST)
 	for _i in 600:

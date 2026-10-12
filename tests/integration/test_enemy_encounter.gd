@@ -273,6 +273,7 @@ func test_despawning_clears_the_registry_and_stops_the_tick() -> void:
 ## here made the test depend on machine load. The next test asserts the hit from inside reach,
 ## where no travel is needed. One mechanism per test.
 func test_an_enemy_notices_the_player_and_closes() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	var player := _player(Vector2(500, 300))
 	runtime.register_target(player)
@@ -315,6 +316,7 @@ func test_an_enemy_notices_the_player_and_closes() -> void:
 ## Spawned already within `engage_distance`, so the assertion is about the attack path rather
 ## than about how fast the creature can walk.
 func test_an_enemy_in_reach_damages_the_player() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	var player := _player(Vector2(400, 300))
 	runtime.register_target(player)
@@ -373,6 +375,7 @@ func test_an_enemy_takes_damage_and_dies() -> void:
 ## a corpse that keeps hunting, keeps sliding, stays targetable, or lands a hit from beyond
 ## the grave.
 func test_a_dead_enemy_stops_everything() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	var player := _player(Vector2(410, 300))
 	runtime.register_target(player)
@@ -458,6 +461,7 @@ func test_a_damaged_enemy_flashes_and_a_dead_one_wears_the_corpse_look() -> void
 ## It also proves gameplay timing owns the animation: nothing here drives the visual: the only
 ## clock advanced is the attack lifecycle's.
 func test_a_real_swing_plays_the_creatures_action_animation() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	var player := _player(Vector2(400, 300))
 	runtime.register_target(player)
@@ -516,6 +520,7 @@ func test_a_real_swing_plays_the_creatures_action_animation() -> void:
 ## it — so an action layer that waited for that signal would hold the pose forever. The layer
 ## ends on the lifecycle's STATE instead, and this is the test that pins it.
 func test_a_swing_cancelled_by_death_releases_the_action_pose() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	var player := _player(Vector2(400, 300))
 	runtime.register_target(player)
@@ -574,6 +579,7 @@ func test_ending_the_session_stops_and_clears_enemies() -> void:
 ## Phase-10 requirement, and it is asserted by counting decisions over a known span rather
 ## than by trusting the interval was honoured.
 func test_decisions_are_throttled_but_movement_is_not() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	runtime.spawn_from_table(_table(Vector2(400, 300)), runtime)
 	var ai := runtime.enemies()[0].ai()
@@ -592,6 +598,7 @@ func test_decisions_are_throttled_but_movement_is_not() -> void:
 ## random walk bounded only by the leash, so "where the wolf is" was anywhere within 340 px
 ## of where the map put it, and no clue could be placed outside its notice.
 func test_the_shipped_wolf_left_alone_stays_on_its_ground() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	var den := Vector2(400, 300)
 	runtime.spawn_from_table(_table(den), runtime)
@@ -619,6 +626,7 @@ func test_the_shipped_wolf_left_alone_stays_on_its_ground() -> void:
 ## A LONG FRAME must not break the interaction between the brain and the attack lifecycle:
 ## no double swing, no stuck ATTACK, no resurrection.
 func test_a_long_frame_does_not_double_swing_or_stick() -> void:
+	await fixed_step()
 	var runtime := _runtime()
 	var player := _player(Vector2(415, 300))
 	runtime.register_target(player)
@@ -650,6 +658,7 @@ func test_a_long_frame_does_not_double_swing_or_stick() -> void:
 ## Determinism at the integration level: the same seed and the same stepping produce the same
 ## positions and the same states. This is what makes an encounter reproducible.
 func test_the_same_seed_reproduces_the_same_encounter() -> void:
+	await fixed_step()
 	var first := _run_encounter(WORLD_SEED)
 	var second := _run_encounter(WORLD_SEED)
 	assert_eq(str(first), str(second),

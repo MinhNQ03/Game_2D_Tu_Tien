@@ -60,6 +60,19 @@ func add_to_tree(node: Node) -> bool:
 	return true
 
 
+## Enter the engine's FIXED physics step: `await fixed_step()` before stepping anything that
+## moves a physics body, and again after any `await` of a process frame.
+##
+## Everything a test then does synchronously runs inside that one physics frame, where
+## `move_and_slide()` integrates against the fixed step (1/60 s) — so N simulated ticks move a
+## body exactly N steps on every machine. Outside it the same call integrates against the
+## wall-clock duration of the last rendered frame, and the test's outcome becomes a function of
+## how busy the machine was (H21-21). Production asserts this (`MovementComponent`), so a test
+## that forgets fails loudly instead of intermittently.
+func fixed_step() -> void:
+	await scene_tree.physics_frame
+
+
 ## Removes `node` from the tree and frees it immediately (no orphan). Safe on null.
 func free_node(node: Node) -> void:
 	if node == null:

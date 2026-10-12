@@ -219,6 +219,7 @@ func test_summon_and_dismiss_are_idempotent() -> void:
 # === Following ==============================================================
 
 func test_it_follows_gradually_and_never_teleports() -> void:
+	await fixed_step()
 	var rig := _rig()
 	rig.pets.befriend(HOUND)
 	var pet := rig.pets.active_pet()
@@ -273,6 +274,7 @@ func test_it_follows_gradually_and_never_teleports() -> void:
 # === Fighting ===============================================================
 
 func test_it_targets_only_a_living_hostile_and_drops_a_dead_one() -> void:
+	await fixed_step()
 	var rig := _rig()
 	rig.pets.befriend(HOUND)
 	var pet := rig.pets.active_pet()
@@ -293,6 +295,7 @@ func test_it_targets_only_a_living_hostile_and_drops_a_dead_one() -> void:
 
 
 func test_a_kill_pays_the_enemy_reward_once_and_the_pet_its_share_once() -> void:
+	await fixed_step()
 	var rig := _rig()
 	rig.pets.befriend(HOUND)
 	var pet := rig.pets.active_pet()
@@ -323,6 +326,53 @@ func test_a_kill_pays_the_enemy_reward_once_and_the_pet_its_share_once() -> void
 	assert_eq(store.xp_of(HOUND), share, "a pet that was not out earns nothing")
 	await scene_tree.process_frame
 	_free(rig)
+
+
+## The fight from the kill test, as data: how many ticks it took, where the two bodies stood
+## every tenth tick, and what was resolved. Two runs from one seed must give one trace.
+func _fight_trace(rig: Rig) -> Array:
+	rig.pets.befriend(HOUND)
+	var pet := rig.pets.active_pet()
+	_wolves(rig, [rig.player.global_position + Vector2(60, 0)])
+	var wolf := rig.combat.enemies()[0]
+	var trace: Array = []
+	var frames := 0
+	while not wolf.is_dead() and frames < 60 * 40:
+		_step(rig)
+		frames += 1
+		if frames % 10 == 0:
+			trace.append([pet.global_position.round(), wolf.global_position.round()])
+	trace.append([frames, wolf.is_dead(), rig.player.hp,
+		(pet.get_node("AttackComponent") as AttackComponent).swings_resolved()])
+	return trace
+
+
+## H21-21. The same fight, once after a short rendered frame and once after a long one, is the
+## same fight tick for tick. It was not: the world was stepped outside the physics frame, where
+## `move_and_slide()` integrates against the engine's wall-clock process step, so the kill took
+## 363 to 1887 ticks depending on how long the previous frame had taken — and no ticks moved
+## anybody at all once that was under 0.1 ms (CI run 38155239816, attempt 1).
+func test_a_fight_is_the_same_whatever_the_rendered_frame_took() -> void:
+	await fixed_step()
+	var quick := _rig()
+	var after_a_quick_frame := _fight_trace(quick)
+	_free(quick)
+	# A long rendered frame, so the engine's process step differs between the two fights. The
+	# step itself is NOT asserted: it is the engine's to report (a forced `--fixed-fps` pins
+	# it), and an assertion on it would be the wall-clock dependence this test exists to
+	# forbid. Where the machine does not vary it, `--fixed-fps` does (handoff §16.1).
+	await scene_tree.process_frame
+	OS.delay_msec(160)
+	await scene_tree.process_frame
+	await fixed_step()
+	var slow := _rig()
+	var after_a_slow_frame := _fight_trace(slow)
+	_free(slow)
+	var last: Array = after_a_quick_frame[-1]
+	assert_true(last[1], "the hound kills the wolf (%d ticks)" % last[0])
+	assert_eq(after_a_slow_frame, after_a_quick_frame,
+		"and the fight is identical, position for position, after a long frame")
+	await scene_tree.process_frame
 
 
 func test_levelling_up_while_out_applies_the_derived_stats() -> void:
@@ -399,6 +449,7 @@ func test_a_map_change_frees_the_body_and_brings_it_back_on_arrival() -> void:
 
 
 func test_the_pet_withdraws_when_its_owner_falls() -> void:
+	await fixed_step()
 	var rig := _rig()
 	rig.pets.befriend(HOUND)
 	rig.player.hp = 0

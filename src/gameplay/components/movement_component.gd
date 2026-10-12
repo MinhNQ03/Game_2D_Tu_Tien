@@ -52,6 +52,10 @@ var _probes: int = 0
 
 
 ## Inject the body in code (used by scenes/tests that build the entity programmatically).
+const FIXED_STEP_ONLY := ("a body is moved from the fixed physics step only: outside it "
+	+ "move_and_slide() integrates against the wall-clock frame time (H21-21)")
+
+
 func setup(target_body: CharacterBody2D) -> void:
 	body = target_body
 
@@ -71,7 +75,8 @@ static func resolve_velocity(intent: Vector2, speed: float) -> Vector2:
 ## Apply a move intent for this physics frame. Sets the body's velocity from
 ## `resolve_velocity()` and advances it with `move_and_slide()` (collision-aware; never a
 ## raw `position += velocity * delta` teleport). Returns the body's post-slide velocity.
-## Call from the owner's `_physics_process` only.
+## Call from the owner's `_physics_process` only — asserted in debug builds (`in_fixed_step`); a
+## test steps it from inside a physics frame (`TestCase.fixed_step`).
 ##
 ## `_delta` is part of the Phase-02 contract but intentionally UNUSED: `move_and_slide()`
 ## already integrates against Godot's fixed physics step internally, so multiplying speed
@@ -84,8 +89,22 @@ func apply_intent(intent: Vector2, speed: float, _delta: float = 0.0) -> Vector2
 		push_error("[movement] apply_intent with no body assigned")
 		return Vector2.ZERO
 	body.velocity = resolve_velocity(intent, speed)
+	assert(in_fixed_step(), FIXED_STEP_ONLY)
 	body.move_and_slide()
 	return body.velocity
+
+
+## True inside the engine's fixed physics step — the only place a body may be moved from.
+##
+## WHY IT IS ENFORCED (H21-21). `move_and_slide()` takes no delta: inside a physics frame it
+## integrates against the fixed physics step, and OUTSIDE one against the engine's process
+## step — a wall-clock quantity that the engine also clamps and compensates. A caller outside
+## the physics step therefore moves its body by `speed x how long the last rendered frame
+## happened to take`: under 0.1 ms nothing moves at all, at 150 ms one tick is a third of a
+## second of travel. Twenty tests stepped their worlds that way and passed on luck; the
+## pet-kill one failed once in CI with nobody having moved in 2400 ticks.
+static func in_fixed_step() -> bool:
+	return Engine.is_in_physics_frame()
 
 
 ## Pursue: move toward `toward` and, when something solid stands squarely in the way, walk

@@ -173,6 +173,7 @@ func tick(delta: float) -> void:
 		return
 	if _knock_velocity.length_squared() > 1.0:
 		_body.velocity = _knock_velocity
+		assert(MovementComponent.in_fixed_step(), MovementComponent.FIXED_STEP_ONLY)
 		_body.move_and_slide()
 		_knock_velocity = _knock_velocity.move_toward(Vector2.ZERO,
 			_knock_velocity.length() / maxf(KNOCKBACK_SECONDS, delta) * delta * 2.0)

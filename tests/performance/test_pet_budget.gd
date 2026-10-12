@@ -106,6 +106,7 @@ func test_the_pet_runs_no_frame_callback_of_its_own() -> void:
 
 
 func test_targets_are_chosen_on_a_cadence_not_per_frame() -> void:
+	await fixed_step()
 	var rig := _rig(SMALL_CAST)
 	for i in FRAMES:
 		rig.runtime.tick_allies(FRAME_DELTA)
@@ -127,6 +128,7 @@ func test_targets_are_chosen_on_a_cadence_not_per_frame() -> void:
 
 
 func test_the_companion_tick_is_linear_in_the_hostiles() -> void:
+	await fixed_step()
 	var small_msec := _measure(SMALL_CAST)
 	var large_msec := _measure(LARGE_CAST)
 	print("[perf][pet] %d frames, 1 pet | %d hostiles: %.2f ms | %d hostiles: %.2f ms" % [
