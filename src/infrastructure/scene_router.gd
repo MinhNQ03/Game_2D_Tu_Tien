@@ -63,6 +63,27 @@ func is_transitioning() -> bool:
 
 # --- Transition ---------------------------------------------------------------
 
+## Why a transition to `scene_key` would be refused NOW, or "" when it would be accepted.
+## Pure: it changes nothing and announces nothing.
+##
+## It exists so a caller with side effects of its own can ask BEFORE it commits them
+## (`WorldRuntime._enter_map`: leaving a map is an answer to the story's encounter, and an
+## answer given for a way out that then fails cannot be taken back — Gate B1). The same
+## checks, in the same order, are what `request_transition` refuses by; what this cannot
+## foresee is a scene file that exists and then fails to load or instantiate.
+func transition_refusal(scene_key: String) -> String:
+	if _transitioning:
+		return "a transition is already in progress"
+	if _scene_host == null:
+		return "no scene host set (call set_scene_host first)"
+	if not _scene_registry.has(scene_key):
+		return "scene_key not registered"
+	var path: String = _scene_registry[scene_key]
+	if not ResourceLoader.exists(path):
+		return "scene resource missing: %s" % path
+	return ""
+
+
 ## Request a transition to `scene_key`. Returns true if the transition completed, false if
 ## it was rejected or failed (with a reason emitted via transition_failed + EventBus).
 ## Opaque world_id/map_id are recorded in GameState on success (no single-world assumption).
@@ -71,19 +92,11 @@ func request_transition(
 		world_id: StringName = &"",
 		map_id: StringName = &"") -> bool:
 	# --- validate ---
-	if _transitioning:
-		_fail(scene_key, "a transition is already in progress")
-		return false
-	if _scene_host == null:
-		_fail(scene_key, "no scene host set (call set_scene_host first)")
-		return false
-	if not _scene_registry.has(scene_key):
-		_fail(scene_key, "scene_key not registered")
+	var refusal := transition_refusal(scene_key)
+	if refusal != "":
+		_fail(scene_key, refusal)
 		return false
 	var path: String = _scene_registry[scene_key]
-	if not ResourceLoader.exists(path):
-		_fail(scene_key, "scene resource missing: %s" % path)
-		return false
 
 	# --- begin ---
 	_transitioning = true

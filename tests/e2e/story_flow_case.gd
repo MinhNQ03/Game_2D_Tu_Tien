@@ -862,6 +862,27 @@ func test_real_story_flow() -> void:
 	assert_eq(int(world.call("story_encounter_remaining")), 2, "the wave is here")
 	var affinity_before := RegardRules.read(relationship.get_service(),
 		relationship.get_config(), KO, character.instance_id, &"affinity")
+	# --- 11a. FAULT INJECTION (Gate B1): the way out FAILS. Leaving is an answer only if the
+	# player actually left. The router is made to refuse the village (its scene "missing"),
+	# the real exit is pressed, and the Night must be exactly as it was: nothing answered, the
+	# wave alive, the dark still down. Then the village is put back.
+	var hub_scene := "res://src/gameplay/maps/hub_map.tscn"
+	router.call("register_scene", "map_hub", "res://no_such_scene_gate_b1.tscn")
+	await _go_through_exit(player)
+	router.call("register_scene", "map_hub", hub_scene)
+	assert_eq(str(world.call("get_current_map_id")), "map_field", "the refused exit led nowhere")
+	assert_eq(_count_players(main), 1, "the player is still in the woods, once")
+	assert_eq(service.state().option_of(&"choice_night_stand"), &"",
+		"a way out that failed is NOT an answer to the Night")
+	assert_eq(service.state().beat_id, &"beat_night", "the Night is still the Night")
+	assert_true(bool(world.call("is_story_encounter_live")), "its encounter is still live")
+	assert_eq(int(world.call("story_encounter_remaining")), 2, "with both creatures standing")
+	assert_eq((router.call("get_current_scene").get_node(MapBase.AMBIENCE_PATH)
+		as MapAmbience).ambience_id(), &"night", "and no morning came over a fight")
+	assert_false(story.is_scene_playing(), "nor any card about one")
+	assert_eq(RegardRules.read(relationship.get_service(), relationship.get_config(), KO,
+		character.instance_id, &"affinity"), affinity_before, "nobody was left alone yet")
+	_step("11a. a way out that failed answered nothing: the Night, its wave and its dark stand")
 	await _go_through_exit(player)
 	assert_eq(str(world.call("get_current_map_id")), "map_hub", "the way back was open")
 	assert_eq(service.state().option_of(&"choice_night_stand"), &"withdrew",
@@ -941,6 +962,75 @@ func test_real_story_flow() -> void:
 	await scene_tree.process_frame
 	await scene_tree.process_frame
 	assert_eq(gs.get_phase(), gs.Phase.MENU, "back at the menu")
+
+	# --- 13. the fallen answer nothing (Gate B1) ----------------------------------------------
+	# A thunder bolt is still in the air when its caster falls. It may land; it may kill. It
+	# may NOT make the story say the player "stood", bring the morning, or open a story card
+	# over the defeat. SETUP through owners (each proved with real keys elsewhere): a third
+	# run brought to the Night, the cultivator's first realm, the technique, the wave one
+	# blow from down. REAL KEYS: the cast, and the acknowledgement of the defeat.
+	await _press_until(UI_ACCEPT, func() -> bool: return RunKit.identity_of(main) != null)
+	identity = RunKit.identity_of(main) as IdentityScreen
+	for _i in 5:
+		await _fire_action(UI_DOWN)
+	await _press_until(UI_ACCEPT, func() -> bool: return gs.get_phase() == gs.Phase.RUNNING)
+	RunKit.skip_scenes(main)
+	for who: StringName in [SHEN, LIN, KO]:
+		story.meet(who)
+	story.set_flag(&"flag_heard_village_business", 1)
+	story.choose(&"choice_lam_readings", &"kept")
+	RunKit.skip_scenes(main)
+	player = world.call("get_player") as Node2D
+	character = world.call("get_player_character")
+	service = story.get_service()
+	await _go_through_exit(player)
+	await _press_until(INTERACT, func() -> bool: return not story.is_scene_playing())
+	await scene_tree.process_frame
+	assert_eq(int(world.call("story_encounter_remaining")), 2, "setup: the wave is here")
+	var skills := main.get_node("Systems/SkillRuntime") as SkillRuntime
+	knowledge.grant(&"know_dan_khi_quyet", &"setup_gate_b1")
+	cultivation.get_service().gather(character, 999)
+	cultivation.get_service().breakthrough(character)
+	cultivation.realm_advanced.emit(character.realm_id, character.realm_layer, true)
+	knowledge.grant(&"know_loi_chi", &"setup_gate_b1")
+	await _wait_until(func() -> bool: return skills.qi() >= 16.0, 1200)
+	assert_true(skills.knows(&"tech_loi_chi") and skills.qi() >= 16.0,
+		"setup: the thunder finger is known and there is breath for it")
+	var wave: Array[Node2D] = []
+	for enemy in combat.enemies():
+		if String(enemy.name).begins_with(NIGHT_PREFIX):
+			wave.append(enemy)
+	wave[1].call("take_damage", 99999)
+	wave[0].call("take_damage", int(wave[0].call("get_current_health")) - 1)
+	await scene_tree.physics_frame
+	assert_eq(int(world.call("story_encounter_remaining")), 1,
+		"setup: one left, one blow from down")
+	player.global_position = wave[0].global_position - Vector2(150, 0)
+	(player.get_node("AttackComponent") as AttackComponent).set_facing(Vector2.RIGHT)
+	var xp_before := character.xp
+	await _fire_action(&"skill_2")
+	await _wait_until(func() -> bool: return not skills.bolts().is_empty(), 240)
+	assert_false(skills.bolts().is_empty(), "a real key cast it: the bolt is in the air")
+	player.call("take_damage", 99999)   # the blow that fells the caster, bolt still flying
+	await _wait_until(func() -> bool: return bool(wave[0].call("is_dead")), 240)
+	for _i in 6:
+		await scene_tree.process_frame
+	hud = _find_hud(router.call("get_current_scene"))
+	assert_true(bool(player.call("is_dead")) and bool(wave[0].call("is_dead")),
+		"the caster fell, and the bolt it had already loosed still landed and killed")
+	assert_true(character.xp > xp_before, "the kill is the kill it was (paid once by its owner)")
+	assert_eq(service.state().option_of(&"choice_night_stand"), &"",
+		"but the fallen did not 'stand': the Night is not answered for them")
+	assert_eq(service.state().beat_id, &"beat_night", "no morning comes to a defeat")
+	assert_false(story.is_scene_playing() or hud.is_story_scene_open(),
+		"and no story card opens over it")
+	assert_eq(hud.session_prompt_kind(), GameplayHUD.PROMPT_DEFEAT,
+		"one surface holds the player: the defeat")
+	await _press_until(INTERACT, func() -> bool: return gs.get_phase() == gs.Phase.MENU)
+	assert_eq(gs.get_phase(), gs.Phase.MENU, "acknowledged with a real key: back at the menu")
+	assert_false(story.is_session_active() or bool(world.call("is_story_encounter_live")),
+		"with no story and no encounter left behind")
+	_step("13. a bolt outlives its caster and kills: nothing answered, nothing over the defeat")
 	_teardown(main)
 	await scene_tree.process_frame
 

@@ -314,6 +314,18 @@ func _enter_map(map_id: StringName, entry_point: StringName) -> bool:
 		push_error("[world] unknown map_id: %s" % map_id)
 		return false
 
+	# --- ask before anything is done -------------------------------------------
+	# Everything below the snapshot has consequences that cannot be taken back: leaving a
+	# map ANSWERS the story's encounter (the player withdrew), and the old map is told it is
+	# being left. A way out the router is going to refuse must therefore be refused here,
+	# with the Night, its wave and its dark exactly as they were (Gate B1: a refused
+	# transition recorded "withdrew" and brought the morning over a living wave).
+	var refusal := str(_router.call("transition_refusal", data.scene_key)) \
+		if _router.has_method("transition_refusal") else ""
+	if refusal != "":
+		push_error("[world] cannot go to %s: %s" % [map_id, refusal])
+		return false
+
 	# --- snapshot for rollback -------------------------------------------------
 	var prev_parent: Node = null
 	if _player != null and is_instance_valid(_player):
@@ -1463,9 +1475,17 @@ func story_encounter_remaining() -> int:
 	return standing
 
 
+## The last of the encounter fell. That answers it ("stood") only for a player who is still
+## standing: a bolt already in the air can outlive its caster and kill, and the fallen answer
+## nothing — the run ends at the defeat, with the Night unanswered and no morning shown over it
+## (Gate B1).
 func _on_encounter_enemy_defeated(_reward_id: StringName, _xp: int) -> void:
-	if _encounter_beat_id != &"" and story_encounter_remaining() == 0:
-		_answer_story_encounter(true)
+	if _encounter_beat_id == &"" or story_encounter_remaining() > 0:
+		return
+	if _player != null and is_instance_valid(_player) and _player.has_method("is_dead") \
+			and bool(_player.call("is_dead")):
+		return
+	_answer_story_encounter(true)
 
 
 ## The player is leaving the map with the encounter unfinished: that is an answer too.

@@ -132,3 +132,50 @@ func test_clear_when_empty_is_safe() -> void:
 	assert_eq(_router.get_current_key(), "", "still empty after clearing nothing")
 	assert_null(_router.get_current_scene(), "no current scene after clearing nothing")
 	assert_eq(_host.get_child_count(), 0, "host still empty")
+
+
+# === Asking before committing (Gate B1) ======================================
+
+## `transition_refusal` says, without doing anything, exactly what `request_transition` would
+## refuse by — so a caller with consequences of its own can ask first.
+func test_the_router_says_beforehand_what_it_would_refuse() -> void:
+	assert_eq(_router.transition_refusal("prologue"), "", "a good scene would be accepted")
+	assert_ne(_router.transition_refusal("not_registered"), "", "an unregistered key would not")
+	_router.register_scene("ghost", "res://src/presentation/scenes/does_not_exist.tscn")
+	assert_ne(_router.transition_refusal("ghost"), "", "nor a scene whose file is missing")
+	assert_eq(_host.get_child_count(), 0, "asking loaded nothing")
+	assert_eq(_router.get_current_key(), "", "and changed nothing")
+	var failures: Array = []
+	_router.transition_failed.connect(func(key: String, _why: String) -> void:
+		failures.append(key))
+	_router.transition_refusal("ghost")
+	assert_eq(failures, [], "asking announces no failure")
+	for key: String in ["not_registered", "ghost", "prologue"]:
+		var foretold: bool = _router.transition_refusal(key) == ""
+		assert_eq(_router.request_transition(key), foretold,
+			"the request does what was foretold for '%s'" % key)
+	var hostless: Node = RouterScript.new()
+	add_to_tree(hostless)
+	hostless.register_scene("prologue", PROLOGUE_PATH)
+	assert_ne(hostless.transition_refusal("prologue"), "", "no host: refused beforehand")
+	assert_false(hostless.request_transition("prologue"), "and when asked")
+	free_node(hostless)
+
+
+## A request that arrives from INSIDE a transition (a listener of its start) is refused, both
+## beforehand and when made, and the transition in flight completes as if nobody had asked.
+func test_a_transition_asked_for_inside_a_transition_is_refused() -> void:
+	_router.register_scene("second", PROLOGUE_PATH)
+	var inside: Array = []
+	var listener := func(_from: String, to: String) -> void:
+		if to == "prologue":
+			inside.append(_router.transition_refusal("second") != "")
+			inside.append(_router.request_transition("second"))
+	_router.transition_started.connect(listener)
+	assert_true(_router.request_transition("prologue"), "the outer transition completes")
+	_router.transition_started.disconnect(listener)
+	assert_eq(inside, [true, false], "foretold as refused, and refused")
+	assert_eq(_router.get_current_key(), "prologue", "the scene asked for first is the one shown")
+	assert_eq(_host.get_child_count(), 1, "exactly one content scene")
+	assert_false(_router.is_transitioning(), "and the router is idle again")
+	assert_true(_router.request_transition("second"), "afterwards the second is accepted")
