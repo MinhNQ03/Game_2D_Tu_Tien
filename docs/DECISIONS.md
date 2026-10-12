@@ -6077,3 +6077,32 @@ so the hint is said once — with no "shown" flag in the story, the HUD or anywh
 **M. A panel never rebuilds itself inside the layout pass.** Found as a crash in the real
 application (handoff §12). Recorded as L-054.
 
+### D-073 addendum (pre-Phase-21 Gate A, 2026-10-12) — two contracts the code now enforces
+
+**N. A body is moved from the fixed physics step only.** `move_and_slide()` takes no delta:
+inside a physics frame it integrates against the fixed step, outside one against the engine's
+process step — a wall-clock quantity. `MovementComponent.apply_intent` and the knock-back in
+`AIComponent.tick` now `assert(MovementComponent.in_fixed_step())` (debug builds; the game
+already only moves bodies from `_physics_process`), and a test enters the step with
+`TestCase.fixed_step()`. This is the root cause of H21-21 (handoff §16, L-055). *Rejected:*
+scaling the velocity by `delta / engine step` so a tick could be stepped anywhere (a second
+integrator beside the engine's, and `test_move` probes would still read the wrong step);
+raising the test's frame cap or retrying (the outcome would still be a function of the
+machine's load).
+
+**O. The story refuses writes from inside its own writes (`REFUSE_BUSY`).** §2 made a choice
+"prepare, then commit; the story's own writes last". An owner ANNOUNCES from inside the call
+that asked it (`KnowledgeRuntime.grant_all` emits `knowledge_gained`), and the session's own
+wiring answers that by asking the story to look again — so a listener ran between "the owners
+have done their part" and "the decision is on the record". A beat waiting for the lesson its
+own decision teaches then completed there, choosing its way on by a decision not yet
+written, and a nested `choose` / `begin` was a second decision or a second starting kit.
+`StoryService` holds `_committing` across the owner commits of `begin` and `choose`; every
+write (`begin`, `choose`, `set_flag`, `meet`, `note`, `refresh`, `load_state`) is refused as
+busy for that window and reads are not. Nothing is lost: the call in flight settles the
+story on the whole record as its last act. Not reachable with shipped content — the one
+shipped decision that teaches (`choice_sheet_shown`) sits on a beat that waits for the CHOICE,
+and no beat waits for what a decision teaches — it was one content edit away. *Rejected:*
+deferring the owner's announcement (`call_deferred`: feedback a frame late, and an ordering
+nobody can test); queueing the nested call (a second authority over order); recording the
+decision BEFORE asking the owners (undoes §2: a refusal would leave a recorded decision).

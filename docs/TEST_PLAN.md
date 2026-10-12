@@ -184,6 +184,13 @@ tools/
 - A reproduced bug becomes a permanent test in `tests/` referencing the issue.
 - Content/data tests assert loaded Resources are valid (no missing localization keys,
   no null required fields).
+- **A test that moves a physics body enters the fixed step first:** `await fixed_step()`
+  (`TestCase`), and again after any `await` of a process frame. `move_and_slide()` reads the
+  engine's own clock: outside a physics frame that is the wall-clock length of the last
+  rendered frame, and the test's outcome becomes a function of machine load (H21-21, L-055).
+  Production asserts it, so forgetting is a `SCRIPT ERROR`, not an intermittent red.
+- A fake owner must be able to call back from INSIDE the seam it fakes when the real owner
+  announces from inside it (`StoryFixture.Owners.on_taught`).
 
 ## 8. What we deliberately do NOT test
 
@@ -1309,6 +1316,33 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
   the fix (`docs/handoff/pre-phase-20-readiness.md` has every run).
 - Mutation-checked: 15 (pursuit) + 2 (budget) + 7 (calendar / layer), each red; see the
   handoff for the list.
+
+## Pre-Phase-21 Gate A — H21-21 explained; the story's in-flight window (D-073 addendum N, O)
+
+Suite **1248** (was 1241); the eight E2E flows unchanged. Mutations: **22 applied, 21 red, 1
+survived** — the survivor is the removal of the production `assert` alone with every test
+still entering the fixed step: no test can observe an assert that does not fire, and its
+predicate is pinned separately (M4). Handoff §16 has the table.
+
+- `tests/framework/test_case.gd` — `fixed_step()`.
+- `tests/integration/test_pet_companion.gd` (+1) — **the same fight after a short rendered
+  frame and after a 160 ms one is identical, position for position** (red with the defect
+  restored: the two traces differ, and the kill test beside it fails with the CI signature).
+- `tests/integration/test_player_components.gd` (+1) — `in_fixed_step()` is false between
+  physics frames and true inside one.
+- 18 existing tests in `test_pet_companion`, `test_enemy_encounter`, `test_ai_budget`,
+  `test_pet_budget` and 2 in `test_player_components` now enter the fixed step; their
+  assertions are unchanged.
+- `tests/unit/story/test_story_service.gd` (+4) — a listener that asks the story to look
+  again from inside a decision is told to wait and the beat goes on by what was DECIDED;
+  every write from inside (`choose` same or other option, `set_flag`, `meet`, `note`,
+  `begin`, `load_state`) is refused and the decision stands once; a second start from inside
+  the first is refused with one kit handed over; a refused decision does not leave the story
+  busy.
+- `tests/integration/test_story_runtime.gd` (+1) — on a real run with the real Knowledge
+  Core, graph and bag: what hears `knowledge_gained` inside `choice_sheet_shown` sees her
+  regard already moved and the decision not yet written, cannot decide again, and the
+  announcements come after, once each.
 
 ## Post-Phase-20 hardening (D-073) — the bridge, the transaction, the Night, the book
 

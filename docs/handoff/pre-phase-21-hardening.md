@@ -13,6 +13,10 @@
 > with `gh` after a fresh fetch on 2026-10-11). `4dd38ec` remains the historical BASE of the
 > pass. A follow-up close-out on `hardening/pre-phase21-closeout` continues from `4358c78`
 > and is recorded in §15.
+>
+> **Current state (dated addendum, 2026-10-12 — see §1a and §16).** `4358c78` is no longer
+> where `main` is. Read §1a for what the refs point to now; the paragraph above is kept as the
+> record of 2026-10-11.
 
 ## 1. Baseline (verified, not assumed)
 
@@ -27,6 +31,22 @@
 | Real window before any edit | `tools/capture_ui.gd -- vi` at 1280×720: 36 captures, exit 0. Opened: `23_night_wave_and_wreck`, `22_night_rupture_caption`, `26_chronicle_page_2`, `26_chronicle_page_4` (what they show is in §2) |
 
 `CLAUDE.md` is user-owned and untracked. It is never staged, moved or edited by this task.
+
+### 1a. Current state — addendum of 2026-10-12 (the table above is history and is not edited)
+
+Read back with `git fetch --all --prune`, `git rev-parse` and `gh run list` on 2026-10-12,
+at the preflight of Gate A (§16):
+
+| Ref | Points to | Against `main` |
+|---|---|---|
+| `origin/main` | `33919f9e41996393aec91df2dc124cb8fa2bda04` | — |
+| `origin/hardening/pre-phase21-closeout` | `33919f9e41996393aec91df2dc124cb8fa2bda04` | equal (the owner fast-forwarded `main` to the close-out's tip; no merge commit) |
+| `origin/hardening/pre-phase21-experience` | `4358c78d6d29fec259d342b1005ba627bcc0a34d` | behind: an ancestor of `main`, not a base for new work |
+| `hardening/pre-phase21-gate-a` | branched from `33919f9` for §16 | ahead by §16's commits; **not merged** — merging is the owner's |
+
+CI on `main` at `33919f9`: run **38198759321**, event `push`, success. (The close-out branch's
+own run on the same SHA: 38197905280, success.) `4dd38ec` stays the historical base of the
+first pass and `4358c78` the historical tip of that pass and base of the close-out.
 
 ## 2. Findings (what was looked at, and what it costs the player)
 
@@ -762,6 +782,10 @@ anything left". (2) The wreck's standing wheel reads as a dark slab, like the wh
 | H21-20 (new, follow-up §15.6) | at 1280×720 the Chronicle runs to 10 pages and three of them hold two or three lines (3/10, 5/10, 10/10); at 1280×800 the same book is 7 pages | found in the last review; the packer keeps a block whole and breaks before it — repacking is a presentation change with its own measurements | presentation (`ChroniclePanel` paging); Phase 25, or the UI pass the owner has announced | no page of the book at 1280×720 is under a third full unless it is the last | no |
 | H21-21 (new, follow-up §15.6) — **ROOT CAUSE NOT FOUND** | `test_pet_companion::test_a_kill_pays_the_enemy_reward_once_and_the_pet_its_share_once` failed ONCE on CI (run 38155239816, `a015036`, first attempt): in 2400 simulated frames the hound never resolved a swing on a wolf 60 px from its owner. The re-run of the same run on the same SHA passed; the runs before and after it passed | not reproduced: 12 isolated runs and 6 full-suite runs locally, 0 failures; locally the kill takes exactly 423 frames every time | AI / test infrastructure; Phase 21 (NAV-01 already owns creature pathing) | the failure is reproduced and explained, or the test is shown to depend on wall-clock physics stepping and is re-driven without it | **yes** — an intermittent red in the gate hides real ones |
 
+**H21-21 — CLOSED on 2026-10-12 (Gate A, §16).** The row above is kept as it was written.
+Its closing criterion was "the failure is reproduced and explained, or the test is shown to
+depend on wall-clock physics stepping and is re-driven without it"; both happened.
+
 Closed by this pass: H21-01 … H21-13. Carried unchanged with their recorded owners: Q19-01,
 Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
 
@@ -788,6 +812,11 @@ Q19-02, AUD-15 (Phase 25); CLV-01, NAV-01 (Phase 21); AUD-07 (Phase 26).
 `origin/main` (`4dd38ec`) was not touched by the task. *Now:* the owner has fast-forwarded
 `main` to `4358c78` — the branch's tip — with no merge commit; CI run 38149535941 is green on
 `main` at that SHA. Nothing was rewritten. See §15 for what was done after that.
+
+*Update of 2026-10-12 (supersedes the "Now" above as a description of the present; that
+sentence was true on 2026-10-11):* `main` has since been fast-forwarded again, to the
+close-out's tip `33919f9` (CI run 38198759321, success). `4358c78` is an ancestor of `main`
+and is no longer an integration point. §1a has the refs; §16 is the work done after.
 
 **The next action is a person's, not a tool's:** play §11's checklist once. Then author the
 Phase-21 Gate A against §10. (After the follow-up of §15 the gate still reads
@@ -1175,3 +1204,146 @@ walks home), which may be why it surfaced now. No fix was attempted without a
 reproduction.
 
 **Gate: WAITING FOR OWNER PLAYTEST. Phase 21 and Phase 22 have not started.**
+
+## 16. Gate A — technical state and transaction integrity (`hardening/pre-phase21-gate-a`, from `33919f9`)
+
+> **Not a phase, and not Phase 21.** One of five bounded pre-Phase-21 gates. It explains
+> H21-21, re-verifies the transaction fixes of §15.1 as a regression baseline, closes one
+> invariant that audit found missing, and corrects this document's present tense (§1a, §14).
+> No gameplay, content, art, UI, save or networking change. It stops here.
+
+**Preflight (2026-10-12).** Refs as §1a. Working tree: `CLAUDE.md` and `.kiro/settings/`
+untracked — neither is this task's; neither was read into a commit, edited, staged or moved.
+Baseline on `33919f9` before any edit: **1241 / 1241** tests, 0 `SCRIPT ERROR` (two full
+local runs).
+
+### 16.1 H21-21 — root cause
+
+**What the failed run shows** (job log of run 38155239816, attempt 1, `a015036`): three
+assertions of the kill test failed — the wolf not dead after 2400 ticks, **0** swings
+resolved by the hound, 0 defeats — and one PASSED: the owner's health was unchanged. In forty
+simulated seconds neither creature hit anything. That is not a creature that lost a fight; it
+is two creatures that never closed.
+
+**Mechanism.** `_step()` calls `CombatRuntime.tick_enemies / tick_allies` and
+`PetRuntime.tick` with `1/60`. Each ends in `MovementComponent.apply_intent`, which sets a
+velocity and calls `CharacterBody2D.move_and_slide()`. That call takes no delta. Inside a
+physics frame it integrates against the fixed physics step; **outside one it integrates
+against the engine's process step** — the wall-clock length of the last rendered frame, as
+the engine clamps and compensates it. The test ran between physics frames (it is driven from
+the runner's `await process_frame`), so every tick of the loop moved both bodies by `speed ×
+one real number`, the same number for all 2400 ticks.
+
+**Evidence** (scratch diagnostics, not committed; the engine's `--fixed-fps N` forces the
+process step to `1/N`):
+
+| Process step | Kill after | Swings | |
+|---|---|---|---|
+| 200 ms | 1491 ticks | 12 | |
+| 125 ms | 507 | 8 | |
+| 67 ms / 33 ms | 363 | 6 | |
+| 16.7 ms | 375 | 6 | |
+| 2 ms | 531 | 6 | |
+| 0.5 ms | 951 | 6 | |
+| 0.2 ms | 1923 | 6 | |
+| **0.1 ms and below** | **never (2400)** | **0** | owner's health unchanged — the CI signature, assertion for assertion |
+
+Without `--fixed-fps`: eight isolated runs of the unmodified test took 879, 1491, 903, 879,
+999, 1407, 879 and 1011 ticks (process step ≈ 0.142 s each time, the engine's clamp after a
+slow first frame); two full-suite runs took 459 (process step 8.5 ms). The "423 frames every
+time" recorded in §13 was the same test on another day's timing. The outcome was never
+deterministic; it was inside the cap by a margin that depended on the machine.
+
+**Stepped inside a physics frame** the same loop takes **375 ticks and 6 swings** at every
+process step from 200 ms to 0.01 ms and in three runs with no forced step.
+
+**The same sweep over whole files.** `test_pet_companion`, `test_enemy_encounter`,
+`test_pet_budget`, `test_ai_budget` and `test_player_components` (51 tests) pass at a forced
+process step of 0.01 ms, 0.05 ms, 2 ms, 16.7 ms and 200 ms and with none forced. On `main`
+(`33919f9`) the first two files alone fail 3 tests at 0.01 ms and 2 at 200 ms.
+
+**What was not measured.** The process step of the CI runner during attempt 1 cannot be read
+back: nothing logged it. The claim is that the failure's signature is reproduced exactly by
+this mechanism and by nothing else found, and that the dependence is removed — not that the
+runner's number is known. The earlier hypothesis in §15.6 (the physics SPACE differing
+between tests) was not what was found: no physics query differs; the integration step does.
+
+**Fix — at the owner, not in the test's numbers.**
+- `MovementComponent.apply_intent` and the knock-back in `AIComponent.tick` assert
+  `MovementComponent.in_fixed_step()` before `move_and_slide()` (debug builds). The game
+  already moves bodies only from `_physics_process`: all eight E2E flows and the boot smoke
+  run with 0 script errors under the assert.
+- `TestCase.fixed_step()`; the twenty tests in five files that stepped bodies between physics
+  frames (found by counting the assert: 139 608 calls in one suite run) now enter it. No
+  assertion, cap, speed, range or damage value was changed.
+- Not done, on purpose: the frame cap is still 2400; nothing retries; no test was skipped.
+
+### 16.2 Transactions — the baseline re-verified, and one missing invariant
+
+**Re-verified by fault injection** (§15.1's fixes; R1–R7 below, all red): the knowledge batch
+checks every id before it records; a broken Origin start gives its items back and its first
+impressions back; a broken decision puts its regards back and writes nothing; a refused
+batch is not reported as taught. The design was not redone.
+
+**Missing invariant, found by a red test — the in-flight window.** `KnowledgeRuntime.grant_all`
+emits `knowledge_gained` from inside the call, and `StoryRuntime` answers that signal with
+`StoryService.refresh()`. So the story's own listener re-entered the story after the owners
+had done their part and before the decision was on the record. Two tests on the unguarded
+service were red: a beat waiting for the lesson its own decision teaches completed inside the
+window and took the way on for "not decided" (beat `e` instead of `c`); and a write from
+inside (`choose`, `begin`) recursed — 511 recorded decisions, 681 starting kits before the
+stack gave out. **Reachability:** not with shipped content (probed: the one decision that
+teaches, `choice_sheet_shown`, is on a beat that waits for the CHOICE; no beat waits for
+knowledge a decision teaches). One content edit away, like §15.1's.
+
+**Fix.** `StoryService._committing` across the owner commits of `begin` and `choose`; every
+write is refused with `REFUSE_BUSY` for that window; the call in flight settles the story on
+the whole record as its last act. Reads are not refused. D-073 addendum O.
+
+### 16.3 Mutations — 22 applied, 21 red, 1 survived
+
+| # | Fault injected | Result |
+|---|---|---|
+| M1 | the tests stop entering the fixed step (assert kept) | red — 15 072 script errors, 3 tests |
+| M2 | the same AND the assert removed (the original defect) | red — the two fight traces differ; the kill test fails with the CI signature |
+| M3 | the assert removed, tests still entering the step | **survived** — nothing is wrong to observe; the assert only ever fires on a caller that is itself the defect (M1) |
+| M4 | `in_fixed_step()` always true | red |
+| T1–T7 | each write no longer refuses while busy (`refresh`, `choose`, `set_flag`, `meet`, `note`, `begin`, `load_state`) | red ×7 |
+| T8, T11 | a refused decision / a refused start leaves the story busy | red ×2 |
+| T9, T10 | `choose` / `begin` never raises the guard | red ×2 |
+| R1 | the batch records before every id is checked | red |
+| R2, R3 | a broken start keeps its items / its first impressions | red ×2 |
+| R4 | a broken decision keeps the regards it moved | red |
+| R5 | a refused batch is reported as taught | red |
+| R6 | the decision is recorded although an owner refused | red |
+| R7 | a decision's lesson is never taught | red |
+
+### 16.4 Evidence
+
+| Case | Before | Test | After |
+|---|---|---|---|
+| H21-21 | intermittent red in CI; locally 363–1887 ticks by machine timing, never at ≤ 0.1 ms | `test_a_fight_is_the_same_whatever_the_rendered_frame_took`; the kill test itself | 375 ticks at every process step; identical traces after a short and a 160 ms frame |
+| a body moved outside the fixed step | silent, wall-clock scaled | `test_the_fixed_step_is_only_inside_a_physics_frame`; the production assert | a `SCRIPT ERROR` the suite gate fails on |
+| a listener moves the story inside a decision | beat `e` (not decided) instead of `c` | `test_a_listener_cannot_move_the_story_before_the_decision_is_on_the_record` | refused busy; beat `c`, completed once |
+| a write from inside a decision or a start | recursion; 511 decisions / 681 kits | `test_a_listener_cannot_answer_or_write_from_inside_a_decision`, `…_begin_a_second_run_from_inside_the_first` | refused; one decision, one kit |
+| the same, real owners | not tested | `test_what_hears_a_lesson_inside_a_decision_cannot_decide_again` | heard once; regard moved, decision not yet written, no way in; announced after |
+| a refusal leaves the story usable | — | `test_a_refused_decision_leaves_the_story_answering` | answers again |
+| multi-knowledge batch, Origin undo (§15.1) | fixed in §15.1 | the §15.1 tests, re-run under R1–R7 | still red under every fault |
+
+**Gates on the closing tree:** lint + selftest · import · parse_check · boot smoke · the
+suite · eight E2E flows — numbers in the closing message, with CI on the exact final SHA.
+No real-window run was made: nothing a player sees changed (**BLOCKED as evidence of
+anything visual — and none is claimed**).
+
+### 16.5 Debts after Gate A
+
+| ID | State | Owner | Closes when |
+|---|---|---|---|
+| H21-14 | **OPEN / OWNER REQUIRED** | the project owner | a person has played §11 and written down what happened |
+| H21-20 | recorded, unchanged | presentation; the announced UI pass / Phase 25 | no Chronicle page at 1280×720 under a third full unless it is the last |
+| H21-21 | **CLOSED** (§16.1) — with the stated limit that the CI runner's process step on the failed attempt was not recorded | — | — |
+| GA-01 (new) | the fixed-step assert guards the two `move_and_slide()` call sites that exist; a third call site added later is not covered by anything automatic | gameplay; whoever adds a mover | movers go through `MovementComponent`, or the lint learns to flag a bare `move_and_slide()` |
+| GA-02 (new) | other owners that emit from inside a write (Quest, Inventory, Relationship) were NOT audited for the in-flight window; the Quest runtime has its own (`test_a_listener_that_answers_again_from_inside_the_payment_is_refused`), the others have none | each runtime's owner; before the phase that first makes them call each other inside a write (Phase 21 loot / Phase 22 rewards) | each has a test in which a listener writes back from inside the announcement |
+| CLV-01, NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | unchanged | | |
+
+**Gate A stops here. Gate B1 was not started. Phase 21 and Phase 22 have not started.**

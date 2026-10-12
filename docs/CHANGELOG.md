@@ -8,6 +8,20 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-12 — Pre-Phase-21 Gate A: technical state and transaction integrity (`hardening/pre-phase21-gate-a`; not a phase)
+
+- **H21-21 explained and closed.** The intermittent `test_pet_companion` failure was the test
+  stepping physics bodies between physics frames, where `move_and_slide()` integrates against
+  the wall-clock length of the last rendered frame; reproduced with the CI signature and
+  re-driven inside the fixed step (`TestCase.fixed_step`). Production now asserts a body is
+  moved from the fixed step only. Twenty tests in five files had the same dependence.
+- **The story refuses writes from inside its own writes** (`StoryService.REFUSE_BUSY`): an
+  owner's announcement heard inside a decision could move the story before the decision was
+  on the record. Not reachable with shipped content; found by a red test.
+- The atomic knowledge batch and the Origin kit's undo re-verified by fault injection.
+- 1248 tests, eight E2E flows; 22 mutations, 21 red. No gameplay, content, art or UI change.
+  H21-14 stays OPEN / OWNER REQUIRED; H21-20 unchanged. Phase 21 and 22 NOT STARTED.
+
 ### 2026-10-12 — D-073 follow-up close-out (`hardening/pre-phase21-closeout`; not a phase)
 
 - **A creature has a ground** (`AiProfileData.patrol_radius`, H21-16): patrol was a random

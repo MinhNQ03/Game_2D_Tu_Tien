@@ -1573,3 +1573,31 @@
   `test_a_page_uses_the_room_it_has_at_the_smallest_window`; `tools/capture_ui.gd` pages the
   book in the real window.
 
+## L-055 — A "fixed delta" test is only fixed if the engine's hidden clock is too; and a signal fires inside the call that caused it
+
+- **What happened (pre-Phase-21 Gate A, H21-21).** `test_pet_companion::test_a_kill_pays_…`
+  failed once in CI and passed on the re-run of the same SHA. The test "stepped the world with
+  a fixed delta" — it passed `1/60` to every `tick`. But `tick` ends in `move_and_slide()`,
+  which takes NO delta: inside a physics frame it uses the fixed physics step, and outside
+  one the engine's PROCESS step — the wall-clock length of the last rendered frame (clamped
+  and compensated by the engine). The test ran between physics frames, so each of its 2400
+  "frames" moved the hound and the wolf by `speed × that one real number`. Measured with
+  `--fixed-fps`: the kill took 363 to 1887 ticks for process steps of 67 ms to 150 ms, and at
+  0.1 ms or less nobody moved at all — 2400 ticks, 0 swings, owner untouched: the CI
+  signature, assertion for assertion. Twenty tests in five files stepped bodies that way.
+  The handoff had excluded exactly this ("stepped with a fixed delta, no wall clock in the
+  test") by reading the test instead of the call it ends in.
+- **Rule.** (1) **A body is moved from the fixed physics step only.** Production asserts it
+  (`MovementComponent.in_fixed_step`); a test does `await fixed_step()` before stepping
+  anything that moves a body, and again after any `await` of a process frame. (2) **When a
+  function takes no time argument, ask whose clock it reads** — an engine call with an
+  implicit delta is a wall-clock dependency until proven otherwise; `--fixed-fps N` forces the
+  process step and turns "intermittent" into a table. (3) **A green re-run closes nothing**:
+  find the input that differs between the two runs.
+- **The second half (same gate).** A signal handler runs INSIDE the emitting call. The
+  Knowledge owner announces a lesson from inside `grant_all`, which the story calls from
+  inside `choose` — so the story's own listener re-entered the story mid-decision. **Rule:**
+  an owner that asks other owners to act in the middle of its own write refuses re-entrant
+  writes for that window (`StoryService.REFUSE_BUSY`) and settles once at the end; a fake
+  owner in a test must be able to call back from inside the seam (`Owners.on_taught`),
+  because the real one does.
