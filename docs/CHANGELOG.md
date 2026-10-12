@@ -8,6 +8,20 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-12 — Pre-Phase-21 Gate B2: debts paid, the visual audit, the character as a figure (`hardening/pre-phase21-gate-b2`; not a phase)
+
+- **The character is a figure**: `CharacterCard` — the player's own sprite in a well, two
+  equipment slots, three stat plates — heads the satchel (now a two-column sheet) and the
+  Chronicle's body page. The HUD's rules are kept (no minimap, no MP bar, the centre clear).
+- **The Chronicle has no leftover pages** (H21-20).
+- **Debts closed:** a map is left at the router's point of no return (GB1-01); four more
+  owners refuse a write from inside their own write — one spirit stone no longer gives the
+  whole step, the last sword is not sold twice (GA-02); lint GD004 (GA-01); the safe way is
+  walked in the real window (GB1-03); the B1 probes are E2E checks (GB1-04); every shop's
+  keeper stands in a map (CLV-01).
+- H21-17, H21-18, H21-19 re-verified with no regression; 251 captures with a manifest.
+- 1261 tests, eight E2E flows, 12 mutations red. H21-14 stays OPEN / OWNER REQUIRED.
+
 ### 2026-10-12 — Pre-Phase-21 Gate B1: interaction, the approach, object lifecycle, continuity (`hardening/pre-phase21-gate-b1`; not a phase)
 
 - **Leaving is an answer only if you left.** A map transition the router refused still

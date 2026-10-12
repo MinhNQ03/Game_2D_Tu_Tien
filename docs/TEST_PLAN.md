@@ -1317,6 +1317,27 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
 - Mutation-checked: 15 (pursuit) + 2 (budget) + 7 (calendar / layer), each red; see the
   handoff for the list.
 
+## Pre-Phase-21 Gate B2 — debts, the visual audit, the character card (D-073 addendum R–U)
+
+Suite **1261** (was 1250); Story E2E **27** recorded steps (was 25); `playtest_flow` **39**
+steps (was 38). Lint gains GD004. Mutations **12 applied, 12 red**. Handoff §18.
+
+- `test_scene_router.gd` (+1) — the commit is announced once, with the old scene alive, and
+  never for a transition that fails (a missing file; a file that is not a scene).
+- `story_flow_case.gd` — 11b; the exit under a conversation; fallen on the exit; `reach` ×3.
+- `test_inventory.gd` (+1), `test_equipment.gd` (+1), `test_shop_domain.gd` (+1),
+  `test_dialogue_runtime.gd` (+1) — a listener that writes back from inside each owner's
+  announcement gets nothing: one item one effect, one worn thing off once, the last sword
+  sold once, one press one answer; and a refusal leaves the owner answering.
+- `test_npc_shop.gd` (+1) — every shipped shop's keeper stands in a shipped map.
+- `test_character_card.gd` (new, 4) — an empty card names its slots and shows no false
+  number; it draws the body it is told at an integer scale and names what is worn; the
+  satchel and the book show the same person from the same feeds (and the book's card, fed
+  before it enters the tree, shows its icons); no slot name is cut in either language.
+- `test_chronicle.gd` (+1) — no page followed by another of its section is under a third
+  full, at 1280×720 and 1280×800, vi and en, with every line still read in order.
+- `tools/playtest_flow.gd` 21c — the safe way walked with held keys in the real window.
+
 ## Pre-Phase-21 Gate B1 — the way out that fails, the fallen who "stood" (D-073 addendum P, Q)
 
 Suite **1250** (was 1248); Story E2E **25** recorded steps (was 23). Mutations: **7 applied, 7

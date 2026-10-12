@@ -1472,3 +1472,91 @@ no shortcuts. Write the answers down; "nothing odd" is an answer.
 7. Stand on two pickups at once with a full satchel. How many times were you told?
 
 **Gate B1 stops here. Gate B2 was not started. Phase 21 and Phase 22 have not started.**
+
+## 18. Gate B2 — the debts paid, the visual audit, the first step of the UI refresh (`hardening/pre-phase21-gate-b2`, from `367312d`)
+
+> **Not a phase.** Three things the owner asked for in one message: pay every debt a tool can
+> pay, run Gate B2, and — with the UI refresh now explicitly authorized — make the UI better,
+> judged against six reference screenshots from other games (**analysed, not copied**; they
+> are not in the repository). No dungeon, boss, drops, save or networking.
+
+**Preflight (2026-10-12).** `origin/main` `33919f9`; Gate A `ddde137` and Gate B1 `367312d`
+approved in words, **not merged into `main`**; this branch is cut from `367312d` **by SHA**
+(L-056), read back after the switch. `CLAUDE.md` and `.kiro/settings/` untracked, untouched.
+
+### 18.1 Debts
+
+| ID | Was | Now |
+|---|---|---|
+| GB1-01 | a scene that exists and fails to load was refused only after the encounter was answered | **CLOSED.** `SceneRouter.transition_committing`: announced once the new scene is loaded and instantiated, before the old one is freed. `WorldRuntime` does its irreversible leaving there. Story E2E 11b (a real resource that is not a scene); a router unit test; mutation red |
+| GA-01 | a third `move_and_slide()` would be guarded by nothing | **CLOSED.** Lint GD004: in `src/`, a body moved with no fixed-step assert on the two lines above. Seven selftest cases; mutation red |
+| GA-02 | other owners not audited for the in-flight window | **CLOSED.** Four found, each red on a listener test before its guard: `InventoryRuntime.use` (one stone gave the whole realm step, 30 for 7), `EquipmentRuntime.equip / unequip`, `ShopService.transact` (the last sword bought twice), `DialogueRuntime.choose / advance` (a second answer accepted). Already guarded: Story, Quest, Reward. Write-then-announce (no window): Knowledge, Relationship, Progression, the bag's `give / take / exchange` |
+| GB1-03 | the safe way was a scratch probe | **CLOSED.** `playtest_flow` 21c walks the test's own `SAFE_WAY_TO_THE_SHAFT` with held keys. Real window: IDLE / PATROL / RETURN only, nearest 197 px, no health lost; the haul track still draws a chase |
+| GB1-04 | probes, not tests | **CLOSED.** Story E2E: the exit under a conversation; fallen on the exit (nothing hunts the body; the key changes no map); and `reach` at three points — 11, 7 and 9 things, each with walkable ground inside its reach |
+| CLV-01 | a shop's keeper not validated | **CLOSED as a content rule.** Every shipped shop is kept by someone who stands in a shipped map. *The runtime check its row asked for was rejected:* a keeper who lives in another map is realized only when that map is entered, so "not in the registry at session start" is the normal state of the shipped shop |
+| H21-20 | 10 Chronicle pages at 1280×720, three nearly empty | **CLOSED.** A section that ran a few lines over now shares them out (`_even_out`): no page followed by another of its section is under a third full, at both windows, in both languages; nothing split, dropped or reordered. The book is still 10 pages at 720 (8 at 800): what changed is that each reads as a page. A section whose ONE page is short holds little; that is its owner's to say |
+| GB1-02 | a bolt outlives its caster | unchanged — decided, not a defect |
+| H21-14 | nobody has played it | **OPEN / OWNER REQUIRED** |
+| NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | | **unchanged, and not paid here:** each needs the thing its phase builds — rooms to route through, a fifth concurrent quest, the unified modal seam. Paying them now would be building those phases |
+
+### 18.2 Visual audit (B2)
+
+| Item | Evidence | How it was looked at | Result |
+|---|---|---|---|
+| H21-17 carts | committed source `model/props3d.py` (`_wheel`: rim, six spokes, hub); `cart.png` 76×60, 16 colours; `cart_wreck.png` 110×54, 17 colours; data origins and footprints as recorded | art-sheet review at 5× and 1×; real window at 1280×720 vi and 1280×800 en for both (four frames opened as one montage). Language does not touch the geometry | PASS — no regression. Intact: a spoked wheel on the near end, bed, striped canvas, shafts. Wreck: the lost wheel spokes-up, canted bed, burst crate, pale shards. Never together: the E2E's arrival judge holds each to `flag_vein_broke` |
+| H21-18 the Night's bite | `capture_motion night_bite` ×4 (vi / en × 720 / 800) | the vi 720 strip opened and read cell by cell; all four timing files read; the telegraph's strongest pixel measured in four wind-up cells of all four strips | PASS — wind-up → ACTIVE **266 ms**, → RECOVERY **349 ms** (authored 0.26 / 0.08 / 0.34 s). The tell: the crouch and the reach arc from the second wind-up cell (15 ms). Red-over-green **57** at 15 ms, **109** at 165 ms, identical in all four. The three other strips' images were not opened |
+| H21-19 the light's cost | `measure_ambience_frame_time.gd`, re-run once at each window (3 × 6 s) | the two reports read | reproducible: worst case (night, three lights in frame) median **1.025 → 1.757 ms (+0.73)** at 720 and **1.086 → 1.858 ms (+0.77)** at 800, against the recorded +0.69 / +0.75. Simple frame-time sampling on one machine — **not the engine profiler**; Phase 29's |
+| capture matrix | **251 frames**: `capture_ui` vi / en × 1280×720 / 1280×800 (51, 51, 49, 49; 0 script errors), `capture_motion` cultivation, dialogue, quest (5, 16, 18), `night_bite` ×4 (3 each) | a manifest (`manifest.json`: file, size, hash, group) and 19 contact sheets, in scratch. **13 sheets reviewed**; 6 not (vi 800 sheet 1, en 720 sheet 3, the four `night_bite` sheets — the vi 720 strip itself was opened). About a dozen frames and four montages opened at full size | one real defect found and fixed: the English satchel read "Travelling c…" (below) |
+
+**Not captured by any tool, so not judged (BLOCKED):** the other three Origins' vignettes;
+each person's exhausted hub as a frame (held by test, §17.1); the satchel with something
+worn (the Chronicle's body page shows the same card filled).
+
+### 18.3 The UI refresh, first step — the character is a figure
+
+What the reference screens do that this one did not: the character stands on the sheet. Here
+they existed as lines of text.
+
+- **`CharacterCard`** (`src/presentation/character/`): the player's own sprite — the same
+  `CharacterVisualComponent` the world draws with, so the garment is the garment — breathing
+  at an integer scale in a well, between two slots (what is in the hand, what is on the
+  back; an empty slot says what it is for) and the three numbers combat reads. It owns
+  nothing: body and worn rows from `InventoryView`, numbers from `ChronicleView`. Hidden, its
+  figure does not process.
+- **The satchel is a sheet**: the card in a column beside the list (`SHEET_PANEL_WIDTH`, 460
+  px, a named token; the panel is modal).
+- **The Chronicle's body page** is headed by the same card.
+- **Kept on purpose:** no minimap, no MP bar, the centre clear, the HUD inside its budget.
+  The references have a minimap and an MP bar; the project's own rules forbid both and the
+  owner was asked and has not changed them. The crowded-screen reference is multiplayer.
+
+*Found by looking, and fixed:* the Chronicle's card showed the robe's name beside an empty
+slot (the book feeds a card before it enters the tree); the first sheet was 496 px wide and
+covered the start of a centred notice (now 460); the English caption was cut ("Travelling
+c…": names now wrap, two lines at most). Each has a test.
+
+*Honest limit.* This is one component in two places. It does not make the game look like the
+references: the world's light and density, the size of the actors on screen and the look of
+the other panels are untouched, and those are most of the difference.
+
+### 18.4 Tests and mutations
+
+Suite **1261** (was 1250). Story E2E **27** recorded steps (was 25). `playtest_flow` **39**
+steps (was 38), 0 errors. Mutations **12 applied, 12 red** — one only after its test was
+tightened (a clipped slot name passed a test that counted lines): the commit point, the lint
+rule, the four owners' guards and one release on refusal, the keeper check, the card's
+icons, its sleeping figure, the evened pages, the uncut name. *Not mutated:* the E2E's
+`reach` judge (no prop was moved onto a path to see it fail).
+
+### 18.5 Debts after Gate B2
+
+| ID | State | Owner | Closes when |
+|---|---|---|---|
+| H21-14 | **OPEN / OWNER REQUIRED** | the project owner | §17.6 played and written down |
+| UI-01 (new) | the refresh is one component: the other panels (sect, politics, journal, shop), the HUD's density and the world's look are as they were | presentation; the owner's next UI brief | the owner says which surface is next, with the minimap / MP-bar rule decided |
+| UI-02 (new) | the satchel's own card has not been captured with something worn | tools (`capture_ui`) | a frame of the satchel taken after the robe is put on |
+| B2-01 (new) | six contact sheets of the matrix not reviewed; the `reach` judge not mutation-tested; three Origins' vignettes not captured | whoever closes the matrix next | reviewed, or captured |
+| GB1-02 | decided | Combat | — |
+| NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | unchanged | | |
+
+**Gate B2 stops here. Gates C1 and C2 were not started. Phase 21 and Phase 22 have not started.**

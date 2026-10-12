@@ -399,6 +399,20 @@ with three untinted buttons — not a decision, just construction nobody copied.
   golden frame an explainable score against the quality reference (never a pixel diff). "Run the
   captures and look" stays a required step of any UI change (§3b).
 
+## 8c. The character card (Gate B2 — the first step of the UI refresh)
+
+The character is shown as a FIGURE wherever a surface is about them: the game's own sprite
+at an integer scale in a well, the two things it can wear in slots beside it (an empty slot
+says what it is for), the numbers combat reads on plates. One component (`CharacterCard`),
+fed by views, in the satchel and on the Chronicle's body page. Rules it is held to:
+
+- the figure is the world's sprite component — never a second drawing of the character;
+- a name wraps beside its slot and is never cut; a number nobody told is a dash, not a zero;
+- hidden, it costs nothing per frame;
+- a panel that carries it in a column of its own takes a NAMED width (`SHEET_PANEL_WIDTH`).
+
+It does not change §3c: no minimap, no MP bar, the centre clear, the HUD inside its budget.
+
 ## 9. What this document does NOT do
 
 No screens are implemented, no runtime UI code is changed, and no asset is added. Phase 25 is

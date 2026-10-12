@@ -6124,3 +6124,27 @@ scene that exists and then fails to load is not foreseeable (handoff GB1-01).
 falls. It now needs a player who is still standing: a bolt in the air can outlive its caster,
 and a defeat is the end of the run, not a morning. The bolt itself still lands and its kill
 is still a kill (a decision, GB1-02) — only the story's answer is withheld.
+
+### D-073 addendum (pre-Phase-21 Gate B2, 2026-10-12) — the commit point, the owners' windows, the figure
+
+**R. A transition has a point of no return, and leaving happens there.** Supersedes the
+mechanism of P (asking first) without removing it: `SceneRouter.transition_committing` is
+emitted when nothing can fail any more, and `WorldRuntime` answers the encounter, tells the
+map's listeners and parks the player in that moment. *Rejected:* staging the new scene in the
+world (the router owns scenes); a rollback that un-answers (there is no un-choose).
+
+**S. An owner that asks another owner to act mid-write refuses writes for that window.** The
+rule of addendum O, applied where the audit found it missing: the satchel's `use`, equipment
+changes, a shop's `transact`, a conversation's answers. A refusal from inside is returned and
+never announced — nobody a player can be caused it. Owners that write their own state and
+then announce need no guard and have none.
+
+**T. The character is shown as a figure, by one component, fed by views.** `CharacterCard`
+reads `InventoryView` (the body as drawn, the worn rows) and `ChronicleView` (the numbers):
+one feed per fact (J), no new owner, no new modal (AUD-15 stands). The satchel takes a second
+named width because it is modal. *Kept:* the HUD's rules — no minimap, no MP bar, the centre
+clear — against references that have both; that is the owner's to change, not a refresh's.
+
+**U. A shop's keeper is a content rule, not a runtime check (CLV-01).** A keeper who lives in
+another map does not exist in the registry until that map is entered; refusing the session
+for that would refuse the shipped shop.

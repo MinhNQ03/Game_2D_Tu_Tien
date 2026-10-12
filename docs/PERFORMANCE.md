@@ -358,6 +358,11 @@ and the Night with its wave fighting (the AI's cost is `tests/performance/test_a
 subject, not the light's). Reproduce:
 `DISPLAY=:0 godot --path . --resolution 1280x720 --disable-vsync --max-fps 0 -s res://tools/measure_ambience_frame_time.gd -- out.md 8 3`.
 
+*Re-measured at Gate B2 (2026-10-12), same machine, same tool, 3 × 6 s: worst case (night,
+three lights in frame) median 1.025 → 1.757 ms at 1280×720 (+0.73) and 1.086 → 1.858 ms at
+1280×800 (+0.77). The baselines moved with the machine's state; the cost of the light did
+not. Still simple frame-time sampling, not the profiler.*
+
 ### PERF-NOTE-20 — what the story added to the frame  (2026-10-11)
 
 Phase 20 added no node that processes. The one per-frame cost is inside the pickup loop

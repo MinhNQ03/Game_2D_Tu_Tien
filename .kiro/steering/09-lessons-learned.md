@@ -1621,3 +1621,18 @@
   states its subject's condition** ("stood" needs someone standing). (3) **Cut a branch from
   an explicit commit** (`git switch -c <name> <sha>`) and read `git log -1` AFTER the
   switch; a count that differs from the last known one is a finding, not noise.
+
+## L-057 — A component may be fed before it exists; a test that counts lines does not see a cut word; a capture in the other language is not a duplicate
+
+- **What happened (Gate B2, the character card).** (a) The Chronicle builds its card and
+  feeds it before adding it to the tree. The card stored the names and wrote the icons
+  straight to controls that `_ready` had not built: the page showed the robe's name beside
+  an empty slot. Its unit test fed a card that was already in the tree. (b) "No slot name is
+  cut" was first asserted as "at most two lines, all visible" — which a label with
+  `clip_text` satisfies with one clipped line; the mutation survived. (c) The cut itself
+  ("Travelling c…") was only in the ENGLISH capture, which had been run "for completeness".
+- **Rule.** (1) **Setters store; one refresh writes** — and it runs from `_ready` too. Test a
+  control both ways round: fed after entering the tree and before. (2) **Assert the property
+  you mean**: "drawn whole" is not-clipped AND not-trimmed AND no line wider than the label,
+  measured — not a line count. (3) **Every language × window of a new surface is opened**,
+  not sampled: the second language is where the layout breaks.
