@@ -14,6 +14,12 @@ extends SceneTree
 ## USAGE (needs a display; do NOT pass --headless)
 ##     godot --path . --resolution 1280x720 -s res://tools/capture_ui.gd -- vi out/dir
 ##     godot --path . --resolution 1280x800 -s res://tools/capture_ui.gd -- en out/dir
+##     godot --path . --resolution 1280x720 -s res://tools/capture_ui.gd -- vi out/dir \
+##         vignette origin_lang_y      # ONLY that Origin's opening scene, step by step
+##
+## THE FULL RUN CONFIRMS ONE ORIGIN (the screen's default), so it shows one vignette. The other
+## four were captured by no tool until Gate VC (B2-01): `vignette <origin_id>` starts a run as
+## that Origin and photographs its opening, then quits.
 ##
 ## VARY THE ASPECT RATIO, NOT JUST THE PIXEL COUNT. The project stretches with
 ## `canvas_items` + `expand`, so a window at the SAME aspect as the authored 1280x720 is a
@@ -45,6 +51,8 @@ var _out_dir := "user://ui_captures"
 var _language := "vi"
 var _written: Array[String] = []
 var _failed := false
+## Set by `vignette <origin_id>`: capture only that Origin's opening scene.
+var _vignette_origin: StringName = &""
 
 
 func _initialize() -> void:
@@ -53,6 +61,8 @@ func _initialize() -> void:
 		_language = String(args[0])
 	if args.size() >= 2:
 		_out_dir = String(args[1])
+	if args.size() >= 4 and String(args[2]) == "vignette":
+		_vignette_origin = StringName(String(args[3]))
 	_run.call_deferred()
 
 
@@ -80,6 +90,14 @@ func _run() -> void:
 	if menu == null:
 		push_error("[capture] no main menu under Main/UI after %d frames" % MENU_WAIT_FRAMES)
 		quit(1)
+		return
+
+	if _vignette_origin != &"":
+		await _capture_one_vignette(main, menu)
+		print("[capture] wrote %d file(s) to %s" % [_written.size(), _out_dir])
+		main.get_parent().remove_child(main)
+		main.free()
+		quit(1 if _failed or _written.is_empty() else 0)
 		return
 
 	# --- 1-3. Main menu, and its focus states -------------------------------------
@@ -192,6 +210,34 @@ func _capture_identity_and_opening(main: Node) -> void:
 		step += 1
 		await _settle()
 		await _shot("04e_opening_step_%02d" % step)
+		story.advance_scene()
+	await _settle()
+
+
+## ONE Origin's opening scene, every step (B2-01: three of the five had never been captured).
+## The run is started as that Origin through the identity screen's own `confirmed` signal; an
+## Origin the screen does not offer, or a scene that never plays, fails the run.
+func _capture_one_vignette(main: Node, menu: Node) -> void:
+	menu.emit_signal("new_game_pressed")
+	await _settle()
+	var identity := RunKit.identity_of(main)
+	if identity == null or identity.find_child("Origin_%s" % _vignette_origin, true, false) == null:
+		push_error("[capture] the identity screen does not offer '%s'" % _vignette_origin)
+		_failed = true
+		return
+	identity.emit_signal("confirmed", identity.call("selected_appearance_id"), _vignette_origin)
+	await _settle()
+	var story := RunKit.story_of(main)
+	if story == null or not story.get_service().origin_is(_vignette_origin) \
+			or not story.is_scene_playing():
+		push_error("[capture] no opening scene plays for '%s'" % _vignette_origin)
+		_failed = true
+		return
+	var step := 0
+	while story.is_scene_playing() and step < 12:
+		step += 1
+		await _settle()
+		await _shot("vignette_%s_step_%02d" % [_vignette_origin, step])
 		story.advance_scene()
 	await _settle()
 
@@ -368,6 +414,28 @@ func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:
 		_failed = true
 		return
 	await _shot("10_equipped_and_dock")
+	# UI-02: the satchel WITH something worn — both slots of the character card filled, the
+	# figure in the robe, the worn rows leading the list. (The card had only been captured
+	# filled on the Chronicle's body page.)
+	var armed := String(equipment.call("equip", &"item_kiem_thanh_thiet"))
+	hud.call("open_inventory")
+	await _settle()
+	await _settle()
+	if armed != "" or not bool(hud.call("is_inventory_open")):
+		push_error("[capture] the satchel with the blade and robe worn could not be shown (%s)"
+			% armed)
+		_failed = true
+		return
+	await _shot("11_satchel_worn")
+	hud.call("close_inventory")
+	# ...and the blade goes back in the satchel: every frame after this one was first taken
+	# with only the robe worn, and a second worn thing gives the Chronicle's body section
+	# another page (the later frames would be renumbered and stop being comparable).
+	var unarmed := String(equipment.call("unequip", EquipmentData.Slot.WEAPON))
+	await _settle()
+	if unarmed != "":
+		push_error("[capture] the blade could not be put back: %s" % unarmed)
+		_failed = true
 
 
 ## The player body under the HUD's map (`PlayerHost`), or null.
