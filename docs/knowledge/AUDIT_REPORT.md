@@ -142,3 +142,57 @@ drift itself is out of scope for this task.
 - No auto-commit / auto-push / background services.
 - No resolution of open questions (Q-01…Q-09), contradictions, or gate statuses.
 - No new canon, no gameplay, no networking, no persistence implementation.
+
+## Addendum — supplementary full read of `docs/DECISIONS.md` (2026-10-12)
+
+**Provenance.** The original audit (§1) honestly recorded that `docs/DECISIONS.md`
+was "structure-analyzed via heading grep: 75 `## ` headings, 74 decisions; body
+text sampled per format variant — full 369KB body not read linearly". The
+original coordinator did **not** read the full body before drafting. This
+addendum records the supplementary complete read required by the review-fix.
+
+**Method.** Sequential read of the entire file, lines 1–6196, covering all 74
+decision entries D-001 through D-074, including the difficult-format entries
+(D-055 + D-055 FOLLOW-UP, D-057A, D-057B, D-063 free-text status, D-067 ADOPTED,
+D-072 caveat status, D-074). Status claims were independently reproduced with a
+separate parsing script.
+
+**Result: no material findings.** Every hub/index claim verified against source:
+
+- D-074 multiplayer-first direction: verified verbatim ("online
+  multiplayer-first", "server-authoritative", "Admin Offline Test Mode" as
+  restricted secondary). The hub's Q-08 note matches D-074's own required
+  follow-up (freeze amendment through the freeze's change control).
+- C1/C2 proposals not canon: D-074 states the two C1 proposals "remain
+  PROPOSAL — NOT FROZEN". (The C2 proposal is not in DECISIONS.md; the hub
+  labels it per the proposal's own header.)
+- Q-01 / Q-02 / H21-14 / H21-20 / H21-21: no entry in DECISIONS.md defines
+  these identifiers (single H21-21 mention at D-073's addendum, consistent with
+  "H21-21 CLOSED"). The hub correctly attributes them to the C2 proposal and
+  the pre-phase-21 handoff, never as decisions. No misrepresentation.
+- Status vocabulary independently reproduced: 55 Accepted = 39 inline + 16
+  body; 9 DONE (D-064–D-073 except D-067); 1 Open (D-005); 1 SUPERSEDED
+  (D-009); 1 "Accepted / tracked" (D-013); 1 "Accepted & verified" (D-012);
+  1 ADOPTED (D-067); 1 free-text (D-063); 4 "Not recorded" (D-059–D-062 —
+  the source genuinely has no status line; the index does not infer).
+  Gaps D-027/D-028 (referenced, entry-less) and D-031 (absent) confirmed.
+- Inter-decision supersessions are all self-recorded in the source and
+  correctly reflected: D-074 supersedes D-056; D-009 SUPERSEDED via D-047's
+  process note; D-045's "dead end" superseded by D-046 (in D-045's own text);
+  D-072's caveat corrected by D-073 (in D-072's own text). No unrecorded
+  contradiction found.
+
+**Non-material observations (no hub change required):**
+
+- D-063's status line is stale relative to its own body (header says A2/A3/A4
+  follow; body already documents A2, A2b, A2 hardening, pre-A3). The index
+  reproduces the source faithfully; this is a source-doc issue, not a hub
+  misrepresentation. (The Phase-A closeout 853/853 is also not yet recorded
+  in DECISIONS.md.)
+- D-072/D-073 rationale cells are truncated mid-sentence in the index table —
+  cosmetic; DONE status is unambiguous.
+- D-049 (CURRENT STATUS vs HISTORICAL NOTES convention for docs) is a
+  doc-management decision the hub does not cross-reference. The hub claims
+  nothing contrary to it; the missing cross-reference is not material.
+
+No authoritative decision content was modified. `docs/DECISIONS.md` is untouched.

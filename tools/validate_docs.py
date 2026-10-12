@@ -16,9 +16,17 @@ RULES (each is a numbered check; all must pass)
 - KB02 every local Markdown link in `docs/knowledge/*.md` resolves to an
   existing file; `#anchor` fragments resolve to a real heading in the target.
   Covers `[text](path)`, `[text](path#anchor)`, and Obsidian `[[page]]` /
-  `[[page#anchor]]` forms. External URLs are not fetched (offline gate).
-- KB03 every dependency-map target exists (same mechanism as KB02, applied to
-  `DOCS_DEPENDENCY_MAP.md`).
+  `[[page#heading]]` / `[[page#heading|display]]` forms (anchors are checked
+  against the target's GitHub-slug headings). External URLs are not fetched
+  (offline gate). Limitation: duplicate headings get GitHub `-1`/`-2`
+  suffixes which this check does not model — an anchor to a repeated
+  heading title may be flagged even though GitHub would resolve it.
+- KB03 every dependency-map target exists: for each table with a Destination
+  column in `DOCS_DEPENDENCY_MAP.md`, every backtick path in a Destination
+  cell must resolve to an existing repo file. Multiple destinations per cell
+  and trailing section suffixes are handled; glob targets (`docs/handoff/*`)
+  must match at least one file; prose and placeholders ("+ 10 others",
+  "every frozen doc") are never backticked and are not treated as paths.
 - KB04 the generated decision index is current
   (`tools/gen_decision_index.py --check`).
 - KB05 no local absolute paths (`/home/`, `/Users/`, `C:\\`, ...) and no
@@ -53,7 +61,8 @@ DECISION_INDEX = KB / "DECISION_INDEX.md"
 C2_PROPOSAL = REPO / "docs" / "proposals" / "PROPOSAL_SAGA_SECT_ATLAS_CULTIVATION_AND_P21_HANDOFF.md"
 
 MD_LINK_RE = re.compile(r"(?<!!)\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
-WIKI_LINK_RE = re.compile(r"\[\[([^|\]#]+)(?:#[^\]|]+)?(?:\|[^\]]+)?\]\]")
+WIKI_LINK_RE = re.compile(r"\[\[([^|\]#]+)(?:#([^\]|]+))?(?:\|[^\]]+)?\]\]")
+CODE_SPAN_RE = re.compile(r"`([^`]+)`")
 ABSOLUTE_PATH_RE = re.compile(r"(?:/home/|/Users/|/root/|C:\\|\\\\)")
 SECRET_RE = re.compile(r"ghp_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|AKIA[0-9A-Z]+|-----BEGIN [A-Z ]*PRIVATE KEY")
 FENCED_RE = re.compile(r"```.*?```", re.DOTALL)
@@ -104,6 +113,83 @@ def check_link(source: Path, line_no: int, target: str, violations: list[str]) -
             )
 
 
+def iter_dep_map_targets() -> list[tuple[int, str]]:
+    """Every backtick path in Destination cells of the dependency-map tables.
+
+    Returns (line_no, raw_span). Only tables whose header names a
+    Destination column are scanned; prose, placeholders ("+ 10 others",
+    "every frozen doc"), and relation labels are never backticked in the
+    Destination column, so they cannot leak in here.
+    """
+    try:
+        text = DEP_MAP.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    out: list[tuple[int, str]] = []
+    in_table = False
+    in_fence = False
+    for i, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if not stripped.startswith("|"):
+            in_table = False
+            continue
+        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        if any("destination" in c.lower() for c in cells):
+            in_table = True
+            continue
+        if all(set(c) <= set("-: ") for c in cells if c):
+            continue  # separator row
+        if not in_table or len(cells) < 2:
+            continue
+        for m in CODE_SPAN_RE.finditer(cells[1]):
+            span = m.group(1).strip()
+            if span:
+                out.append((i, span))
+    return out
+
+
+def check_dep_target(line_no: int, raw: str, violations: list[str]) -> None:
+    """Validate one dependency-map target; append KB03 violations."""
+    rel = DEP_MAP.relative_to(REPO)
+    # A section suffix may trail inside the backticks ("docs/X.md §3");
+    # the path is the first whitespace-delimited token.
+    token = raw.split()[0] if raw.split() else ""
+    if not token:
+        return
+    looks_like_path = "/" in token or token.endswith(
+        (".md", ".py", ".yml", ".yaml", ".gd", ".tscn", ".tres", ".txt", ".csv")
+    )
+    if not looks_like_path:
+        return  # not a repository path (prose/label) — KB03 does not judge it
+    if "*" in token:
+        base = token.split("*")[0].rstrip("/")
+        base_path = (REPO / base).resolve()
+        try:
+            base_path.relative_to(REPO.resolve())
+        except ValueError:
+            violations.append(f"{rel}:{line_no}: KB03 dependency target escapes repo {raw}")
+            return
+        if not base_path.is_dir():
+            violations.append(f"{rel}:{line_no}: KB03 dependency target base missing {raw}")
+            return
+        if not list(REPO.glob(token)):
+            violations.append(f"{rel}:{line_no}: KB03 dependency target glob matches nothing {raw}")
+        return
+    dest = (REPO / token).resolve()
+    try:
+        dest.relative_to(REPO.resolve())
+    except ValueError:
+        violations.append(f"{rel}:{line_no}: KB03 dependency target escapes repo {raw}")
+        return
+    if not dest.exists():
+        violations.append(f"{rel}:{line_no}: KB03 broken dependency target {raw}")
+
+
 def validate() -> list[str]:
     violations: list[str] = []
     # KB01
@@ -120,16 +206,24 @@ def validate() -> list[str]:
                 check_link(md, i, m.group(2), violations)
             for m in WIKI_LINK_RE.finditer(line):
                 page = m.group(1).strip()
+                anchor = m.group(2).strip() if m.group(2) else None
                 # [[page]] resolves to page.md relative to the vault root or the file dir.
                 candidates = [md.parent / f"{page}.md", REPO / f"{page}.md"]
-                if not any(c.exists() for c in candidates):
+                dest = next((c for c in candidates if c.exists()), None)
+                if dest is None:
                     violations.append(f"{rel}:{i}: KB02 broken wikilink [[{page}]]")
+                elif anchor and github_anchor(anchor) not in file_anchors(dest):
+                    violations.append(f"{rel}:{i}: KB02 broken wikilink anchor [[{page}#{anchor}]]")
         # KB05
         for i, line in enumerate(text.splitlines(), start=1):
             if ABSOLUTE_PATH_RE.search(line):
                 violations.append(f"{rel}:{i}: KB05 absolute local path")
             if SECRET_RE.search(line):
                 violations.append(f"{rel}:{i}: KB05 secret-shaped string")
+    # KB03: dependency-map targets (inline-code paths in Destination cells).
+    if DEP_MAP.exists():
+        for line_no, raw in iter_dep_map_targets():
+            check_dep_target(line_no, raw, violations)
     # KB04: decision index currency.
     gen = REPO / "tools" / "gen_decision_index.py"
     if gen.exists():
@@ -188,24 +282,44 @@ def selftest() -> int:
             "[badanch](../DECISIONS.md#nope)\n"
             "[[DECISION_INDEX]]\n"
             "[[Nope]]\n"
+            "[[Target Page]]\n"
+            "[[Target Page#Real Heading]]\n"
+            "[[Target Page#Sub Section|custom label]]\n"
+            "[[Target Page#Missing Heading]]\n"
+            "[[Target Page#missing-heading|label]]\n"
             "path /home/user/x\n"
             "token ghp_abc123\n",
             encoding="utf-8",
         )
         (root / "docs" / "knowledge" / "DECISION_INDEX.md").write_text("# Decision Index\n", encoding="utf-8")
+        # A page with headings, for wikilink-anchor tests.
+        (root / "docs" / "knowledge" / "Target Page.md").write_text(
+            "# Target Page\n\n## Real Heading\n\n### Sub Section\n", encoding="utf-8"
+        )
+        # A dependency map exercising KB03: multiple destinations per cell,
+        # section suffixes, a glob, and placeholders that must be ignored.
+        dep = root / "docs" / "knowledge" / "DOCS_DEPENDENCY_MAP.md"
+        dep.write_text(
+            "# Dep Map\n\n"
+            "| Source | Destination | Relation | Evidence |\n"
+            "|---|---|---|---|\n"
+            "| `docs/a.md` | `docs/b.md`, `docs/c.md` | owns-rule-for | x |\n"
+            "| `docs/a.md` | `docs/b.md` §3, future Phase 9 | constrains | y |\n"
+            "| `docs/a.md` | `docs/sub/*`, + 5 others | depends-on | z |\n"
+            "| `docs/a.md` | every frozen doc | constrains | w |\n",
+            encoding="utf-8",
+        )
+        (root / "docs" / "a.md").write_text("# A\n", encoding="utf-8")
+        (root / "docs" / "b.md").write_text("# B\n", encoding="utf-8")
+        (root / "docs" / "c.md").write_text("# C\n", encoding="utf-8")
+        (root / "docs" / "sub").mkdir()
+        (root / "docs" / "sub" / "one.md").write_text("# One\n", encoding="utf-8")
 
-        # Point the module at the temp tree (restored afterwards).
+        # Point the module at the temp tree (restored at the very end).
         saved = (REPO, KB, HUB, DEP_MAP, DECISION_INDEX, C2_PROPOSAL)
-        REPO = root
-        KB = root / "docs" / "knowledge"
-        HUB = KB / "AETHERIA_KNOWLEDGE_HUB.md"
-        DEP_MAP = KB / "DOCS_DEPENDENCY_MAP.md"
-        DECISION_INDEX = KB / "DECISION_INDEX.md"
-        C2_PROPOSAL = root / "docs" / "proposals" / "x.md"  # absent: KB06 skips gracefully
-        try:
-            violations = validate()
-        finally:
-            REPO, KB, HUB, DEP_MAP, DECISION_INDEX, C2_PROPOSAL = saved
+        temp = (root, root / "docs" / "knowledge", root / "docs" / "knowledge" / "AETHERIA_KNOWLEDGE_HUB.md", dep, root / "docs" / "knowledge" / "DECISION_INDEX.md", root / "docs" / "proposals" / "x.md")
+        REPO, KB, HUB, DEP_MAP, DECISION_INDEX, C2_PROPOSAL = temp
+        violations = validate()
         codes = [x.split(": KB")[1].split()[0] for x in violations if ": KB" in x]
         check("KB02 broken link caught", "02" in codes)
         check("KB02 broken anchor caught", any("badanch" in x or "nope" in x for x in violations))
@@ -213,8 +327,36 @@ def selftest() -> int:
         check("KB02 good links pass", not any("](missing" not in x and "[ok]" in x and "KB02" in x for x in violations))
         check("KB05 absolute path caught", "05" in codes)
         check("KB05 secret caught", any("secret-shaped" in x for x in violations))
+        check(
+            "KB02 wikilink valid anchors pass",
+            not any("Target Page#Real Heading" in x or "Sub Section" in x for x in violations),
+        )
+        check(
+            "KB02 wikilink broken anchors caught",
+            sum(1 for x in violations if "broken wikilink anchor" in x and "Target Page" in x) == 2,
+        )
+        check("KB03 valid targets pass", not any(": KB03" in x for x in violations))
         check("KB01 present", not any("KB01" in x for x in violations))
         check("validate returns list", isinstance(violations, list))
+
+        # KB03 mutation: a nonexistent dependency target must fail, then pass
+        # once removed. (Temp-tree overrides are still active here.)
+        bad_row = "| `docs/a.md` | `docs/does-not-exist.md` | owns-rule-for | m |\n"
+        dep.write_text(dep.read_text(encoding="utf-8") + bad_row, encoding="utf-8")
+        mutated = validate()
+        dep.write_text(dep.read_text(encoding="utf-8").replace(bad_row, ""), encoding="utf-8")
+        check(
+            "KB03 mutation broken target caught",
+            any("KB03 broken dependency target" in x and "does-not-exist" in x for x in mutated),
+        )
+        check(
+            "KB03 mutation reports source line",
+            any(re.match(r".*:[0-9]+: KB03", x) for x in mutated),
+        )
+        restored = validate()
+        check("KB03 passes after bad target removed", not any(": KB03" in x for x in restored))
+
+        REPO, KB, HUB, DEP_MAP, DECISION_INDEX, C2_PROPOSAL = saved
 
     if failures:
         print(f"validate_docs selftest: {failures} failure(s)")

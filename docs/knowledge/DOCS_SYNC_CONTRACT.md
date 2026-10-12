@@ -56,8 +56,12 @@ consistency.**
 ## Decision discipline
 
 - A meaningful architectural/design decision follows the freeze change control:
-  it needs a `docs/DECISIONS.md` entry (number it from the last heading —
-  L-042; never renumber existing entries).
+  it needs a `docs/DECISIONS.md` entry. Use the next available `D-...`
+  identifier following the existing decision sequence in `docs/DECISIONS.md`
+  (check the last `D-nnn` heading; do not hard-code a number here).
+  `L-...` identifiers belong to `.kiro/steering/09-lessons-learned.md` —
+  they are lessons-learned entries, not decision IDs. Never renumber
+  existing records.
 - Conflicting docs are surfaced and resolved through the established process,
   never by overwriting whichever file disagrees.
 - `PROPOSAL` stays labeled until formally accepted. Writing a proposal does
