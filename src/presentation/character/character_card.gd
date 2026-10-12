@@ -228,6 +228,18 @@ func slot_name_lines(slot: int) -> Vector2i:
 	return Vector2i(label.get_line_count(), label.get_visible_line_count())
 
 
+## True when a slot's name is drawn WHOLE: nothing clips or trims it, and wrapped at the width
+## the label really has, no line of it is wider than that width.
+func slot_name_is_whole(slot: int) -> bool:
+	var label := _slot_names[slot] as Label
+	if label.clip_text or label.text_overrun_behavior != TextServer.OVERRUN_NO_TRIMMING:
+		return false
+	var font := label.get_theme_font(&"font")
+	var wrapped := font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT,
+		label.size.x, label.get_theme_font_size(&"font_size"))
+	return wrapped.x <= label.size.x + 0.5
+
+
 func slot_is_filled(slot: int) -> bool:
 	return _worn.has(slot)
 

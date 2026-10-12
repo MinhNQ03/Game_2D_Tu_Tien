@@ -172,6 +172,9 @@ func test_no_slot_name_is_cut_in_either_language_at_the_satchels_width() -> void
 			await scene_tree.process_frame
 			for slot: int in [WEAPON, BODY]:
 				var lines := card.slot_name_lines(slot)
+				assert_true(card.slot_name_is_whole(slot),
+					"[%s] '%s' is drawn whole: not clipped, not trimmed, no line too wide"
+					% [code, card.slot_text(slot)])
 				assert_true(lines.x <= 2 and lines.y == lines.x,
 					"[%s] '%s' takes %d line(s), %d shown, in a %.0f px column"
 					% [code, card.slot_text(slot), lines.x, lines.y, card.size.x])
