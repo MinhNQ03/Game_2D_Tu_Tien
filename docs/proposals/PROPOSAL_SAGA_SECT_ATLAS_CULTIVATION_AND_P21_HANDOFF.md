@@ -789,11 +789,11 @@ Authority note: the frozen four-way split (`NARRATIVE_MASTER_PLAN.md` §14) is E
 | K-13: who stands at the door | Personal (whose run) + Social (the NPC's relationship edge to the player) | companionship is personal; the NPC's regard is a relationship edge |
 | The shaft run itself (Phase 21) | Party/instance (temporary per run) | co-op acceptance test: different personal-story points, one run, no forced story match |
 | Field book's disposition (who the player shows it to) | Personal (the decision) + Social (faction standing changes) | the choice is yours; the factions' reactions are shared |
-| Post-boss consequence (K-04/K-08) | World chronicle (per shard) | the shaft stands open for every player of that shard; the elder's discrediting is a world fact |
+| Post-boss consequence (K-04/K-08) | World chronicle (scope unresolved — Q-02; §14: "per world/shard, may be shared or instantiated") | the shaft stands open for every player of that world; the elder's discrediting is a world fact |
 | Faction influence shifts | Social (shared) | influence is computed over shared standing edges, deterministically |
 | Sect affiliation and rank | Social (shared) | roster-authoritative (D-015); visible to other players |
 | Sect questline progress | Personal story | your Examination is not everyone's |
-| Act VII covenant stance | World chronicle (per shard) | the covenant is definitionally shared — the one act allowed to touch the chronicle deliberately |
+| Act VII covenant stance | World chronicle (scope unresolved — Q-02) | the covenant is definitionally shared — the one act allowed to touch the chronicle deliberately |
 | K-12 Origin callbacks | Personal story | the 15–30% variation engine; never shared |
 | Reward grants | Per the Phase-19 reward ledger (authoritative, idempotent) | duplicates silently survivable by design (D-070; C1 R2 correction) |
 
@@ -852,8 +852,8 @@ Branches read state, never scattered booleans (NARRATIVE_DIRECTION §5). Converg
 | Q-01 | Formal kept/told definitions | Phase 21 entry logic depends on route semantics; no canon definition exists | usage only (NMP §9a; CONTENT_BIBLE §16) | must preserve "the rod is the key in both lives"; must never gate entry | adopt §15.4 definitions vs. alternative glosses | Phase 21 readiness | owner | accepted glossary entry |
 | Q-02 | Chronicle scope: per-shard shared vs. per-group instantiated | determines what the Phase 22 consequence must replicate | §14 deliberately open; C1 proposed per-shard | frozen text unchanged | decide per-shard (C1) vs. per-group vs. hybrid | Phase 22 planning | owner (+ architecture) | accepted state-model decision |
 | Q-03 | Third joinable sect needed? | Act VII's four covenant positions may need institutional homes | two sects + tán tu proposed (§11A) | no invented canon sects without approval | add later vs. never vs. now | neither (Act VII is distant) | owner | covenant-position design |
-| Q-04 | Sect-selection trigger | "enough information to matter" needs a concrete gate | C-003; SOCIAL_DESIGN §4 | must be earned, Act II | knowledge id vs. story beat vs. standing threshold | Phase 21 readiness (entry routes interact with K-13) | owner | accepted design |
-| Q-05 | Sect switching/exit/defection policy | techniques are permanent knowledge (CL-14); standing is not | D-015 roster model | cannot silently decide irreversibility | free exit / costly exit / once-only defection | Phase 21 readiness | owner | accepted policy |
+| Q-04 | Sect-selection trigger | "enough information to matter" needs a concrete gate | C-003; SOCIAL_DESIGN §4 | must be earned, Act II | knowledge id vs. story beat vs. standing threshold | Sect-affiliation design (Act II); not a Phase 21 entry blocker | owner | accepted design |
+| Q-05 | Sect switching/exit/defection policy | techniques are permanent knowledge (CL-14); standing is not | D-015 roster model | cannot silently decide irreversibility | free exit / costly exit / once-only defection | Sect-affiliation design (Act II); not a Phase 21 entry blocker | owner | accepted policy |
 | Q-06 | Cross-sect technique learning | affects the no-dominance guardrail | manuals exist (K-11 precedent) | instruction vs. forms distinction | forms via favors, instruction via standing | neither | owner | accepted policy |
 | Q-07 | Transport, persistence, account↔character, shard transfer, admin hierarchy | any shared-world implementation needs them eventually | D-074 explicitly reserves all five | C2 decides none | — | neither (design only) | owner (+ phases 32–34) | architecture decisions |
 | Q-08 | GAME_DESIGN_FREEZE amendment | frozen "Offline is the source of truth. No networking in Stage 1." stands alongside D-074 | D-074 consequence names it as required follow-up | freeze's own change control | amend now vs. at the multiplayer phases | neither for design; blocks code-phase clarity | owner | amended freeze text |
@@ -878,6 +878,8 @@ C2 completion is not among them. The dependencies below are evidence-backed; C2'
 - **H21-14 — OPEN / OWNER REQUIRED.** The owner plays the §17.6 checklist and writes down what happened. No substitute exists. (R-04)
 - **Q-01 resolved** (kept/told definitions) — the entry handoff's route semantics depend on it.
 
+**Not entry gates:** Q-04 (sect-selection trigger) and Q-05 (sect switching/exit/defection policy) are sect-system design questions for Act II content. They are tracked in §19 and must be decided before sect-affiliation content is finalized, but they do not block Phase 21 entry.
+
 **Classified debts (per the gate protocol, not by default):**
 
 - **B2-01:** six contact sheets → review debt (does not block dungeon narrative design; blocks visual sign-off of the matrix only). `reach` judge mutation test → test debt (blocks nothing in Phase 21's narrative scope; belongs to the tool's owner). Three Origin vignettes → capture debt (does not block Phase 21; the vignettes are Act I content, already shipped). **Proposed classification: non-blocking follow-ups**, each owned separately. Owner confirms.
@@ -896,7 +898,7 @@ Against C2.13:
 
 1. Proposal exists at `docs/proposals/PROPOSAL_SAGA_SECT_ATLAS_CULTIVATION_AND_P21_HANDOFF.md`: **yes** (this file).
 2. Explicitly a proposal, not canon: **yes** (§1, header).
-3. Required sources inspected (10 steering docs, protocol, freeze, roadmap, game flow, decisions, narrative/canon set, progression/economy/social/sect set, dungeon doc, multiplayer plan, handoff, both C1 proposals): **yes** — five parallel readers, full reads; missing/ambiguous sources reported in §4.
+3. Required sources inspected (steering docs 01, 02, 03, 08, 09, 10; protocol; freeze; roadmap; game flow; decisions; narrative/canon set; progression/economy/social/sect set; dungeon doc; multiplayer plan; handoff; both C1 proposals): **yes** — five parallel readers, full reads; missing/ambiguous sources reported in §4. Steering files 04–07 (coding standards, performance testing, art assets, localization) were not read; no claim in this proposal depends on them.
 4. Acts I–III detailed, IV–X scaffolded: **yes** (§7).
 5. Every act has purpose, conflict, clue movement, progression significance, consequences, reveal constraints, dependencies: **yes** (§7 per-act template).
 6. Clue ledger preserves IDs, connects clues to observable events and timed payoffs: **yes** (§8).
@@ -908,14 +910,14 @@ Against C2.13:
 12. Open questions explicit, not disguised as decisions: **yes** (§19).
 13. Gate-status section accurate and source-backed: **yes** (§5, §20).
 14. States C2 does not close H21-14 or authorize Phase 21: **yes** (§1, §5, §20).
-15. No dungeon/boss implementation, code, assets, tests, migrations, or canon edits: **yes** — verified by final diff (one new file only).
-16. Final diff checked for accidental changes: **yes** — `git status` shows exactly one untracked file; no other file touched.
+15. No dungeon/boss implementation, code, assets, tests, migrations, or canon edits: **yes** — C2 authored exactly one new proposal file; it was subsequently committed as `90f1281` on `d063/phase-a` with no other file changed.
+16. Final diff checked for accidental changes: **yes** — the committed diff (`90f1281` vs `bbd39d6`) contains only the one new proposal file; no other file touched.
 
 ---
 
 ## 22. Source references
 
-**Steering:** `.kiro/steering/01-product.md` (D-074 direction) · `02-game-design.md` (glossary, two-axis contract, C-002) · `03-architecture.md` (layers, autoload budget, D-056 target) · `08-ai-review-protocol.md` (review gates) · `09-lessons-learned.md` (L-014, L-040, L-042, L-046, L-049, L-053, L-054, L-057) · `10-ci-failure-protocol.md` (diagnostic discipline).
+**Steering:** `.kiro/steering/01-product.md` (D-074 direction) · `02-game-design.md` (glossary, two-axis contract, C-002) · `03-architecture.md` (layers, autoload budget, D-056 target) · `08-ai-review-protocol.md` (review gates) · `09-lessons-learned.md` (L-014, L-040, L-042, L-046, L-049, L-053, L-054, L-057) · `10-ci-failure-protocol.md` (diagnostic discipline). *(04–07 not read: coding standards, performance testing, art assets, localization — no proposal claim depends on them.)*
 
 **Governance:** `docs/PHASE_EXECUTION_PROTOCOL.md` (phase contract, nine dimensions of done) · `docs/GAME_DESIGN_FREEZE.md` v2.1 (frozen elements §5; change control) · `docs/ROADMAP.md` (phase status; Phase 21/22 definitions) · `docs/GAME_FLOW.md` (flow; "the Survey Shaft's door does not open") · `docs/DECISIONS.md` (D-039, D-056, D-064–D-074).
 
@@ -929,4 +931,4 @@ Against C2.13:
 
 ---
 
-*End of proposal. Status: PROPOSAL — NOT CANON — OWNER REVIEW REQUIRED. Phase 21 and Phase 22 are not started. No commits were made.*
+*End of proposal. Status: PROPOSAL — NOT CANON — OWNER REVIEW REQUIRED. Phase 21 and Phase 22 are not started. C2 authored a single proposal file; it was subsequently committed as `90f1281` on `d063/phase-a` for owner review.*
