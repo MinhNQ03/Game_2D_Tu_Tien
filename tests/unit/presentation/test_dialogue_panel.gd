@@ -320,10 +320,12 @@ func test_the_largest_offer_is_the_widest_set_that_can_be_shown_together() -> vo
 		ids.append(option.id)
 	assert_eq(hub.choices.size(), 7, "seven answers are authored on the scout's hub")
 	# Phase 20: an answer the story gates is offered to ONE Origin, so the carter's eight
-	# authored answers are never more than four on screen.
+	# authored answers are never more than four on screen. The Failed Escort's guard answer
+	# (NARRATIVE §6 hook beat) makes nine authored; the escort is still never offered more
+	# than five at once, and the box test above measures every hub at its largest.
 	var carter := catalog.dialogue_of_speaker(&"actor_carter_te").node(&"te_hub")
-	assert_eq(carter.choices.size(), 8, "eight answers are authored on the carter's hub")
-	assert_eq(_largest_offer(carter).size(), 4, "of which a run is offered four")
+	assert_eq(carter.choices.size(), 9, "nine answers are authored on the carter's hub")
+	assert_eq(_largest_offer(carter).size(), 5, "of which a run is offered five")
 	assert_eq(ids.size(), 5, "of which at most five are ever offered together (got %s)" % str(ids))
 	assert_true(ids.has(&"ko_trade") and ids.has(&"ko_leave"), "the unconditional ones always")
 	var elder := catalog.dialogue_of_speaker(&"actor_elder_shen").node(&"shen_hub")

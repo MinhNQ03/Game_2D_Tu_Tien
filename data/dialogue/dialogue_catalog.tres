@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=384 format=3]
+[gd_resource type="Resource" script_class="DialogueCatalogData" load_steps=409 format=3]
 
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_condition_data.gd" id="1_cond"]
 [ext_resource type="Script" path="res://src/data/dialogue/dialogue_effect_data.gd" id="2_effect"]
@@ -641,6 +641,56 @@ script = ExtResource("2_effect")
 kind = 6
 flag_id = &"flag_ko_night_said"
 
+[sub_resource type="Resource" id="C_ko_wounds_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_lang_y"
+
+[sub_resource type="Resource" id="C_ko_wounds_1"]
+script = ExtResource("1_cond")
+kind = 0
+knowledge_id = &"know_drawn_pulse"
+
+[sub_resource type="Resource" id="C_ko_wounds_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_ko_wounds_said"
+negate = true
+
+[sub_resource type="Resource" id="E_ko_wounds"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_ko_wounds_said"
+
+[sub_resource type="Resource" id="H_ko_wounds"]
+script = ExtResource("3_choice")
+id = &"ko_wounds"
+text_key = &"DLG_KO_CHOICE_WOUNDS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_wounds_0"), SubResource("C_ko_wounds_1"), SubResource("C_ko_wounds_2")])
+effect = SubResource("E_ko_wounds")
+next_node_id = &"ko_wounds_line"
+
+[sub_resource type="Resource" id="H_ko_wounds_left"]
+script = ExtResource("3_choice")
+id = &"ko_wounds_left"
+text_key = &"DLG_KO_CHOICE_WOUNDS"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_ko_wounds_0"), SubResource("C_ko_wounds_1"), SubResource("C_ko_wounds_2")])
+effect = SubResource("E_ko_wounds")
+next_node_id = &"ko_wounds_line"
+
+[sub_resource type="Resource" id="H_ko_wounds_leave"]
+script = ExtResource("3_choice")
+id = &"ko_wounds_leave"
+text_key = &"DLG_CHOICE_LEAVE"
+
+[sub_resource type="Resource" id="N_ko_wounds_line"]
+script = ExtResource("4_node")
+id = &"ko_wounds_line"
+text_key = &"DLG_KO_WOUNDS"
+mood = 1
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_wounds_leave")])
+
 [sub_resource type="Resource" id="H_ko_night_ack"]
 script = ExtResource("3_choice")
 id = &"ko_night_ack"
@@ -663,14 +713,14 @@ script = ExtResource("4_node")
 id = &"ko_night_stood"
 text_key = &"DLG_KO_NIGHT_STOOD"
 mood = 1
-choices = Array[ExtResource("3_choice")]([SubResource("H_ko_night_ack")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_wounds"), SubResource("H_ko_night_ack")])
 
 [sub_resource type="Resource" id="N_ko_night_left"]
 script = ExtResource("4_node")
 id = &"ko_night_left"
 text_key = &"DLG_KO_NIGHT_LEFT"
 mood = 3
-choices = Array[ExtResource("3_choice")]([SubResource("H_ko_night_ack2")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_ko_wounds_left"), SubResource("H_ko_night_ack2")])
 
 [sub_resource type="Resource" id="C_ko_trail_0_0"]
 script = ExtResource("1_cond")
@@ -876,7 +926,7 @@ script = ExtResource("5_dlg")
 id = &"dlg_scout_ko"
 speaker_id = &"actor_scout_ko"
 start_node_id = &"ko_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart"), SubResource("N_ko_night_stood"), SubResource("N_ko_night_left"), SubResource("N_ko_trail"), SubResource("N_ko_sheet_stood"), SubResource("N_ko_sheet_left"), SubResource("N_ko_sheet_late"), SubResource("N_ko_shaft_line"), SubResource("N_ko_stones_line"), SubResource("N_ko_ruts_line"), SubResource("N_ko_nails_line"), SubResource("N_ko_cord_line")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_ko_greet"), SubResource("N_ko_hub"), SubResource("N_ko_woods"), SubResource("N_ko_price"), SubResource("N_ko_pleased"), SubResource("N_ko_bristle"), SubResource("N_ko_pills_offer"), SubResource("N_ko_pills_taken"), SubResource("N_ko_pills_waiting"), SubResource("N_ko_pills_confirm"), SubResource("N_ko_pills_released"), SubResource("N_ko_pills_done"), SubResource("N_ko_cart"), SubResource("N_ko_night_stood"), SubResource("N_ko_night_left"), SubResource("N_ko_wounds_line"), SubResource("N_ko_trail"), SubResource("N_ko_sheet_stood"), SubResource("N_ko_sheet_left"), SubResource("N_ko_sheet_late"), SubResource("N_ko_shaft_line"), SubResource("N_ko_stones_line"), SubResource("N_ko_ruts_line"), SubResource("N_ko_nails_line"), SubResource("N_ko_cord_line")])
 openings = Array[ExtResource("7_open")]([SubResource("P_ko_stood"), SubResource("P_ko_left"), SubResource("P_ko_trail_0"), SubResource("P_ko_trail_1"), SubResource("P_ko_trail_2"), SubResource("P_ko_trail_3"), SubResource("P_ko_trail_4"), SubResource("P_ko_trail_5"), SubResource("P_ko_settled")])
 
 [sub_resource type="Resource" id="N_shen_greet"]
@@ -1642,6 +1692,44 @@ script = ExtResource("3_choice")
 id = &"lin_leave"
 text_key = &"DLG_CHOICE_LEAVE"
 
+[sub_resource type="Resource" id="C_lin_residue_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_thu_thu"
+
+[sub_resource type="Resource" id="C_lin_residue_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_night_over"
+
+[sub_resource type="Resource" id="C_lin_residue_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_lin_residue_said"
+negate = true
+
+[sub_resource type="Resource" id="E_lin_residue"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_lin_residue_said"
+
+[sub_resource type="Resource" id="H_lin_residue"]
+script = ExtResource("3_choice")
+id = &"lin_residue"
+text_key = &"DLG_LIN_CHOICE_RESIDUE"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_lin_residue_0"), SubResource("C_lin_residue_1"), SubResource("C_lin_residue_2")])
+effect = SubResource("E_lin_residue")
+next_node_id = &"lin_residue_line"
+
+[sub_resource type="Resource" id="N_lin_residue_line"]
+script = ExtResource("4_node")
+id = &"lin_residue_line"
+text_key = &"DLG_LIN_RESIDUE"
+mood = 3
+next_node_id = &"lin_hub"
+
 [sub_resource type="Resource" id="E_lin_keep"]
 script = ExtResource("2_effect")
 kind = 7
@@ -1877,7 +1965,7 @@ script = ExtResource("4_node")
 id = &"lin_hub"
 text_key = &"DLG_LIN_HUB"
 mood = 0
-choices = Array[ExtResource("3_choice")]([SubResource("H_lin_ask_measure"), SubResource("H_lin_press"), SubResource("H_lin_keep_late"), SubResource("H_lin_rival"), SubResource("H_lin_notation"), SubResource("H_lin_leave")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_lin_ask_measure"), SubResource("H_lin_press"), SubResource("H_lin_keep_late"), SubResource("H_lin_rival"), SubResource("H_lin_notation"), SubResource("H_lin_residue"), SubResource("H_lin_leave")])
 
 [sub_resource type="Resource" id="N_lin_measure"]
 script = ExtResource("4_node")
@@ -2082,7 +2170,7 @@ script = ExtResource("5_dlg")
 id = &"dlg_disciple_lin"
 speaker_id = &"actor_disciple_lin"
 start_node_id = &"lin_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told"), SubResource("N_lin_morning_kept"), SubResource("N_lin_morning_told"), SubResource("N_lin_trail"), SubResource("N_lin_sheet_read"), SubResource("N_lin_sheet_refuse"), SubResource("N_lin_sheet_late"), SubResource("N_lin_shaft_kept_line"), SubResource("N_lin_shaft_told_line")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_lin_greet"), SubResource("N_lin_hub"), SubResource("N_lin_measure"), SubResource("N_lin_confide"), SubResource("N_lin_kept"), SubResource("N_lin_wary"), SubResource("N_lin_rival_line"), SubResource("N_lin_notation_line"), SubResource("N_lin_residue_line"), SubResource("N_lin_after_kept"), SubResource("N_lin_after_told"), SubResource("N_lin_morning_kept"), SubResource("N_lin_morning_told"), SubResource("N_lin_trail"), SubResource("N_lin_sheet_read"), SubResource("N_lin_sheet_refuse"), SubResource("N_lin_sheet_late"), SubResource("N_lin_shaft_kept_line"), SubResource("N_lin_shaft_told_line")])
 openings = Array[ExtResource("7_open")]([SubResource("P_lin_trail_0"), SubResource("P_lin_trail_1"), SubResource("P_lin_settled"), SubResource("P_lin_morning_told"), SubResource("P_lin_morning_kept"), SubResource("P_lin_told"), SubResource("P_lin_kept")])
 
 [sub_resource type="Resource" id="E_te_ask_load"]
@@ -2233,6 +2321,45 @@ script = ExtResource("3_choice")
 id = &"te_leave"
 text_key = &"DLG_CHOICE_LEAVE"
 
+[sub_resource type="Resource" id="C_te_guard_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_ho_tieu"
+
+[sub_resource type="Resource" id="C_te_guard_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_night_over"
+negate = true
+
+[sub_resource type="Resource" id="C_te_guard_2"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_te_guard_said"
+negate = true
+
+[sub_resource type="Resource" id="E_te_guard"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_te_guard_said"
+
+[sub_resource type="Resource" id="H_te_guard"]
+script = ExtResource("3_choice")
+id = &"te_guard"
+text_key = &"DLG_TE_CHOICE_GUARD"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_guard_0"), SubResource("C_te_guard_1"), SubResource("C_te_guard_2")])
+effect = SubResource("E_te_guard")
+next_node_id = &"te_guard_line"
+
+[sub_resource type="Resource" id="N_te_guard_line"]
+script = ExtResource("4_node")
+id = &"te_guard_line"
+text_key = &"DLG_TE_GUARD"
+mood = 1
+next_node_id = &"te_hub"
+
 [sub_resource type="Resource" id="N_te_greet"]
 script = ExtResource("4_node")
 id = &"te_greet"
@@ -2246,7 +2373,7 @@ script = ExtResource("4_node")
 id = &"te_hub"
 text_key = &"DLG_TE_HUB"
 mood = 0
-choices = Array[ExtResource("3_choice")]([SubResource("H_te_ask_load"), SubResource("H_te_ask_road"), SubResource("H_te_mark"), SubResource("H_te_knot"), SubResource("H_te_hands"), SubResource("H_te_ledger"), SubResource("H_te_seats"), SubResource("H_te_leave")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_te_ask_load"), SubResource("H_te_ask_road"), SubResource("H_te_mark"), SubResource("H_te_knot"), SubResource("H_te_hands"), SubResource("H_te_ledger"), SubResource("H_te_seats"), SubResource("H_te_guard"), SubResource("H_te_leave")])
 
 [sub_resource type="Resource" id="N_te_load"]
 script = ExtResource("4_node")
@@ -2316,6 +2443,38 @@ script = ExtResource("7_open")
 conditions = Array[ExtResource("1_cond")]([SubResource("C_te_open_0"), SubResource("C_te_open_1")])
 node_id = &"te_morning"
 
+[sub_resource type="Resource" id="C_te_appraise_0"]
+script = ExtResource("1_cond")
+kind = 4
+origin_id = &"origin_nghe_nhan"
+
+[sub_resource type="Resource" id="C_te_appraise_1"]
+script = ExtResource("1_cond")
+kind = 3
+value = 1
+flag_id = &"flag_te_appraise_said"
+negate = true
+
+[sub_resource type="Resource" id="E_te_appraise"]
+script = ExtResource("2_effect")
+kind = 6
+flag_id = &"flag_te_appraise_said"
+
+[sub_resource type="Resource" id="H_te_morning_appraise"]
+script = ExtResource("3_choice")
+id = &"te_morning_appraise"
+text_key = &"DLG_TE_CHOICE_MORNING_APPRAISE"
+conditions = Array[ExtResource("1_cond")]([SubResource("C_te_appraise_0"), SubResource("C_te_appraise_1")])
+effect = SubResource("E_te_appraise")
+next_node_id = &"te_morning_appraise_line"
+
+[sub_resource type="Resource" id="N_te_morning_appraise_line"]
+script = ExtResource("4_node")
+id = &"te_morning_appraise_line"
+text_key = &"DLG_TE_MORNING_APPRAISE"
+mood = 3
+next_node_id = &"te_morning"
+
 [sub_resource type="Resource" id="E_te_m_where"]
 script = ExtResource("2_effect")
 kind = 6
@@ -2345,7 +2504,7 @@ script = ExtResource("4_node")
 id = &"te_morning"
 text_key = &"DLG_TE_MORNING"
 mood = 3
-choices = Array[ExtResource("3_choice")]([SubResource("H_te_morning_where"), SubResource("H_te_morning_stay")])
+choices = Array[ExtResource("3_choice")]([SubResource("H_te_morning_appraise"), SubResource("H_te_morning_where"), SubResource("H_te_morning_stay")])
 
 [sub_resource type="Resource" id="N_te_morning_road"]
 script = ExtResource("4_node")
@@ -2364,7 +2523,7 @@ script = ExtResource("5_dlg")
 id = &"dlg_carter_te"
 speaker_id = &"actor_carter_te"
 start_node_id = &"te_greet"
-nodes = Array[ExtResource("4_node")]([SubResource("N_te_greet"), SubResource("N_te_hub"), SubResource("N_te_load"), SubResource("N_te_road"), SubResource("N_te_mark_line"), SubResource("N_te_knot_line"), SubResource("N_te_hands_line"), SubResource("N_te_ledger_line"), SubResource("N_te_seats_line"), SubResource("N_te_morning"), SubResource("N_te_morning_road"), SubResource("N_te_morning_stay_line")])
+nodes = Array[ExtResource("4_node")]([SubResource("N_te_greet"), SubResource("N_te_hub"), SubResource("N_te_load"), SubResource("N_te_road"), SubResource("N_te_mark_line"), SubResource("N_te_knot_line"), SubResource("N_te_hands_line"), SubResource("N_te_ledger_line"), SubResource("N_te_seats_line"), SubResource("N_te_guard_line"), SubResource("N_te_morning"), SubResource("N_te_morning_road"), SubResource("N_te_morning_stay_line"), SubResource("N_te_morning_appraise_line")])
 openings = Array[ExtResource("7_open")]([SubResource("P_te_morning")])
 
 [resource]
