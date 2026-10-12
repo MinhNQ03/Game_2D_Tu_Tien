@@ -217,6 +217,8 @@ merely run.
 count, `ASSET_LICENSES.md`, `PERFORMANCE.md`, and a steering `L-0NN` for any recurring mistake
 class. **A doc that contradicts the code is a bug** (L-014). Mark status explicitly as
 CURRENT / HISTORICAL / FUTURE rather than letting a status block rot (D-049, D-051).
+Run the knowledge-impact checklist in `docs/knowledge/DOCS_SYNC_CONTRACT.md`
+(dependency-map sweep, generated-index refresh, `tools/validate_docs.py`).
 **Evidence:** the list of docs changed, and the status markers added.
 
 ### 13. FINAL REVIEW — the pre-completion gates, reported
