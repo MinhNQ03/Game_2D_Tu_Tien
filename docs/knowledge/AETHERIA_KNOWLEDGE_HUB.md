@@ -133,6 +133,9 @@ Proposals are **not** accepted design. Never cite one as authority.
   + [CANON_LEDGER.md](../CANON_LEDGER.md); canon changes require a decision entry.
 - **Before changing save/data schemas** → [SAVE_FORMAT.md](../SAVE_FORMAT.md) +
   [DATA_SCHEMA.md](../DATA_SCHEMA.md); check the dependency map for consumers.
+- **Before changing anything a player will see** (map area, landmark, panel, character
+  presentation, motion) → [VISUAL_CRAFT_WORKFLOW.md](../VISUAL_CRAFT_WORKFLOW.md): the
+  one-page Visual Design Brief, then the owners it links to.
 - **Before starting a new phase** → [ROADMAP.md](../ROADMAP.md) (exit criteria) +
   [PHASE_EXECUTION_PROTOCOL.md](../PHASE_EXECUTION_PROTOCOL.md) (the 13-gate chain).
 - **Before reviewing a proposal** → confirm its status label; proposals never

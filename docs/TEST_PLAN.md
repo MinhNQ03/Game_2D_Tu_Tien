@@ -1355,6 +1355,22 @@ red** — B5 survived its first run and got the test it lacked. Handoff §17.
 - `tests/integration/test_dialogue_content.gd` — the H21-15 guard now walks BOTH answers to
   the Night (20 runs instead of 10); same assertions.
 
+## Visual Craft Upgrade — the spring court and the satchel's stage (handoff §19)
+
+Five tests, each the measured form of a sentence in a Visual Design Brief
+(`docs/VISUAL_CRAFT_WORKFLOW.md`, stage F):
+
+| Test | Invariant | Mutation that turns it red |
+|---|---|---|
+| `test_map_scenes::test_the_lac_ha_spring_stands_at_the_centre_of_the_floors_lightest_ground` | each quarter of the court's paving round the spring's anchor is lighter than the square and the meadow by ≥ 0.05 mean luminance, on the shipped texture | court removed; court moved 24 px; paving a tone darker |
+| `test_map_scenes::test_the_springs_runnel_is_drawn_but_never_blocks` | the runnel is on the floor, floods no cell, lies under no blocker | a blocker laid over it |
+| `test_map_scenes::test_the_hub_keeps_every_swaying_tuft_that_stands_on_turf` | the scene sync keeps all 27 tufts | sync no longer counts undergrowth as turf (21) |
+| `test_character_card::test_the_satchels_figure_is_the_largest_centred_and_drawn_whole` | sheet scale > band scale; frame inside its stage; ≤ 1 px off-centre; ≥ 80 % of the stage's height; stage as wide as the column; column not widened | scale 2; feet +8 px; stage 120 px; stage shrunk to centre |
+| `test_character_card::test_the_satchels_numbers_stand_in_one_column_with_whole_names` | the three numbers end on one x (≤ 0.5 px) in vi and en; no stat name cut | caption no longer expands |
+
+Real window: `capture_ui.gd` gains frame `11_satchel_worn` and the mode
+`-- <lang> <dir> vignette <origin_id>` (one Origin's opening, seven steps).
+
 ## Pre-Phase-21 Gate A — H21-21 explained; the story's in-flight window (D-073 addendum N, O)
 
 Suite **1248** (was 1241); the eight E2E flows unchanged. Mutations: **22 applied, 21 red, 1

@@ -8,6 +8,22 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-12 — Visual Craft Upgrade: a reusable design workflow and two proofs (`d063/phase-a`; not a phase)
+
+- **`docs/VISUAL_CRAFT_WORKFLOW.md`**: six stages and a one-screen Visual Design Brief for any
+  change a player will see; nine reference frames recorded as principles (never copied, not in
+  the repository). Linked from steering 06 and 08 and the knowledge hub; it owns no rule.
+- **The Lạc Hà spring has a court** (W1): stones laid in rings round the basin, the spring's
+  overflow as a runnel back to the stream, trees gathered into groves over undergrowth. Three
+  new kinds in the existing ground painter (`court`, `rill`, `lush`); no collision change; the
+  forest floor repaints to the same bytes.
+- **The satchel's figure is its subject** (U1): drawn at 3x, centred on a stage the width of
+  its column, on a dais; the three stats are one ledger with the numbers on one edge.
+- B2-01 and UI-02 closed (all contact sheets opened, the `reach` judge mutated, five Origin
+  vignettes captured, the satchel captured with gear worn). UI-01 has an owner decision brief.
+- 1266 tests, eight E2E flows, 10 mutations red. The frame-wide value range is unchanged
+  (VC-01). H21-14 stays OPEN / OWNER REQUIRED; Phase 21 is NO-GO.
+
 ### 2026-10-12 — Pre-Phase-21 Gate B2: debts paid, the visual audit, the character as a figure (`hardening/pre-phase21-gate-b2`; not a phase)
 
 - **The character is a figure**: `CharacterCard` — the player's own sprite in a well, two

@@ -1636,3 +1636,27 @@
   you mean**: "drawn whole" is not-clipped AND not-trimmed AND no line wider than the label,
   measured — not a line count. (3) **Every language × window of a new surface is opened**,
   not sampled: the second language is where the layout breaks.
+
+## L-058 — A design claim is a measurement you have not made yet; a number in a comment is measured or absent; a new kind must be taught to every reader of the old kinds; a capture step must leave the world as it found it
+
+- **What happened (the Visual Craft proofs, handoff §19).** (a) The brief for the spring
+  court said "the lightest ground in the village". As first painted it was the opposite:
+  paving 0.51 mean luminance against the square's 0.54 — smaller stones carry more mortar,
+  and it used the square's dark mortar. It *looked* pale in the preview. (b) The test written
+  to pin that claim had a comment "Measured when written: court 0.60, square 0.55, meadow
+  0.42" — typed before anything was measured. All three were wrong; the test's first run
+  said so. (c) Adding the floor kind `lush` (undergrowth) made the scene sync delete six
+  swaying grass tufts: it keeps a tuft only on `GRASS` or `FOREST`, and nobody told it the
+  new kind is turf. The suite stayed green; the scene diff showed it. (d) A new capture step
+  equipped a blade for one frame and left it on; the Chronicle's body section grew a page, so
+  eleven later frames were renumbered and stopped being comparable with the baseline.
+- **Why nobody caught it sooner.** (a)(b) A preview and a sentence are not instruments.
+  (c) The kinds are listed in the painter and *read* in three other places; no test counted
+  what the sync keeps. (d) The step was judged by its own frame, not by the frames after it.
+- **Rule.** (1) **Every word of a value plan ("lightest", "largest", "centred") becomes a
+  measured assertion before the surface is called done** — on the shipped texture or the laid
+  out control, by region, not by one pixel. (2) **A figure in a comment or a doc is pasted
+  from a run, never typed ahead of it.** (3) **Adding a member to a set of kinds: grep every
+  tuple that names the old members** (`GRASS, FOREST`) and decide each one; pin what a
+  generator keeps (`HUB_TUFTS`). (4) **A capture or probe step that changes state puts it
+  back**, and a changed frame *list* (not only changed pixels) is a finding.

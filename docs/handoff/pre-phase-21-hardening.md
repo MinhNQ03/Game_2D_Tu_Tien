@@ -1560,3 +1560,197 @@ icons, its sleeping figure, the evened pages, the uncut name. *Not mutated:* the
 | NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | unchanged | | |
 
 **Gate B2 stops here. Gates C1 and C2 were not started. Phase 21 and Phase 22 have not started.**
+
+## 19. Visual Craft Upgrade — a reusable design workflow, two proofs, the tool-closable debts (`d063/phase-a`, from `5908fb8`)
+
+> **Not a phase.** The owner's brief: find out *why* the build reads as flat beside nine
+> reference frames from other cultivation games (**analysed, never copied; not in the
+> repository**), turn the answer into a method later phases can reuse, prove the method on
+> two surfaces, and close what a tool can close. No palette replacement, no shader framework,
+> no minimap / MP bar / chat / skill ring, no lore, no multiplayer. Phase 21 is not started.
+
+**Preflight (2026-10-12).** `d063/phase-a` at `5908fb861afe3a69010c6493b1fc54e634ad5b00`
+(= `origin/main` `0fd6adc` + one docs commit), CI green on it (run 38235777537). `CLAUDE.md`,
+`.kiro/settings/` and the reference zip are untracked and were not staged.
+
+### 19.1 Baseline — what the build was, measured before anything changed
+
+Evidence: a fresh real-window matrix (236 frames: vi/en × 1280×720/1280×800, the five Origin
+vignettes, the golden combat frame), every one of its 15 contact sheets opened; the benchmark
+on the golden frame; a composed overview of the whole village.
+
+**Strong.** One pixel density, crisp (benchmark pixel readability 100); figures separate from
+the ground (character 96.5); a painted floor with organic material edges (environment 93.7);
+a consistent dark-lacquer UI kit; no layout break in any of the 236 frames in either language.
+
+**Flat, with the evidence.**
+
+| # | Finding | Evidence | Root cause | Type |
+|---|---|---|---|---|
+| F1 | The frame has no value range | benchmark `contrast` 0.105 against the reference's 0.181; luminance bands `[0.02, 0.38, 0.56, 0.04, 0.0]` — 94 % of the playfield in the two middle bands | every ground material sits in the same mid-values; nothing is meant to be the lightest or the darkest | palette/lighting |
+| F2 | The village has no subject | the spring that bears its name (and where the first cultivation happens) was a 52×30 px basin on the corner of the square, on the square's own flags; no line led to it | the layout was drawn *around* gameplay anchors, never *about* one | composition |
+| F3 | Vegetation is sprinkled | eight trees, each alone on a lawn — against the DNA's own "vegetation clusters, never sprinkles" | props placed one by one; no ground mass under them | composition |
+| F4 | On the character sheet the person is the smallest thing | figure 64×96 px in a 76 px well in a 136 px column, **8 px right of the well's middle** (measured by the new test); three stat plates with their numbers ending at x = 95 / 87 / 94 | the card was built as a list head, not as a stage | UI composition |
+
+**Rule owners** are the table at the top of `docs/VISUAL_CRAFT_WORKFLOW.md`. **Reusable
+capabilities used:** the ground painter's material kinds, layout YAML, scene sync,
+`CharacterVisualComponent`, `UIPalette → UITheme`, `capture_ui` / `capture_motion`, the
+benchmark. Blender was not needed (the `blender-pro` session was not running; nothing here
+required a new prop).
+
+### 19.2 The method
+
+`docs/VISUAL_CRAFT_WORKFLOW.md` — six stages (intent, composition, reference → original,
+production, motion, measure), a one-screen brief, and the nine reference analyses recorded as
+principles. It owns no rule; it links to the owners. Entry points: `.kiro/steering/06-art-assets.md`
+§ Visual craft, the *Visual craft review* gate in `.kiro/steering/08-ai-review-protocol.md`, the
+knowledge hub §F and the dependency map.
+
+### 19.3 Proof W1 — the Lạc Hà spring court (world composition)
+
+```
+VISUAL DESIGN BRIEF — W1 the Lạc Hà spring
+Intent        : about the spring that bears the village's name; first second: "that water is the
+                heart of this place"; serves the prologue (the spring "misses a beat") and the
+                first deliberate cultivation
+Evidence      : F2, F3 above; village overview before
+Focal point   : the basin, where the west road meets the square — wins by value (the lightest
+                ground with the brightest water inside the darkest ring) and by converging lines
+Reading order : 1 the water  2 the court's rings  3 the runnel back to the stream / the hall
+Value plan    : lightest = court paving and water; darkest = the wet ring and the undergrowth
+Masses/lines  : trees gathered into groves over undergrowth; lead-in = the road's end and the
+                spring's overflow runnel from the stream
+Quiet area    : the square east of the court and the meadow south of it stay plain
+View check    : everything added is GROUND — nothing can stand in front of an NPC or a pickup;
+                the one added tree (TreeS2) stands south of the south grove, clear of the lane
+References    : R1, R3, R5, R7, R9 (workflow § Reference notes)
+Built from    : three new KINDS in the existing painter — `court` (stones laid in rings round
+                an `ellipse`), `rill`, `lush` — and layout data; vo_mach floor and layout data
+                repaint to the SAME bytes
+Motion        : none — not a verified weakness (the qi well already animates on the basin)
+Rules touched : canon kept (a frontier village: dressed stone and a runnel, no blossom, no
+                altar); HUD untouched; no collision change (the runnel is INTANGIBLE_BY_DESIGN)
+Rejected      : a great tree over the spring (R3/R7's own answer): at 30° top-down its canopy
+                projects north over the west road, Lâm Nguyệt and the well
+Measure       : see 19.5; tests test_the_lac_ha_spring_stands_at_the_centre_of_the_floors_
+                lightest_ground, test_the_springs_runnel_is_drawn_but_never_blocks,
+                test_the_hub_keeps_every_swaying_tuft_that_stands_on_turf; mutations 5/5
+Still wrong   : F1 is NOT fixed by this (19.5) — VC-01
+```
+
+Three things were wrong on the way and are why the tests exist. **(a)** The first court was
+*darker* than the square (paving 0.51 mean luminance against 0.54): small stones mean more
+mortar, and it used the square's dark mortar. The brief said "lightest"; only measuring said
+otherwise. Now 0.61–0.66 by quarter, against 0.54 (square) and 0.45 (meadow). **(b)** The scene
+sync dropped six swaying grass tufts — those standing on the new undergrowth, which it did not
+count as turf. **(c)** The test's first comment carried luminance figures written *before* they
+were measured; they were wrong and were replaced by the measured ones (L-058).
+
+### 19.4 Proof U1 — the satchel's figure is its subject (character/UI composition)
+
+```
+VISUAL DESIGN BRIEF — U1 the satchel sheet
+Intent        : about the PERSON carrying the satchel; first second: "that is me, wearing
+                this"; serves equipment (the garment worn is the garment drawn)
+Evidence      : F4 above; frame 11_satchel_worn before
+Focal point   : the figure — wins by scale (3x, the largest thing on the sheet) and by standing
+                alone on a stage the width of the column, on a dais
+Reading order : 1 the figure  2 what it wears (two slots)  3 the numbers  4 the list
+Value plan    : the figure's own colours against the plate; numbers in gold on one right edge
+Masses/lines  : three plates become ONE ledger; numbers align on an edge
+Quiet area    : the stage round the figure holds nothing else
+References    : R6, R8
+Built from    : `CharacterCard` (tall mode only), two named `UIPalette` constants; the same
+                views as before; the Chronicle's band is unchanged
+Motion        : none added — the figure already idles; it still does not process while hidden
+Rules touched : SHEET_PANEL_WIDTH kept (460 px: clear of a centred notice); modal, so the HUD
+                budget does not apply; both languages
+Rejected      : slots in a ring round the figure with stats on a radar (R8): needs a wider
+                sheet, which would cover the centred notice the 460 px limit protects
+Measure       : see 19.5; tests test_the_satchels_figure_is_the_largest_centred_and_drawn_whole,
+                test_the_satchels_numbers_stand_in_one_column_with_whole_names; mutations 5/5
+Still wrong   : the slots sit under the figure, not at the hand and the body — UI-01
+```
+
+### 19.5 Measured, before → after
+
+| Measure | Before | After | How |
+|---|---|---|---|
+| Ground given to the spring | basin sprite only, 52×30 px on the square's flags | a 108×62 px laid court centred on the anchor (5 259 px², 2.3 % of a 640×360 view) | layout data |
+| Court paving, mean luminance by quarter | — | 0.61 – 0.66; square 0.54; meadow 0.45 | the test, on the shipped texture |
+| Lines that end at the spring | 0 | 2 (the west road's end, the runnel) | layout |
+| Trees standing alone | 8 of 8 | 3 of 9 (three groves of two, over undergrowth) | layout |
+| Swaying tufts in the hub | 27 | 27 | test |
+| Figure on the sheet | 64×96 px, 8 px off-centre, 2 px outside its well | 96×144 px, centred, whole (2.25× the area) | test |
+| Stat numbers' right edges (vi) | 95 / 87 / 94 px | one edge | test |
+| Rows of the list visible at 1280×720 (en) | 5 | 6 | capture |
+| Benchmark total (golden combat frame) | 80.6 | BENCH_TOTAL | `visual_benchmark.py` |
+| Benchmark palette / lighting | 59.7 | BENCH_PALETTE | same |
+| Benchmark `contrast` | 0.105 | BENCH_CONTRAST | same |
+| vo_mach floor + layout data | — | byte-identical | md5 |
+| lac_ha floor across hash seeds 1 / 2 / 7 | — | byte-identical | md5 |
+
+**Read the benchmark rows honestly.** The golden frame looks at the training yard; the court is
+at its edge. The frame-wide weakness F1 is essentially where it was. W1 gives *one place* a
+value range; it does not give the game one. That is VC-01 below, and it needs a decision about
+light, not another floor material.
+
+Validation: PLAYTEST_LINE Frame time: FRAME_LINE
+
+### 19.6 Debts a tool could close — closed
+
+| ID | Was | Now |
+|---|---|---|
+| B2-01 | six contact sheets not reviewed; `reach` judge not mutation-tested; three Origins' vignettes not captured | **CLOSED.** All 15 sheets of the new 236-frame baseline opened (no layout break found). The `reach` judge mutated: a pickup moved inside the outpost hall → step "reach. the village, day one" FAIL, exit 1; restored. All five Origins' vignettes captured, 7 steps each (`capture_ui.gd -- <lang> <dir> vignette <origin_id>`) |
+| UI-02 | the satchel never captured with something worn | **CLOSED.** Frame `11_satchel_worn` (blade and robe worn) is part of every `capture_ui` run; the blade is put back afterwards so later frames keep their numbering |
+
+### 19.7 UI-01 — owner decision brief (nothing here is implemented)
+
+**The rule today** (`docs/UI_UX_BIBLE.md`; CLAUDE.md §12): permanent HUD ≤ 15 % of the screen,
+the centre 50 % × 50 % clear, no minimap, no MP bar, no chat, no skill ring. Every reference
+frame with a HUD has a minimap; several have an MP bar.
+
+**What the rule costs, as observed.** Nothing in the audit failed *because* of it. The
+references' minimaps answer "where do I go" — which this build answers with the purpose line
+and with composition (roads, the runnel). No MP bar is missed while techniques cost nothing a
+bar would show.
+
+| Option | What changes | Cost |
+|---|---|---|
+| **A — keep the rule (recommended)** | nothing; the next surfaces to compose are the sect / politics / journal / shop panels and the slot placement on the sheet | none |
+| B — a map as a MODAL (opened, never permanent) | a new panel fed by map data | a new feed and owner; Phase 21+ content decides if it earns it |
+| C — allow a permanent minimap | HUD budget and the R-7 / R-13 identity rules reopened | a design-freeze amendment; every map needs minimap art |
+
+**Question for the owner:** A, B or C — and which surface is composed next?
+
+### 19.8 H21-14 — still OPEN / OWNER REQUIRED
+
+Not played by this task; no tool can close it. The checklist is §17.6. Two additions for what
+changed here, and a recording template:
+
+8. Arrive by the west road. Before reading anything: what on the screen do you look at first?
+   Did the runnel and the court read as *the spring*, or as decoration? Did you try to walk
+   round the runnel, or straight over it?
+9. Open the satchel with the robe on, then with the blade too. Is the figure the first thing
+   you see? Can you read Attack / Defense / Speed at a glance?
+
+```
+H21-14 record — date, build SHA, language, window
+Step | What I did | What I expected | What happened | Odd? (y/n) | Note
+```
+
+### 19.9 Debts after this run
+
+| ID | State | Owner | Closes when |
+|---|---|---|---|
+| H21-14 | **OPEN / OWNER REQUIRED** | the project owner | §17.6 + §19.8 played and written down |
+| UI-01 | owner decision pending (§19.7); slots on the sheet still sit under the figure | the owner, then presentation | A / B / C answered; next surface named |
+| VC-01 (new) | the frame-wide value range is unchanged (F1): `contrast` ≈ 0.11 against 0.18 | art direction (a light / time-of-day decision; global palette changes were out of this brief) | the golden frame's palette/lighting category ≥ 70 without a new shader framework, or the owner accepts the current range |
+| VC-02 (new) | the forest map (`vo_mach`) has had no composition pass | whoever takes the next visual brief | a W-brief for one of its landmarks |
+| NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | unchanged | | |
+
+C2 remains **PROPOSAL — NOT CANON**; Q-02 is unresolved; no lore, chronicle scope, multiplayer,
+networking or persistence was decided or built.
+
+**Phase 21: NO-GO.** H21-14 is open and only the owner can close it. This run stops here.
+Phase 21 and Phase 22 have not started.

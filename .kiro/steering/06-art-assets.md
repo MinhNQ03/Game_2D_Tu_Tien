@@ -8,6 +8,16 @@
 - Renderer is `gl_compatibility` — design within its 2D feature set (confirmed in
   `project.godot`).
 
+## Visual craft (before any change a player will SEE)
+
+A surface that passes every validator can still be flat. Before a new or reworked map area,
+landmark, prop cluster, panel, character presentation or motion beat, fill in the one-page
+**Visual Design Brief** from `docs/VISUAL_CRAFT_WORKFLOW.md` (intent → composition →
+reference-to-original → production → motion → measure). That document owns the method only;
+palette, sizes, motion timing, HUD limits and canon stay with the owners it links to. A
+reference image is evidence about composition, never authorisation for a feature, and never
+enters the repository.
+
 ## Pixel-art import rules
 
 - Textures: filtering **off** (nearest), mipmaps **off** for sprites.

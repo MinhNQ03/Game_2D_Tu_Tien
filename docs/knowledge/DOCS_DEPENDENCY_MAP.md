@@ -65,6 +65,8 @@ source doc + section that establishes the edge.
 | `.kiro/steering/10-ci-failure-protocol.md` | `.github/workflows/ci.yml` | implements/verifies | Protocol's API-based diagnosis assumes the workflow's annotations |
 | `docs/PLAYER_EXPERIENCE_STANDARD.md` | `docs/PHASE_EXECUTION_PROTOCOL.md` | constrains | Protocol §1c wires PX gates A–E into the phase gate chain |
 | `docs/TEST_PLAN.md` | `.github/workflows/ci.yml` | implements/verifies | CI's headless suite + E2E gates implement the test plan |
+| `.kiro/steering/06-art-assets.md` | `docs/VISUAL_CRAFT_WORKFLOW.md` | owns-rule-for | 06 § Visual craft: the brief is required before a visible change |
+| `docs/VISUAL_CRAFT_WORKFLOW.md` | `docs/AETHERIA_ART_PIPELINE.md`, `docs/UI_UX_BIBLE.md`, `docs/MOTION_DESIGN_CONTRACT.md`, `docs/CHARACTER_ART_BIBLE.md` | depends-on | Workflow's owner table: it restates none of their rules |
 | `docs/handoff/pre-phase-21-hardening.md` | `docs/ROADMAP.md` | depends-on | Handoff §18.5: gate statement references phase state |
 
 ## Production / multiplayer target

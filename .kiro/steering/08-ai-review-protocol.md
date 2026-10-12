@@ -68,6 +68,9 @@ Before declaring a feature complete, explicitly review and report each:
   permanent test.
 - **Test review** — high-risk logic covered; suite green headless; a failing assertion
   actually fails the suite (non-zero exit).
+- **Visual craft review** (only when a player will see the change) — the Visual Design
+  Brief of `docs/VISUAL_CRAFT_WORKFLOW.md` is written, its before/after captures were
+  opened at every required language × size, and each invariant it relies on is a test.
 - **Documentation review** — all affected docs updated; no doc now contradicts another
   (if it does, log in `DECISIONS.md`, don't silently pick one). Follow the
   mandatory checklist in `docs/knowledge/DOCS_SYNC_CONTRACT.md` (before/after
