@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StoryCatalogData" load_steps=112 format=3]
+[gd_resource type="Resource" script_class="StoryCatalogData" load_steps=116 format=3]
 
 [ext_resource type="Script" path="res://src/data/story/story_catalog_data.gd" id="s_story_catalog_data"]
 [ext_resource type="Script" path="res://src/data/story/story_chapter_data.gd" id="s_story_chapter_data"]
@@ -116,6 +116,26 @@ purpose = "Tham Bat Ky has answered the news of the sealed shaft."
 script = ExtResource("s_story_flag_data")
 id = &"flag_trail_origin_said"
 purpose = "What this Origin alone notices on the trail to the shaft has been noticed."
+
+[sub_resource type="Resource" id="F_flag_te_guard_said"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_te_guard_said"
+purpose = "What the Hộ Tiêu alone notices about the carter's guard has been noticed."
+
+[sub_resource type="Resource" id="F_flag_ko_wounds_said"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_ko_wounds_said"
+purpose = "What the Lang Y alone notices about wounds on the trail has been noticed."
+
+[sub_resource type="Resource" id="F_flag_te_appraise_said"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_te_appraise_said"
+purpose = "What the Nghệ Nhân alone notices appraising the carter's goods has been noticed."
+
+[sub_resource type="Resource" id="F_flag_lin_residue_said"]
+script = ExtResource("s_story_flag_data")
+id = &"flag_lin_residue_said"
+purpose = "What the Thủ Thư alone notices in Lam Nguyet's residue has been noticed."
 
 [sub_resource type="Resource" id="Q_choice_lam_readings_kept_0"]
 script = ExtResource("s_story_consequence_data")
@@ -719,6 +739,6 @@ beats = Array[ExtResource("s_story_beat_data")]([SubResource("BEAT_beat_whose_ha
 [resource]
 script = ExtResource("s_story_catalog_data")
 chapters = Array[ExtResource("s_story_chapter_data")]([SubResource("CH_prologue"), SubResource("CH_act1")])
-flags = Array[ExtResource("s_story_flag_data")]([SubResource("F_flag_heard_village_business"), SubResource("F_flag_heard_elder_account"), SubResource("F_flag_heard_road_ahead"), SubResource("F_flag_outpost_issue"), SubResource("F_flag_lam_asked"), SubResource("F_flag_lam_settled"), SubResource("F_flag_asked_carter_load"), SubResource("F_flag_vein_broke"), SubResource("F_flag_night_over"), SubResource("F_flag_ko_night_said"), SubResource("F_flag_lin_origin_said"), SubResource("F_flag_te_origin_said"), SubResource("F_flag_sheet_shown"), SubResource("F_flag_lin_sheet_said"), SubResource("F_flag_ko_sheet_said"), SubResource("F_flag_shen_sheet_said"), SubResource("F_flag_lin_shaft_said"), SubResource("F_flag_ko_shaft_said"), SubResource("F_flag_shen_shaft_said"), SubResource("F_flag_trail_origin_said")])
+flags = Array[ExtResource("s_story_flag_data")]([SubResource("F_flag_heard_village_business"), SubResource("F_flag_heard_elder_account"), SubResource("F_flag_heard_road_ahead"), SubResource("F_flag_outpost_issue"), SubResource("F_flag_lam_asked"), SubResource("F_flag_lam_settled"), SubResource("F_flag_asked_carter_load"), SubResource("F_flag_vein_broke"), SubResource("F_flag_night_over"), SubResource("F_flag_ko_night_said"), SubResource("F_flag_lin_origin_said"), SubResource("F_flag_te_origin_said"), SubResource("F_flag_sheet_shown"), SubResource("F_flag_lin_sheet_said"), SubResource("F_flag_ko_sheet_said"), SubResource("F_flag_shen_sheet_said"), SubResource("F_flag_lin_shaft_said"), SubResource("F_flag_ko_shaft_said"), SubResource("F_flag_shen_shaft_said"), SubResource("F_flag_trail_origin_said"), SubResource("F_flag_te_guard_said"), SubResource("F_flag_ko_wounds_said"), SubResource("F_flag_te_appraise_said"), SubResource("F_flag_lin_residue_said")])
 choices = Array[ExtResource("s_story_choice_data")]([SubResource("C_choice_lam_readings"), SubResource("C_choice_night_stand"), SubResource("C_choice_sheet_shown")])
 start_beat_id = &"beat_road"
