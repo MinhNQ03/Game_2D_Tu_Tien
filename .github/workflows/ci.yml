@@ -82,6 +82,33 @@ jobs:
             exit 1
           fi
 
+      - name: Docs knowledge validation (no engine required)
+        run: |
+          set -uo pipefail
+          # Knowledge Hub structural gate: hub links resolve, the generated
+          # decision index is current, no secrets/absolute paths in knowledge
+          # files, status labels intact. Engine-free (stdlib only), so it runs
+          # here with the lint gate and fails in seconds.
+          set +e
+          python3 tools/gen_decision_index.py --selftest 2>&1 | tee _docs.log
+          gen_rc=${PIPESTATUS[0]}
+          python3 tools/validate_docs.py --selftest 2>&1 | tee -a _docs.log
+          valtest_rc=${PIPESTATUS[0]}
+          python3 tools/validate_docs.py 2>&1 | tee -a _docs.log
+          val_rc=${PIPESTATUS[0]}
+          set -e
+          {
+            echo "### Docs knowledge validation (gen_selftest=$gen_rc, val_selftest=$valtest_rc, validate=$val_rc)"
+            echo '```'
+            cat _docs.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$gen_rc" -ne 0 ] || [ "$valtest_rc" -ne 0 ] || [ "$val_rc" -ne 0 ]; then
+            grep -E 'KB[0-9]+|SELFTEST FAIL|UNPARSED|error' _docs.log | tail -n 40 \
+              | while IFS= read -r line; do echo "::error::[docs] ${line}"; done
+            exit 1
+          fi
+
       - name: Download Godot ${{ env.GODOT_VERSION }}
         run: |
           set -euo pipefail
