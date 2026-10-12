@@ -8,6 +8,17 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-12 — Pre-Phase-21 Gate B1: interaction, the approach, object lifecycle, continuity (`hardening/pre-phase21-gate-b1`; not a phase)
+
+- **Leaving is an answer only if you left.** A map transition the router refused still
+  recorded "withdrew" and brought the morning over a living wave; the world now asks the
+  router before it leaves anything (`SceneRouter.transition_refusal`).
+- **The fallen answer nothing.** A bolt that outlived its caster could make the story record
+  "stood" and open a card over the defeat box.
+- H21-15, H21-16, FG-3 and FG-4 re-verified with no regression (the H21-15 guard widened to
+  both answers to the Night); the safe way re-walked with real keys in the real window.
+- 1250 tests, eight E2E flows, 7 mutations red. H21-14 stays OPEN / OWNER REQUIRED.
+
 ### 2026-10-12 — Pre-Phase-21 Gate A: technical state and transaction integrity (`hardening/pre-phase21-gate-a`; not a phase)
 
 - **H21-21 explained and closed.** The intermittent `test_pet_companion` failure was the test

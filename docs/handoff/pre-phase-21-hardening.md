@@ -1347,3 +1347,128 @@ anything visual — and none is claimed**).
 | CLV-01, NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | unchanged | | |
 
 **Gate A stops here. Gate B1 was not started. Phase 21 and Phase 22 have not started.**
+
+## 17. Gate B1 — interaction, the approach, what lies in the world, story continuity (`hardening/pre-phase21-gate-b1`, from `ddde137`)
+
+> **Not a phase.** A regression audit of what §15 closed, plus two defects it reproduced and
+> fixed. No dungeon, boss, drop system, save or networking; no wolf was retuned, no layout
+> moved, no dialogue rewritten. It stops here; Gate B2 was not started.
+
+**Preflight (2026-10-12).** `origin/main` `33919f9` (CI 38198759321, success);
+`origin/hardening/pre-phase21-gate-a` `ddde137` (CI 38201518810, success, attempt 1) — approved
+by the owner in words and **not merged into `main`**; this branch is cut from `ddde137` so it
+carries Gate A's fixes. `CLAUDE.md` and `.kiro/settings/` untracked, untouched, never staged.
+
+*An honest note on the base.* Between the preflight read and the `git switch -c`, the checkout
+had been moved to `main` (reflog: `moving from hardening/pre-phase21-gate-a to main`), so the
+branch was first cut from `33919f9` and the first probes and one gate run were made on that
+tree (1241 tests — the number that gave it away). The branch had no commit of its own; it
+was reset to `ddde137` with the three edited files carried across, and **every result in this
+section was produced again on the right base**. L-056.
+
+### 17.1 Evidence matrix
+
+| Case | Old behaviour | Reproducer | Fix / test | Final | Owner | Debt |
+|---|---|---|---|---|---|---|
+| H21-15 exhausted dialogue (CLOSED) | — | `test_someone_with_no_trail_line_left_opens_on_their_hub`; Story E2E 8j | none needed. The guard was WIDENED: it walked only `stood`; it now walks both answers to the Night — 5 Origins × kept / told × stood / withdrew × (sheet in hand, door found), every line of all three people to exhaustion | PASS, no regression | Dialogue data | — |
+| H21-15 in vi and en | — | `test_every_line_the_story_shows_exists_in_both_languages`, the dialogue catalog's translation check, `test_the_box_fits_under_the_clear_zone_in_both_languages` | none | PASS (automated); the exhausted hubs were not opened as captures in this gate | Dialogue / localization | — |
+| H21-16 fair approach (CLOSED) | — | `test_nothing_the_player_must_reach_in_the_woods_is_inside_a_creatures_territory`, `test_the_shipped_wolf_left_alone_stays_on_its_ground`, the four `AiBrain` ground tests | none | PASS | AI data + field layout | — |
+| H21-16 tuning not changed since the fix | — | `git diff 0623ff9^ HEAD` over the AI profile, the wolf, its bite, both spawn tables, `data/stats`, `data/characters` | none | only the two recorded changes exist: `patrol_radius = 32`, den (632,168) → (680,76). Detect 170, lose 280, leash 340, speeds, alert 0.35 s, bite 0.26 / 0.08 / 0.34 s, reach 26: unchanged | AI data | — |
+| H21-16 in the real window, real keys | — | a scratch walk along the test's own `SAFE_WAY_TO_THE_SHAFT` (1280×720, 60 fps) | none | road → socket, stood 10 s, examined: IDLE / PATROL / RETURN only, nearest **208 px**, HP 100. socket → footpath → door, stood 5 s: nearest **219 px**, HP 100. Wolves strayed at most **42 px** from their dens. Door → west along the haul track to the wreck: ALERT / CHASE / ATTACK / RECOVER, nearest 18 px, HP 100 → **82** — still contested, as designed | AI / layout | GB1-03 |
+| FG-3 pickups: whole or not at all, refused once, two underfoot, nothing absent drawn on arrival | — | `test_a_pickup_that_does_not_all_fit_stays_whole_in_the_world`, `test_two_held_things_underfoot_are_each_said_once`, `test_a_pickup_is_collected_once_for_the_whole_run`, `test_everything_lying_in_the_world_has_one_identity_a_cause_and_no_body`, world E2E (21 arrivals), playtest `05a_pickup_state` | none | PASS | Inventory owner | — |
+| FG-4 nine arrivals agree with the story | — | Story E2E `_judge_arrival` | none | PASS — 9 arrivals, 0 disagreements (the two new steps add none: a refused exit is no arrival, and step 13's arrivals are judged like the rest) | World / Story | — |
+| **N1 — a way out that fails still answered the Night (NEW)** | leaving a map answered the story's encounter BEFORE the router accepted the transition. A refused transition left the player in the woods with both creatures of the wave alive, and the story at `beat_aftermath`, `withdrew` recorded, the watchman's regard already −5, day light, and the morning card playing | real app, the router made to refuse the village (its scene path pointed at a missing file), the real exit pressed | `SceneRouter.transition_refusal()` (pure; the same checks `request_transition` refuses by) and `WorldRuntime._enter_map` asks it before it leaves anything. Story E2E **11a**; two router unit tests | red → green | WorldRuntime / SceneRouter | GB1-01 |
+| **N11 — the fallen "stood" (NEW)** | a thunder bolt in flight when its caster was killed landed, killed the last creature of the wave, and the story recorded `stood`, moved to the morning and opened a story card while the defeat box was up | real app: a real `skill_2` key, the caster felled with the bolt in the air | `WorldRuntime._on_encounter_enemy_defeated`: the last one down answers only for a player still standing. Story E2E **13** (and the defeat acknowledged with a real key, back to a clean menu) | red → green | WorldRuntime | GB1-02 |
+| a request made inside a transition is refused | claimed in §15.4; **no test existed** (mutation B5 survived) | `test_a_transition_asked_for_inside_a_transition_is_refused` | test added | PASS; B5 now red | SceneRouter | — |
+| defeat: nothing chases a corpse; the box takes the key; a new run is clean | not probed before | real app: fallen on the exit, in the Night | none needed | wolves go IDLE / PATROL / RETURN; `interact` on the exit acknowledges the defeat and does NOT change map; second run: 100 HP, `beat_arrival`, no flags, no encounter, 0 creatures | World / HUD | — |
+| the exit pressed under a conversation | "no test presses the exit under it" (§15.4) | real app: talking to the elder, the exit's own signal raised, `interact` ×3 | none needed | each press advanced the conversation; the map did not change | Input contexts | GB1-04 |
+| withdraw, come back, come back again | E2E 11 covered the first leaving | real app, one of the wave killed first | none needed | `withdrew` once; village in daylight; the woods afterwards hold only the two standing wolves on every visit; wreck and spilled manual stay, stake gone | World / Story | — |
+| every thing the player must reach can be WALKED to | not measured | real app: a flood of the walkable ground from the spawn (the real body, `test_move`, 6 px cells; ~11 900 cells in the village, ~13 900 in the woods) in five story states | none needed | every interactable, pickup and exit present in that state has walkable ground inside its reach (nearest 2–14 px, reaches 14–30 px) | Maps | — |
+
+### 17.2 Everything standing or lying in the two maps
+
+Read from both scenes instantiated and listed node by node, and from the runtimes that spawn. No
+creature drops exist (a kill pays through the `RewardLedger`); nothing was added.
+
+| Thing | Kind | Why it is there | There when | Owner · identity | How it is used | Body · reach | Can it double? | Cleanup |
+|---|---|---|---|---|---|---|---|---|
+| houses, hall, well, rack, fence, trees, boulders, banners, lanterns, planters (34 `WorldProp` / `PropBody`) | decoration with mass | the village and the woods | always | the map scene · node name | — | solid (footprint from `PropData`); none | no: built with the scene | freed with the map |
+| carter's cart (village) / cart wreck (woods) | evidence | the caravan that broke in the Night | cart until `flag_vein_broke`; wreck from it | `StoryPresence` reads the story's flag · node | looked at | solid when present, no shape when absent | no | re-derived from the flag on every arrival |
+| survey stake → stake socket | evidence → clue | someone pulled the stake overnight | stake until `flag_night_over`; socket from it | `StoryPresence`; the clue is `KnowledgeSource` `source_stake_socket` | `interact` → Knowledge Core (`know_stake_socket`) | stake solid; socket reach 20 | no: knowledge is granted once | — |
+| survey shaft + its seal | landmark + clue | the sealed adit (Phase 21's door) | shaft always; seal examinable from `flag_night_over` | `WorldProp`; `KnowledgeSource` `source_shaft_seal` | `interact` → `know_sealed_shaft` | solid; reach 22 (prompt from 19 px before contact) | no | reserved marker: nothing opens it in this build |
+| Lạc Hà stele | clue | the village's record | always | `KnowledgeSource` | `interact` → two entries, once | solid; reach 30 | no (`05e`: read 1 frame; re-read answers "nothing new") | — |
+| survey sheet under the stone | clue — **not a bag item** | hidden where she said / found | from `flag_night_over` | `KnowledgeSource` `source_survey_sheet` | `interact` → `know_survey_fragment` | the stone is solid; reach 18 | no | — |
+| claw furrows, gnawed bone (`WolfSign` ×2) | decoration that warns | marks the edges of the wolf's ground | always | `Visual/Decals` | walked over | none: a ground decal, walked over (§15.2) | no | — |
+| Lạc Hà spring / the broken vein | cultivation site | where qi gathers | always | `CultivationSite` | the cultivate key | spring solid; vein none | no | — |
+| 9 pickups (`WorldItem`) | pickup | §15.3's table | 8 always, the thunder manual from `flag_vein_broke`; three HELD until `flag_outpost_issue` | `InventoryRuntime` · `pickup_id` | walking onto it → one bag exchange | no body; reach 14 | no: `_collected` per run; hidden before the map is announced | taken whole or left whole; nothing persists past the run |
+| stray hound | interactable | a pet to befriend | until befriended | `PetRuntime` · `interaction_id` | `interact` → owned once | reach 26 | no (`REFUSE_ALREADY_OWNED`) | hidden once owned; body freed on map change and brought back on arrival |
+| four people (`WorldNpc`) | interactable | the cast | by the world simulation's presence | `NpcRuntime` · character id | `interact` → conversation (modal) | solid; reach 30 | no | — |
+| training post | combat target | practice | always | `CombatRuntime` registry | struck | solid | no | — |
+| two standing wolves (woods) | spawned creature | the woods' own | on every arrival in the woods | `CombatRuntime` · `map__enemy__index`; reward id unique PER SPAWN | fought | body | they come back on re-entry **by design**; each spawn pays once (`RewardLedger`) | despawned on leaving |
+| the Night's two (wave) | spawned creature | the rupture | once, after the rupture scene ends | `CombatRuntime` · tagged `map_field__night__…`; the story's encounter | fought, or left | body | **never twice in a run** (E2E 11; probe: three visits) | gone with the map; answered `stood` / `withdrew` once — now only by a player who left or still stands |
+| the player | — | — | one per run | `WorldRuntime` | — | body | one throughout (E2E counts) | defeat ends the run at the box; a new run starts whole |
+
+Nothing in the table is a clue stored as a bag item, decoration that is picked up, or a pickup
+with two reward paths.
+
+### 17.3 Route map — New Game to the sealed door
+
+`menu → identity (cancel leaves nothing) → run (one, on a doubled confirm) → Origin vignette
+→ arrival [village, day] → three people → trust choice (kept / told) → warning card
+[village, dusk] → exit → [woods, NIGHT] rupture card → wave (only after the card) →`
+**`stood`** `(last one down, player standing)` *or* **`withdrew`** `(the exit, accepted)` `→
+morning card [day] → elder's account → first sitting → the sheet → farewell → Act I: whom to
+show (kept: three; told: two, her refusal once) → socket → ruts → sealed door → rests.`
+
+Side exits now pinned: **a way out the router refuses → nothing happens** (11a); **defeat at
+any point → the defeat box, one key, the menu; the story answers nothing after it** (13).
+Walked by the Story E2E with real keys: 25 recorded steps over three runs (two Origins; stood
+and withdrew; kept and told; the third is the short run of step 13). Real window (`playtest_flow`): 38 / 38
+steps at 1280×720 vi and 1280×800 en, 0 errors, frame pacing mean 16.66 ms.
+
+**Opened and looked at (this gate, 1280×720):** the socket (player on the dark earth, prompt
+*Examine*, purpose *Look where the stake stood*, the wreck with its spoked wheel and the
+manual beside it in frame); the door (boarded, the wolf visible 219 px north and not
+coming); the haul track (the wolf on the player by the wreck, its plaque up, HP 82, purpose
+*Follow the old cart track*). **Generated and not opened:** the 80 playtest frames of the two
+runs (their step observations were read; the images were not).
+
+### 17.4 Mutations — 7 applied, 7 red (one only after its test was written)
+
+B1 the world no longer asks before leaving · B2 the router foresees no missing scene · B3 the
+fallen still answer · B4 `request_transition` skips validation · B5 no refusal inside a
+transition (**survived first**: no test existed; red after one was added) · B6 an
+unregistered scene foreseen as fine · B7 the last-one-down check ignores those still standing.
+
+### 17.5 Debts after Gate B1
+
+| ID | State | Owner | Closes when |
+|---|---|---|---|
+| H21-14 | **OPEN / OWNER REQUIRED** — no person has played this build | the project owner | §17.6 has been played and written down |
+| H21-20 | unchanged | presentation / the UI pass | as §13 |
+| GB1-01 (new) | a scene file that EXISTS and then fails to load or instantiate is refused only after the encounter was answered. Not reachable in a healthy build; the foreseeable refusals are closed | WorldRuntime; Phase 21 (the first new map transitions) | the encounter is answered after the router has accepted, or the router can stage a scene before it commits |
+| GB1-02 (new, decided not a defect) | a bolt already in the air still lands, kills and pays its XP after its caster falls | Combat | only if the owner wants a fallen caster's bolts to die with them |
+| GB1-03 (new) | the real-key walk of the safe way is a scratch probe, not a committed step of `playtest_flow` (which stages the socket and door by placement) | tools; Gate B2 or Phase 21 | `playtest_flow` walks the road → socket → door with held keys and reports the wolves' states |
+| GB1-04 (new) | exit-under-conversation, defeat-on-the-exit and the reach flood were probed in the real app but are not committed tests (11a and 13 are) | tests; Phase 21 | each is a step of an E2E |
+| GA-01, GA-02 | unchanged (§16.5) | | |
+| CLV-01, NAV-01 (Phase 21); Q19-01, Q19-02, AUD-15 (Phase 25); AUD-07 (Phase 26) | unchanged | | |
+
+### 17.6 Checklist for a person (H21-14 — NOT played by this task)
+
+Launch `~/Downloads/Godot_v4.7.2-stable_linux.x86_64 --path . --resolution 1280x720`. New Game,
+no shortcuts. Write the answers down; "nothing odd" is an answer.
+
+1. §11's eight points, as written.
+2. In the woods by day: follow the road east and the footpath up to the boarded door. Did
+   anything come for you? Then go back by the old cart track past the claw marks. Did you
+   understand, before it happened, that this way was dangerous?
+3. At the door: how close did you have to stand before *Examine* appeared? Did it feel late?
+4. During the Night, walk out through the exit. Is it clear afterwards that leaving WAS your
+   answer? Go back in: is anything there that should not be, or missing that should be?
+5. Let the Night kill you once. Is the defeat clear, is there exactly one thing on screen
+   asking for a key, and does the next New Game start clean?
+6. Talk to each of the three until they have nothing left about the sheet. Does anyone greet
+   you with a line that leads nowhere? Repeat once in the other language.
+7. Stand on two pickups at once with a full satchel. How many times were you told?
+
+**Gate B1 stops here. Gate B2 was not started. Phase 21 and Phase 22 have not started.**

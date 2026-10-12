@@ -6106,3 +6106,21 @@ and no beat waits for what a decision teaches — it was one content edit away. 
 deferring the owner's announcement (`call_deferred`: feedback a frame late, and an ordering
 nobody can test); queueing the nested call (a second authority over order); recording the
 decision BEFORE asking the owners (undoes §2: a refusal would leave a recorded decision).
+
+### D-073 addendum (pre-Phase-21 Gate B1, 2026-10-12) — leaving is an answer only if you left
+
+**P. The world asks the router before it leaves anything.** D-073 §3 made walking out of the
+Night an answer (`withdrew`). `WorldRuntime._enter_map` gave that answer — and told the old
+map it was being left — before the router had accepted the transition; a refused transition
+therefore left the player among a living wave with the morning already told.
+`SceneRouter.transition_refusal(scene_key)` is the router's own validation as a pure
+question (`request_transition` refuses by exactly it), and `_enter_map` asks it first.
+*Rejected:* answering after the router's success (the story's announcement would then reach
+world listeners holding the freed old map — a second ordering to get wrong); un-answering on
+rollback (a choice is recorded once; there is no un-choose, by D-072 §7). *Known limit:* a
+scene that exists and then fails to load is not foreseeable (handoff GB1-01).
+
+**Q. The fallen answer nothing.** `stood` is recorded when the last creature of the encounter
+falls. It now needs a player who is still standing: a bolt in the air can outlive its caster,
+and a defeat is the end of the run, not a morning. The bolt itself still lands and its kill
+is still a kill (a decision, GB1-02) — only the story's answer is withheld.

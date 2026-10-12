@@ -1601,3 +1601,23 @@
   writes for that window (`StoryService.REFUSE_BUSY`) and settles once at the end; a fake
   owner in a test must be able to call back from inside the seam (`Owners.on_taught`),
   because the real one does.
+
+## L-056 — A side effect before the commit point is a lie on the failure path; and a branch is cut from a SHA, not from "where I am"
+
+- **What happened (pre-Phase-21 Gate B1).** (a) `WorldRuntime._enter_map` was "transactional":
+  it snapshotted the player and rolled the placement back if the router refused. But one
+  line above the router call it had already told the story the player withdrew from the
+  Night. The rollback restored the body and left the story on the morning after, over a
+  living wave. Every test of the rollback checked the player's position. (b) The story's
+  "last creature down = the player stood" never asked whether the player was standing: a
+  bolt in flight outlived its caster. (c) The gate's own branch was cut with `git switch -c`
+  a few seconds after a preflight that printed the right branch — and in between the
+  checkout had been moved to `main`. A whole gate run happened on the wrong base before a
+  test COUNT (1241, not 1248) gave it away.
+- **Rule.** (1) **List what a "transactional" function does before its commit point, and
+  ask of each line: can this be undone?** What cannot is either moved behind the commit or
+  guarded by asking first (`transition_refusal`) — and the rollback test asserts the OTHER
+  owners' state, not only the one being restored. (2) **An answer inferred from an event
+  states its subject's condition** ("stood" needs someone standing). (3) **Cut a branch from
+  an explicit commit** (`git switch -c <name> <sha>`) and read `git log -1` AFTER the
+  switch; a count that differs from the last known one is a finding, not noise.

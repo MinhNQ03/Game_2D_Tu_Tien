@@ -1317,6 +1317,23 @@ Not a phase. 1064 → **1090** tests; the real-window playtest goes from 30 to *
 - Mutation-checked: 15 (pursuit) + 2 (budget) + 7 (calendar / layer), each red; see the
   handoff for the list.
 
+## Pre-Phase-21 Gate B1 — the way out that fails, the fallen who "stood" (D-073 addendum P, Q)
+
+Suite **1250** (was 1248); Story E2E **25** recorded steps (was 23). Mutations: **7 applied, 7
+red** — B5 survived its first run and got the test it lacked. Handoff §17.
+
+- `tests/e2e/story_flow_case.gd` — **11a** (fault injection, labelled): the router refuses the
+  village, the real exit is pressed, and nothing is answered — map, beat, the choice, the
+  wave of two, the night light, the watchman's regard all as they were; then the real exit
+  works. **13**: a third run brought to the Night, a real `skill_2`, the caster felled with
+  the bolt in the air — the bolt kills, the XP is paid, and the story records nothing, shows
+  nothing, and one surface (the defeat) holds the player; a real key returns to a clean menu.
+- `tests/unit/core/test_scene_router.gd` (+2) — the router says beforehand exactly what it
+  would refuse and changes nothing by being asked; a request from inside a transition is
+  refused and the one in flight completes.
+- `tests/integration/test_dialogue_content.gd` — the H21-15 guard now walks BOTH answers to
+  the Night (20 runs instead of 10); same assertions.
+
 ## Pre-Phase-21 Gate A — H21-21 explained; the story's in-flight window (D-073 addendum N, O)
 
 Suite **1248** (was 1241); the eight E2E flows unchanged. Mutations: **22 applied, 21 red, 1
