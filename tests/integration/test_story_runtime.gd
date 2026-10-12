@@ -672,10 +672,10 @@ const SHOWN_KNOWLEDGE := {
 	&"lin": &"know_surveyors_line", &"ko": &"know_night_wheels", &"shen": &"know_shaft_claim"}
 
 
-func _run_to_the_door(origin_id: StringName, readings: StringName, night: StringName,
-		shown: StringName) -> void:
-	var rig := _rig()
-	var run := "%s / %s / %s / first shown to %s" % [origin_id, readings, night, shown]
+## A real run walked to the beat that asks whose hand wrote the sheet (Act I), every step
+## through the session and its real owners.
+func _walk_to_whose_hand(rig: Rig, origin_id: StringName, readings: StringName,
+		night: StringName, run: String) -> void:
 	assert_true(_start(rig, origin_id), "%s starts" % run)
 	_skip_all(rig)
 	for who: StringName in [LIN, &"actor_carter_te", SHEN]:
@@ -696,7 +696,7 @@ func _run_to_the_door(origin_id: StringName, readings: StringName, night: String
 	assert_eq(service.state().beat_id,
 		&"beat_sheet_told" if readings == &"kept" else &"beat_sheet_found",
 		"%s: the sheet beat follows the first decision" % run)
-	assert_eq(rig.story.choose(&"choice_sheet_shown", shown).reason,
+	assert_eq(rig.story.choose(&"choice_sheet_shown", &"ko").reason,
 		StoryService.REFUSE_WRONG_BEAT, "%s: the sheet cannot be shown before it is held" % run)
 	rig.knowledge.grant(&"know_survey_fragment", &"source_survey_sheet")
 	rig.story.set_flag(&"flag_heard_road_ahead")
@@ -706,6 +706,14 @@ func _run_to_the_door(origin_id: StringName, readings: StringName, night: String
 	_skip_all(rig)
 	assert_ne(service.objective_key(), &"", "%s: with a purpose" % run)
 	assert_ne(service.origin().goal_key, &"", "%s: and a goal of their own" % run)
+
+
+func _run_to_the_door(origin_id: StringName, readings: StringName, night: StringName,
+		shown: StringName) -> void:
+	var rig := _rig()
+	var run := "%s / %s / %s / first shown to %s" % [origin_id, readings, night, shown]
+	_walk_to_whose_hand(rig, origin_id, readings, night, run)
+	var service := rig.story.get_service()
 
 	# --- the bridge (D-073): one decision, two finds, a door ---
 	var owed: Array = SHOWN_REGARD[shown]
@@ -738,4 +746,41 @@ func _run_to_the_door(origin_id: StringName, readings: StringName, night: String
 	_skip_all(rig)
 	assert_eq(service.state().beat_id, &"beat_standing", "%s: a scene changes nothing" % run)
 	assert_ne(service.objective_key(), &"", "%s: with a purpose that names the door" % run)
+	_free(rig)
+
+
+## Pre-Phase-21 Gate A. The Knowledge Core announces a lesson from INSIDE the decision that
+## teaches it, and the session listens to that announcement. Whoever hears it sees owners that
+## have all done their part and a decision not yet on the record — and can change neither:
+## the story refuses every write until its own call has finished, then settles once.
+func test_what_hears_a_lesson_inside_a_decision_cannot_decide_again() -> void:
+	var rig := _rig()
+	_walk_to_whose_hand(rig, &"origin_lang_y", &"kept", &"stood", "the listener run")
+	var service := rig.story.get_service()
+	var heard: Array = []
+	var listener := func(knowledge_id: StringName, _source: StringName) -> void:
+		heard.append([knowledge_id, service.state().has_chosen(&"choice_sheet_shown"),
+			service.state().beat_id, _regard(rig, LIN, &"trust"),
+			rig.story.choose(&"choice_sheet_shown", &"ko").reason,
+			rig.story.set_flag(&"flag_heard_road_ahead").reason,
+			rig.story.meet(KO).reason])
+	rig.knowledge.knowledge_gained.connect(listener)
+	var trust_before := _regard(rig, LIN, &"trust")
+	rig.log.clear()
+	rig.committed_when_heard.clear()
+	var made := rig.story.choose(&"choice_sheet_shown", &"lin")
+	rig.knowledge.knowledge_gained.disconnect(listener)
+	assert_true(made.ok, "the sheet is shown to her")
+	var busy := StoryService.REFUSE_BUSY
+	assert_eq(heard, [[&"know_surveyors_line", false, &"beat_whose_hand", trust_before + 10,
+		busy, busy, busy]],
+		"heard once: her regard already moved, the decision not yet written, no way in")
+	assert_eq(service.state().option_of(&"choice_sheet_shown"), &"lin", "she was the first")
+	assert_eq(_regard(rig, LIN, &"trust"), trust_before + 10, "her regard moved once")
+	assert_false(rig.knowledge.get_service().knows(&"know_night_wheels"),
+		"what the scout would have said was not learned")
+	assert_eq(rig.log, ["choice choice_sheet_shown=lin", "beat beat_whose_hand"] as Array[String],
+		"announced after it was whole: the decision, then the beat it completed, once each")
+	assert_false(rig.committed_when_heard.has(false), "each already true when it was heard")
+	assert_eq(service.state().beat_id, &"beat_stake_line", "and the story went on")
 	_free(rig)

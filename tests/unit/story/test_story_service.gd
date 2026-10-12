@@ -439,6 +439,104 @@ func test_an_answer_that_teaches_two_things_teaches_both_or_neither() -> void:
 		[&"know_second", &"story:c_side"]], "both, once, in the order authored")
 
 
+# === Listeners that run while a call is in flight (pre-Phase-21 Gate A) =======
+
+## A run parked on a beat that waits for what its own decision TEACHES, and whose way on
+## depends on what was DECIDED. The Knowledge owner announces the lesson from inside the
+## commit, so a listener asks the story to look again before the decision is on the record.
+func _lesson_gated_rig() -> Rig:
+	var rig := Rig.new()
+	rig.state = StoryState.new()
+	rig.player = CharacterState.create_from_template(
+		load(PLAYER_TEMPLATE) as CharacterTemplateData, &"player_test")
+	rig.owners = StoryFixture.Owners.new()
+	var catalog := StoryFixture.catalog()
+	var beat_b := catalog.beat(&"b")
+	beat_b.trigger = StoryFixture.trigger(K.KNOWS, &"know_side")
+	var chose_right: Array[StoryConditionData] = [
+		StoryFixture.condition(StoryConditionData.Kind.CHOICE, &"c_side", &"right")]
+	var nothing: Array[StoryConditionData] = []
+	var ways: Array[StoryBranchData] = [StoryFixture.branch(&"c", chose_right),
+		StoryFixture.branch(&"e", nothing)]
+	beat_b.branches = ways
+	assert_true(catalog.is_valid(), "a beat that waits for its own decision's lesson is valid "
+		+ "content (%s)" % str(catalog.validation_errors()))
+	rig.service = StoryService.new(catalog, StoryFixture.origins(), rig.state, rig.player,
+		rig.owners.seams)
+	assert_true(rig.service.begin(&"origin_lang_y").ok, "the run begins")
+	rig.service.set_flag(&"f_heard", 1)
+	assert_eq(rig.state.beat_id, &"b", "parked on the beat that asks")
+	return rig
+
+
+func test_a_listener_cannot_move_the_story_before_the_decision_is_on_the_record() -> void:
+	var rig := _lesson_gated_rig()
+	var seen: Array = []
+	rig.owners.on_taught = func() -> void:
+		var inside := rig.service.refresh()   # what `StoryRuntime` does on `knowledge_gained`
+		seen.append([inside.ok, inside.reason, rig.state.beat_id,
+			rig.state.has_chosen(&"c_side")])
+	var outcome := rig.service.choose(&"c_side", &"right")
+	rig.owners.on_taught = Callable()
+	assert_true(outcome.ok, "the decision is made")
+	assert_eq(seen, [[false, StoryService.REFUSE_BUSY, &"b", false]],
+		"the listener was told to wait, with the story exactly where it was")
+	assert_eq(rig.state.beat_id, &"c",
+		"and the beat went on by what was DECIDED, not by what was not yet written")
+	assert_eq(outcome.completed, [&"b"] as Array[StringName], "one beat, completed once, here")
+	assert_eq(rig.service.flag_value(&"f_count"), 2, "with the decision's flag set")
+
+
+func test_a_listener_cannot_answer_or_write_from_inside_a_decision() -> void:
+	var rig := _lesson_gated_rig()
+	var inside: Array = []
+	var record := rig.service.to_dict()
+	rig.owners.on_taught = func() -> void:
+		inside.append(rig.service.choose(&"c_side", &"right").reason)
+		inside.append(rig.service.choose(&"c_side", &"left").reason)
+		inside.append(rig.service.set_flag(&"f_count", 3).reason)
+		inside.append(rig.service.meet(&"actor_a").reason)
+		inside.append(rig.service.note(K.CULTIVATED).reason)
+		inside.append(rig.service.begin(&"origin_ho_tieu").reason)
+		inside.append(rig.service.load_state(record))
+	assert_true(rig.service.choose(&"c_side", &"right").ok, "the decision is made")
+	rig.owners.on_taught = Callable()
+	var busy := StoryService.REFUSE_BUSY
+	assert_eq(inside, [busy, busy, busy, busy, busy, busy, false],
+		"every write from inside is refused, a restored record included")
+	assert_eq(rig.state.choices.size(), 1, "the decision is on the record ONCE")
+	assert_eq(rig.owners.regards, [[&"actor_b", &"trust", 10], [&"actor_a", &"affinity", -15]],
+		"its regards moved once")
+	assert_eq(rig.owners.teach_calls, 1, "its lesson was asked for once")
+	assert_eq(rig.service.flag_value(&"f_count"), 2, "the flag holds the decision's value")
+	assert_false(rig.state.has_met(&"actor_a"), "and nobody was met on the side")
+	assert_eq(rig.owners.given, [], "nor a second kit handed over")
+	assert_true(rig.service.meet(&"actor_a").ok, "afterwards the story answers again")
+
+
+func test_a_listener_cannot_begin_a_second_run_from_inside_the_first() -> void:
+	var rig := _rig(&"")
+	var inside: Array = []
+	rig.owners.on_taught = func() -> void:
+		inside.append(rig.service.begin(&"origin_ho_tieu").reason)
+	assert_true(rig.service.begin(&"origin_ho_tieu").ok, "the run begins")
+	rig.owners.on_taught = Callable()
+	assert_eq(inside, [StoryService.REFUSE_BUSY], "the second start is refused from inside")
+	assert_eq(rig.owners.given, [[&"item_blade", 1]], "one kit")
+	assert_eq(rig.owners.taught.size(), 1, "one drill")
+	assert_eq(rig.owners.regards, [[&"actor_a", &"affinity", -10]], "one first impression")
+
+
+func test_a_refused_decision_leaves_the_story_answering() -> void:
+	var rig := _lesson_gated_rig()
+	rig.owners.breach_teach = [&"know_side"]
+	assert_false(rig.service.choose(&"c_side", &"right").ok, "the owner broke its word")
+	rig.owners.breach_teach = []
+	assert_true(rig.service.refresh().ok, "the story is not left busy by a refusal")
+	assert_true(rig.service.choose(&"c_side", &"right").ok, "and the answer can be given")
+	assert_eq(rig.state.beat_id, &"c", "going on by what was decided")
+
+
 ## An Origin's kit: the bag accepts the items FIRST (it is the only owner that can refuse for
 ## a reason of state). If a later owner then breaks its word, the items come back OUT, the
 ## regards go back, nothing is taught and the run has not begun — begin itself is whole, not

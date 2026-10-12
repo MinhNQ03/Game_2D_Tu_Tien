@@ -38,6 +38,8 @@ const REFUSE_ALREADY_CHOSEN := &"story_already_chosen"
 const REFUSE_WRONG_BEAT := &"story_wrong_beat"
 const REFUSE_NOT_AN_EVENT := &"story_not_an_event"
 const REFUSE_NOBODY := &"story_nobody"
+## Asked to write from INSIDE one of its own writes (a listener of an owner's announcement).
+const REFUSE_BUSY := &"story_busy"
 
 ## The source id the Knowledge Core records for what the story teaches.
 const KNOWLEDGE_SOURCE_FORMAT := "story:%s"
@@ -50,6 +52,18 @@ var _state: StoryState = null
 ## The player's authoritative record. Its `story_flags` is the one store of flags.
 var _player: CharacterState = null
 var _owners: StoryOwners = null
+## True while `begin` or `choose` is asking OTHER owners to do their part.
+##
+## WHY (pre-Phase-21 Gate A). An owner announces what it did from inside the call that asked
+## it: the Knowledge Core emits `knowledge_gained` inside `grant_all`, and the session's own
+## wiring answers that by asking the story to look again. That listener therefore runs while
+## the decision is committed to its owners and NOT YET on the story's record. Left alone, a
+## beat waiting for the lesson completed there, choosing its way on by a decision nobody had
+## written yet; and anything that answered again from inside was a second decision (or a
+## second starting kit) the outer call then recorded over. Every WRITE is refused as busy for
+## that window. Nothing is lost by refusing: the call in flight settles the story itself, on
+## the whole record, as its last act. Reads are never refused.
+var _committing := false
 
 
 func _init(catalog: StoryCatalogData = null, origins: OriginCatalogData = null,
@@ -222,6 +236,8 @@ func condition_holds(condition: StoryConditionData) -> bool:
 func begin(origin_id: StringName) -> StoryOutcome:
 	if not is_ready():
 		return StoryOutcome.refused(REFUSE_NOT_READY)
+	if _committing:
+		return StoryOutcome.refused(REFUSE_BUSY)
 	if _state.has_begun():
 		return StoryOutcome.refused(REFUSE_ALREADY_BEGUN)
 	var chosen := _origins.entry(origin_id)
@@ -239,8 +255,25 @@ func begin(origin_id: StringName) -> StoryOutcome:
 	# A kit that has items can only be undone by an owner that can take them back.
 	if not items.is_empty() and not _owners.take_all.is_valid():
 		return StoryOutcome.refused(REFUSE_OWNER)
+	_committing = true
+	var refusal := _hand_over_kit(chosen, items, lessons)
+	_committing = false
+	if refusal != &"":
+		return StoryOutcome.refused(refusal)
+	var first := _catalog.beat(_catalog.start_beat_id)
+	_state.origin_id = chosen.id
+	_state.chapter_id = _catalog.chapter_of(first.id).id
+	_state.beat_id = first.id
+	return _settled(StoryOutcome.new())
+
+
+## COMMIT an Origin's kit to its owners: items (the bag's atomic exchange), then regards, then
+## knowledge as one batch. Returns why it was refused, or empty when every owner did its part.
+## On a breach the regards are put back and the items taken back out, so nothing stands.
+func _hand_over_kit(chosen: OriginData, items: Dictionary,
+		lessons: Array[StringName]) -> StringName:
 	if not items.is_empty() and not bool(_owners.give_all.call(items)):
-		return StoryOutcome.refused(REFUSE_NO_ROOM)
+		return REFUSE_NO_ROOM
 	var moved: Array = []
 	var failed := ""
 	for grant in chosen.grants:
@@ -254,18 +287,14 @@ func begin(origin_id: StringName) -> StoryOutcome:
 	if failed == "" and not lessons.is_empty() and not bool(_owners.teach_all.call(lessons,
 			StringName(KNOWLEDGE_SOURCE_FORMAT % chosen.id))):
 		failed = "knowledge %s" % str(lessons)
-	if failed != "":
-		push_error("[story] origin '%s': an owner refused '%s' after agreeing to it; undoing"
-			% [chosen.id, failed])
-		_put_regards_back(moved)
-		if not items.is_empty() and not bool(_owners.take_all.call(items)):
-			push_error("[story] origin '%s': the bag would not give its kit back" % chosen.id)
-		return StoryOutcome.refused(REFUSE_OWNER)
-	var first := _catalog.beat(_catalog.start_beat_id)
-	_state.origin_id = chosen.id
-	_state.chapter_id = _catalog.chapter_of(first.id).id
-	_state.beat_id = first.id
-	return _settled(StoryOutcome.new())
+	if failed == "":
+		return &""
+	push_error("[story] origin '%s': an owner refused '%s' after agreeing to it; undoing"
+		% [chosen.id, failed])
+	_put_regards_back(moved)
+	if not items.is_empty() and not bool(_owners.take_all.call(items)):
+		push_error("[story] origin '%s': the bag would not give its kit back" % chosen.id)
+	return REFUSE_OWNER
 
 
 func _can_carry_out_grant(grant: OriginGrantData) -> bool:
@@ -317,6 +346,8 @@ func _move_regard(character_id: StringName, dimension: StringName, delta: int) -
 func set_flag(flag_id: StringName, value: int) -> StoryOutcome:
 	if not has_begun():
 		return StoryOutcome.refused(REFUSE_NOT_BEGUN if is_ready() else REFUSE_NOT_READY)
+	if _committing:
+		return StoryOutcome.refused(REFUSE_BUSY)
 	var declared := _catalog.flag(flag_id)
 	if declared == null:
 		return StoryOutcome.refused(REFUSE_UNKNOWN_FLAG)
@@ -373,6 +404,8 @@ func flag_errors() -> Array[String]:
 func choose(choice_id: StringName, option_id: StringName) -> StoryOutcome:
 	if not has_begun():
 		return StoryOutcome.refused(REFUSE_NOT_BEGUN if is_ready() else REFUSE_NOT_READY)
+	if _committing:
+		return StoryOutcome.refused(REFUSE_BUSY)
 	var asked := _catalog.choice(choice_id)
 	var answer := asked.option(option_id) if asked != null else null
 	if answer == null:
@@ -384,7 +417,10 @@ func choose(choice_id: StringName, option_id: StringName) -> StoryOutcome:
 	for consequence in answer.consequences:
 		if not _can_carry_out(consequence):
 			return StoryOutcome.refused(REFUSE_OWNER)
-	if not _commit_to_owners(choice_id, answer):
+	_committing = true
+	var kept := _commit_to_owners(choice_id, answer)
+	_committing = false
+	if not kept:
 		return StoryOutcome.refused(REFUSE_OWNER)
 	_state.choices.append({"choice_id": String(choice_id), "option_id": String(option_id)})
 	for consequence in answer.consequences:
@@ -454,6 +490,8 @@ func _breach(choice_id: StringName, failed: String, moved: Array) -> bool:
 func meet(character_id: StringName) -> StoryOutcome:
 	if not has_begun():
 		return StoryOutcome.refused(REFUSE_NOT_BEGUN if is_ready() else REFUSE_NOT_READY)
+	if _committing:
+		return StoryOutcome.refused(REFUSE_BUSY)
 	if character_id == &"":
 		return StoryOutcome.refused(REFUSE_NOBODY)
 	if not _state.has_met(character_id):
@@ -467,6 +505,8 @@ func meet(character_id: StringName) -> StoryOutcome:
 func note(kind: StoryTriggerData.Kind, subject_id: StringName = &"") -> StoryOutcome:
 	if not has_begun():
 		return StoryOutcome.refused(REFUSE_NOT_BEGUN if is_ready() else REFUSE_NOT_READY)
+	if _committing:
+		return StoryOutcome.refused(REFUSE_BUSY)
 	if not StoryTriggerData.EVENT_KINDS.has(kind):
 		return StoryOutcome.refused(REFUSE_NOT_AN_EVENT)
 	var outcome := StoryOutcome.new()
@@ -481,6 +521,8 @@ func note(kind: StoryTriggerData.Kind, subject_id: StringName = &"") -> StoryOut
 func refresh() -> StoryOutcome:
 	if not has_begun():
 		return StoryOutcome.refused(REFUSE_NOT_BEGUN if is_ready() else REFUSE_NOT_READY)
+	if _committing:
+		return StoryOutcome.refused(REFUSE_BUSY)
 	return _settled(StoryOutcome.new())
 
 
@@ -556,7 +598,7 @@ func to_dict() -> Dictionary:
 ## either is wrong nothing changes. Flags are not in `data` — they come with the character —
 ## so this is also where a story record and a character record are shown to agree.
 func load_state(data: Dictionary) -> bool:
-	if not is_ready():
+	if not is_ready() or _committing:
 		return false
 	var staged := StoryState.new()
 	if not staged.from_dict(data, _catalog, _origins):

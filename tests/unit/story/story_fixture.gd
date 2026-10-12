@@ -260,6 +260,8 @@ class Owners extends RefCounted:
 	## How many times each commit seam was called (a refused choice must call none).
 	var regard_calls := 0
 	var teach_calls := 0
+	## Called from INSIDE a successful teach, as a listener of the real owner's announcement is.
+	var on_taught: Callable = Callable()
 	var seams: StoryOwners = null
 
 	func _init() -> void:
@@ -288,6 +290,11 @@ class Owners extends RefCounted:
 		for id: StringName in ids:
 			taught.append([id, source])
 			known[id] = true
+		# The real owner ANNOUNCES what was learned from inside this call
+		# (`KnowledgeRuntime.grant_all` emits `knowledge_gained`), so whoever listens runs
+		# while the story's own call is still in flight.
+		if on_taught.is_valid():
+			on_taught.call()
 		return true
 
 	func _can_move_regard(who: StringName, _dimension: StringName, _delta: int) -> bool:
