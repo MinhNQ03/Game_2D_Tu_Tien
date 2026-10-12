@@ -27,10 +27,6 @@ const STAGE_FIGURE_SCALE := 3
 const STAGE_HEIGHT := 164.0
 ## How far below the stage's content edge the feet rest (inside the plate's padding).
 const FEET_INSET := float(UIPalette.SPACE_SM)
-## The dais under the figure, in the figure's own pixels (half-widths), and its contact shadow.
-const DAIS_RADIUS := Vector2(15.0, 4.0)
-const SHADOW_RADIUS := Vector2(13.0, 3.0)
-const ELLIPSE_POINTS := 24
 ## Between a number and its name on a stat plate.
 const STAT_PAIR_GAP := 4
 ## The least width a slot's name is laid out at (the figure column less its slot).
@@ -108,30 +104,15 @@ func _build_well() -> Control:
 	return well
 
 
-## What the figure stands on: a soft contact shadow, so it stands IN the well and not on it.
+## What the figure stands on: the shared dais (tall: the satchel's stage) over a soft
+## contact shadow, so it stands IN the well and not on it.
 func _draw_floor(floor: Control) -> void:
 	if _figure == null:
 		return
-	var feet := _figure.position
-	var unit := float(figure_scale())
 	if tall:
-		# a dais: ground to stand on, a tone above the plate, with one lit rim on its far side
-		var dais := _ellipse(feet, DAIS_RADIUS * unit)
-		floor.draw_colored_polygon(dais, UIPalette.FIGURE_DAIS)
-		floor.draw_polyline(dais.slice(ELLIPSE_POINTS / 2, ELLIPSE_POINTS + 1),
-			UIPalette.FIGURE_DAIS_RIM, 1.0)
-	floor.draw_colored_polygon(_ellipse(feet, SHADOW_RADIUS * unit),
-		UIPalette.FIGURE_CONTACT_SHADOW)
-
-
-## A closed ellipse (first point repeated last), starting at its right and going by the near
-## side first — so its second half is the far rim.
-func _ellipse(centre: Vector2, radius: Vector2) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	for index in ELLIPSE_POINTS + 1:
-		var angle := TAU * float(index) / float(ELLIPSE_POINTS)
-		points.append(centre + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
-	return points
+		FigureDais.draw_on(floor, _figure.position, float(figure_scale()))
+	else:
+		FigureDais.draw_shadow_on(floor, _figure.position, float(figure_scale()))
 
 
 ## The figure's feet rest on the node origin: the origin goes to the middle of the stage's

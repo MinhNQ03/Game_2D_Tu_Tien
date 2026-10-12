@@ -140,21 +140,22 @@ func test_walking_the_cursor_to_the_buttons_changes_no_choice() -> void:
 	scene_tree.root.get_node("InputService").call("set_menu_context")
 
 
-## Crossing from one column to the other lands on what is ALREADY chosen there, so the
-## crossing itself can never change a choice.
-func test_crossing_columns_lands_on_the_current_choice() -> void:
+## Leaving the ledger returns to what is ALREADY chosen, so the crossing itself can never
+## change a choice. (One ledger column since the I1 composition — the looks above the
+## Origins, left/right stay inside it — so the same invariant is re-pinned here: from the
+## bottom row the cursor always arrives on something the player already knows.)
+func test_leaving_the_ledger_returns_to_the_current_choice() -> void:
 	var screen := _identity()
 	var artisan := screen.find_child("Origin_origin_nghe_nhan", true, false) as Button
 	var woman := screen.find_child("Look_appearance_wanderer_f", true, false) as Button
 	artisan.pressed.emit()
 	woman.pressed.emit()
-	assert_eq(woman.get_node(woman.focus_neighbor_right), artisan,
-		"right of the looks is the chosen Origin")
-	assert_eq(artisan.get_node(artisan.focus_neighbor_left), woman,
-		"left of the Origins is the chosen look")
 	var begin := screen.find_child("Begin", true, false) as Button
 	assert_eq(begin.get_node(begin.focus_neighbor_top), artisan,
-		"and up from Begin is the chosen Origin")
+		"up from Begin is the chosen Origin")
+	var back := screen.find_child("Back", true, false) as Button
+	assert_eq(back.get_node(back.focus_neighbor_top), woman,
+		"up from Back is the chosen look")
 	free_node(screen)
 	scene_tree.root.get_node("InputService").call("set_menu_context")
 
@@ -378,3 +379,110 @@ func test_the_plaque_shows_the_portrait_of_the_look_the_player_chose() -> void:
 	hud.set_player_portrait("res://assets/ui/does_not_exist.png")
 	assert_eq(hud.player_portrait_path(), kept, "a missing file leaves the plaque as it was")
 	free_node(hud)
+
+
+# === The identity screen's composition (brief I1) ==============================
+
+## Chosen is GOLD (structure: what is decided); the cursor's ring stays JADE (interaction:
+## where you are). Two states, two colours — never one colour for two meanings — and the
+## mark is never carried by colour alone.
+func test_the_chosen_option_is_gold_while_the_cursor_stays_jade() -> void:
+	_use_language("vi")
+	var screen := _identity()
+	assert_true(UIPalette.GOLD_PRIMARY != UIPalette.COLOR_ACCENT,
+		"the two states cannot share a colour by construction")
+	var escort := screen.find_child("Origin_origin_ho_tieu", true, false) as Button
+	assert_true(escort.text.begins_with(IdentityScreen.CHOSEN_MARK),
+		"the chosen Origin is marked in words")
+	assert_eq(escort.get_theme_color("font_pressed_color"), UIPalette.GOLD_PRIMARY,
+		"and in gold, not the cursor's jade")
+	var healer := screen.find_child("Origin_origin_lang_y", true, false) as Button
+	healer.grab_focus()
+	assert_false(healer.text.begins_with(IdentityScreen.CHOSEN_MARK),
+		"looking is not choosing: no mark under the cursor")
+	assert_eq(screen.selected_origin_id(), &"origin_ho_tieu",
+		"and the choice did not move")
+	free_node(screen)
+	scene_tree.root.get_node("InputService").call("set_menu_context")
+
+
+## The person band names whose past is under the cursor, and the terms well sets what it
+## gives against what it costs: the edge invites in jade, the burden warns in crimson.
+func test_the_person_band_names_the_past_and_the_terms_set_give_against_take() -> void:
+	_use_language("en")
+	var screen := _identity()
+	var healer := screen.find_child("Origin_origin_lang_y", true, false) as Button
+	healer.grab_focus()
+	assert_eq((screen.find_child("OriginName", true, false) as Label).text,
+		_text("ORIGIN_LANG_Y_NAME"), "the band names the past under the cursor")
+	assert_eq((screen.find_child("OriginProblem", true, false) as Label).text,
+		_text("ORIGIN_LANG_Y_PROBLEM"), "and states its problem")
+	assert_eq((screen.find_child("OriginEdge", true, false) as Label).text,
+		_text("ORIGIN_LANG_Y_EDGE"), "what it gives")
+	assert_eq((screen.find_child("OriginCost", true, false) as Label).text,
+		_text("ORIGIN_LANG_Y_COST"), "set against what it costs")
+	var edge_heading := screen.find_child("OriginEdge", true, false).get_parent() \
+		.get_child(0) as Label
+	assert_eq(edge_heading.get_theme_color("font_color"), UIPalette.COLOR_ACCENT,
+		"the give invites in jade")
+	var cost_heading := screen.find_child("OriginCost", true, false).get_parent() \
+		.get_child(0) as Label
+	assert_eq(cost_heading.get_theme_color("font_color"), UIPalette.COLOR_CRIMSON,
+		"the burden warns in crimson")
+	free_node(screen)
+	scene_tree.root.get_node("InputService").call("set_menu_context")
+
+
+## The stage stands the body on the shared dais: the figure is the screen's subject, drawn
+## at the game's integer scale, on the same ground the satchel's stage uses.
+func test_the_stage_stands_the_body_on_the_shared_dais() -> void:
+	_use_language("vi")
+	var screen := _identity()
+	var stage := screen.find_child("Stage", true, false) as Control
+	assert_not_null(stage, "the person band holds a stage")
+	var preview := screen.find_child("Preview", true, false) as CharacterVisualComponent
+	assert_eq(preview.get_parent(), stage, "the body stands on the stage")
+	assert_eq(preview.scale, Vector2(3, 3), "at the game's integer scale, never resampled")
+	assert_false(stage.draw.get_connections().is_empty(),
+		"the stage draws the shared dais under the feet")
+	var portrait := screen.find_child("Portrait", true, false) as TextureRect
+	assert_eq(portrait.get_parent(), stage.get_parent(),
+		"the face stands beside the body: one person, one band")
+	free_node(screen)
+	scene_tree.root.get_node("InputService").call("set_menu_context")
+
+
+## The ledger is one column: the looks above the Origins, uniform rows, the five Origins as
+## peers.
+func test_the_ledger_is_one_column_with_the_looks_above_the_origins() -> void:
+	_use_language("vi")
+	var screen := _identity()
+	var ledger := screen.find_child("Ledger", true, false) as Control
+	assert_not_null(ledger, "the choices are one ledger")
+	var order: Array[String] = []
+	for child in ledger.get_children():
+		if child is Button:
+			order.append(String(child.name))
+	assert_true(order[0].begins_with("Look_") and order[1].begins_with("Look_"),
+		"the looks come first")
+	assert_eq(order.size(), 7, "two looks and the five Origins of canon")
+	for name in order.slice(2):
+		assert_true(name.begins_with("Origin_"), "then the Origins (%s)" % name)
+	free_node(screen)
+	scene_tree.root.get_node("InputService").call("set_menu_context")
+
+
+## Left/right jumps between the two kinds, landing on what is ALREADY chosen there — the
+## one-column ledger keeps the old two-column crossing, re-pinned on the new layout.
+func test_left_and_right_jump_between_the_kinds_on_what_is_chosen() -> void:
+	var screen := _identity()
+	var artisan := screen.find_child("Origin_origin_nghe_nhan", true, false) as Button
+	var woman := screen.find_child("Look_appearance_wanderer_f", true, false) as Button
+	artisan.pressed.emit()
+	woman.pressed.emit()
+	assert_eq(woman.get_node(woman.focus_neighbor_right), artisan,
+		"right of the looks is the chosen Origin")
+	assert_eq(artisan.get_node(artisan.focus_neighbor_left), woman,
+		"left of the Origins is the chosen look")
+	free_node(screen)
+	scene_tree.root.get_node("InputService").call("set_menu_context")
