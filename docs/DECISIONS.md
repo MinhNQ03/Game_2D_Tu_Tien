@@ -6148,3 +6148,49 @@ clear — against references that have both; that is the owner's to change, not 
 **U. A shop's keeper is a content rule, not a runtime check (CLV-01).** A keeper who lives in
 another map does not exist in the registry until that map is entered; refusing the session
 for that would refuse the shipped shop.
+---
+
+## D-074 — Product direction: online multiplayer-first (supersedes Stage-1 offline-first framing) — **Accepted** (2026-10-12)
+
+**Context:** The frozen and steering docs describe Stage 1 as offline-first:
+`.kiro/steering/01-product.md` ("Stage 1 — Offline (current): the entire game is
+single-player and offline. This is the primary source of truth for all gameplay
+rules."), `docs/MULTIPLAYER_PLAN.md` ("Offline is the source of truth for all
+gameplay until the offline game is complete and stable"), and
+`docs/GAME_DESIGN_FREEZE.md` ("Offline is the source of truth. No networking in
+Stage 1."). The owner has now approved the opposite production priority, following
+the C1 design review (`docs/proposals/PROPOSAL_SHARED_WORLD_STORY_MODEL.md`,
+`docs/proposals/PROPOSAL_ONLINE_AUTHORITY_ARCHITECTURE.md`, cycles 1–3 plus final
+authority addendum).
+
+**Decision:** Aetheria is an **online multiplayer-first**, persistent-world 2D
+top-down cultivation RPG. Online multiplayer is the primary production experience
+and the architecture's main optimization target. The production world is
+**server-authoritative**. Offline play is a restricted, secondary **Admin Offline
+Test Mode**: authorized administrators run the game end-to-end locally to reproduce
+issues, test features, validate content, and evaluate updates — isolated from
+production data, never an alternative authority over it. Online and offline use the
+**same domain rules**; they differ in authority and transport only (D-056 stands).
+This decision explicitly **supersedes** the conflicting Stage-1 "offline-first /
+offline is the primary source of truth" framing wherever it appears.
+
+**Explicitly NOT decided by this entry:** any proposed implementation detail of the
+two C1 proposals (they remain PROPOSAL — NOT FROZEN); account-to-character
+cardinality; shard transfer / cross-shard policy; admin permission hierarchy;
+persistence technology; networking transport or schedule.
+
+**Consequence:**
+- `.kiro/steering/01-product.md` and `docs/MULTIPLAYER_PLAN.md` updated to the new
+  direction (non-frozen sections only; "The player fantasy (frozen, D-039)" untouched).
+- `docs/NARRATIVE_MASTER_PLAN.md` §14 (frozen four-way narrative state split) stands
+  **unchanged** — it governs state scope, not deployment priority, and is compatible
+  with the new direction.
+- `docs/GAME_DESIGN_FREEZE.md` line "Offline is the source of truth. No networking
+  in Stage 1." is frozen text and is **not** rewritten here. Required follow-up: a
+  freeze amendment through the freeze's own change control, referencing this D-074.
+- No networking, authentication, persistence, or multiplayer gameplay is implemented
+  by this decision.
+
+**Provenance:** authored 2026-10-12 against `origin/main` @
+`ce4b94c0e430cbe84182e76c198c2a6ffe470f5c` (CI run 38211074765 SUCCESS); pushed to
+`origin/d063/phase-a`.
