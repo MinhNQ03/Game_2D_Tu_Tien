@@ -50,3 +50,10 @@ props:
   stele:          {kind: stele}
   spirit_spring:  {kind: spirit_spring}
   training_post:  {kind: training_post}
+  # the Lạc Hà environment upgrade: a warm stone lantern for the spring court, a rock
+  # cluster and a vegetation cluster for the banks and meadows, a water-edge detail for
+  # the stream and the spring's overflow (all original Aetheria designs, DNA ramps)
+  stone_lantern:  {kind: stone_lantern, params: {seed: 21}}
+  rock_cluster:   {kind: rock_cluster, params: {seed: 22}}
+  grove:          {kind: grove, params: {seed: 23}}
+  water_edge:     {kind: water_edge, params: {seed: 24}}

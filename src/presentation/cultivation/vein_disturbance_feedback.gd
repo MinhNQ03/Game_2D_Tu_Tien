@@ -36,10 +36,20 @@ const STREAK_RISE_PX := 42.0
 ## colour for the same thing.
 const QI_COLOUR := Color(0.70, 0.96, 0.86)
 
+## The Blender-rendered eruption sequence (assets/vfx/vein_erupt/, 20 frames @ 12 fps):
+## the rare disturbance EVENT the beat above foreshadows. Same qi family as QI_COLOUR.
+const ERUPT_SEQUENCE_DIR := "res://assets/vfx/vein_erupt"
+const ERUPT_FRAME_COUNT := 20
+const ERUPT_FPS := 12.0
+## The fissure pixel of the eruption canvas (vein_erupt DESIGN.md): pinned at this
+## node's position, which is the site's ground point.
+const ERUPT_ANCHOR_PX := Vector2(64, 92)
+
 var _site: CultivationSite = null
 var _time: float = 0.0
 var _prev_flow: float = 1.0
 var _pulse_age: float = -1.0
+var _erupt_player: VfxSequencePlayer = null
 
 
 func _ready() -> void:
@@ -78,6 +88,32 @@ func advance(delta: float) -> void:
 ## True while a surge pulse is on screen (for tests and the capture scenario).
 func is_pulsing() -> bool:
 	return _pulse_age >= 0.0
+
+
+## One-shot crystal eruption for a vein DISTURBANCE event.
+##
+## The beat above is the ambient pulse — quiet, every few seconds (M-4.7); this is
+## the rare event it foreshadows. Plays the Blender-rendered eruption sequence once
+## at the fissure point. Presentation-only: WHEN a disturbance happens is gameplay's
+## decision (a vein disturbance event); this just shows it, and changes nothing
+## about the beat. A STEADY vein does not erupt, so this no-ops there.
+func erupt() -> void:
+	if _site == null or _site.site == null \
+			or _site.site.stability == CultivationSiteData.Stability.STEADY:
+		return
+	if _erupt_player == null:
+		_erupt_player = VfxSequencePlayer.new()
+		_erupt_player.sequence_dir = ERUPT_SEQUENCE_DIR
+		_erupt_player.frame_count = ERUPT_FRAME_COUNT
+		_erupt_player.fps = ERUPT_FPS
+		_erupt_player.anchor_px = ERUPT_ANCHOR_PX
+		add_child(_erupt_player)
+	_erupt_player.play()
+
+
+## True while the eruption sequence is on screen (for tests).
+func is_erupting() -> bool:
+	return _erupt_player != null and _erupt_player.is_playing()
 
 
 ## How far through the pulse we are, in [0, 1] (for tests).

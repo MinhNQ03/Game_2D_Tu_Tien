@@ -48,6 +48,16 @@ regions:
      width: 8}
   # the training yard (beaten earth) around the post
   - {kind: yard, poly: [[618, 372], [760, 366], [790, 392], [784, 470], [626, 476], [606, 440]]}
+  # leaf litter under the groves: the canopies get a floor of their own, so no tree stands
+  # on a bare lawn (a new material mass for the frame's dark end)
+  - {kind: litter, poly: [[40, 110], [110, 106], [122, 160], [100, 202], [40, 200]]}
+  - {kind: litter, poly: [[390, 505], [465, 500], [475, 545], [400, 555]]}
+  - {kind: litter, poly: [[655, 155], [715, 155], [720, 200], [655, 205]]}
+  - {kind: litter, poly: [[330, 95], [410, 95], [415, 150], [330, 150]]}
+  - {kind: litter, poly: [[755, 545], [805, 545], [810, 585], [755, 585]]}
+  # the desire line from the square's south-east corner to the training yard: the path
+  # with a purpose — it leads to the post
+  - {kind: earth, path: [[620, 380], [650, 392], [678, 400]], width: 22}
   # the stream, and its plank bridge on the west road
   - {kind: water, path: [[196, 14], [178, 90], [190, 170], [160, 250], [150, 320], [166, 410],
                          [140, 500], [150, 594]], width: 30}
@@ -88,6 +98,15 @@ props:
   - {name: TreeS2, prop: tree_small, at: [398, 550]}
   - {name: TreeSE, prop: tree_small, at: [780, 566]}
   - {name: TreeN, prop: tree_small, at: [384, 132]}
+  # the environment upgrade: a warm lantern pair flanking the spring court, a rock cluster
+  # on the stream's east bank, a vegetation cluster in the north meadow, reeds and flat
+  # stones where the spring's overflow leaves the court. All clear of the gameplay anchors
+  # and of the spawn -> exit corridor (checked against the layout's own coordinates).
+  - {name: LanternSpringN, prop: stone_lantern, at: [408, 286]}
+  - {name: LanternSpringS, prop: stone_lantern, at: [408, 392]}
+  - {name: RockClusterE, prop: rock_cluster, at: [240, 430]}
+  - {name: GroveN, prop: grove, at: [344, 108]}
+  - {name: WaterEdgeRill, prop: water_edge, at: [340, 368]}
 
 # In the map because of the story (StoryPresence).
 story_props:

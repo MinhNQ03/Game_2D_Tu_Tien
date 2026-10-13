@@ -1,4 +1,4 @@
-[gd_scene load_steps=62 format=3]
+[gd_scene load_steps=66 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/ambient/map_ambience.gd" id="am_map"]
 [ext_resource type="Script" path="res://src/presentation/ambient/ambience_light.gd" id="am_light"]
@@ -57,9 +57,13 @@
 [ext_resource type="Resource" path="res://data/world/props/dwelling_a.tres" id="p_dwelling_a"]
 [ext_resource type="Resource" path="res://data/world/props/dwelling_b.tres" id="p_dwelling_b"]
 [ext_resource type="Resource" path="res://data/world/props/fence_long.tres" id="p_fence_long"]
+[ext_resource type="Resource" path="res://data/world/props/grove.tres" id="p_grove"]
 [ext_resource type="Resource" path="res://data/world/props/outpost_hall.tres" id="p_outpost_hall"]
+[ext_resource type="Resource" path="res://data/world/props/rock_cluster.tres" id="p_rock_cluster"]
+[ext_resource type="Resource" path="res://data/world/props/stone_lantern.tres" id="p_stone_lantern"]
 [ext_resource type="Resource" path="res://data/world/props/tree_broadleaf.tres" id="p_tree_broadleaf"]
 [ext_resource type="Resource" path="res://data/world/props/tree_small.tres" id="p_tree_small"]
+[ext_resource type="Resource" path="res://data/world/props/water_edge.tres" id="p_water_edge"]
 [ext_resource type="Resource" path="res://data/world/props/weapon_rack.tres" id="p_weapon_rack"]
 [ext_resource type="Resource" path="res://data/world/props/well.tres" id="p_well"]
 [sub_resource type="ShaderMaterial" id="Mat_grass"]
@@ -193,6 +197,31 @@ prop = ExtResource("p_tree_small")
 position = Vector2(384, 132)
 script = ExtResource("p_script")
 prop = ExtResource("p_tree_small")
+
+[node name="Prop_LanternSpringN" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(408, 286)
+script = ExtResource("p_script")
+prop = ExtResource("p_stone_lantern")
+
+[node name="Prop_LanternSpringS" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(408, 392)
+script = ExtResource("p_script")
+prop = ExtResource("p_stone_lantern")
+
+[node name="Prop_RockClusterE" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(240, 430)
+script = ExtResource("p_script")
+prop = ExtResource("p_rock_cluster")
+
+[node name="Prop_GroveN" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(344, 108)
+script = ExtResource("p_script")
+prop = ExtResource("p_grove")
+
+[node name="Prop_WaterEdgeRill" type="StaticBody2D" parent="Visual/Decor"]
+position = Vector2(340, 368)
+script = ExtResource("p_script")
+prop = ExtResource("p_water_edge")
 
 [node name="CarterCart" type="Node2D" parent="Visual/Decor"]
 position = Vector2(872, 250)

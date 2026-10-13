@@ -1,0 +1,29 @@
+# Origin portrait: the REJECTED CANDIDATE (Đệ Tử Bị Loại) — a sect disciple who failed the
+# trials. A washed-out sect blue robe (the colours they no longer have the right to wear
+# bright), a pale-gold trim that remembers the sect, dark hair in a plain topknot with a
+# wooden pin. Original Aetheria art, built by the pipeline (D-074).
+#
+# Full animation sheets + anchors + portrait; no runtime profile (origins are chosen on
+# the identity screen, never walked — the sheets are there if an origin NPC ever needs them).
+id: origin_de_tu_bi_loai
+extends: cultivator
+role: "origin portrait: the rejected sect candidate"
+pieces: []
+
+materials:
+  skin:       {ramp: ["#a5705e", "#d09c82", "#eec9ae", "#f9e2ce"], min_tone: 2}
+  hair:       {ramp: ["#1f1b20", "#332d36", "#4a424e", "#635a66"], highlight: true}
+  robe:       {ramp: ["#39465c", "#55667e", "#77879e", "#9aa9be"], highlight: true}
+  robe_inner: {ramp: ["#8b93a3", "#b3bac6", "#d5dae2", "#e9edf2"]}
+  trim:       {ramp: ["#6b5a2e", "#8a7440", "#ab9058", "#c9ab72"], priority: 1.6, flat: true}
+  sash:       {ramp: ["#3a4456", "#4e5a70", "#657389", "#7f8ea3"], priority: 1.3, flat: true}
+  trousers:   {ramp: ["#232833", "#303745", "#414a5c", "#545f73"]}
+  shoe:       {ramp: ["#15181f", "#1f242e", "#2c333f", "#3c4450"]}
+  eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
+  pin:        {ramp: ["#4a3826", "#63503a", "#7f6a50", "#9c8668"], priority: 2.0, flat: true}
+
+outputs:
+  sheet_prefix: origin_de_tu_bi_loai
+  anchors: origin_de_tu_bi_loai_anchors
+  portrait: origin_de_tu_bi_loai
+

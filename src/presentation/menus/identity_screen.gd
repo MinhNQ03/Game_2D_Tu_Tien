@@ -62,6 +62,8 @@ var _preview: CharacterVisualComponent = null
 ## The stage the figure stands on: its draw callback lays the shared dais under the feet.
 var _stage_anchor: Control = null
 var _portrait: TextureRect
+## The Origin's medallion (D-074 art pass), beside the appearance portrait.
+var _origin_portrait: TextureRect
 var _detail_name: Label
 var _detail_problem: Label
 var _detail_edge_heading: Label
@@ -242,6 +244,17 @@ func _build_person_band() -> Control:
 	_portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(_portrait)
+
+	## The Origin's own medallion (D-074 art pass): who this person WAS, distinct from
+	## the chosen look's portrait. Sits beside the appearance portrait.
+	_origin_portrait = TextureRect.new()
+	_origin_portrait.name = "OriginPortrait"
+	_origin_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_origin_portrait.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	_origin_portrait.custom_minimum_size = Vector2(UIPalette.MEDALLION_PX, UIPalette.MEDALLION_PX)
+	_origin_portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_origin_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_origin_portrait)
 
 	var who := VBoxContainer.new()
 	who.name = "Who"
@@ -564,6 +577,11 @@ func _refresh_detail() -> void:
 	_detail_goal.text = _t(String(origin.goal_key))
 	_detail_edge.text = _t(String(origin.edge_key))
 	_detail_cost.text = _t(String(origin.cost_key))
+	# The Origin's own face (D-074 art pass): the medallion rendered for this past.
+	if _origin_portrait != null:
+		_origin_portrait.texture = load(origin.portrait_ref) as Texture2D \
+			if origin.portrait_ref != "" and ResourceLoader.exists(origin.portrait_ref) \
+			else null
 
 
 func _t(key: String) -> String:

@@ -91,8 +91,11 @@ def sync(layout_id, scene_rel):
                 pos = re.search(r"\nposition = Vector2\(([-\d.]+), ([-\d.]+)\)", b)
                 if pos:
                     x, y = int(float(pos.group(1))) - ox, int(float(pos.group(2))) - oy
+                    # turf the tufts belong on: meadow, forest floor, undergrowth, and the
+                    # leaf litter under the groves (grass grows through fallen leaves)
                     if not (0 <= x < w and 0 <= y < h) or \
-                            mat[y * w + x] not in (ground.GRASS, ground.FOREST, ground.LUSH):
+                            mat[y * w + x] not in (ground.GRASS, ground.FOREST, ground.LUSH,
+                                                   ground.LITTER):
                         continue
         kept.append(b)
     # the floor: a tiled Ground becomes the PaintedGround drawn from this layout

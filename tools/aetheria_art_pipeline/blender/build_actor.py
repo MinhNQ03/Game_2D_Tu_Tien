@@ -48,6 +48,18 @@ DEPTH_SPAN = 40.0
 CAM_DISTANCE = 120.0
 
 
+def render_engine():
+    """Which renderer to use. EEVEE is the golden path; headless machines without EGL
+    (no libEGL.so.1) cannot start it, so set AETHERIA_RENDER_ENGINE=CYCLES to render the
+    passes with Cycles on the CPU instead. The EEVEE path is byte-for-byte untouched."""
+    return os.environ.get("AETHERIA_RENDER_ENGINE", "BLENDER_EEVEE")
+
+
+# Cycles path-tracing is noisy at 1 sample, which the light pass cannot afford (it bands
+# luminance into ramp tones): id/depth are constant-valued and stay at 1, light gets more.
+CYCLES_PASS_SAMPLES = {"id": 1, "light": 24, "depth": 1}
+
+
 def _srgb_to_linear(c):
     c = c / 255.0
     return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
@@ -357,14 +369,26 @@ def setup_lights(spec, coll):
 
 
 def configure_render(scene, width, height, samples=1):
-    scene.render.engine = "BLENDER_EEVEE"
-    scene.eevee.taa_render_samples = samples
+    engine = render_engine()
+    scene.render.engine = engine
+    if engine == "CYCLES":
+        scene.cycles.samples = samples
+        scene.cycles.device = "CPU"
+        # exact passes want a point filter, like EEVEE's filter_size 0 at 1 sample: a wide
+        # filter would blend neighbouring material ids at edges (Blender 5.x: on scene.cycles)
+        scene.cycles.pixel_filter_type = "BOX"
+        scene.cycles.filter_width = 0.01
+    else:
+        scene.eevee.taa_render_samples = samples
+        scene.render.filter_size = 0.0 if samples == 1 else 1.5
     scene.render.resolution_x = width
     scene.render.resolution_y = height
     scene.render.resolution_percentage = 100
     scene.render.film_transparent = True
     scene.render.dither_intensity = 0.0
-    scene.render.filter_size = 0.0 if samples == 1 else 1.5
+    if render_engine() != "CYCLES":
+        # (Cycles sets its point filter above; this line is the EEVEE golden path, unchanged)
+        scene.render.filter_size = 0.0 if samples == 1 else 1.5
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.image_settings.color_depth = "8"
@@ -577,6 +601,8 @@ def render_frames(spec_path, anims=None, out_dir=None, passes=("id", "light", "d
                         depth_rows[name].append(round(_depth_px(cam, co, core, px_per_unit), 2))
                 for pas in passes:
                     set_mode(pas)
+                    if render_engine() == "CYCLES":
+                        scene.cycles.samples = CYCLES_PASS_SAMPLES[pas]
                     scene.render.filepath = os.path.join(
                         out_dir, "%s_%s_%d_%s.png" % (anim, dname, f, pas))
                     bpy.ops.render.render(write_still=True)
@@ -608,7 +634,9 @@ def render_presentation(spec_path, out_path, yaw_list=(0.0, -90.0, 180.0, 90.0),
     scene.frame_set(frame + 1)
     set_mode("beauty")
     _show_lod("portrait")
-    _ink_hulls(True)
+    # Cycles renders the inverted ink hull solid (its backface-cull trick is EEVEE-only),
+    # hiding the figure: review renders skip the hull under Cycles (EEVEE path unchanged).
+    _ink_hulls(render_engine() != "CYCLES")
     scene.camera = bpy.data.objects["AE_cam_presentation"]
     configure_render(scene, size[0], size[1], samples)
     paths = []
@@ -641,6 +669,8 @@ def render_portrait(spec_path, out_dir=None):
     os.makedirs(out_dir, exist_ok=True)
     for pas in ("id", "light", "depth"):
         set_mode(pas)
+        if render_engine() == "CYCLES":
+            scene.cycles.samples = CYCLES_PASS_SAMPLES[pas]
         scene.render.filepath = os.path.join(out_dir, "portrait_%s.png" % pas)
         bpy.ops.render.render(write_still=True)
     set_mode("beauty")
@@ -676,7 +706,9 @@ def render_details(spec_path, size=320, samples=32):
     rig = _rig()
     set_mode("beauty")
     _show_lod("portrait")
-    _ink_hulls(True)
+    # Cycles renders the inverted ink hull solid (its backface-cull trick is EEVEE-only),
+    # hiding the figure: review renders skip the hull under Cycles (EEVEE path unchanged).
+    _ink_hulls(render_engine() != "CYCLES")
     data = bpy.data.cameras.new("AE_cam_detail")
     data.lens = 100
     cam = bpy.data.objects.new("AE_cam_detail", data)

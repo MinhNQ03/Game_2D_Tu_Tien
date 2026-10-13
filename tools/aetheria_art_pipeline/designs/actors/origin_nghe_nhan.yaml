@@ -1,0 +1,33 @@
+# Origin portrait: the DISGRACED ARTISAN (Nghệ Nhân Thất Sủng) — a craftsman fallen from
+# favour. A rust-ochre work robe, a charcoal sash, grey-streaked hair and a short beard (the
+# only bearded origin: age and labour read at a glance). Original Aetheria art, built by the
+# pipeline (D-074).
+#
+# Full animation sheets + anchors + portrait; no runtime profile (origins are chosen on
+# the identity screen, never walked — the sheets are there if an origin NPC ever needs them).
+id: origin_nghe_nhan
+extends: cultivator
+role: "origin portrait: the disgraced artisan"
+pieces: [beard]
+
+# Shorter, work-tied hair under a plain topknot; the beard carries the age.
+hair:
+  back: {top_z: 46.2, bottom_z: 30.0, width: [7.6, 6.4, 1.8], thickness: 2.2, flare: 0.7}
+
+materials:
+  skin:       {ramp: ["#a5705e", "#d09c82", "#eec9ae", "#f9e2ce"], min_tone: 2}
+  hair:       {ramp: ["#453f3b", "#635a54", "#827670", "#a0948b"], highlight: true}
+  robe:       {ramp: ["#5c3a22", "#7a5230", "#997046", "#b78d60"], highlight: true}
+  robe_inner: {ramp: ["#a08b74", "#bfae97", "#d9cbb8", "#eae0d0"]}
+  trim:       {ramp: ["#3a2c1e", "#4f3d29", "#665138", "#7f6649"], priority: 1.6, flat: true}
+  sash:       {ramp: ["#2c2825", "#423b35", "#595047", "#70665c"], priority: 1.3, flat: true}
+  trousers:   {ramp: ["#33291f", "#453829", "#594937", "#6e5b46"]}
+  shoe:       {ramp: ["#1c1611", "#282019", "#372c21", "#493b2c"]}
+  eye:        {ramp: ["#12121a", "#12121a", "#12121a", "#12121a"], priority: 4.0, min_coverage: 5}
+  pin:        {ramp: ["#4a3826", "#63503a", "#7f6a50", "#9c8668"], priority: 2.0, flat: true}
+
+outputs:
+  sheet_prefix: origin_nghe_nhan
+  anchors: origin_nghe_nhan_anchors
+  portrait: origin_nghe_nhan
+

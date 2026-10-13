@@ -461,7 +461,13 @@ MEDALLIONS = {"player_proto": "player_proto", "cultivator_f_proto": "lin_yue",
               # Phase 20: the identity screen and the HUD show the look the player chose.
               "player_f_proto": "player_f_proto",
               # Phase 20: the carter is spoken to like anyone else.
-              "carter_proto": "te_moc"}
+              "carter_proto": "te_moc",
+              # D-074: the identity screen's Origin ledger shows one portrait per Origin.
+              "origin_ho_tieu": "origin_ho_tieu",
+              "origin_de_tu_bi_loai": "origin_de_tu_bi_loai",
+              "origin_lang_y": "origin_lang_y",
+              "origin_nghe_nhan": "origin_nghe_nhan",
+              "origin_thu_thu": "origin_thu_thu"}
 
 
 def build():

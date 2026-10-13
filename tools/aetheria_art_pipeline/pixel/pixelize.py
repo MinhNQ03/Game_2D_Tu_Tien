@@ -575,6 +575,19 @@ def _footprint(spec, meta):
     elif kind == "survey_shaft":
         # The outcrop the door is set in: x -54..53, from just behind the sill to its back.
         return (-54.0 * ppu, -52.0 * ppu * squash, 107.0 * ppu, 49.0 * ppu * squash)
+    elif kind == "stone_lantern":
+        # the plinth's solid core (model/props3d.py stone_lantern): the cap and jewel
+        # overhang it, as a tree's canopy overhangs its trunk
+        w, d = 26.0, 18.0
+    elif kind == "rock_cluster":
+        # the outcrop's solid core under its skirt: the lumps' flanks overhang the body
+        w, d = 44.0, 26.0
+    elif kind == "grove":
+        # the undergrowth mound's core: the bush crowns and the young tree overhang it
+        w, d = 30.0, 22.0
+    elif kind == "water_edge":
+        # the laid stones' core: the hummock sits behind them, inside the same body
+        w, d = 36.0, 20.0
     else:
         return (0, 0, 0, 0)
     return (-w * ppu / 2, -d * ppu * squash, w * ppu, d * ppu * squash)

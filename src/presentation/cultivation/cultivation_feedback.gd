@@ -88,7 +88,24 @@ func _on_meditation_started(_site_id: StringName) -> void:
 	var visual := _visual()
 	if visual != null:
 		visual.play_action(CharacterVisualComponent.ACTION_MEDITATE)
+	# D-074 art pass: the Blender-rendered qi_gather sequence plays once as the
+	# cultivator settles — energy drawn in from the site. Pure presentation,
+	# timed by the meditation start (gameplay authority).
+	_play_qi_gather_vfx()
 	set_process(true)
+
+
+## Play the rendered qi_gather sequence once at the cultivator's feet.
+func _play_qi_gather_vfx() -> void:
+	var player := VfxSequencePlayer.new()
+	player.sequence_dir = "res://assets/vfx/qi_gather"
+	player.frame_count = 16
+	player.fps = 12.0
+	player.anchor_px = Vector2(32, 40)
+	add_child(player)
+	player.position = Vector2.ZERO
+	player.play()
+	player.finished.connect(player.queue_free)
 
 
 func _on_meditation_ended(_reason: StringName) -> void:

@@ -20,6 +20,26 @@ def _part(name, material, mesh, smooth=False):
             "smooth": smooth}
 
 
+def _pyramid(x0, y0, z0, x1, y1, za):
+    """A square pyramid: the base ring at z0 lofted to one apex. Flat-shaded faces (the
+    recalc in the Blender side fixes the winding)."""
+    m = Mesh()
+    ax, ay = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    m.verts = [(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0), (ax, ay, za)]
+    m.faces = [(0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4), (3, 2, 1, 0)]
+    return m
+
+
+def _lump(seed, cx, cy, cz, rx, ry, rz, jxy=6.0, jz=5.0):
+    """A jittered solid lump of living rock (flat-shaded facets, like `boulder`)."""
+    m = sphere((cx, cy, cz), (rx, ry, rz), 14, 10)
+    m.verts = [(x + (_h(int(x), int(z), seed) - 0.5) * jxy,
+                y + (_h(int(y), int(x), seed) - 0.5) * jxy * 0.8,
+                max(0.0, z + (_h(int(z), int(y), seed) - 0.5) * jz))
+               for x, y, z in m.verts]
+    return m
+
+
 def _h(x, y, seed):
     v = (x * 374761393 + y * 668265263 + seed * 2246822519) & 0xFFFFFFFF
     v = ((v ^ (v >> 13)) * 1274126177) & 0xFFFFFFFF
@@ -535,6 +555,104 @@ def training_post(d):
     return parts
 
 
+def stone_lantern(d):
+    """A stone garden lantern (đèn đá): a plinth and shaft of fieldstone, a firebox whose warm
+    paper panes glow between stone posts, a pyramid cap and a jewel, moss on the cap. The pair
+    flanking the spring court is the village's warm accent on cool stone — the reference's
+    lantern principle, in the DNA's own stone/paper ramps."""
+    seed = int(d.get("seed", 1))
+    parts = [_part("plinth", "stone", box(-12, -4, 0, 12, 12, 6)),
+             _part("plinth_cap", "stone_light", box(-10, -3, 6, 10, 11, 8)),
+             _part("shaft", "stone", cylinder(0, 4, 8, 30, 4.2, 10)),
+             _part("collar", "stone_light", box(-6, -1, 28, 6, 9, 31)),
+             _part("fire_floor", "stone", box(-9, -4, 31, 9, 12, 34))]
+    for sx in (-7.5, 7.5):
+        for sy in (-2.5, 10.5):
+            parts.append(_part("post_%g_%g" % (sx, sy), "stone_light",
+                               box(sx - 1.5, sy - 1.5, 34, sx + 1.5, sy + 1.5, 45)))
+    # the warm panes, recessed a hair behind the posts' faces (never coplanar with them)
+    parts.append(_part("panes", "paper", box(-6, -0.5, 34, 6, 9, 45)))
+    parts.append(_part("fire_roof", "stone", box(-10, -5, 45, 10, 13, 48)))
+    parts.append(_part("cap", "stone", _pyramid(-13, -7, 48, 13, 15, 59)))
+    parts.append(_part("jewel", "stone_light", sphere((0, 4, 60), (2.6, 2.6, 2.8), 8, 6)))
+    moss = sphere((-5, 6, 54), (6, 4, 1.8), 8, 5)
+    moss.verts = [(x + (_h(int(x), int(z), seed) - 0.5) * 2.0,
+                   y + (_h(int(y), int(x), seed) - 0.5) * 2.0,
+                   z) for x, y, z in moss.verts]
+    parts.append(_part("moss", "moss", moss, smooth=True))
+    return parts
+
+
+def rock_cluster(d):
+    """A cluster of living rock: one solid outcrop lump (the body's core sits under it) with a
+    top stone and a side knob, moss on the crowns. One mass, never scattered singles."""
+    seed = int(d.get("seed", 1))
+    parts = [_part("outcrop", "stone", _lump(seed, 0, 12, 8, 26, 16, 12)),
+             _part("top", "stone_light", _lump(seed + 1, -4, 14, 22, 14, 11, 11)),
+             _part("knob", "stone", _lump(seed + 2, 20, 8, 6, 9, 8, 7)),
+             _part("moss_top", "moss", sphere((-4, 15, 32), (9, 7, 2.6), 10, 6), smooth=True),
+             _part("moss_low", "moss", sphere((14, 12, 18), (8, 6, 2.2), 8, 5), smooth=True)]
+    return parts
+
+
+def grove(d):
+    """A vegetation cluster: a young broadleaf rising from a solid mound of undergrowth, three
+    bush crowns breaking its silhouette, a sapling and a mossy stone at its foot. Planted OVER
+    the map's lush regions, it reads as one mass — never one tree to a lawn."""
+    seed = int(d.get("seed", 1))
+    parts = []
+    mound = sphere((0, 8, 4), (26, 14, 7), 14, 10)
+    mound.verts = [(x + (_h(int(x), int(z), seed) - 0.5) * 4.0,
+                    y + (_h(int(y), int(x), seed) - 0.5) * 3.0,
+                    max(0.0, z + (_h(int(z), int(y), seed) - 0.5) * 3.0))
+                   for x, y, z in mound.verts]
+    parts.append(_part("mound", "moss", mound, smooth=True))
+    for i, (cx, cy, r) in enumerate(((-13, 8, 10), (2, 12, 12), (15, 7, 9))):
+        b = sphere((cx, cy, 10), (r, r * 0.85, r * 0.8), 10, 8)
+        b.verts = [(x + (_h(int(x * 2), int(z * 2), seed + 10 + i) - 0.5) * 4.0,
+                    y + (_h(int(y * 2), int(x * 2), seed + 10 + i) - 0.5) * 3.0,
+                    max(2.0, z + (_h(int(z * 2), int(y * 2), seed + 10 + i) - 0.5) * 4.0))
+                   for x, y, z in b.verts]
+        parts.append(_part("bush%d" % i, "leaves", b, smooth=True))
+    for p in broadleaf_tree({"seed": seed + 20, "scale": 0.5}):
+        p["verts"] = [(x - 2, y + 10, z + 4) for x, y, z in p["verts"]]
+        p["name"] = "young_" + p["name"]
+        parts.append(p)
+    parts.append(_part("sapling", "bark", tube([(18, 2, 0), (19, 3, 16)], [1.1, 0.7], 6,
+                                                up=(0, 0, 1)), smooth=True))
+    parts.append(_part("sapling_crown", "leaves", sphere((19, 3, 19), (5, 4.5, 4.5), 8, 6),
+                       smooth=True))
+    parts.append(_part("foot_stone", "stone", sphere((-18, 4, 2), (5, 4, 3), 8, 6)))
+    return parts
+
+
+def water_edge(d):
+    """A water-edge detail: flat stones laid at the waterline, a mossy hummock behind them with
+    a clump of reeds and two cattail spikes. For the stream's bank and the spring's overflow."""
+    seed = int(d.get("seed", 1))
+    parts = []
+    for i, (cx, cy, r) in enumerate(((-11, 2, 8), (0, 5, 9), (11, 2, 7))):
+        parts.append(_part("stone%d" % i, "stone", cylinder(cx, cy, 0, 3.2, r, 12)))
+        parts.append(_part("stone_top%d" % i, "stone_light",
+                           cylinder(cx, cy, 3.2, 4.2, r * 0.92, 12)))
+    h = sphere((2, 12, 1.5), (13, 7, 3), 10, 8)
+    h.verts = [(x + (_h(int(x), int(z), seed) - 0.5) * 2.0,
+                y + (_h(int(y), int(x), seed) - 0.5) * 2.0,
+                max(0.0, z)) for x, y, z in h.verts]
+    parts.append(_part("hummock", "moss", h, smooth=True))
+    for i, (cx, cy, hgt, lean) in enumerate(((-6, 12, 26, -0.08), (-2, 14, 30, 0.05),
+                                             (2, 13, 24, 0.12), (6, 11, 28, -0.05),
+                                             (10, 13, 22, 0.10))):
+        parts.append(_part("reed%d" % i, "leaves",
+                           tube([(cx, cy, 2), (cx + lean * hgt, cy + 2, 2 + hgt)],
+                                [1.0, 0.5], 5, up=(0, 0, 1)), smooth=True))
+    for i, (cx, cy, hgt) in enumerate(((-3, 13, 32), (7, 12, 26))):
+        parts.append(_part("spike%d" % i, "timber_light",
+                           tube([(cx, cy, 2), (cx, cy + 1, hgt)], [0.8, 0.8], 5, up=(0, 0, 1))))
+        parts.append(_part("cattail%d" % i, "timber", cylinder(cx, cy + 1, hgt, hgt + 6, 1.6, 6)))
+    return parts
+
+
 BUILDERS = {
     "stele": stele,
     "spirit_spring": spirit_spring,
@@ -550,6 +668,10 @@ BUILDERS = {
     "cart": cart,
     "cart_wreck": cart_wreck,
     "survey_shaft": survey_shaft,
+    "stone_lantern": stone_lantern,
+    "rock_cluster": rock_cluster,
+    "grove": grove,
+    "water_edge": water_edge,
 }
 
 

@@ -21,6 +21,9 @@ class_name OriginData
 @export var goal_key: StringName = &""
 ## The short scene that opens a run as this Origin: where they were, and what went wrong.
 @export var vignette_scene_id: StringName = &""
+## The Origin's portrait medallion for the identity screen (D-074 art pass).
+## Points at `assets/ui/aetheria_ink/medallion_origin_<id>.png`.
+@export var portrait_ref: String = ""
 @export var grants: Array[OriginGrantData] = []
 ## What this Origin ALONE notices, kept so it can be re-read (D-073): a story flag raised when
 ## a line only this Origin gets has been said, and the record line the Chronicle then shows.

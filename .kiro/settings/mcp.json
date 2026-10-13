@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/minhnq03/Documents/Game_2D_Tu_Tien"
+      ],
+      "disabled": false
+    }
+  }
+}

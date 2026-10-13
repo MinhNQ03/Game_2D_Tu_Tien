@@ -86,6 +86,16 @@ Blender 5.2 via the blender-pro MCP (or headless `blender -b -P blender/cli.py -
 depth), switched by one node-group value. Blender owns form, light and motion; the palette stays
 authored. The presentation render adds an inverted-hull ink line (OFF in every gameplay pass).
 
+**Renderer fallback (D-074):** the golden path is EEVEE. Headless machines without EGL
+(`libEGL.so.1` missing) cannot start EEVEE; setting `AETHERIA_RENDER_ENGINE=CYCLES` renders the
+passes with Cycles on the CPU instead (`build_actor.render_engine()`). The EEVEE path is
+untouched. Cycles differences, all confined to `blender/build_actor.py` and inert unless the
+env var is set: per-pass samples (id 1 / light 24 / depth 1 — path tracing is noisy at 1
+sample), a point pixel filter for the exact passes, and the ink hull skipped in review renders
+(its backface-cull trick renders solid under Cycles). The shipped sheets come from the
+id/light/depth passes, which are renderer-agnostic; the Cycles-built `player_proto` sheets pass
+`style_check` identically.
+
 ## 4. Material profiles
 
 Character materials are 4-tone ramps per actor (`[deep, shadow, base, light]`) with flags:
@@ -283,3 +293,26 @@ any asset.
 | CP10 Golden scene | PASS | Thôn Lạc Hà painted + Blender village; Rừng Vỡ Mạch; `capture_motion golden` |
 | CP11 Benchmark | PASS | 79.4 / 100 (80.4 before the site props were rebuilt), every essential ≥ 50 |
 | CP12 Second actor | PASS | Lâm Nguyệt (+ Thẩm Bất Kỳ, Kha Thản, the Thanh Vân robe) by design data only — no renderer change |
+
+## 15. D-074 — 32×48 vs 48×72 frame evaluation (2026-10-13)
+
+**Question:** is the 32×48 character cell sufficient, or does the cast need larger frames?
+
+**Method:** the same improved `player_proto` design rendered a second time with the gameplay
+camera overridden to a 48×72 cell (feet row 64, ortho 78 — a pure spec patch, no pipeline
+change), pixelized by the unchanged adapter, and captured **in the game at 1×** next to the
+shipped 32×48 cell on the real Lạc Hà ground (nearest filtering, native scale).
+
+**Result: keep 32×48.** At 1× in-game the 32×48 figure reads completely — silver hair mass,
+jade sash accent, layered robe, grounded feet — and sits correctly in the 16px world (2 tiles
+wide × 3 tall, matching doors, paths and props). The 48×72 sample shows more facial detail
+but stands 4.5 tiles tall: it towers over the world grid and reads as a hero unit, not a
+figure grounded in the frontier. Larger is more detailed but worse integrated; the D-046
+rationale (integer scale factors on the 16px grid) stands.
+
+**If a future phase migrates anyway** (bible §2: log it in DECISIONS.md), the implications:
+re-render every actor's sheets at the new cell (the pipeline already supports it via the
+camera spec); `CharacterVisualProfileData.frame_size` → (48,72), `anchor_offset` → (0,8);
+retune depth-sorting/overlap (collision footprints are sprite-height-independent per bible
+§3, but the visuals were composed for 32×48); reframe portraits/medallions; update the style
+YAML `character` bands and every `style_check --cell`; re-shoot the visual benchmark.

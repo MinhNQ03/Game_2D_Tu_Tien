@@ -94,3 +94,31 @@ func _fire_step() -> int:
 			break
 	free_node(site)
 	return fired_at
+
+
+## The eruption is the rare EVENT, not the beat: erupt() plays the rendered sequence
+## once, then it ends by itself; the ambient pulse is untouched.
+func test_erupt_plays_the_rendered_sequence_once() -> void:
+	var site := _site(CultivationSiteData.Stability.BROKEN)
+	var feedback := _feedback(site)
+	assert_false(feedback.is_erupting(), "no eruption before erupt()")
+	feedback.erupt()
+	assert_true(feedback.is_erupting(), "erupt() starts the sequence")
+	var player := feedback.get_child(0) as VfxSequencePlayer
+	assert_eq(player.anchor_px, Vector2(64, 92),
+		"the fissure pixel sits at the site's ground point")
+	for i in 150:
+		player.advance(STEP)
+	assert_false(feedback.is_erupting(), "the one-shot eruption ends by itself")
+	assert_false(feedback.is_pulsing(), "erupt() does not fire the ambient beat")
+	free_node(site)
+
+
+## A steady vein does not erupt: erupt() no-ops there, like the beat.
+func test_erupt_no_ops_on_a_steady_vein() -> void:
+	var site := _site(CultivationSiteData.Stability.STEADY)
+	var feedback := _feedback(site)
+	feedback.erupt()
+	assert_false(feedback.is_erupting(), "a steady vein has no eruption")
+	assert_eq(feedback.get_child_count(), 0, "no player node is even built")
+	free_node(site)

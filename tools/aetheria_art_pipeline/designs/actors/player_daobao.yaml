@@ -4,10 +4,36 @@
 #
 # The robe takes the sect's deep jade-blue, so the robe itself is the figure's saturated mass;
 # the sash steps back to ivory and the trim to antique gold, keeping ONE accent per figure.
+#
+# D-074: this look is the SAME body, cut and motion as player_proto (see its header), so it
+# takes the same silhouette overrides — the wider hair mass, broader sash, visible shoes.
+# Only the garment colours differ.
 id: player_daobao
 extends: cultivator
 role: "protagonist in the Thanh Vân outer-disciple robe"
 pieces: [pendant]
+
+body:
+  shoulder_x: 6.1
+
+garment:
+  bodice:                           # the outer robe above the sash: [z, rx, ry]
+    - [25.0, 4.9, 3.5]
+    - [29.0, 5.6, 3.9]
+    - [32.2, 6.3, 4.0]
+    - [33.9, 5.3, 3.5]
+    - [34.8, 2.6, 2.4]
+  skirt:                            # outer robe below the sash: [z, rx, ry]
+    - [25.4, 5.1, 3.7]
+    - [19.0, 6.0, 4.5]
+    - [10.0, 7.0, 5.3]
+    - [3.0, 7.8, 5.9]
+    - [1.1, 8.0, 6.1]
+  hem_front_lift: 3.2               # the shoes show below the hem in the front view
+  sash: {z: [23.2, 26.8], out: 0.5, knot: [-2.2, -3.9, 25.0], tail_length: 9.5}
+
+hair:
+  back: {top_z: 46.6, bottom_z: 19.5, width: [8.8, 7.6, 2.4], thickness: 2.5, flare: 1.1}
 
 materials:
   skin:       {ramp: ["#a5705e", "#d09c82", "#eec9ae", "#f9e2ce"], min_tone: 2}

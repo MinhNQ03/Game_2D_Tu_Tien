@@ -119,8 +119,26 @@ func _on_attack_started() -> void:
 	if data != null:
 		_reach = data.reach_pixels
 		_arc_degrees = data.arc_degrees
+	# D-074 art pass: the Blender-rendered slash sequence plays at the striking
+	# point, timed by the attack start (gameplay authority). Pure presentation.
+	_play_slash_vfx()
 	set_process(true)
 	_sync()
+
+
+## Play the rendered attack_slash sequence once at the striking point.
+func _play_slash_vfx() -> void:
+	var player := VfxSequencePlayer.new()
+	player.sequence_dir = "res://assets/vfx/attack_slash"
+	player.frame_count = 12
+	player.fps = 12.0
+	player.anchor_px = Vector2(24, 38)
+	# Aim the slash along the facing: the sequence's anchor is the hand point.
+	player.rotation = _facing.angle() + PI / 2.0
+	add_child(player)
+	player.position = _source
+	player.play()
+	player.finished.connect(player.queue_free)
 
 
 func _on_attack_finished() -> void:
