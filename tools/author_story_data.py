@@ -430,6 +430,7 @@ def origin_catalog():
             ("problem_key", sn(key + "PROBLEM")), ("edge_key", sn(key + "EDGE")),
             ("cost_key", sn(key + "COST")), ("goal_key", sn(key + "GOAL")),
             ("vignette_scene_id", sn("scene_vignette_%s" % oid[len("origin_"):])),
+            ("portrait_ref", '"res://assets/ui/aetheria_ink/medallion_%s.png"' % oid),
             ("observation_flags", names(flag for flag, _s in OBSERVATIONS + EXTRA_OBSERVATIONS.get(oid, []))),
             ("observation_keys", names("STORY_NOTICED_%s_%s" % (place, stem)
                                        for _flag, place in OBSERVATIONS + EXTRA_OBSERVATIONS.get(oid, []))),
