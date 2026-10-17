@@ -22,7 +22,7 @@ from pathlib import Path
 from .gitops import Git
 from .util import atomic_write_json, now_iso, read_jsonl
 
-KILL_AFTER_SECONDS = 40
+KILL_AFTER_SECONDS = 10  # a real implementation took ~41 s in the first canary; interrupt well inside it
 
 
 def campaign(ts: str) -> dict:
@@ -109,7 +109,7 @@ def main(cfg, a) -> int:
     killed_at = None
     t_impl2 = None
     while p.poll() is None:
-        time.sleep(3)
+        time.sleep(1)
         st = _state(wt)
         if not st:
             continue
