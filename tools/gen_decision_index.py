@@ -242,12 +242,18 @@ def selftest() -> int:
     # Anchor: em-dash removed, spaces to hyphens, lowercase.
     check("anchor", github_anchor("D-074 — Product direction: online (x)") == "d-074--product-direction-online-x")
 
-    # Full-file parse: expect 74 decisions, 0 unparsed.
-    full = parse(SOURCE.read_text(encoding="utf-8"))
-    check("full count==74", len(full.decisions) == 74)
+    # Full-file parse: every `## D-nnn` heading parses, none is left unparsed. The expected
+    # count is read from the file itself (a new decision is not a selftest failure); the floor
+    # guards against a parse that silently drops the history.
+    text = SOURCE.read_text(encoding="utf-8")
+    full = parse(text)
+    headings = len(re.findall(r"^## D-\d{3}", text, re.MULTILINE))
+    check("full count==headings", len(full.decisions) == headings)
+    check("full count>=75", len(full.decisions) >= 75)
     check("full unparsed==0", len(full.unparsed) == 0)
     ids = [d.id for d in full.decisions]
     check("D-074 present", "D-074" in ids)
+    check("D-075 present", "D-075" in ids)
     check("D-009 superseded", any(d.id == "D-009" and "SUPERSEDED" in d.status for d in full.decisions))
     check("D-059 not recorded", any(d.id == "D-059" and d.status == "Not recorded" for d in full.decisions))
     check("D-005 open", any(d.id == "D-005" and d.status == "Open" for d in full.decisions))
