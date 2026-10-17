@@ -687,6 +687,60 @@ static func menu_backdrop() -> Texture2D:
 	return atlas
 
 
+## A STORY PICTURE (experience upgrade): one of the painted-tier illustrations (an Origin's
+## past), LINEAR-filtered and COVERING its rect — painted art has no pixel grid to protect
+## (`06-art-assets.md`, D-044). `region`: show only that part of the picture (a card's
+## thumbnail). An empty rect when the file is missing, so a screen keeps its layout.
+static func story_picture(path: String, region: Rect2 = Rect2()) -> TextureRect:
+	var picture := TextureRect.new()
+	picture.name = "StoryPicture"
+	picture.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_story_picture(picture, path, region)
+	return picture
+
+
+## The foot of a story picture: transparent above, the ink below, so text over the picture
+## reads and the picture hands over to the panel without a hard edge. `start`: where (0..1,
+## top to bottom) the fade begins.
+static func story_fade(start: float = 0.45) -> TextureRect:
+	var gradient := Gradient.new()
+	gradient.set_color(0, Color(UIPalette.COLOR_BANNER_FADE, 0.0))
+	gradient.set_color(1, UIPalette.COLOR_BANNER_FADE)
+	gradient.add_point(start, Color(UIPalette.COLOR_BANNER_FADE, 0.0))
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill_from = Vector2(0.5, 0.0)
+	texture.fill_to = Vector2(0.5, 1.0)
+	texture.width = 4
+	texture.height = 64
+	var fade := TextureRect.new()
+	fade.name = "StoryFade"
+	fade.texture = texture
+	fade.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	fade.stretch_mode = TextureRect.STRETCH_SCALE
+	fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return fade
+
+
+## Point a story picture at another illustration (or another part of one).
+static func set_story_picture(picture: TextureRect, path: String, region: Rect2 = Rect2()) -> void:
+	if path == "" or not ResourceLoader.exists(path):
+		picture.texture = null
+		return
+	var source := load(path) as Texture2D
+	if region.has_area() and source != null:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = source
+		atlas.region = region
+		picture.texture = atlas
+	else:
+		picture.texture = source
+
+
 ## The identity medallion: the actor's pixel portrait in its lacquer disc under the gold ring
 ## (D-062). Rendered by the art pipeline from the SAME model as the sprite, so the face in the
 ## HUD is the figure on the map. `female` picks Lâm Nguyệt's. Null when the art is missing, so

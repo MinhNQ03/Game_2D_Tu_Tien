@@ -8,9 +8,12 @@ class_name StoryScenePanel
 ##
 ## A scene that is HERE sits across the lower third over the live map, under a light veil. A
 ## scene that is SOMEWHERE ELSE (a memory, another place) is shown on the menu's own ink
-## ground, fully opaque, with the band at the centre of the screen: the village must not be
-## visible behind "forty days ago, in the record hall" — not even faintly. (The first build
-## used a 90 % veil; in the real window the plaza and the HUD still showed through it.)
+## ground, fully opaque: the village must not be visible behind "forty days ago, in the record
+## hall" — not even faintly. (The first build used a 90 % veil; in the real window the plaza
+## and the HUD still showed through it.) An elsewhere scene with a PICTURE (an Origin's
+## vignette, experience upgrade) is staged over it — the past shown, not only told — with the
+## band in the lower third and a slow drift across the picture; without one, the band sits at
+## the centre of the bare ground.
 ##
 ## It decides nothing and changes nothing: `interact` REQUESTS the next step, and the HUD
 ## turns Esc into a request to skip. What a scene is about was committed before it started.
@@ -22,6 +25,9 @@ signal advance_requested()
 
 ## How dark the veil is over the map while a scene is HERE.
 const VEIL_HERE := 0.35
+## The picture's slow drift over a whole scene (cosmetic): how much it grows, and in how long.
+const PICTURE_DRIFT_SCALE := 1.06
+const PICTURE_DRIFT_SECONDS := 18.0
 ## Seconds a new step takes to settle.
 const STEP_SECONDS := 0.16
 
@@ -30,6 +36,9 @@ var _input: Node = null
 var _veil: ColorRect
 ## The opaque ink ground of a scene that is somewhere else (the menu's backdrop gradient).
 var _ground: Control
+## The elsewhere scene's picture, over the ground (hidden when the scene has none).
+var _picture: TextureRect
+var _picture_tween: Tween = null
 var _box: PanelContainer
 var _place: Label
 var _time: Label
@@ -60,6 +69,14 @@ func _ready() -> void:
 	_ground.visible = false
 	add_child(_ground)
 	UITheme.build_backdrop(_ground)
+	_picture = UITheme.story_picture("")
+	_picture.name = "Picture"
+	_picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_picture.visible = false
+	_ground.add_child(_picture)
+	var fade := UITheme.story_fade(0.5)
+	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_picture.add_child(fade)
 
 	_box = PanelContainer.new()
 	_box.name = "Box"
@@ -119,8 +136,12 @@ func set_view(view: StorySceneView) -> void:
 	var was_step := _view.step_index if _view != null else -1
 	_view = view
 	if view == null:
+		if _picture_tween != null and _picture_tween.is_valid():
+			_picture_tween.kill()
 		return
 	refresh()
+	if view.scene_id != was_scene:
+		_drift_picture()
 	if view.scene_id != was_scene or view.step_index != was_step:
 		_settle()
 
@@ -181,7 +202,17 @@ func refresh() -> void:
 	_veil.color = Color(UIPalette.COLOR_BACKGROUND, VEIL_HERE)
 	_veil.visible = not _view.elsewhere
 	_ground.visible = _view.elsewhere
-	_place_box(_view.elsewhere)
+	var pictured := _view.elsewhere and _view.backdrop_ref != ""
+	if pictured and (_picture.texture == null
+			or _picture.texture.resource_path != _view.backdrop_ref):
+		UITheme.set_story_picture(_picture, _view.backdrop_ref)
+	_picture.visible = pictured and _picture.texture != null
+	_place_box(_view.elsewhere and not _picture.visible)
+
+
+## Is the scene staged over a picture of where it happens?
+func shows_picture() -> bool:
+	return _picture != null and _picture.visible and _picture.texture != null
 
 
 ## Is the map behind the scene fully covered (a scene that is somewhere else)?
@@ -198,6 +229,19 @@ func _place_box(centred: bool) -> void:
 		else Control.GROW_DIRECTION_BEGIN
 	_box.offset_top = 0.0
 	_box.offset_bottom = 0.0 if centred else -float(UIPalette.HUD_MARGIN)
+
+
+## A new scene's picture starts a slow drift (cosmetic; nothing reads it back): the memory is
+## looked at, not a still slide. Restarted per scene, so a skipped scene leaves nothing running.
+func _drift_picture() -> void:
+	if _picture_tween != null and _picture_tween.is_valid():
+		_picture_tween.kill()
+	_picture.scale = Vector2.ONE
+	_picture.pivot_offset = _picture.size * 0.5
+	_picture_tween = create_tween()
+	_picture_tween.tween_property(_picture, "scale",
+		Vector2.ONE * PICTURE_DRIFT_SCALE, PICTURE_DRIFT_SECONDS) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 ## A new step settles in (cosmetic; nothing reads it back).

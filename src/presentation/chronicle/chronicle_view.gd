@@ -27,6 +27,9 @@ var origin_problem_key: StringName = &""
 var origin_edge_key: StringName = &""
 var origin_cost_key: StringName = &""
 var origin_goal_key: StringName = &""
+## Why this Origin came to Lạc Hà, and its open personal step (empty once every one is met).
+var origin_why_here_key: StringName = &""
+var personal_objective_key: StringName = &""
 ## Record keys of what this Origin alone has noticed so far (D-073), in the order authored.
 var noticed: Array[StringName] = []
 # --- body: the stats combat itself reads, from the player's stat component

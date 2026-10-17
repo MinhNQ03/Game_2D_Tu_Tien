@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="OriginCatalogData" load_steps=17 format=3]
+[gd_resource type="Resource" script_class="OriginCatalogData" load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://src/data/story/origin_catalog_data.gd" id="s_origin_catalog_data"]
 [ext_resource type="Script" path="res://src/data/story/origin_data.gd" id="s_origin_data"]
 [ext_resource type="Script" path="res://src/data/story/origin_grant_data.gd" id="s_origin_grant_data"]
+[ext_resource type="Script" path="res://src/data/story/story_condition_data.gd" id="s_story_condition_data"]
 
 [sub_resource type="Resource" id="G_origin_ho_tieu_0"]
 script = ExtResource("s_origin_grant_data")
@@ -19,6 +20,16 @@ dimension = &"affinity"
 delta = -10
 reason = "Word of the lost caravan reached the outpost first (§6: a damaged name)."
 
+[sub_resource type="Resource" id="P_origin_ho_tieu_0"]
+script = ExtResource("s_story_condition_data")
+kind = 3
+knowledge_id = &"know_convoy_report"
+
+[sub_resource type="Resource" id="P_origin_ho_tieu_1"]
+script = ExtResource("s_story_condition_data")
+kind = 0
+flag_id = &"flag_te_origin_said"
+
 [sub_resource type="Resource" id="ORIGIN_origin_ho_tieu"]
 script = ExtResource("s_origin_data")
 id = &"origin_ho_tieu"
@@ -27,6 +38,15 @@ problem_key = &"ORIGIN_HO_TIEU_PROBLEM"
 edge_key = &"ORIGIN_HO_TIEU_EDGE"
 cost_key = &"ORIGIN_HO_TIEU_COST"
 goal_key = &"ORIGIN_HO_TIEU_GOAL"
+tagline_key = &"ORIGIN_HO_TIEU_TAGLINE"
+past_key = &"ORIGIN_HO_TIEU_PAST"
+why_here_key = &"ORIGIN_HO_TIEU_WHY_HERE"
+lead_key = &"ORIGIN_HO_TIEU_LEAD"
+horizon_key = &"ORIGIN_HO_TIEU_HORIZON"
+art_ref = "res://assets/ui/aetheria/origins/origin_ho_tieu.webp"
+personal_objective_keys = Array[StringName]([&"STORY_PERSONAL_HO_TIEU_1", &"STORY_PERSONAL_HO_TIEU_2"])
+personal_done = Array[ExtResource("s_story_condition_data")]([SubResource("P_origin_ho_tieu_0"), SubResource("P_origin_ho_tieu_1")])
+personal_beats = Array[StringName]([&"beat_arrival", &"beat_contacts"])
 vignette_scene_id = &"scene_vignette_ho_tieu"
 observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
 observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_HO_TIEU", &"STORY_NOTICED_TRAIL_HO_TIEU"])
@@ -46,6 +66,16 @@ dimension = &"rivalry"
 delta = 15
 reason = "Lâm Nguyệt passed the examination the player did not (§6: a rival who passed)."
 
+[sub_resource type="Resource" id="P_origin_de_tu_bi_loai_0"]
+script = ExtResource("s_story_condition_data")
+kind = 3
+knowledge_id = &"know_trial_board"
+
+[sub_resource type="Resource" id="P_origin_de_tu_bi_loai_1"]
+script = ExtResource("s_story_condition_data")
+kind = 0
+flag_id = &"flag_te_origin_said"
+
 [sub_resource type="Resource" id="ORIGIN_origin_de_tu_bi_loai"]
 script = ExtResource("s_origin_data")
 id = &"origin_de_tu_bi_loai"
@@ -54,6 +84,15 @@ problem_key = &"ORIGIN_DE_TU_BI_LOAI_PROBLEM"
 edge_key = &"ORIGIN_DE_TU_BI_LOAI_EDGE"
 cost_key = &"ORIGIN_DE_TU_BI_LOAI_COST"
 goal_key = &"ORIGIN_DE_TU_BI_LOAI_GOAL"
+tagline_key = &"ORIGIN_DE_TU_BI_LOAI_TAGLINE"
+past_key = &"ORIGIN_DE_TU_BI_LOAI_PAST"
+why_here_key = &"ORIGIN_DE_TU_BI_LOAI_WHY_HERE"
+lead_key = &"ORIGIN_DE_TU_BI_LOAI_LEAD"
+horizon_key = &"ORIGIN_DE_TU_BI_LOAI_HORIZON"
+art_ref = "res://assets/ui/aetheria/origins/origin_de_tu_bi_loai.webp"
+personal_objective_keys = Array[StringName]([&"STORY_PERSONAL_DE_TU_BI_LOAI_1", &"STORY_PERSONAL_DE_TU_BI_LOAI_2"])
+personal_done = Array[ExtResource("s_story_condition_data")]([SubResource("P_origin_de_tu_bi_loai_0"), SubResource("P_origin_de_tu_bi_loai_1")])
+personal_beats = Array[StringName]([&"beat_arrival", &"beat_contacts"])
 vignette_scene_id = &"scene_vignette_de_tu_bi_loai"
 observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
 observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_DE_TU_BI_LOAI", &"STORY_NOTICED_TRAIL_DE_TU_BI_LOAI"])
@@ -66,6 +105,16 @@ item_id = &"item_bo_huyet_dan"
 count = 2
 reason = "A travelling healer carries what they compound (§6: herbal knowledge)."
 
+[sub_resource type="Resource" id="P_origin_lang_y_0"]
+script = ExtResource("s_story_condition_data")
+kind = 0
+flag_id = &"flag_te_origin_said"
+
+[sub_resource type="Resource" id="P_origin_lang_y_1"]
+script = ExtResource("s_story_condition_data")
+kind = 3
+knowledge_id = &"know_grey_hands"
+
 [sub_resource type="Resource" id="ORIGIN_origin_lang_y"]
 script = ExtResource("s_origin_data")
 id = &"origin_lang_y"
@@ -74,6 +123,15 @@ problem_key = &"ORIGIN_LANG_Y_PROBLEM"
 edge_key = &"ORIGIN_LANG_Y_EDGE"
 cost_key = &"ORIGIN_LANG_Y_COST"
 goal_key = &"ORIGIN_LANG_Y_GOAL"
+tagline_key = &"ORIGIN_LANG_Y_TAGLINE"
+past_key = &"ORIGIN_LANG_Y_PAST"
+why_here_key = &"ORIGIN_LANG_Y_WHY_HERE"
+lead_key = &"ORIGIN_LANG_Y_LEAD"
+horizon_key = &"ORIGIN_LANG_Y_HORIZON"
+art_ref = "res://assets/ui/aetheria/origins/origin_lang_y.webp"
+personal_objective_keys = Array[StringName]([&"STORY_PERSONAL_LANG_Y_1", &"STORY_PERSONAL_LANG_Y_2"])
+personal_done = Array[ExtResource("s_story_condition_data")]([SubResource("P_origin_lang_y_0"), SubResource("P_origin_lang_y_1")])
+personal_beats = Array[StringName]([&"beat_arrival", &"beat_contacts"])
 vignette_scene_id = &"scene_vignette_lang_y"
 observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
 observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_LANG_Y", &"STORY_NOTICED_TRAIL_LANG_Y"])
@@ -85,6 +143,16 @@ kind = 1
 knowledge_id = &"know_vein_stone_grades"
 reason = "An artisan reads a stone's cut and seal at a glance (§6: can read materials)."
 
+[sub_resource type="Resource" id="P_origin_nghe_nhan_0"]
+script = ExtResource("s_story_condition_data")
+kind = 0
+flag_id = &"flag_te_origin_said"
+
+[sub_resource type="Resource" id="P_origin_nghe_nhan_1"]
+script = ExtResource("s_story_condition_data")
+kind = 3
+knowledge_id = &"know_three_notch"
+
 [sub_resource type="Resource" id="ORIGIN_origin_nghe_nhan"]
 script = ExtResource("s_origin_data")
 id = &"origin_nghe_nhan"
@@ -93,6 +161,15 @@ problem_key = &"ORIGIN_NGHE_NHAN_PROBLEM"
 edge_key = &"ORIGIN_NGHE_NHAN_EDGE"
 cost_key = &"ORIGIN_NGHE_NHAN_COST"
 goal_key = &"ORIGIN_NGHE_NHAN_GOAL"
+tagline_key = &"ORIGIN_NGHE_NHAN_TAGLINE"
+past_key = &"ORIGIN_NGHE_NHAN_PAST"
+why_here_key = &"ORIGIN_NGHE_NHAN_WHY_HERE"
+lead_key = &"ORIGIN_NGHE_NHAN_LEAD"
+horizon_key = &"ORIGIN_NGHE_NHAN_HORIZON"
+art_ref = "res://assets/ui/aetheria/origins/origin_nghe_nhan.webp"
+personal_objective_keys = Array[StringName]([&"STORY_PERSONAL_NGHE_NHAN_1", &"STORY_PERSONAL_NGHE_NHAN_2"])
+personal_done = Array[ExtResource("s_story_condition_data")]([SubResource("P_origin_nghe_nhan_0"), SubResource("P_origin_nghe_nhan_1")])
+personal_beats = Array[StringName]([&"beat_arrival", &"beat_contacts"])
 vignette_scene_id = &"scene_vignette_nghe_nhan"
 observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
 observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_NGHE_NHAN", &"STORY_NOTICED_TRAIL_NGHE_NHAN"])
@@ -112,6 +189,16 @@ dimension = &"affinity"
 delta = -15
 reason = "The outpost was told to watch for a keeper of proscribed records (§6: watched)."
 
+[sub_resource type="Resource" id="P_origin_thu_thu_0"]
+script = ExtResource("s_story_condition_data")
+kind = 3
+knowledge_id = &"know_mentor_mark"
+
+[sub_resource type="Resource" id="P_origin_thu_thu_1"]
+script = ExtResource("s_story_condition_data")
+kind = 0
+flag_id = &"flag_te_origin_said"
+
 [sub_resource type="Resource" id="ORIGIN_origin_thu_thu"]
 script = ExtResource("s_origin_data")
 id = &"origin_thu_thu"
@@ -120,6 +207,15 @@ problem_key = &"ORIGIN_THU_THU_PROBLEM"
 edge_key = &"ORIGIN_THU_THU_EDGE"
 cost_key = &"ORIGIN_THU_THU_COST"
 goal_key = &"ORIGIN_THU_THU_GOAL"
+tagline_key = &"ORIGIN_THU_THU_TAGLINE"
+past_key = &"ORIGIN_THU_THU_PAST"
+why_here_key = &"ORIGIN_THU_THU_WHY_HERE"
+lead_key = &"ORIGIN_THU_THU_LEAD"
+horizon_key = &"ORIGIN_THU_THU_HORIZON"
+art_ref = "res://assets/ui/aetheria/origins/origin_thu_thu.webp"
+personal_objective_keys = Array[StringName]([&"STORY_PERSONAL_THU_THU_1", &"STORY_PERSONAL_THU_THU_2"])
+personal_done = Array[ExtResource("s_story_condition_data")]([SubResource("P_origin_thu_thu_0"), SubResource("P_origin_thu_thu_1")])
+personal_beats = Array[StringName]([&"beat_arrival", &"beat_contacts"])
 vignette_scene_id = &"scene_vignette_thu_thu"
 observation_flags = Array[StringName]([&"flag_te_origin_said", &"flag_trail_origin_said"])
 observation_keys = Array[StringName]([&"STORY_NOTICED_CARTER_THU_THU", &"STORY_NOTICED_TRAIL_THU_THU"])

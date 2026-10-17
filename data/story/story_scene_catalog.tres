@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="StorySceneCatalogData" load_steps=54 format=3]
+[gd_resource type="Resource" script_class="StorySceneCatalogData" load_steps=59 format=3]
 
 [ext_resource type="Script" path="res://src/data/story/story_scene_catalog_data.gd" id="s_story_scene_catalog_data"]
 [ext_resource type="Script" path="res://src/data/story/story_scene_data.gd" id="s_story_scene_data"]
@@ -201,11 +201,19 @@ text_key = &"STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_3"
 sub_key = &""
 speaker_id = &""
 
+[sub_resource type="Resource" id="STEP_scene_vignette_de_tu_bi_loai_4"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_4"
+sub_key = &""
+speaker_id = &""
+
 [sub_resource type="Resource" id="SCENE_scene_vignette_de_tu_bi_loai"]
 script = ExtResource("s_story_scene_data")
 id = &"scene_vignette_de_tu_bi_loai"
 elsewhere = true
-steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_de_tu_bi_loai_0"), SubResource("STEP_scene_vignette_de_tu_bi_loai_1"), SubResource("STEP_scene_vignette_de_tu_bi_loai_2"), SubResource("STEP_scene_vignette_de_tu_bi_loai_3")])
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_de_tu_bi_loai_0"), SubResource("STEP_scene_vignette_de_tu_bi_loai_1"), SubResource("STEP_scene_vignette_de_tu_bi_loai_2"), SubResource("STEP_scene_vignette_de_tu_bi_loai_3"), SubResource("STEP_scene_vignette_de_tu_bi_loai_4")])
+backdrop_ref = "res://assets/ui/aetheria/origins/origin_de_tu_bi_loai.webp"
 
 [sub_resource type="Resource" id="STEP_scene_vignette_ho_tieu_0"]
 script = ExtResource("s_story_scene_step_data")
@@ -235,11 +243,19 @@ text_key = &"STORY_SCENE_VIGNETTE_HO_TIEU_3"
 sub_key = &""
 speaker_id = &""
 
+[sub_resource type="Resource" id="STEP_scene_vignette_ho_tieu_4"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_HO_TIEU_4"
+sub_key = &""
+speaker_id = &""
+
 [sub_resource type="Resource" id="SCENE_scene_vignette_ho_tieu"]
 script = ExtResource("s_story_scene_data")
 id = &"scene_vignette_ho_tieu"
 elsewhere = true
-steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_ho_tieu_0"), SubResource("STEP_scene_vignette_ho_tieu_1"), SubResource("STEP_scene_vignette_ho_tieu_2"), SubResource("STEP_scene_vignette_ho_tieu_3")])
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_ho_tieu_0"), SubResource("STEP_scene_vignette_ho_tieu_1"), SubResource("STEP_scene_vignette_ho_tieu_2"), SubResource("STEP_scene_vignette_ho_tieu_3"), SubResource("STEP_scene_vignette_ho_tieu_4")])
+backdrop_ref = "res://assets/ui/aetheria/origins/origin_ho_tieu.webp"
 
 [sub_resource type="Resource" id="STEP_scene_vignette_lang_y_0"]
 script = ExtResource("s_story_scene_step_data")
@@ -269,11 +285,19 @@ text_key = &"STORY_SCENE_VIGNETTE_LANG_Y_3"
 sub_key = &""
 speaker_id = &""
 
+[sub_resource type="Resource" id="STEP_scene_vignette_lang_y_4"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_LANG_Y_4"
+sub_key = &""
+speaker_id = &""
+
 [sub_resource type="Resource" id="SCENE_scene_vignette_lang_y"]
 script = ExtResource("s_story_scene_data")
 id = &"scene_vignette_lang_y"
 elsewhere = true
-steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_lang_y_0"), SubResource("STEP_scene_vignette_lang_y_1"), SubResource("STEP_scene_vignette_lang_y_2"), SubResource("STEP_scene_vignette_lang_y_3")])
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_lang_y_0"), SubResource("STEP_scene_vignette_lang_y_1"), SubResource("STEP_scene_vignette_lang_y_2"), SubResource("STEP_scene_vignette_lang_y_3"), SubResource("STEP_scene_vignette_lang_y_4")])
+backdrop_ref = "res://assets/ui/aetheria/origins/origin_lang_y.webp"
 
 [sub_resource type="Resource" id="STEP_scene_vignette_nghe_nhan_0"]
 script = ExtResource("s_story_scene_step_data")
@@ -303,11 +327,19 @@ text_key = &"STORY_SCENE_VIGNETTE_NGHE_NHAN_3"
 sub_key = &""
 speaker_id = &""
 
+[sub_resource type="Resource" id="STEP_scene_vignette_nghe_nhan_4"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_NGHE_NHAN_4"
+sub_key = &""
+speaker_id = &""
+
 [sub_resource type="Resource" id="SCENE_scene_vignette_nghe_nhan"]
 script = ExtResource("s_story_scene_data")
 id = &"scene_vignette_nghe_nhan"
 elsewhere = true
-steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_nghe_nhan_0"), SubResource("STEP_scene_vignette_nghe_nhan_1"), SubResource("STEP_scene_vignette_nghe_nhan_2"), SubResource("STEP_scene_vignette_nghe_nhan_3")])
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_nghe_nhan_0"), SubResource("STEP_scene_vignette_nghe_nhan_1"), SubResource("STEP_scene_vignette_nghe_nhan_2"), SubResource("STEP_scene_vignette_nghe_nhan_3"), SubResource("STEP_scene_vignette_nghe_nhan_4")])
+backdrop_ref = "res://assets/ui/aetheria/origins/origin_nghe_nhan.webp"
 
 [sub_resource type="Resource" id="STEP_scene_vignette_thu_thu_0"]
 script = ExtResource("s_story_scene_step_data")
@@ -337,11 +369,19 @@ text_key = &"STORY_SCENE_VIGNETTE_THU_THU_3"
 sub_key = &""
 speaker_id = &""
 
+[sub_resource type="Resource" id="STEP_scene_vignette_thu_thu_4"]
+script = ExtResource("s_story_scene_step_data")
+kind = 1
+text_key = &"STORY_SCENE_VIGNETTE_THU_THU_4"
+sub_key = &""
+speaker_id = &""
+
 [sub_resource type="Resource" id="SCENE_scene_vignette_thu_thu"]
 script = ExtResource("s_story_scene_data")
 id = &"scene_vignette_thu_thu"
 elsewhere = true
-steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_thu_thu_0"), SubResource("STEP_scene_vignette_thu_thu_1"), SubResource("STEP_scene_vignette_thu_thu_2"), SubResource("STEP_scene_vignette_thu_thu_3")])
+steps = Array[ExtResource("s_story_scene_step_data")]([SubResource("STEP_scene_vignette_thu_thu_0"), SubResource("STEP_scene_vignette_thu_thu_1"), SubResource("STEP_scene_vignette_thu_thu_2"), SubResource("STEP_scene_vignette_thu_thu_3"), SubResource("STEP_scene_vignette_thu_thu_4")])
+backdrop_ref = "res://assets/ui/aetheria/origins/origin_thu_thu.webp"
 
 [resource]
 script = ExtResource("s_story_scene_catalog_data")

@@ -182,10 +182,31 @@ func ambience_id() -> StringName:
 	return beat.ambience_id if beat != null else &""
 
 
-## The current beat's objective key, or empty before a run begins.
+## The purpose line's key, or empty before a run begins: the Origin's open personal step while
+## the current beat is one it stands in for (the arrival), else the beat's own objective. The
+## personal step never blocks the beat — it only says WHY the player is here while the shared
+## story is still asking "find someone".
 func objective_key() -> StringName:
 	var beat := current_beat()
-	return beat.objective_key if beat != null else &""
+	if beat == null:
+		return &""
+	var who := origin()
+	var personal := personal_objective_key()
+	if who != null and personal != &"" and who.personal_beats.has(beat.id):
+		return personal
+	return beat.objective_key
+
+
+## This run's open personal step (`OriginData.personal_objective_keys`): the first whose done
+## condition does not hold yet, or empty once every one does. Read from the owners every time.
+func personal_objective_key() -> StringName:
+	var who := origin()
+	if who == null:
+		return &""
+	for i in mini(who.personal_objective_keys.size(), who.personal_done.size()):
+		if not condition_holds(who.personal_done[i]):
+			return who.personal_objective_keys[i]
+	return &""
 
 
 ## What flag `flag_id` reads: 0 when unset or undeclared, 0/1 for a BOOL, its count for an INT.
@@ -677,6 +698,7 @@ func content_errors(has_text: Callable = Callable(), has_knowledge: Callable = C
 					% [origin_entry.id, flag_id])
 		_ask(errors, has_scene, origin_entry.vignette_scene_id,
 			"%s: vignette '%s' is not a story scene" % [origin_entry.id, "%s"])
+		errors.append_array(_personal_step_errors(origin_entry, has_knowledge))
 		for grant in origin_entry.grants:
 			var where := String(origin_entry.id)
 			match grant.kind:
@@ -690,6 +712,34 @@ func content_errors(has_text: Callable = Callable(), has_knowledge: Callable = C
 					_ask_character(errors, resolve_character, grant.character_id, where)
 					_ask(errors, has_dimension, grant.dimension,
 						"%s: '%s' is not a relationship dimension" % [where, "%s"])
+	return errors
+
+
+## An Origin's personal steps must name things that exist: a beat to stand in for, and for each
+## step a declared flag or a piece of knowledge in the catalog. A step that can never be met
+## would hold the purpose line on one sentence for the whole arrival.
+func _personal_step_errors(origin_entry: OriginData, has_knowledge: Callable) -> Array[String]:
+	var errors: Array[String] = []
+	for beat_id in origin_entry.personal_beats:
+		if _catalog.beat(beat_id) == null:
+			errors.append("%s: personal steps stand in for '%s', which is not a beat"
+				% [origin_entry.id, beat_id])
+	for done in origin_entry.personal_done:
+		if done == null:
+			continue
+		match done.kind:
+			StoryConditionData.Kind.KNOWS:
+				_ask(errors, has_knowledge, done.knowledge_id,
+					"%s personal step: knowledge '%s' is not in the catalog"
+					% [origin_entry.id, "%s"])
+			StoryConditionData.Kind.FLAG:
+				if _catalog.flag(done.flag_id) == null:
+					errors.append("%s personal step: flag '%s' is not declared"
+						% [origin_entry.id, done.flag_id])
+			StoryConditionData.Kind.CHOICE:
+				if _catalog.choice(done.choice_id) == null:
+					errors.append("%s personal step: '%s' is not a choice"
+						% [origin_entry.id, done.choice_id])
 	return errors
 
 

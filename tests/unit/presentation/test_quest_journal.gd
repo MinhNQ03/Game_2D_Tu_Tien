@@ -6,6 +6,8 @@ extends TestCase
 
 const HUDScript := preload("res://src/presentation/hud/gameplay_hud.gd")
 const QUESTS := "res://data/quests/quest_catalog.tres"
+const STORY := "res://data/story/story_catalog.tres"
+const ORIGINS := "res://data/story/origin_catalog.tres"
 
 const VEIN := &"quest_unquiet_vein"
 const PILLS := &"quest_treeline_pills"
@@ -168,18 +170,26 @@ func test_every_shipped_purpose_line_fits_one_row_in_both_languages() -> void:
 	var label := hud.find_child("Purpose", true, false) as Label
 	for code: String in ["vi", "en"]:
 		_use_language(code)
+		# The story speaks on the same line (beat objectives, and each Origin's personal
+		# steps while it is arriving — experience upgrade): it is held to the same row.
+		var keys: Array[StringName] = []
 		for quest in catalog.entries:
-			for key: StringName in [quest.lead_key, quest.goal_key, quest.return_key]:
-				view.purpose_key = key
-				hud.set_quest_view(view)
-				await scene_tree.process_frame
-				var needed := label.get_theme_font("font").get_string_size(label.text,
-					HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
-				assert_true(needed <= label.size.x + 0.5,
-					"[%s] '%s' needs %.0f px and the plaque row has %.0f"
-						% [code, label.text, needed, label.size.x])
-				assert_eq(label.get_line_count(), 1, "[%s] '%s' is one row" % [code, label.text])
-				assert_ne(label.text, String(key), "[%s] %s is translated" % [code, key])
+			keys.append_array([quest.lead_key, quest.goal_key, quest.return_key])
+		for beat in (load(STORY) as StoryCatalogData).all_beats():
+			keys.append(beat.objective_key)
+		for origin in (load(ORIGINS) as OriginCatalogData).entries:
+			keys.append_array(origin.personal_objective_keys)
+		for key: StringName in keys:
+			view.purpose_key = key
+			hud.set_quest_view(view)
+			await scene_tree.process_frame
+			var needed := label.get_theme_font("font").get_string_size(label.text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
+			assert_true(needed <= label.size.x + 0.5,
+				"[%s] '%s' needs %.0f px and the plaque row has %.0f"
+					% [code, label.text, needed, label.size.x])
+			assert_eq(label.get_line_count(), 1, "[%s] '%s' is one row" % [code, label.text])
+			assert_ne(label.text, String(key), "[%s] %s is translated" % [code, key])
 	_use_language("vi")
 	free_node(hud)
 

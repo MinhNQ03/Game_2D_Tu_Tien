@@ -1392,6 +1392,8 @@ func _push_chronicle_view_to_active_map() -> void:
 	view.origin_edge_key = told.origin_edge_key
 	view.origin_cost_key = told.origin_cost_key
 	view.origin_goal_key = told.origin_goal_key
+	view.origin_why_here_key = told.origin_why_here_key
+	view.personal_objective_key = told.personal_objective_key
 	view.noticed = told.noticed
 	# The numbers combat itself reads, from the player's own stat owner (never recomputed).
 	if _player != null and is_instance_valid(_player) and _player.has_method("get_attack_power"):

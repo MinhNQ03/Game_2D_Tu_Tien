@@ -13,6 +13,9 @@ var origin_goal_key: StringName = &""
 var origin_problem_key: StringName = &""
 var origin_edge_key: StringName = &""
 var origin_cost_key: StringName = &""
+## Why this Origin came to Lạc Hà, and the personal step still open (empty once all are met).
+var origin_why_here_key: StringName = &""
+var personal_objective_key: StringName = &""
 ## Record keys of the beats completed (oldest first) and of the options chosen.
 var records: Array[StringName] = []
 var decisions: Array[StringName] = []

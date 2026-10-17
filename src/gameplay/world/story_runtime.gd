@@ -45,6 +45,8 @@ var _inventory: InventoryRuntime = null
 var _service: StoryService = null
 var _scenes: StorySceneCatalogData = null
 var _session_active: bool = false
+## What the purpose line said at the last `view_changed` (see `_apply`).
+var _shown_objective_key: StringName = &""
 
 ## The scene on screen and its step, or null. Runtime-only.
 var _scene: StorySceneData = null
@@ -289,9 +291,19 @@ func note_cultivated() -> StoryOutcome:
 
 ## Announce what a call to the service did, AFTER it was committed, and show the scene the
 ## story has now arrived at. Returns the outcome unchanged.
+##
+## The PURPOSE LINE is derived (experience upgrade): an Origin's personal step can be met by a
+## piece of knowledge or a flag while the beat stays where it is. So a call that moved no beat
+## still announces a new view when what the line would say has changed — and only then.
 func _apply(outcome: StoryOutcome) -> StoryOutcome:
-	if outcome == null or not outcome.ok or not outcome.moved():
+	if outcome == null or not outcome.ok:
 		return outcome
+	if not outcome.moved():
+		if _service.objective_key() != _shown_objective_key:
+			_shown_objective_key = _service.objective_key()
+			view_changed.emit()
+		return outcome
+	_shown_objective_key = _service.objective_key()
 	for beat_id in outcome.completed:
 		beat_completed.emit(beat_id)
 	if outcome.chapter_changed:
@@ -370,6 +382,7 @@ func build_scene_view() -> StorySceneView:
 	view.step_index = _step
 	view.step_count = _scene.steps.size()
 	view.elsewhere = _scene.elsewhere
+	view.backdrop_ref = _scene.backdrop_ref
 	view.kind = step.kind
 	view.text_key = step.text_key
 	view.sub_key = step.sub_key
@@ -395,6 +408,8 @@ func build_view() -> StoryView:
 		view.origin_problem_key = origin.problem_key
 		view.origin_edge_key = origin.edge_key
 		view.origin_cost_key = origin.cost_key
+		view.origin_why_here_key = origin.why_here_key
+	view.personal_objective_key = _service.personal_objective_key()
 	var state := _service.state()
 	for beat_id in state.completed_beats:
 		var beat := _service.catalog().beat(beat_id)

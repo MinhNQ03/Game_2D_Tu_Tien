@@ -304,9 +304,12 @@ func test_a_run_opens_on_its_origins_vignette_then_the_arrival() -> void:
 	assert_eq(view.scene_id, &"scene_vignette_thu_thu", "the run's own vignette")
 	assert_eq(view.kind, StorySceneStepData.Kind.CARD, "which opens on where and when")
 	assert_true(view.elsewhere, "and is somewhere else: the map is covered")
-	assert_eq([view.step_index, view.step_count], [0, 4], "step 1 of 4")
+	assert_eq([view.step_index, view.step_count], [0, 5],
+		"step 1 of 5: where and when, what happened, and why the road leads here")
+	assert_eq(view.backdrop_ref, rig.story.get_service().origin().art_ref,
+		"staged over the Origin's own illustration, not the bare ink ground")
 	assert_eq(rig.story.get_service().state().beat_id, &"beat_road", "the first beat")
-	for step in 3:
+	for step in 4:
 		rig.story.advance_scene()
 		assert_eq(rig.story.build_scene_view().step_index, step + 1, "one step per request")
 	rig.story.advance_scene()
@@ -783,4 +786,28 @@ func test_what_hears_a_lesson_inside_a_decision_cannot_decide_again() -> void:
 		"announced after it was whole: the decision, then the beat it completed, once each")
 	assert_false(rig.committed_when_heard.has(false), "each already true when it was heard")
 	assert_eq(service.state().beat_id, &"beat_stake_line", "and the story went on")
+	_free(rig)
+
+
+## THE PURPOSE LINE FOLLOWS A LEAD THAT MOVES NO BEAT (experience upgrade; found by the story
+## E2E): an Origin's personal step is met by something LEARNED while the beat stays where it is.
+## The runtime must still announce a new view — once — or the HUD keeps saying the old step.
+func test_a_personal_step_met_without_a_beat_moving_still_announces_the_new_purpose() -> void:
+	var rig := _rig()
+	_start(rig, &"origin_thu_thu")
+	_skip_all(rig)
+	var service := rig.story.get_service()
+	assert_eq(service.objective_key(), &"STORY_PERSONAL_THU_THU_1", "arriving: the lead")
+	var heard := [0]
+	rig.story.view_changed.connect(func() -> void: heard[0] += 1)
+	rig.knowledge.grant(&"know_mentor_mark", &"test")
+	assert_eq(service.state().beat_id, &"beat_arrival", "no beat moved")
+	assert_eq(service.objective_key(), &"STORY_PERSONAL_THU_THU_2", "the purpose did")
+	assert_eq(heard[0], 1, "and the change was announced once")
+	rig.story.set_flag(&"flag_te_origin_said", 1)
+	assert_eq(service.objective_key(), service.current_beat().objective_key,
+		"both leads followed: the beat's own objective")
+	assert_eq(heard[0], 2, "announced once more")
+	rig.story.set_flag(&"flag_te_origin_said", 1)
+	assert_eq(heard[0], 2, "a call that changes nothing announces nothing")
 	_free(rig)

@@ -48,6 +48,22 @@ func test_the_shipped_catalogs_are_valid() -> void:
 	assert_eq(_origins().validation_errors(), [] as Array[String], "the origins validate")
 
 
+## Every shipped Origin tells its whole story on the identity screen (experience upgrade): who
+## they were, why the road leads to Lạc Hà, the first lead, where it may go, its picture, and
+## at least one personal step for the arrival — in both languages, with a picture that loads.
+func test_every_shipped_origin_carries_its_whole_card() -> void:
+	var translated := _translated()
+	for origin in _origins().entries:
+		assert_eq(origin.card_errors(), [] as Array[String], "%s card is complete" % origin.id)
+		for key in origin.card_keys():
+			assert_true(translated.get(String(key), false), "%s: '%s' in both languages"
+				% [origin.id, key])
+		assert_true(ResourceLoader.exists(origin.art_ref), "%s: '%s' exists"
+			% [origin.id, origin.art_ref])
+		assert_not_null(load(origin.art_ref) as Texture2D, "%s: the picture loads as a texture"
+			% origin.id)
+
+
 func test_the_five_origins_match_canon_byte_for_byte() -> void:
 	var expected: Array[String] = ["origin_ho_tieu", "origin_de_tu_bi_loai", "origin_lang_y",
 		"origin_nghe_nhan", "origin_thu_thu"]
@@ -157,11 +173,17 @@ func test_the_prologue_can_be_walked_to_act_one_down_both_branches() -> void:
 		assert_eq(state.beat_id, &"beat_road", "on the road")
 		service.note(K.SCENE_ENDED, &"any_scene")
 		assert_eq(state.beat_id, &"beat_arrival", "then arriving")
+		assert_eq(service.objective_key(), &"STORY_PERSONAL_LANG_Y_1",
+			"arriving, the purpose line is the healer's own lead, not 'find someone'")
 		service.meet(&"actor_elder_shen")
 		assert_eq(state.beat_id, &"beat_contacts", "one person met: now meet the rest")
 		service.meet(&"actor_disciple_lin")
 		service.meet(&"actor_scout_ko")
 		assert_eq(state.beat_id, &"beat_village_business", "all three met")
+		assert_eq(service.personal_objective_key(), &"STORY_PERSONAL_LANG_Y_1",
+			"the lead was never followed, and it is still open")
+		assert_eq(service.objective_key(), service.current_beat().objective_key,
+			"but it never holds the shared story: past the arrival the beat speaks again")
 		service.set_flag(&"flag_heard_village_business", 1)
 		assert_eq(state.beat_id, &"beat_confidence", "the village's business was heard")
 		assert_eq(service.choose(&"choice_night_stand", &"stood").reason,

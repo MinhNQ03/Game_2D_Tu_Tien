@@ -67,9 +67,19 @@ func test_the_identity_screen_offers_every_look_and_all_five_origins() -> void:
 	assert_eq(origins.size(), 5, "and the five Origins of canon")
 	assert_eq(screen.selected_origin_id(), &"origin_ho_tieu", "the first Origin is chosen")
 	assert_eq(screen.selected_appearance_id(), &"appearance_wanderer_m", "and the first look")
-	for button: Button in looks + origins:
-		assert_false(button.text.contains("ORIGIN_") or button.text.contains("APPEARANCE_"),
-			"no raw key is shown ('%s')" % button.text)
+	for button: Button in looks:
+		assert_false(button.text.contains("APPEARANCE_"), "no raw key ('%s')" % button.text)
+	for origin in (load(ORIGINS_PATH) as OriginCatalogData).entries:
+		var card := screen.card_name_text(origin.id)
+		assert_true(card != "" and not card.contains("ORIGIN_"),
+			"each card names its Origin in words ('%s')" % card)
+		var tagline := (screen.find_child("Origin_%s" % origin.id, true, false)
+			.find_child("Tagline", true, false) as Label).text
+		assert_true(tagline != "" and not tagline.contains("ORIGIN_"),
+			"and says its one line ('%s')" % tagline)
+		var thumb := screen.find_child("Origin_%s" % origin.id, true, false) \
+			.find_child("Thumb", true, false) as TextureRect
+		assert_not_null(thumb.texture, "%s: the card shows its picture" % origin.id)
 	free_node(screen)
 	scene_tree.root.get_node("InputService").call("set_menu_context")
 
@@ -92,13 +102,24 @@ func test_the_cursor_looks_and_accept_chooses_and_the_choice_is_marked_in_words(
 	assert_eq((screen.find_child("OriginCost", true, false) as Label).text,
 		_text("ORIGIN_LANG_Y_COST"), "and what it costs")
 	assert_eq(screen.selected_origin_id(), &"origin_ho_tieu", "but nothing was chosen by looking")
-	assert_true(escort.text.begins_with(IdentityScreen.CHOSEN_MARK),
+	assert_true(screen.card_name_text(&"origin_ho_tieu").begins_with(IdentityScreen.CHOSEN_MARK),
 		"the mark stays on what IS chosen")
+	for key: String in ["ORIGIN_LANG_Y_PAST", "ORIGIN_LANG_Y_GOAL", "ORIGIN_LANG_Y_WHY_HERE",
+			"ORIGIN_LANG_Y_LEAD", "ORIGIN_LANG_Y_HORIZON"]:
+		var shown := false
+		for label: Label in screen.find_child("Detail", true, false).find_children("*", "Label",
+				true, false):
+			shown = shown or label.text == _text(key)
+		assert_true(shown, "the detail tells the whole past: %s" % key)
 	healer.pressed.emit()
 	assert_eq(screen.selected_origin_id(), &"origin_lang_y", "accept chose the healer")
-	assert_true(healer.text.begins_with(IdentityScreen.CHOSEN_MARK), "and it is marked")
-	assert_false(escort.text.begins_with(IdentityScreen.CHOSEN_MARK),
+	assert_true(screen.card_name_text(&"origin_lang_y").begins_with(IdentityScreen.CHOSEN_MARK),
+		"and it is marked")
+	assert_false(screen.card_name_text(&"origin_ho_tieu").begins_with(IdentityScreen.CHOSEN_MARK),
 		"the one left behind is no longer marked")
+	assert_true((healer.find_child("ChosenFrame", true, false) as Control).visible
+		and not (escort.find_child("ChosenFrame", true, false) as Control).visible,
+		"the gold frame moved with the choice")
 
 	var woman := screen.find_child("Look_appearance_wanderer_f", true, false) as Button
 	var portrait := screen.find_child("Portrait", true, false) as TextureRect
@@ -221,10 +242,19 @@ func test_the_identity_screen_fits_the_screen_for_every_origin_in_both_languages
 			assert_true(rect.position.x >= 0.0 and rect.position.y >= 0.0
 				and rect.end.x <= VIEWPORT.x and rect.end.y <= VIEWPORT.y,
 				"[%s] %s: the plaque (%s) is inside the screen" % [code, origin.id, rect])
-			for name: String in ["OriginProblem", "OriginEdge", "OriginCost"]:
+			for name: String in ["OriginPast", "OriginProblem", "OriginGoal", "OriginWhyHere",
+					"OriginLead", "OriginHorizon", "OriginEdge", "OriginCost", "Summary", "Hint"]:
 				var label := screen.find_child(name, true, false) as Label
-				assert_true(plaque.get_global_rect().encloses(label.get_global_rect()),
-					"[%s] %s: %s is inside the plaque, not cut off" % [code, origin.id, name])
+				var box := label.get_global_rect()
+				assert_true(box.end.y <= VIEWPORT.y and box.position.x >= 0.0
+					and box.end.x <= VIEWPORT.x,
+					"[%s] %s: %s (%s) is on screen, not cut off" % [code, origin.id, name, box])
+				assert_true(label.get_line_count() <= label.get_visible_line_count()
+					or label.get_visible_line_count() < 0,
+					"[%s] %s: every line of %s is visible" % [code, origin.id, name])
+			var begin := screen.find_child("Begin", true, false) as Control
+			assert_true(begin.get_global_rect().end.y <= VIEWPORT.y,
+				"[%s] %s: Set out is on screen" % [code, origin.id])
 		holder.remove_child(screen)
 		screen.free()
 	free_node(holder)

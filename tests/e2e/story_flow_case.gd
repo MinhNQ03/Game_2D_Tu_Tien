@@ -202,15 +202,17 @@ func test_real_story_flow() -> void:
 	assert_true(panel.covers_the_map(), "it is somewhere else: the village is covered")
 	assert_eq(panel.place_text(), String(loc.call("t", "STORY_SCENE_VIGNETTE_THU_THU_PLACE")),
 		"it is THIS Origin's vignette, opening on where and when")
-	assert_eq(panel.pips_text(), "1 / 4", "step 1 of 4")
+	assert_eq(panel.pips_text(), "1 / 5",
+		"step 1 of 5: where and when, what happened, and why the road leads here")
+	assert_true(panel.shows_picture(), "staged over this past's own picture (experience upgrade)")
 	assert_eq(hud.notice_text(), "",
 		"what the Origin already knew is not announced as something just learned")
 	var at := player.global_position
 	await _fire_action(MOVE_RIGHT)
 	await scene_tree.physics_frame
 	assert_eq(player.global_position, at, "the player cannot walk under a scene")
-	await _press_until(INTERACT, func() -> bool: return panel.pips_text() != "1 / 4")
-	assert_eq(panel.pips_text(), "2 / 4", "ONE real interact showed ONE more step")
+	await _press_until(INTERACT, func() -> bool: return panel.pips_text() != "1 / 5")
+	assert_eq(panel.pips_text(), "2 / 5", "ONE real interact showed ONE more step")
 	assert_eq(panel.body_text(), String(loc.call("t", "STORY_SCENE_VIGNETTE_THU_THU_1")),
 		"the first line of the memory")
 	assert_eq(story.get_service().state().beat_id, &"beat_road", "the beat has not moved yet")
@@ -263,8 +265,8 @@ func test_real_story_flow() -> void:
 		"the run began on the west road, where the cart let the player down")
 	assert_eq(service.state().beat_id, &"beat_arrival", "the story waits for a first meeting")
 	assert_eq([hud.purpose_source(), hud.purpose_text()], [GameplayHUD.PURPOSE_FROM_STORY,
-		String(loc.call("t", "STORY_BEAT_ARRIVAL_OBJECTIVE"))],
-		"the plaque says what the STORY asks next, not a quest nobody has taken on")
+		String(loc.call("t", "STORY_PERSONAL_THU_THU_1"))],
+		"the plaque says what THIS PERSON came for (experience upgrade), not 'find someone'")
 	assert_false((hub.get_node("KnowledgeSources/SurveySheet") as Node2D).visible,
 		"nothing is hidden under the stele yet: the Night has not happened")
 	# The Chronicle's key is TAUGHT (D-073 §4, H21-10): once, when the book first has
@@ -288,6 +290,10 @@ func test_real_story_flow() -> void:
 	await _advance_to(&"lin_hub")
 	assert_false(_panel.choice_ids().has(&"lin_notation"),
 		"a line said once is not offered again")
+	assert_true(knowledge.get_service().knows(&"know_mentor_mark"),
+		"what she said about the mark is KNOWN (the Knowledge Core), not just heard")
+	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_PERSONAL_THU_THU_2")),
+		"and the purpose line follows the lead she gave: the carter's waybill")
 	await _say(&"lin_leave", &"")
 	await _wait_until(func() -> bool: return hud.notice_text() == chronicle_hint, 600)
 	assert_eq(hud.notice_text(), chronicle_hint,
@@ -321,6 +327,8 @@ func test_real_story_flow() -> void:
 	await _say(&"te_ledger", &"te_ledger_line")
 	await _advance_to(&"te_hub")
 	await _say(&"te_leave", &"")
+	assert_eq(hud.purpose_text(), String(loc.call("t", "STORY_BEAT_CONTACTS_OBJECTIVE")),
+		"both leads followed: the purpose line is the shared story's again")
 	assert_eq(service.state().beat_id, &"beat_contacts", "two met: still getting to know them")
 	var shen := hub.get_node_or_null("Interactables/ShenBuqi") as WorldNpc
 	await _talk_to(player, hub, shen, Vector2(30, 0))

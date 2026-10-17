@@ -312,6 +312,65 @@ func test_each_origin_notices_its_own_thing_about_the_carters_load_once() -> voi
 			"%s notices it once" % origin_id)
 
 
+## THE LEADS (experience upgrade): every Origin arrives with two personal steps, named on the
+## purpose line in turn. Each step is ONE answer, offered to that Origin alone — a person who
+## recognises who the player was (a greeting of their own, or a line in her hub), or the cart
+## the player rode in on — and what it tells is handed to an owner (knowledge, or the Origin's
+## observation), which is exactly the step's done condition. Putting a greeting off ("something
+## else first") loses nothing: it comes back until it is asked. With both done, the purpose
+## line is the shared story's again.
+const LEAD_STEPS := {
+	&"origin_ho_tieu": [[SHEN, &"shen_convoy_open", &"shen_convoy"], [TE, &"te_hub", &"te_knot"]],
+	&"origin_de_tu_bi_loai": [[LIN, &"lin_hub", &"lin_rival"], [TE, &"te_hub", &"te_seats"]],
+	&"origin_lang_y": [[TE, &"te_hub", &"te_hands"], [KO, &"ko_haul_open", &"ko_haul"]],
+	&"origin_nghe_nhan": [[TE, &"te_hub", &"te_mark"], [KO, &"ko_notch_open", &"ko_notch"]],
+	&"origin_thu_thu": [[LIN, &"lin_hub", &"lin_notation"], [TE, &"te_hub", &"te_ledger"]],
+}
+
+
+func test_each_origin_walks_its_own_two_leads_and_then_the_shared_story() -> void:
+	var all_answers: Array[StringName] = []
+	for origin_id: StringName in LEAD_STEPS:
+		for step: Array in LEAD_STEPS[origin_id]:
+			all_answers.append(step[2])
+	for origin_id: StringName in LEAD_STEPS:
+		_begin_story(origin_id)
+		_story.note(StoryTriggerData.Kind.SCENE_ENDED, &"")  # the vignette ends: arriving
+		var who: OriginData = _story.origin()
+		var steps: Array = LEAD_STEPS[origin_id]
+		for i in steps.size():
+			var speaker: StringName = steps[i][0]
+			var node: StringName = steps[i][1]
+			var answer: StringName = steps[i][2]
+			assert_eq(_story.objective_key(), who.personal_objective_keys[i],
+				"%s: step %d is on the purpose line" % [origin_id, i + 1])
+			var dialogue := _service.catalog().dialogue_of_speaker(speaker)
+			if String(node).ends_with("_open"):
+				assert_eq(_service.opening_node_id(dialogue.id, PLAYER), node,
+					"%s: %s recognises who the player was" % [origin_id, speaker])
+				assert_true(_choose(dialogue.id, node, StringName(String(answer) + "_later")).ok,
+					"%s can put it off" % origin_id)
+				assert_eq(_story.objective_key(), who.personal_objective_keys[i],
+					"putting it off changes nothing")
+				assert_eq(_service.opening_node_id(dialogue.id, PLAYER), node,
+					"and the greeting comes back")
+			for other in all_answers:
+				if _ids(dialogue.id, node).has(other):
+					assert_eq(other, answer, "%s is offered only its own lead, not %s"
+						% [origin_id, other])
+			assert_true(_ids(dialogue.id, node).has(answer),
+				"%s is offered %s" % [origin_id, answer])
+			assert_true(_choose(dialogue.id, node, answer).ok, "%s asks" % origin_id)
+			assert_true(_story.condition_holds(who.personal_done[i]),
+				"%s: what was said is now held by its owner" % origin_id)
+			assert_false(_ids(dialogue.id, node).has(answer), "%s asks it once" % origin_id)
+			assert_ne(_service.opening_node_id(dialogue.id, PLAYER), node,
+				"and nobody greets them with it again")
+		assert_eq(_story.personal_objective_key(), &"", "%s: both leads followed" % origin_id)
+		assert_eq(_story.objective_key(), _story.current_beat().objective_key,
+			"and the purpose line is the shared story's again")
+
+
 func test_the_rejected_disciple_and_lin_know_each_other() -> void:
 	var dialogue := _service.catalog().dialogue_of_speaker(LIN)
 	assert_false(_ids(dialogue.id, &"lin_hub").has(&"lin_rival"), "an artisan never sat the trial")
@@ -482,6 +541,11 @@ func test_the_door_is_answered_by_each_person_once_and_by_her_in_two_ways() -> v
 ## it. Each of the three opens on the trail line only while that line has an answer other
 ## than "speak of something else", and on their ordinary hub once it has none — whichever
 ## order the lines were said in, and for every Origin's extra line.
+## The greetings that recognise who the player was, and the answer that asks the lead.
+const LEAD_GREETINGS := {&"shen_convoy_open": &"shen_convoy", &"ko_haul_open": &"ko_haul",
+	&"ko_notch_open": &"ko_notch"}
+
+
 func test_someone_with_no_trail_line_left_opens_on_their_hub() -> void:
 	var hubs := {DLG_LIN: &"lin_hub", DLG_KO: &"ko_hub", DLG_SHEN: &"shen_hub"}
 	for origin_id: StringName in [&"origin_lang_y", &"origin_thu_thu", &"origin_nghe_nhan",
@@ -508,6 +572,15 @@ func test_someone_with_no_trail_line_left_opens_on_their_hub() -> void:
 								"%s, %s: %s opens on '%s' with %d line(s) left to say"
 								% [run, stage, pair[0], opens_on, real.size()])
 							if real.is_empty():
+								# An Origin's unasked lead (experience upgrade) is something
+								# left to say, not a dead line: it is answered, and then the
+								# person has nothing left and opens on the hub.
+								if LEAD_GREETINGS.has(opens_on):
+									assert_true(_choose(pair[0], opens_on,
+										LEAD_GREETINGS[opens_on]).ok,
+										"%s, %s: the unasked lead '%s' is answered"
+										% [run, stage, opens_on])
+									opens_on = _service.opening_node_id(pair[0], PLAYER)
 								assert_eq(opens_on, hubs[pair[0]],
 									"%s, %s: with nothing left, %s opens on the hub itself"
 									% [run, stage, pair[0]])

@@ -15,6 +15,9 @@ const MAX_STEPS := 6
 ## because showing the village behind "three months ago, on the post road" would be a lie.
 @export var elsewhere: bool = false
 @export var steps: Array[StorySceneStepData] = []
+## An ELSEWHERE scene may be staged over an illustration of that place (a `res://` texture
+## path): the past is shown, not only told. Empty = the bare ink ground. Presentation only.
+@export var backdrop_ref: String = ""
 
 
 func text_keys() -> Array[StringName]:
@@ -42,6 +45,9 @@ func validation_errors() -> Array[String]:
 		errors.append("scene '%s' has no steps" % id)
 	if steps.size() > MAX_STEPS:
 		errors.append("scene '%s' has %d steps; the ceiling is %d" % [id, steps.size(), MAX_STEPS])
+	if backdrop_ref != "" and not elsewhere:
+		errors.append("scene '%s' has a backdrop but happens HERE; the live map is its ground"
+			% id)
 	for i in steps.size():
 		var step := steps[i]
 		if step == null:

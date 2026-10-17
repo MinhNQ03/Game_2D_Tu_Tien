@@ -131,7 +131,13 @@ HINTS = {"beat_arrival": ("UI_CHRONICLE_HINT", "chronicle")}
 def vignette(stem):
     key = "STORY_SCENE_VIGNETTE_%s_" % stem
     return [(S_CARD, key + "PLACE", key + "TIME", "")] + [
-        (S_CAPTION, key + str(i), "", "") for i in (1, 2, 3)]
+        (S_CAPTION, key + str(i), "", "") for i in (1, 2, 3, 4)]
+
+
+# The illustration an Origin's card shows and its vignette is staged over (experience upgrade):
+# painted-tier story art, one per Origin, built by tools/aetheria_art_pipeline (`build.py
+# origins`). Presentation only.
+ORIGIN_ART = "res://assets/ui/aetheria/origins/%s.webp"
 
 
 # scene id -> [(kind, text_key, sub_key, speaker_id)]
@@ -212,6 +218,23 @@ ACT_ONE = [
 ]
 STANDING = ("beat_standing", "STANDING", "NARRATIVE_MASTER_PLAN.md §8 Act I: KẺ VÔ DANH")
 
+# What each Origin goes looking for in the first hour (experience upgrade): ordered steps, each
+# (done when: (kind, id)), the first unmet one is the purpose line while the run is still
+# arriving. One step is a person the vignette points at, done when what they say is KNOWN
+# (the Knowledge Core, granted by the conversation); the other is the carter's load, done when
+# this Origin's carter observation has been made. Which comes first depends on the past.
+# Neither blocks a beat: the shared objective returns when the story moves past the arrival.
+PERSONAL_BEATS = ["beat_arrival", "beat_contacts"]
+PERSONAL = {
+    "origin_ho_tieu": ["know_convoy_report", "flag_te_origin_said"],
+    "origin_de_tu_bi_loai": ["know_trial_board", "flag_te_origin_said"],
+    # The healer and the artisan rode in on the very cart their trouble came down on: they
+    # look first, and the watchman - who has seen them looking - tells them what it means.
+    "origin_lang_y": ["flag_te_origin_said", "know_grey_hands"],
+    "origin_nghe_nhan": ["flag_te_origin_said", "know_three_notch"],
+    "origin_thu_thu": ["know_mentor_mark", "flag_te_origin_said"],
+}
+
 # (id, key stem, [grants]); a grant is (kind, payload..., reason)
 ORIGINS = [
     ("origin_ho_tieu", "HO_TIEU", [
@@ -251,9 +274,12 @@ OBSERVATIONS = [("flag_te_origin_said", "CARTER"), ("flag_trail_origin_said", "T
 # Scenes that happen somewhere else (the map behind them is covered): every vignette.
 # Scenes that happen somewhere or somewhen else are drawn over an opaque ground.
 ELSEWHERE = {"scene_morning_after", "scene_road_ahead"}
+# An elsewhere scene may be staged over an illustration instead of the bare ink ground.
+BACKDROPS = {}
 for _oid, _stem, _grants in ORIGINS:
     SCENES["scene_vignette_%s" % _oid[len("origin_"):]] = vignette(_stem)
     ELSEWHERE.add("scene_vignette_%s" % _oid[len("origin_"):])
+    BACKDROPS["scene_vignette_%s" % _oid[len("origin_"):]] = ORIGIN_ART % _oid
 
 
 def sn(value):
@@ -385,7 +411,8 @@ def story_catalog():
 
 
 def origin_catalog():
-    doc = Doc("OriginCatalogData", ["origin_catalog_data", "origin_data", "origin_grant_data"])
+    doc = Doc("OriginCatalogData", ["origin_catalog_data", "origin_data", "origin_grant_data",
+                                    "story_condition_data"])
     entries = []
     for oid, stem, grants in ORIGINS:
         refs = []
@@ -402,10 +429,24 @@ def origin_catalog():
             fields.append(("reason", '"%s"' % reason))
             refs.append(doc.sub("origin_grant_data", "G_%s_%d" % (oid, i), fields))
         key = "ORIGIN_%s_" % stem
+        done_refs = []
+        for i, subject in enumerate(PERSONAL[oid]):
+            fields = ([("kind", C_KNOWS), ("knowledge_id", sn(subject))]
+                      if subject.startswith("know_") else
+                      [("kind", C_FLAG), ("flag_id", sn(subject))])
+            done_refs.append(doc.sub("story_condition_data", "P_%s_%d" % (oid, i), fields))
         entries.append(doc.sub("origin_data", "ORIGIN_%s" % oid, [
             ("id", sn(oid)), ("name_key", sn(key + "NAME")),
             ("problem_key", sn(key + "PROBLEM")), ("edge_key", sn(key + "EDGE")),
             ("cost_key", sn(key + "COST")), ("goal_key", sn(key + "GOAL")),
+            ("tagline_key", sn(key + "TAGLINE")), ("past_key", sn(key + "PAST")),
+            ("why_here_key", sn(key + "WHY_HERE")), ("lead_key", sn(key + "LEAD")),
+            ("horizon_key", sn(key + "HORIZON")),
+            ("art_ref", '"%s"' % (ORIGIN_ART % oid)),
+            ("personal_objective_keys", names("STORY_PERSONAL_%s_%d" % (stem, i + 1)
+                                              for i in range(len(PERSONAL[oid])))),
+            ("personal_done", doc.array("story_condition_data", done_refs)),
+            ("personal_beats", names(PERSONAL_BEATS)),
             ("vignette_scene_id", sn("scene_vignette_%s" % oid[len("origin_"):])),
             ("observation_flags", names(flag for flag, _stem in OBSERVATIONS)),
             ("observation_keys", names("STORY_NOTICED_%s_%s" % (place, stem)
@@ -427,7 +468,8 @@ def scene_catalog():
         entries.append(doc.sub("story_scene_data", "SCENE_%s" % scene_id, [
             ("id", sn(scene_id)),
             ("elsewhere", "true" if scene_id in ELSEWHERE else "false"),
-            ("steps", doc.array("story_scene_step_data", refs))]))
+            ("steps", doc.array("story_scene_step_data", refs))]
+            + ([("backdrop_ref", '"%s"' % BACKDROPS[scene_id])] if scene_id in BACKDROPS else [])))
     return doc.render("story_scene_catalog_data",
                       [("entries", doc.array("story_scene_data", entries))])
 

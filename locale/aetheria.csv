@@ -342,7 +342,7 @@ DLG_CHOICE_TASK_STAY,No — see it through,Không — làm cho xong
 DLG_CHOICE_TASK_ABANDON,Yes — give it back,Phải — xin trả việc
 DLG_SHEN_CHOICE_TASK_ASK,Ask what weighs on him,Hỏi điều trưởng lão bận lòng
 DLG_SHEN_TASK_WHY,"The stele's warning about the woods' vein is old, and mist wolves have been seen at its edge.","Lời bia nhắc về mạch rừng đã cũ, mà dạo này có người thấy Vụ Lang quanh mép mạch."
-DLG_SHEN_TASK_OFFER,"Have they settled on it? See for yourself — or ask the scout at the treeline, who watches them.","Chúng đã bám hẳn ở đó chưa? Tự đi mà xem — hoặc hỏi tay trinh sát ở bìa rừng, hắn canh chúng."
+DLG_SHEN_TASK_OFFER,"Have they settled on it? The watch cannot leave the treeline; you have no post. See, or ask the scout — and you stop being a stranger here.","Chúng chiếm chỗ ấy chưa? Người gác không rời bìa rừng; ngươi thì chẳng có chức phận. Đi xem, hoặc hỏi tay trinh sát — rồi ngươi thôi là người lạ ở đây."
 DLG_SHEN_CHOICE_TASK_ACCEPT,Agree to find out,Nhận lời đi xem
 DLG_SHEN_TASK_TAKEN,"Then go. Until I hear from you, no one from Lạc Hà crosses those woods.","Vậy đi đi. Chưa có tin của ngươi, người Lạc Hà chưa ai được băng rừng."
 DLG_SHEN_CHOICE_TASK_ABOUT,Speak of the woods' vein,Thưa chuyện mạch rừng
@@ -354,7 +354,7 @@ DLG_SHEN_CHOICE_TASK_REPORT_FIGHT,Tell what you met at the vein,Kể điều g�
 DLG_SHEN_TASK_DONE_WORD,So they hold where the vein surges and scatter when it falls. Then there are hours to cross. Take these from the hall's store.,"Vậy là mạch dâng thì chúng bám, mạch hụt thì chúng tản. Tức là có giờ băng rừng được. Cầm lấy, thuốc trong kho Thanh Đài."
 DLG_SHEN_TASK_DONE_FIGHT,"So they stand their ground there, and it took force to move one. Then no one crosses unarmed. Take these from the hall's store.","Vậy là chúng giữ chỗ ở đó, phải động thủ mới đuổi được một con. Vậy không ai được tay không băng rừng. Cầm lấy, thuốc trong kho Thanh Đài."
 DLG_KO_CHOICE_PILLS_ASK,Ask what he is short of,Hỏi hắn đang thiếu gì
-DLG_KO_PILLS_OFFER,"What I sell is my wage. The two pills Lạc Hà owes its watch have not come, and I cannot leave this crossing. Bring them; I pay in stone.","Hàng ta bán là tiền công của ta. Hai viên thuốc Lạc Hà nợ người gác vẫn chưa tới, mà ta không rời lối này được. Mang tới, ta trả bằng linh thạch."
+DLG_KO_PILLS_OFFER,"What I sell is my wage. The two pills Lạc Hà owes its watch have not come, and I cannot leave this crossing. Bring them; I pay in stone, and I remember who did.","Thứ ta bán là tiền công của ta. Hai viên thuốc Lạc Hà nợ người gác vẫn chưa tới, mà ta không rời chỗ này được. Mang tới đây; ta trả bằng đá, và ta nhớ ai đã mang."
 DLG_KO_CHOICE_PILLS_ACCEPT,Agree to bring them,Nhận lời mang tới
 DLG_KO_PILLS_TAKEN,Two Blood-Mending Pills. The hall leaves its issue out on the steps.,Hai viên Bổ Huyết Đan. Thanh Đài hay để phần phát ngoài bậc thềm.
 DLG_KO_CHOICE_PILLS_ABOUT,Speak of the pills,Nói chuyện mấy viên thuốc
@@ -405,11 +405,11 @@ STORY_CHAPTER_PROLOGUE_TITLE,Prologue · A Stranger in Lạc Hà,Mở đầu · 
 STORY_CHAPTER_KE_VO_DANH_TITLE,Act I · The Nameless,Hồi I · Kẻ Vô Danh
 STORY_BEAT_ROAD_OBJECTIVE,Remember why you left,Nhớ lại vì sao ngươi đi
 STORY_BEAT_ROAD_RECORD,You came to the Hoang Vực frontier carrying one trouble of your own.,"Ngươi tới biên thùy Hoang Vực, mang theo một mối bận lòng của riêng mình."
-STORY_BEAT_ARRIVAL_OBJECTIVE,Find someone to speak with,Tìm người để hỏi chuyện
+STORY_BEAT_ARRIVAL_OBJECTIVE,Find someone who knows,Tìm người biết chuyện
 STORY_BEAT_ARRIVAL_RECORD,You walked into Lạc Hà Village. Nobody was expecting you.,Ngươi bước vào Thôn Lạc Hà. Không ai chờ ngươi cả.
 STORY_BEAT_CONTACTS_OBJECTIVE,Meet the people of Lạc Hà,Làm quen với người ở Lạc Hà
 STORY_BEAT_CONTACTS_RECORD,"One outpost keeps this whole stretch of frontier: an elder, a disciple, a hired watchman — and a carter who belongs to none of them.","Cả dải biên thùy này chỉ có một tiền đồn trông coi: một trưởng lão, một đệ tử, một người gác thuê — và một lão phu xe chẳng thuộc về ai trong số họ."
-STORY_BEAT_BUSINESS_OBJECTIVE,Ask what the village needs,Hỏi xem làng đang cần gì
+STORY_BEAT_BUSINESS_OBJECTIVE,Earn the village's trust,Giúp làng để được tin
 STORY_BEAT_BUSINESS_RECORD,"Lạc Hà had business of its own long before you arrived, and you heard it out.","Lạc Hà có việc riêng của nó từ trước khi ngươi tới, và ngươi đã nghe."
 STORY_BEAT_CONFIDENCE_OBJECTIVE,Find Lin Yue by the spring,Tìm Lâm Nguyệt bên suối
 STORY_BEAT_CONFIDENCE_RECORD,You decided whose word to keep.,Ngươi đã quyết định giữ lời với ai.
@@ -436,7 +436,7 @@ STORY_CHOICE_NIGHT_STAND_STOOD,You stood your ground until the last of the madde
 STORY_CHOICE_NIGHT_STAND_WITHDREW,"You fell back to the village, and the watch held the treeline without you.","Ngươi lui về làng, để người gác một mình giữ bìa rừng."
 ORIGIN_HO_TIEU_NAME,Failed Escort,Hộ Tiêu Thất Bại
 ORIGIN_HO_TIEU_PROBLEM,"A caravan under your guard was destroyed on the road. The ledger says it was your failure, and you do not remember it that way.","Một đoàn hàng do ngươi áp tải bị diệt giữa đường. Sổ sách ghi đó là lỗi của ngươi, còn ngươi nhớ khác."
-ORIGIN_HO_TIEU_EDGE,You still carry an escort's blade.,Ngươi vẫn mang thanh kiếm của kẻ áp tiêu.
+ORIGIN_HO_TIEU_EDGE,"An escort's blade, and an eye for loads, knots and wheel-ruts.","Thanh kiếm hộ tiêu, và con mắt đọc được hàng hoá, nút buộc, vết bánh xe."
 ORIGIN_HO_TIEU_COST,"A debt, and a name the outposts already know.","Một món nợ, và cái tên mà các tiền đồn đã nghe qua."
 ORIGIN_HO_TIEU_GOAL,Learn who destroyed your caravan — and why the records disagree.,Tìm ra kẻ đã diệt đoàn hàng của ngươi — và vì sao sổ sách ghi khác nhau.
 ORIGIN_DE_TU_BI_LOAI_NAME,Rejected Candidate,Đệ Tử Bị Loại
@@ -446,7 +446,7 @@ ORIGIN_DE_TU_BI_LOAI_COST,"A rival who passed, and who remembers you.","Một đ
 ORIGIN_DE_TU_BI_LOAI_GOAL,Learn how that examination was really decided.,Tìm ra kỳ khảo hạch ấy thật sự được định đoạt thế nào.
 ORIGIN_LANG_Y_NAME,Wandering Healer,Lang Y Du Phương
 ORIGIN_LANG_Y_PROBLEM,A patient of yours died of something that did not behave like any sickness you know.,Một bệnh nhân của ngươi chết vì thứ chẳng giống căn bệnh nào ngươi từng biết.
-ORIGIN_LANG_Y_EDGE,You carry pills you compounded yourself.,Ngươi mang theo thuốc do chính tay mình bào chế.
+ORIGIN_LANG_Y_EDGE,"Pills you compounded yourself, and hands that can read a pulse.","Thuốc do chính tay ngươi bào chế, và đôi tay biết bắt mạch."
 ORIGIN_LANG_Y_COST,"No training at arms, and people who are owed your care.","Chưa từng luyện võ, và còn nợ những người chờ ngươi chữa."
 ORIGIN_LANG_Y_GOAL,Learn what your patient really died of.,Tìm ra bệnh nhân của ngươi thật sự chết vì đâu.
 ORIGIN_NGHE_NHAN_NAME,Disgraced Artisan,Nghệ Nhân Thất Sủng
@@ -468,38 +468,38 @@ KNOW_SURVEY_NOTATION_DESC,"A survey keeps two columns: what the surveyor read at
 STORY_SCENE_ARRIVAL_PLACE,Lạc Hà Village,Thôn Lạc Hà
 STORY_SCENE_ARRIVAL_TIME,Late afternoon,Chiều muộn
 STORY_SCENE_ARRIVAL_1,"Old Qi Mu's cart lets you down at the village edge: one outpost flying the Azure Cloud banner, a few roofs, and a road that goes on toward the woods.","Xe hàng của lão Tề Mộc thả ngươi xuống ở mép làng: một tiền đồn treo cờ Thanh Vân, vài nóc nhà, và con đường đi tiếp về phía rừng."
-STORY_SCENE_ARRIVAL_2,Nobody here knows you. Find someone to ask.,Ở đây không ai biết ngươi. Hãy tìm người mà hỏi.
+STORY_SCENE_ARRIVAL_2,"Nobody here knows you, and nobody owes you an answer. What you came for is somewhere in this village.","Ở đây không ai biết ngươi, cũng chẳng ai nợ ngươi một câu trả lời. Thứ ngươi tìm nằm đâu đó trong ngôi làng này."
 STORY_SCENE_VIGNETTE_HO_TIEU_PLACE,The Hoang Vực post road,Đường quan Hoang Vực
 STORY_SCENE_VIGNETTE_HO_TIEU_TIME,Three months ago,Ba tháng trước
 STORY_SCENE_VIGNETTE_HO_TIEU_1,"Twelve wagons, and one escort's tally with your name on it.","Mười hai cỗ xe, và một tấm thẻ áp tiêu mang tên ngươi."
 STORY_SCENE_VIGNETTE_HO_TIEU_2,By morning there was ash and wheel-ruts. You do not remember falling asleep.,Sáng ra chỉ còn tro và vết bánh xe. Ngươi không nhớ mình đã thiếp đi lúc nào.
-STORY_SCENE_VIGNETTE_HO_TIEU_3,The escort house's ledger says the guard left the post. That debt has followed you to the frontier.,Sổ của tiêu cục ghi: hộ tiêu bỏ vị trí. Món nợ ấy theo ngươi tới tận biên thùy.
+STORY_SCENE_VIGNETTE_HO_TIEU_3,The escort house's ledger says the guard left the post. The house wants its loss back from you.,Sổ của tiêu cục ghi: hộ tiêu bỏ vị trí. Tiêu cục đòi ngươi bù cho khoản mất ấy.
 STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_PLACE,The gate of the Azure Cloud Sect,Sơn môn Thanh Vân Tông
 STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_TIME,Last season,Mùa trước
 STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_1,You carried the breath through all three circuits without a fault.,"Ngươi dẫn khí trọn ba vòng, không sai một nhịp."
 STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_2,The list went up. The name of the one behind you was on it. Yours was not.,Bảng treo lên. Tên kẻ đứng sau ngươi có trên đó. Tên ngươi thì không.
-STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_3,Nobody said why. The road home runs through the Hoang Vực.,Không ai nói vì sao. Đường về quê đi ngang Hoang Vực.
+STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_3,"Nobody said why. The name on the board was Lin Yue's — and the sect sent her not up the mountain, but out to Lạc Hà.","Không ai nói vì sao. Tên trên bảng là Lâm Nguyệt — và tông môn không đưa nàng lên núi, mà phái ra Lạc Hà."
 STORY_SCENE_VIGNETTE_LANG_Y_PLACE,A hamlet on the frontier's edge,Một xóm ven Hoang Vực
 STORY_SCENE_VIGNETTE_LANG_Y_TIME,Early this season,Đầu mùa này
 STORY_SCENE_VIGNETTE_LANG_Y_1,Three times you brought the old man's fever down.,Ngươi đã hạ sốt cho ông lão ấy ba lần.
 STORY_SCENE_VIGNETTE_LANG_Y_2,The fourth time his pulse ran as if something were drawing it away — and stopped.,"Lần thứ tư, mạch của ông chạy như có thứ gì kéo nó đi — rồi ngừng."
-STORY_SCENE_VIGNETTE_LANG_Y_3,That was no sickness. You have followed cases like it east.,"Đó không phải bệnh. Ngươi lần theo những ca giống thế, về phía đông."
+STORY_SCENE_VIGNETTE_LANG_Y_3,"That was no sickness. You have followed cases like it east, and every one had worked the Lạc Hà haul.","Đó không phải bệnh. Ngươi lần theo những ca giống thế về phía đông, và ai cũng từng làm thuê trên tuyến chở hàng Lạc Hà."
 STORY_SCENE_VIGNETTE_NGHE_NHAN_PLACE,Your workshop,Xưởng của ngươi
 STORY_SCENE_VIGNETTE_NGHE_NHAN_TIME,Last year,Năm ngoái
 STORY_SCENE_VIGNETTE_NGHE_NHAN_1,"The patron brought the spirit stone himself, seal and all.","Viên linh thạch ấy do chính kẻ bảo trợ mang tới, ấn tín đủ cả."
 STORY_SCENE_VIGNETTE_NGHE_NHAN_2,"It broke in the kiln. He said your craft was poor, and the guild believed him.","Nó vỡ trong lò. Hắn nói tay nghề ngươi kém, và phường hội tin hắn."
-STORY_SCENE_VIGNETTE_NGHE_NHAN_3,You know the stone was wrong at the root. They say stones like it come out of the frontier.,Ngươi biết viên đá ấy sai từ gốc. Người ta bảo đá kiểu đó tuôn ra từ biên thùy.
+STORY_SCENE_VIGNETTE_NGHE_NHAN_3,You know the stone was wrong at the root. On its base was a three-notch stamp you had never cut.,Ngươi biết viên đá ấy sai từ gốc. Dưới đáy nó có dấu ba khía mà ngươi chưa từng khắc.
 STORY_SCENE_VIGNETTE_THU_THU_PLACE,The record hall,Tàng thư các
 STORY_SCENE_VIGNETTE_THU_THU_TIME,Forty days ago,Bốn mươi ngày trước
 STORY_SCENE_VIGNETTE_THU_THU_1,Your mentor left half a ledger and a lamp still warm.,Thầy ngươi để lại nửa cuốn sổ và một ngọn đèn còn ấm.
 STORY_SCENE_VIGNETTE_THU_THU_2,The last pages were torn out. What remains copies one survey mark again and again.,Những trang cuối đã bị xé. Phần còn lại chép đi chép lại một ký hiệu khảo mạch.
-STORY_SCENE_VIGNETTE_THU_THU_3,Someone was asking for you at the gate. You went where the mark pointed: the Hoang Vực.,Có người hỏi thăm ngươi ở cổng. Ngươi đi về nơi ký hiệu ấy chỉ: Hoang Vực.
-UI_IDENTITY_TITLE,Who are you?,Ngươi là ai?
+STORY_SCENE_VIGNETTE_THU_THU_3,Someone was asking for you at the gate. You left by the back stair with the half-ledger under your coat.,"Có kẻ hỏi thăm ngươi ở cổng. Ngươi ra bằng cầu thang sau, nửa cuốn sổ giấu dưới áo."
+UI_IDENTITY_TITLE,"Who were you, before the road?","Ngươi là ai, trước khi lên đường?"
 UI_IDENTITY_LOOK,Appearance,Dung mạo
 UI_IDENTITY_ORIGIN,Origin,Xuất thân
-UI_IDENTITY_EDGE,What it gives you,Điều ngươi có
-UI_IDENTITY_COST,What it costs you,Điều ngươi mang
-UI_IDENTITY_HINT,"Every origin is open to every appearance. Neither decides your sect, your path or your ending.","Xuất thân nào cũng hợp với dung mạo nào. Cả hai đều không định sẵn tông môn, đường tu hay kết cục."
+UI_IDENTITY_EDGE,You bring,Ngươi mang theo
+UI_IDENTITY_COST,It costs you,Cái giá
+UI_IDENTITY_HINT,"Origin shapes your first days and who notices you. It never locks a sect, weapon, path or ending.","Xuất thân định những ngày đầu và ai để ý tới ngươi. Nó không khoá tông môn, vũ khí, đường tu hay kết cục."
 UI_IDENTITY_BEGIN,Set out,Lên đường
 UI_IDENTITY_BACK,Back,Quay lại
 APPEARANCE_WANDERER_M_NAME,Wanderer · man,Lữ khách · nam
@@ -530,10 +530,10 @@ DLG_LIN_WARY,Then you know the way to the elder. I will not stop you.,Vậy ngư
 DLG_LIN_CHOICE_KEEP_LATE,"I saw nothing, after all.",Ta nghĩ lại: ta chưa thấy gì.
 DLG_LIN_AFTER_KEPT,The spring dropped a beat again at noon. I wrote it down — in the book nobody reads.,Lúc trưa suối lại hụt một nhịp. Ta ghi rồi — vào cuốn sổ không ai đọc.
 DLG_LIN_AFTER_TOLD,The elder has taken my rod. You did the proper thing. I hope you were also right.,Trưởng lão đã thu thước của ta. Ngươi làm đúng phép. Ta mong ngươi cũng đúng.
-DLG_LIN_CHOICE_RIVAL,The trial at Cloud Vale.,Kỳ khảo hạch ở Vân Cốc.
-DLG_LIN_RIVAL,…I remember you. You broke the formation half an incense-stick before I did. I still do not know why the name on the board was mine.,…Ta nhớ ngươi. Ngươi phá trận nhanh hơn ta nửa nén hương. Ta vẫn không hiểu vì sao tên trên bảng lại là tên ta.
-DLG_LIN_CHOICE_NOTATION,Glance at her survey book,Liếc cuốn sổ đo của nàng
-DLG_LIN_NOTATION,You can read the old notation? …Then do not let the elder learn of it. The last person here who could is no longer here.,Ngươi đọc được lối ghi cũ? …Vậy đừng để trưởng lão biết. Người cuối cùng ở đây đọc được nó đã không còn ở đây.
+DLG_LIN_CHOICE_RIVAL,Ask about the trial,Hỏi về kỳ khảo hạch
+DLG_LIN_RIVAL,…I remember you. You broke the formation before I did. I still do not know why the name on the board was mine. Old Qi takes the outpost's crates up to Cloud Vale before every trial. I never asked what was in them.,"…Ta nhớ ngươi. Ngươi phá trận trước ta. Ta vẫn không hiểu vì sao tên trên bảng là tên ta. Trước mỗi kỳ thi, lão Tề chở hòm của tiền đồn lên Vân Cốc. Ta chưa từng hỏi trong đó có gì."
+DLG_LIN_CHOICE_NOTATION,Show her the mark,Cho nàng xem ký hiệu
+DLG_LIN_NOTATION,(Her brush stops.) The old notation — how the surveyor before me set this vein down. You can read it? Then hide it from the elder. The last man here who could is gone. …I have seen that hand lately: on old Qi's waybills.,(Ngòi bút nàng khựng lại.) Lối ghi cũ — cách người khảo mạch trước ta ghi mạch này. Ngươi đọc được à? Vậy giấu trưởng lão. Người cuối cùng ở đây đọc được đã đi rồi. …Gần đây ta lại thấy nét chữ ấy: trên vận đơn của lão Tề.
 DLG_TE_GREET,"You are off my cart now, and that is the end of it. Tell no one you rode in with me.",Xuống xe rồi thì thôi nhé. Đừng kể với ai là ngươi tới cùng xe ta.
 DLG_TE_HUB,"I am waiting on the last load out of the woods. Come dark, I am gone.",Ta chờ chuyến cuối từ trong rừng ra. Trời tối là ta đi.
 DLG_TE_CHOICE_LOAD,What do you haul?,Xe ông chở gì?
@@ -715,3 +715,73 @@ UI_REL_BAND_DEBT_2,nothing owed,không ai nợ ai
 UI_REL_BAND_DEBT_3,you owe them,ngươi nợ họ
 UI_REL_BAND_DEBT_4,you owe them much,ngươi nợ họ nhiều
 UI_CHRONICLE_HINT,Your road is being written down. {key}: open the Chronicle.,Đường ngươi đi đang được chép lại. {key}: mở Sổ Ký Sự.
+UI_IDENTITY_SUBTITLE,"Your origin is your past and the trouble you carry — not your sect, weapon, path or ending.","Xuất thân là quá khứ và mối bận ngươi mang theo — không phải tông môn, vũ khí, đường tu hay kết cục."
+UI_IDENTITY_PAST,Who you were,Ngươi từng là
+UI_IDENTITY_HAPPENED,What happened,Chuyện đã xảy ra
+UI_IDENTITY_WANT,What you want now,Điều ngươi muốn
+UI_IDENTITY_WHY_HERE,Why Lạc Hà,Vì sao tới Lạc Hà
+UI_IDENTITY_LEAD,Your first lead,Manh mối đầu tiên
+UI_IDENTITY_HORIZON,Where it may lead,Về sau
+UI_IDENTITY_KEYS,↑/↓ within a column · ←/→ the other column · Enter choose · Esc back,↑/↓ trong cột · ←/→ sang cột kia · Enter chọn · Esc quay lại
+ORIGIN_HO_TIEU_TAGLINE,Twelve wagons burned. The ledger says it was you.,Mười hai cỗ xe cháy rụi. Sổ sách bảo là lỗi của ngươi.
+ORIGIN_HO_TIEU_PAST,An escort for a small house on the Hoang Vực post road — the one who held the convoy's tally.,Hộ tiêu của một tiêu cục nhỏ chạy đường quan Hoang Vực — người cầm thẻ áp tải của cả đoàn.
+ORIGIN_HO_TIEU_WHY_HERE,The report that blames you was sealed at the Lạc Hà outpost — the last post your convoy passed.,Tờ trình đổ tội cho ngươi được đóng dấu ở tiền đồn Lạc Hà — trạm cuối cùng đoàn hàng đi qua.
+ORIGIN_HO_TIEU_LEAD,Ask the outpost's elder what was written about your convoy.,Hỏi trưởng lão tiền đồn xem họ đã ghi gì về đoàn hàng của ngươi.
+ORIGIN_HO_TIEU_HORIZON,Two records of one fire cannot both be true. Whoever wrote the false one gained by it.,Hai bản ghi về cùng một đám cháy không thể cùng đúng. Kẻ viết bản sai hẳn được lợi từ nó.
+ORIGIN_DE_TU_BI_LOAI_TAGLINE,You were ready. The board was not.,Ngươi đã sẵn sàng. Bảng tên thì không có ngươi.
+ORIGIN_DE_TU_BI_LOAI_PAST,"A candidate of the Azure Cloud Sect, drilled for years in the first breathing method.","Thí sinh của Thanh Vân Tông, nhiều năm rèn phép thở nhập môn."
+ORIGIN_DE_TU_BI_LOAI_WHY_HERE,"The one who passed in your place, Lin Yue, was sent not up the mountain but to Lạc Hà — the frontier's last outpost.","Kẻ đỗ thay ngươi, Lâm Nguyệt, không được lên núi mà bị phái tới Lạc Hà — tiền đồn cuối cùng của biên thùy."
+ORIGIN_DE_TU_BI_LOAI_LEAD,Find Lin Yue and ask her about the trial.,"Tìm Lâm Nguyệt, hỏi nàng về kỳ khảo hạch."
+ORIGIN_DE_TU_BI_LOAI_HORIZON,"If the board was written before the trial ended, whose hand held the brush — and what was it paid?","Nếu bảng tên được viết trước khi thi xong, bàn tay nào cầm bút — và được trả bằng gì?"
+ORIGIN_LANG_Y_TAGLINE,Your patient died of something that was no sickness.,Bệnh nhân của ngươi chết vì một thứ không phải bệnh.
+ORIGIN_LANG_Y_PAST,A wandering healer who lives on pills of your own making and the trust of poor hamlets.,"Thầy thuốc rong, sống nhờ thuốc tự bào chế và lòng tin của những xóm nghèo."
+ORIGIN_LANG_Y_WHY_HERE,Every case like it that you traced had worked the Lạc Hà haul — the carts out of the woods.,Mọi ca giống thế ngươi lần ra đều từng làm thuê trên tuyến chở hàng Lạc Hà — những chuyến xe ra từ rừng.
+ORIGIN_LANG_Y_LEAD,The last cart on that haul is the one you rode in on. Look at its carter's hands.,Chiếc xe cuối cùng trên tuyến ấy chính là xe ngươi vừa đi nhờ. Hãy nhìn tay kẻ đánh xe.
+ORIGIN_LANG_Y_HORIZON,"If it was not a sickness, what was it — and did anyone know before your patient died?",Nếu đó không phải bệnh thì là gì — và đã có ai biết trước khi bệnh nhân của ngươi chết?
+ORIGIN_NGHE_NHAN_TAGLINE,The stone broke in your kiln. Your patron blamed your hands.,Viên đá vỡ trong lò. Kẻ bảo trợ đổ cho tay nghề ngươi.
+ORIGIN_NGHE_NHAN_PAST,"A spirit-stone cutter with a workshop of your own, once kept by a powerful patron.","Thợ khắc linh thạch có xưởng riêng, từng được một nhà quyền thế bảo trợ."
+ORIGIN_NGHE_NHAN_WHY_HERE,That stone bore a three-notch stamp you never cut. A stone-dealer said such lots come down out of the Lạc Hà woods.,Viên đá ấy mang dấu ba khía ngươi chưa từng khắc. Một lái đá bảo lô như thế đi xuống từ rừng Lạc Hà.
+ORIGIN_NGHE_NHAN_LEAD,You rode in on the only cart that comes down from those woods. Look at its crates.,Ngươi đi nhờ đúng chiếc xe duy nhất xuống từ khu rừng ấy. Hãy xem hòm hàng trên xe.
+ORIGIN_NGHE_NHAN_HORIZON,"A stone wrong at the root did not make itself. Who dug it up, and who bought it?","Một viên đá sai từ gốc không tự sinh ra. Ai đào nó lên, và ai đã mua?"
+ORIGIN_THU_THU_TAGLINE,"A vanished mentor, missing pages, one mark copied over and over.","Thầy biến mất, sổ thiếu trang, một ký hiệu chép đi chép lại."
+ORIGIN_THU_THU_PAST,"A copyist in a record hall, apprenticed to a keeper of proscribed records.","Người chép sổ trong tàng thư các, học trò của một thủ thư giữ cấm lục."
+ORIGIN_THU_THU_WHY_HERE,"You traced the mark your mentor kept copying: it is a vein-survey mark, and it points to the Lạc Hà outpost.","Ngươi tra ra ký hiệu thầy chép mãi: đó là dấu khảo mạch, và nó chỉ về tiền đồn Lạc Hà."
+ORIGIN_THU_THU_LEAD,Show the mark to whoever keeps the vein's readings at Lạc Hà.,Cho người giữ số đo mạch ở Lạc Hà xem ký hiệu ấy.
+ORIGIN_THU_THU_HORIZON,What did your mentor read in the pages someone tore out — and who wanted them gone?,Thầy ngươi đã đọc thấy gì trong những trang bị xé — và ai muốn chúng biến mất?
+STORY_SCENE_VIGNETTE_HO_TIEU_4,"The report behind that ledger was sealed at Lạc Hà, the last post your convoy passed. You walked there beside the only cart still running that road.","Tờ trình làm nền cho cuốn sổ ấy được đóng dấu ở Lạc Hà, trạm cuối đoàn hàng đi qua. Ngươi đi bộ tới đó, bên chiếc xe duy nhất còn chạy tuyến đường này."
+STORY_SCENE_VIGNETTE_DE_TU_BI_LOAI_4,"The road home runs through the Hoang Vực, past that outpost. You mean to stop, and ask her.","Đường về quê đi ngang Hoang Vực, qua đúng tiền đồn ấy. Ngươi định dừng lại, và hỏi nàng."
+STORY_SCENE_VIGNETTE_LANG_Y_4,"Only one cart still runs that haul. You paid its carter for a seat, and watched his hands on the reins all the way.","Chỉ còn một chiếc xe chạy tuyến ấy. Ngươi trả tiền ngồi nhờ, và suốt đường nhìn đôi tay lão cầm cương."
+STORY_SCENE_VIGNETTE_NGHE_NHAN_4,"A stone-dealer said three-notch lots come down one road, out of the Lạc Hà woods, on one cart. You sold your last tools to ride it.","Một lái đá bảo lô ba khía chỉ đi xuống một con đường, ra từ rừng Lạc Hà, trên một chiếc xe. Ngươi bán bộ đồ nghề cuối cùng để được ngồi lên nó."
+STORY_SCENE_VIGNETTE_THU_THU_4,"The mark is a vein-survey mark, and it points to Lạc Hà, the outpost that keeps the vein book for this frontier. He was going there.","Ký hiệu ấy là dấu khảo mạch, và nó chỉ về Lạc Hà — tiền đồn giữ sổ mạch của cả vùng biên. Thầy ngươi đã định tới đó."
+UI_CHRONICLE_LEAD,Your lead:,Manh mối:
+UI_CHRONICLE_WHY_HERE,Why you came:,Vì sao tới đây:
+STORY_PERSONAL_HO_TIEU_1,Ask Shen about the convoy,Hỏi trưởng lão về đoàn hàng
+STORY_PERSONAL_HO_TIEU_2,See how old Qi Mu ties his load,Xem lão Tề buộc hàng ra sao
+STORY_PERSONAL_DE_TU_BI_LOAI_1,Ask Lin Yue about the trial,Hỏi Lâm Nguyệt về kỳ thi
+STORY_PERSONAL_DE_TU_BI_LOAI_2,Ask old Qi Mu about Cloud Vale,Hỏi lão Tề Mộc về Vân Cốc
+STORY_PERSONAL_LANG_Y_1,Look at the carter's hands,Nhìn tay lão đánh xe
+STORY_PERSONAL_LANG_Y_2,Ask the watch about porters,Hỏi người gác về phu khuân
+STORY_PERSONAL_NGHE_NHAN_1,Check old Qi's crate stamp,Xem dấu trên hòm lão Tề
+STORY_PERSONAL_NGHE_NHAN_2,Ask the watch about the stamp,Hỏi người gác về đá ba khía
+STORY_PERSONAL_THU_THU_1,Show Lin Yue the mark,Cho Lâm Nguyệt xem ký hiệu
+STORY_PERSONAL_THU_THU_2,Look at old Qi Mu's waybill,Xem tờ vận đơn của lão Tề Mộc
+KNOW_CONVOY_REPORT_NAME,The Convoy Report,Tờ trình về đoàn hàng
+KNOW_CONVOY_REPORT_DESC,"Sealed at the Lạc Hà outpost by Elder Shen: the escort left the post. It rests on one man's word — old Qi Mu, the carter who found the ashes, and who drove you here.","Trưởng lão Thẩm đóng dấu ở tiền đồn Lạc Hà: hộ tiêu bỏ vị trí. Tờ trình dựa vào lời một người — lão Tề Mộc, kẻ chở hàng đã tìm thấy đống tro, và cũng là kẻ chở ngươi tới đây."
+KNOW_TRIAL_BOARD_NAME,The Trial Board,Bảng tên kỳ khảo hạch
+KNOW_TRIAL_BOARD_DESC,"Lin Yue broke the formation after you did, and her name went up. She does not know why either. Old Qi Mu takes the outpost's crates up to Cloud Vale before every trial.","Lâm Nguyệt phá trận sau ngươi, vậy mà tên nàng được treo lên. Chính nàng cũng không hiểu vì sao. Trước mỗi kỳ thi, lão Tề Mộc lại chở hòm của tiền đồn lên Vân Cốc."
+KNOW_GREY_HANDS_NAME,Grey Hands on the Haul,Bàn tay xám trên tuyến chở
+KNOW_GREY_HANDS_DESC,"Ko Than's word: the porters who hauled out of the Lạc Hà woods grew grey nails and cold hands, and no poultice helped. Old Qi Mu's is the last cart on that haul.","Lời Kha Thản: phu khuân hàng ra từ rừng Lạc Hà móng tay xám lại, tay lạnh ngắt, thuốc đắp nào cũng vô dụng. Xe lão Tề Mộc là chiếc cuối cùng còn chạy tuyến ấy."
+KNOW_THREE_NOTCH_NAME,The Three-Notch Stamp,Dấu ba khía
+KNOW_THREE_NOTCH_DESC,"Ko Than's word: the outpost marks a counted stone with a single cut. Three notches are no seal he knows — and whatever comes down out of the woods comes on one cart, old Qi Mu's.","Lời Kha Thản: tiền đồn chỉ khắc một vết lên viên đá đã đếm. Ba khía chẳng phải ấn nào hắn biết — mà thứ gì xuống từ rừng cũng đi trên một chiếc xe, xe lão Tề Mộc."
+KNOW_MENTOR_MARK_NAME,The Mark Your Mentor Copied,Ký hiệu thầy ngươi chép
+KNOW_MENTOR_MARK_DESC,"Lin Yue knew it at a glance: the old notation of the Lạc Hà survey, as the surveyor before her wrote it. He was 'reassigned' last winter. She has seen that hand lately — on old Qi Mu's waybills.","Lâm Nguyệt nhận ra ngay: lối ghi cũ của sổ khảo mạch Lạc Hà, đúng nét người khảo mạch trước nàng. Mùa đông năm ngoái ông ta bị 'điều đi'. Gần đây nàng lại thấy nét chữ ấy — trên vận đơn của lão Tề Mộc."
+DLG_SHEN_CHOICE_CONVOY,Ask about your convoy,Hỏi về đoàn hàng
+DLG_SHEN_CONVOY,"Twelve wagons, burnt at the ford below the woods. The report says the escort left the post. I sealed it — on the word of the carter who found the ashes. The one who drove you in. Ask him. My seal stands.","Mười hai cỗ xe, cháy ở khúc cạn dưới rừng. Tờ trình ghi hộ tiêu bỏ vị trí. Ta đóng dấu — theo lời kẻ chở hàng tìm thấy đống tro. Chính kẻ vừa chở ngươi tới. Hỏi hắn đi. Dấu của ta vẫn còn đó."
+DLG_KO_CHOICE_HAUL,Ask about the porters,Hỏi về đám phu khuân
+DLG_KO_HAUL,Fewer every season. The porters out of those woods got grey nails and cold hands; the hall's poultice did nothing. Old Qi's is the last cart on that haul. Whatever greys a man's nails rides with him.,"Mỗi mùa một ít đi. Phu khuân hàng ra từ rừng ấy móng xám, tay lạnh; thuốc đắp của Thanh Đài vô dụng. Xe lão Tề là chiếc cuối trên tuyến ấy. Thứ gì làm xám móng tay người ta, nó đi cùng lão."
+DLG_KO_CHOICE_NOTCH,Ask about three-notch stone,Hỏi về đá ba khía
+DLG_KO_NOTCH,Three notches? The outpost cuts one mark into a counted stone. Three is no seal I know. What comes out of those woods comes on one cart — old Qi's — and he lets no one lift the tarpaulin.,Ba khía à? Tiền đồn chỉ khắc một vết lên viên đá đã đếm. Ba khía chẳng phải ấn nào ta biết. Thứ gì ra từ rừng đều đi trên một chiếc xe — xe lão Tề — và lão không cho ai vén bạt.
+DLG_CHOICE_LEAD_LATER,Something else first,Chuyện khác đã
+DLG_SHEN_CONVOY_OPEN,(He looks at you a long while.) The escort from the post road. Your name came to this outpost before you did.,(Lão nhìn ngươi hồi lâu.) Kẻ áp tiêu trên đường quan. Tên ngươi tới tiền đồn này trước cả ngươi.
+DLG_KO_HAUL_OPEN,Hold there. …You were watching old Qi's hands all the way in. Healer?,Đứng đó. …Suốt đường vào ngươi cứ nhìn tay lão Tề. Thầy lang à?
+DLG_KO_NOTCH_OPEN,Hold there. …You were staring at old Qi's crates. Stone-cutter?,Đứng đó. …Ngươi cứ nhìn chằm chằm hòm hàng của lão Tề. Thợ khắc đá à?

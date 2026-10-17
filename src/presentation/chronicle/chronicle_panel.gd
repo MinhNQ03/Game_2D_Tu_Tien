@@ -509,8 +509,15 @@ func _self_blocks() -> Array:
 	who.append(_row(_t(String(_view.origin_name_key)), STYLE_HEAD))
 	who.append(_row(_t(String(_view.origin_problem_key)), STYLE_LINE))
 	blocks.append(who)
-	blocks.append([_row("%s %s" % [_t("UI_CHRONICLE_GOAL"), _t(String(_view.origin_goal_key))],
-		STYLE_ACCENT)])
+	var aims: Array = [_row("%s %s" % [_t("UI_CHRONICLE_GOAL"), _t(String(_view.origin_goal_key))],
+		STYLE_ACCENT)]
+	if _view.origin_why_here_key != &"":
+		aims.append(_row("%s %s" % [_t("UI_CHRONICLE_WHY_HERE"),
+			_t(String(_view.origin_why_here_key))], STYLE_LINE))
+	if _view.personal_objective_key != &"":
+		aims.append(_row("%s %s" % [_t("UI_CHRONICLE_LEAD"),
+			_t(String(_view.personal_objective_key))], STYLE_ACCENT))
+	blocks.append(aims)
 	blocks.append([_row(_t(String(_view.origin_edge_key)), STYLE_MUTED),
 		_row(_t(String(_view.origin_cost_key)), STYLE_MUTED)])
 	if not _view.noticed.is_empty():
