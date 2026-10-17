@@ -36,6 +36,9 @@ class Util(unittest.TestCase):
         self.assertFalse(path_matches("docs/CLAUDE.md", ["CLAUDE.md"]))
 
     def test_redaction(self):
+        for secret in ("GITHUB_TOKEN=abcdef1234567890abcd", "DB_PASSWORD: hunter2hunter2hunter2",
+                       "AWS_SECRET_ACCESS_KEY=AbCdEfGhIjKlMnOpQrSt12"):
+            self.assertNotIn(secret.split("=")[-1].split()[-1], redact(secret), secret)
         for secret in ("sk-ant-api03-abcdefghijklmnop", "ghp_" + "a" * 36, "token=abcdef1234567890XYZ",
                        "Authorization: Bearer abcdefghijklmnopqrstu"):
             self.assertNotIn(secret.split("=")[-1].split()[-1], redact(f"x {secret} y"), secret)
@@ -136,7 +139,9 @@ class GitAllowlist(RepoCase):
                    ("push", "--forc", "origin", "feat/test"), ("push", "-uf", "origin", "feat/test"),
                    ("push", "--force-w", "origin", "feat/test"), ("commit", "--am", "-m", "x"),
                    ("fetch", "origin", "+main:main"), ("symbolic-ref", "HEAD", "refs/heads/main"),
-                   ("add", "-v", "--", "pkg/core.py"), ("fetch", "--pru", "origin"), ("branch", "--del", "x")]
+                   ("add", "-v", "--", "pkg/core.py"), ("fetch", "--pru", "origin"), ("branch", "--del", "x"),
+                   ("worktree", "add", "-B", "x", "/tmp/x", "HEAD"), ("worktree", "add", "-f", "-b", "y", "/tmp/y", "HEAD"),
+                   ("worktree", "add", "-b", "main", "/tmp/z", "HEAD"), ("branch", "--set-upstream-to", "origin/main")]
         for args in refused:
             with self.assertRaises(GitSafetyError, msg=str(args)):
                 g.run(*args)

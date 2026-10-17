@@ -109,6 +109,19 @@ def _safe_args(args: list[str], protected: list[str]) -> None:
         raise GitSafetyError("git fetch with a refspec is refused (it could move local refs)")
     if sub == "symbolic-ref" and len(positional) > 1:
         raise GitSafetyError("git symbolic-ref may only read")
+    if sub == "worktree":
+        if not args[1:] or args[1] == "list":
+            pass
+        elif args[1] == "add":
+            rest = args[2:]
+            if len(rest) != 4 or rest[0] != "-b":
+                raise GitSafetyError("git worktree add must be `add -b <new-branch> <path> <sha>`")
+            if any(fnmatch.fnmatchcase(rest[1], p) for p in protected):
+                raise GitSafetyError(f"refusing a worktree branch named like a protected branch: {rest[1]}")
+        else:
+            raise GitSafetyError(f"git worktree {args[1]} is refused")
+    if sub == "branch" and any(a not in ("--show-current", "--list") for a in args[1:]):
+        raise GitSafetyError("git branch may only show the current branch or list")
     if sub == "config" and len([a for a in args[1:] if not a.startswith("-")]) > 1 and "--get" not in args:
         raise GitSafetyError("git config may only read values")
     if sub == "branch" and any(not a.startswith("-") for a in args[1:]):
@@ -233,11 +246,38 @@ class Git:
                 h.update(b"<unreadable>")
         return h.hexdigest()
 
-    def snapshot(self) -> dict:
-        """Everything a worker must not change in git: HEAD, branch, local refs, the index."""
-        return {"head": self.head(), "branch": self.branch(),
-                "refs": self.run("for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/tags"),
-                "staged": self.staged_paths()}
+    def snapshot(self, remote: str | None = None) -> dict:
+        """Everything a worker must not change in git: HEAD, branch, every local ref (heads, tags,
+        remotes, stash), the index, and the files that make git run code or change behaviour
+        (config, hooks, info/attributes, info/exclude). With `remote`, also the remote heads."""
+        snap = {"head": self.head(), "branch": self.branch(),
+                "refs": self.run("for-each-ref", "--format=%(refname) %(objectname)"),
+                "staged": self.staged_paths(), "gitfiles": self._git_files_digest()}
+        if remote:
+            snap["remote"] = self.run("ls-remote", "--heads", remote, check=False)
+        return snap
+
+    def _git_files_digest(self) -> str:
+        h = hashlib.sha256()
+        dirs = {self.run("rev-parse", "--git-common-dir").strip(), self.run("rev-parse", "--git-dir").strip()}
+        for d in sorted(dirs):
+            base = Path(d) if Path(d).is_absolute() else self.repo / d
+            for rel in ("config", "info/attributes", "info/exclude", "config.worktree"):
+                f = base / rel
+                h.update(f"{f}\0".encode())
+                h.update(f.read_bytes() if f.is_file() else b"<none>")
+            hooks = base / "hooks"
+            if hooks.is_dir():
+                for f in sorted(hooks.iterdir()):
+                    if f.is_file():
+                        h.update(f"{f.name}:{f.stat().st_mode}\0".encode())
+                        h.update(f.read_bytes())
+        return h.hexdigest()
+
+    def worktree_matches_index(self, paths: list[str]) -> bool:
+        """True when the working tree holds exactly what is staged for `paths` (no later edit)."""
+        return not self.run("diff", "--name-only", "-z", "--", *paths).strip("\0") and not [
+            e for e in self.status() if e.code == "??" and e.path in paths]
 
     def commits_with_trailer(self, key: str, value: str, rev_range: str = "HEAD", limit: int = 200) -> list[str]:
         out = self.run("log", f"-{limit}", "--format=%H%x00%B%x1e", rev_range)

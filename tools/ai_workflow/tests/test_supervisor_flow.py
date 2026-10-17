@@ -293,6 +293,61 @@ class CrashRecovery(RepoCase):
         self.assertEqual(self.commits_for("t1"), [])
         self.assertTrue((self.repo / "pkg/owner_note.py").exists())
 
+    def test_prestaged_index_edited_afterwards_is_not_committed(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s = self.sup(push=False)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+
+        def crash_commit(msg):
+            raise KeyboardInterrupt("crash after add")
+        s.git.commit = crash_commit
+        with self.assertRaises(KeyboardInterrupt):
+            s.run()
+        # the index now holds OTHER content while the worktree is back to exactly what was validated
+        self.w("pkg/core.py", "def add(a, b):\n    return 0  # not what was reviewed\n")
+        sh(self.repo, "git", "add", "--", "pkg/core.py")
+        self.w("pkg/core.py", GOOD_ADD)
+        rc = self.sup(push=False).run()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "index_not_ours")
+        self.assertEqual(self.commits_for("t1"), [])
+
+    def test_hard_crash_then_owner_edit_is_not_adopted(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s = self.sup(push=False)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+
+        def hard_crash(iid):
+            raise KeyboardInterrupt("power loss after the worker finished")
+        s.h_review = hard_crash
+        with self.assertRaises(KeyboardInterrupt):
+            s.run()
+        self.w("pkg/owner_after_crash.py", "x = 1\n")
+        rc = self.sup(push=False).run()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "unowned_changes")
+
+    def test_commit_made_while_stopped_is_detected_on_resume(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s = self.sup(push=False)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+
+        def stop(iid):
+            from autopilot.supervisor import Stop
+            raise Stop("stop_requested", "stop", EXIT_INTERRUPTED)
+        s.h_review = stop
+        s.run()
+        sh(self.repo, "git", "add", "-A")
+        sh(self.repo, "git", "commit", "-qm", "someone committed the half-done work")
+        calls_before = len(self.calls())
+        rc = self.sup(push=False).run()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "head_moved")
+        self.assertEqual(len(self.calls()), calls_before)  # stopped at reconcile, before any model call
+
     def test_corrupt_state_uses_backup_and_double_corruption_blocks(self):
         self._scen()
         self.start([item("t1")], push=False)
@@ -460,6 +515,36 @@ class WorkerMisbehaviour(RepoCase):
         self.assertEqual(self.commits_for("t1"), [])
         self.assertNotEqual(st["items"]["t1"]["status"], "COMPLETE")
 
+    def test_worker_planting_a_git_hook_is_caught(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD, ".git/hooks/pre-commit": "#!/bin/sh\nexit 0\n"}}]})
+        _, rc = self.start([item("t1")], push=False)
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "worker_wrote_git")
+
+    def test_worker_forging_benchmark_evidence_is_caught(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD,
+                                                            ".aetheria-autopilot/eval/results.jsonl": '{"score": 1.0}\n'}}]})
+        _, rc = self.start([item("t1")], push=False)
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "worker_wrote_git")
+        self.assertIn("state_evidence", self.state()["stop"]["detail"])
+
+    def test_git_invariant_wins_over_a_failed_call(self):
+        self.scenario_set({"implement": [{"is_error": True, "api_error_status": 404, "served_by": [],
+                                          "result": "There's an issue with the selected model",
+                                          "write": {"pkg/core.py": GOOD_ADD},
+                                          "shell": [["git", "add", "-A"], ["git", "commit", "-qm", "sneaky"]]}]})
+        _, rc = self.start([item("t1")], push=False)
+        self.assertEqual(self.state()["stop"]["reason"], "worker_wrote_git")
+
+    def test_worker_has_no_git_credentials(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        self.start([item("t1")], push=False)
+        impl = [c for c in self.calls() if c["kind"] == "implement"][0]
+        self.assertEqual(impl["git_cred_helper"], "")
+        self.assertEqual(impl["git_askpass"], "/bin/false")
+
     def test_secrets_never_reach_the_commit_or_report(self):
         secret = "ghp_" + "Z" * 36
         self.scenario_set({"implement": [{**ok(f"used token {secret} to test"), "write": {"pkg/core.py": GOOD_ADD}}],
@@ -520,6 +605,9 @@ class Budgets(RepoCase):
         self.assertLessEqual(caps["implement"], 6.0)
         reviews = [float(c["argv"][c["argv"].index("--max-budget-usd") + 1]) for c in self.calls() if c["kind"].startswith("review")]
         self.assertLessEqual(sum(reviews), 2.0 + 1e-9)  # the two parallel reviews split what was left
+        self.assertEqual(len(reviews), 2)
+        for r in reviews:
+            self.assertLessEqual(r, 1.0 + 1e-9)
 
     def test_wall_clock_budget(self):
         self._scen()

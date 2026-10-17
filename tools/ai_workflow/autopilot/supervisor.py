@@ -211,22 +211,46 @@ class Supervisor:
             self.policy_guard()
             marker = self._invocation_start(iid, inv, cap)
             self.reserved_usd += cap or 0.0
-            before = self.git.snapshot()
+            worker = inv.role in ("implement", "fix")
+            before = self._guard_snapshot(worker)
         try:
             res = self.runner.run(inv)
         finally:
             with self.mu:
                 self.reserved_usd -= cap or 0.0
         with self.mu:
-            out = self._invocation_end(iid, inv, marker, res)
-            after = self.git.snapshot()
+            after = self._guard_snapshot(worker)
+            pending: Stop | None = None
+            try:
+                out = self._invocation_end(iid, inv, marker, res)
+            except Stop as e:  # the git/state invariant is judged first, whatever the call's outcome
+                pending = e
+            if worker and iid is not None and iid in self.state["items"]:
+                self.item(iid)["tree_known"] = self.git.tree_fingerprint()
+                self.save()
             if after != before:
                 changed = [k for k in before if before[k] != after[k]]
                 raise Stop("worker_wrote_git", f"{inv.role} invocation changed git {changed} (before HEAD "
                            f"{before['head'][:10]} on {before['branch']}, after {after['head'][:10]} on "
                            f"{after['branch']}); only the supervisor may commit, stage or move refs — nothing "
                            "was adopted; inspect and repair by hand", EXIT_BLOCKED)
+            if pending is not None:
+                raise pending
             return out
+
+    def _guard_snapshot(self, worker: bool) -> dict:
+        snap = self.git.snapshot(self.cfg.git["remote"] if worker else None)
+        # the supervisor's own evidence (benchmark rows, lock) must not be writable by a worker
+        h = hashlib.sha256()
+        for sub in ("eval", "lock.json"):
+            base = self.cfg.state_dir / sub
+            files = sorted(base.rglob("*")) if base.is_dir() else ([base] if base.exists() else [])
+            for f in files:
+                if f.is_file():
+                    h.update(str(f.relative_to(self.cfg.state_dir)).encode())
+                    h.update(f.read_bytes())
+        snap["state_evidence"] = h.hexdigest()
+        return snap
 
     def _invocation_start(self, iid: str, inv: Invocation, cap: float | None) -> dict:
         lim = self.cfg.limits["invocation"][inv.role]
@@ -316,7 +340,11 @@ class Supervisor:
         if item.get("kind") == "policy":
             allowed = allowed + self.cfg.paths["policy"]
         return {"AETHERIA_AUTOPILOT_ALLOWED_PATHS": json.dumps(allowed),
-                "AETHERIA_AUTOPILOT_ITEM_KIND": item.get("kind", "task")}
+                "AETHERIA_AUTOPILOT_ITEM_KIND": item.get("kind", "task"),
+                # a worker has no git credentials: a push from any tool it runs fails to authenticate
+                "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/false", "SSH_ASKPASS": "/bin/false",
+                "GIT_SSH_COMMAND": "false", "GH_TOKEN": "", "GITHUB_TOKEN": "",
+                "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "credential.helper", "GIT_CONFIG_VALUE_0": ""}
 
     # ===== reconcile on resume ===================================================================
     def reconcile(self) -> list[str]:
@@ -376,8 +404,17 @@ class Supervisor:
             if len(owners) == 1:
                 cur = owners[0]
                 self.state["current_item"] = cur
+        if cur and self.item(cur)["status"] in mid_flight + (BLOCKED_ENVIRONMENT,) and self.item(cur).get("base_sha"):
+            c = self.item(cur)
+            expected = c["checkpoints"][-1] if c["checkpoints"] else c["base_sha"]
+            if head != expected and not (c["status"] == READY_FOR_CHECKPOINT and c.get("checkpoint_token")):
+                raise Stop("head_moved", f"{cur} expects HEAD {expected[:10]}, found {head[:10]}: a commit nobody "
+                           "verified sits on top of the item's work — nothing was adopted", EXIT_BLOCKED)
         if dirty and cur:
-            at_stop = self.item(cur).get("tree_at_stop")
+            c = self.item(cur)
+            unfinished = any(not i.get("finished") or i.get("failure_kind") == "interrupted_by_crash"
+                             for i in c["invocations"][-1:] if i.get("role") in ("implement", "fix"))
+            at_stop = c.get("tree_at_stop") or (None if unfinished else c.get("tree_known"))
             if at_stop and at_stop != self.git.tree_fingerprint():
                 raise Stop("unowned_changes", f"the worktree changed while the run was stopped ({cur}'s work was "
                            f"{at_stop[:12]}, now {self.git.tree_fingerprint()[:12]}): those edits are not the item's — "
@@ -578,6 +615,7 @@ class Supervisor:
         it["validation"].update(res)
         it["last_check_ids"] = ids
         it["last_fingerprint"] = fp
+        it["tree_known"] = fp
         self.save()
         return res
 
@@ -813,7 +851,7 @@ class Supervisor:
             note = "nothing to commit: the item made no change (NO_CHANGE_NEEDED)"
         else:
             staged = self.git.staged_paths()
-            if staged and sorted(staged) == sorted(uncommitted):
+            if staged and sorted(staged) == sorted(uncommitted) and self.git.worktree_matches_index(staged):
                 # a crash between `git add` and `git commit` of THIS checkpoint: the index holds
                 # exactly the intended set, so commit it rather than staging again
                 note = f"committed {len(staged)} previously staged path(s) after an interrupted checkpoint"

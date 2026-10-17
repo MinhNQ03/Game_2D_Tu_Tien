@@ -140,7 +140,8 @@ def verify_finding(repo: Path, f: dict, changed: list[str], diff_text: str) -> t
     line = f.get("line")
     if isinstance(line, int):
         try:
-            n = sum(1 for _ in open(full, "rb"))
+            with open(full, "rb") as fh:
+                n = sum(1 for _ in fh)
         except OSError:
             return True, "unreadable; accepted"
         if line < 1 or line > n + 1:

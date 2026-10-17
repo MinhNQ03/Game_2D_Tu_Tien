@@ -78,8 +78,8 @@ _SECRET_PATTERNS = [
     re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
-    re.compile(r"(?i)\b(api[_-]?key|token|secret|password|passwd|authorization)\b(\s*[:=]\s*|\s+)"
-               r"['\"]?(?!\[REDACTED\])[A-Za-z0-9_\-\.=/+]{12,}['\"]?"),
+    re.compile(r"(?i)(?<![A-Za-z0-9])((?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?key|token|secret|password|passwd|"
+               r"authorization))\b(\s*[:=]\s*|\s+)['\"]?(?!\[REDACTED\])[A-Za-z0-9_\-\.=/+]{12,}['\"]?"),
     re.compile(r"(?i)bearer\s+[A-Za-z0-9_\-\.=/+]{16,}"),
 ]
 

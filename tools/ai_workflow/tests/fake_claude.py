@@ -53,7 +53,9 @@ def main() -> int:
                              "item": os.environ.get("AETHERIA_AUTOPILOT_ITEM"),
                              "aux_model": os.environ.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"),
                              "prompt_head": prompt[:300],
-                             "resume_note": "interrupted attempt" in prompt}) + "\n")
+                             "resume_note": "interrupted attempt" in prompt,
+                             "git_cred_helper": os.environ.get("GIT_CONFIG_VALUE_0"),
+                             "git_askpass": os.environ.get("GIT_ASKPASS")}) + "\n")
     steps = scen.get(kind) or scen.get(kind.split(":")[0]) or [{}]
     step = steps[min(n, len(steps) - 1)]
     for path, text in (step.get("write") or {}).items():
