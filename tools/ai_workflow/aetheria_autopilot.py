@@ -271,9 +271,15 @@ def cmd_retry(cfg, a) -> int:
             print(f"[autopilot] {a.item}: only a FAILED or BLOCKED_OWNER item can be re-queued by the owner")
             return 2
         from autopilot.state import transition
+        archived = {k: it.get(k) for k in ("checkpoints", "checkpoint_sha", "pushed_sha", "ci", "findings",
+                                            "validation", "criteria_trace", "latest_reviews", "known_limitations",
+                                            "stop_detail", "review_cycle", "fix_rounds")}
+        it.setdefault("previous_attempts", []).append({"attempt": int(it.get("attempt", 0)), **archived})
         transition(st, a.item, "QUEUED", f"owner re-queued: {a.reason}", store=store,
                    review_cycle=0, fix_rounds=0, stage=None, owner_action=None, failure_signatures={},
                    checkpoint_token=None, pending_fixes=[], tree_known=None, tree_at_stop=None,
+                   checkpoints=[], checkpoint_sha=None, pushed_sha=None, ci=None, findings=[], validation={},
+                   criteria_trace=[], latest_reviews={}, known_limitations=[], stop_detail=None,
                    attempt=int(it.get("attempt", 0)) + 1)
         # a new attempt: earlier event ids must not swallow this attempt's transitions (the
         # history keeps the full audit trail of the previous attempt)

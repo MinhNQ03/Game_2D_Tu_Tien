@@ -287,13 +287,23 @@ class Git:
                     if f.is_file():
                         h.update(f"{f.name}:{f.stat().st_mode}\0".encode())
                         h.update(f.read_bytes())
-        # user-level git config too: a worker could otherwise plant core.hooksPath globally
+        # user-level git config too, following include/includeIf: a worker could otherwise plant
+        # core.hooksPath globally or in an included file
         xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-        for f in (Path(os.path.expanduser("~/.gitconfig")), Path(xdg) / "git" / "config",
-                  Path(os.environ["GIT_CONFIG_GLOBAL"]) if os.environ.get("GIT_CONFIG_GLOBAL") else None):
-            if f is not None:
-                h.update(f"{f}\0".encode())
+        files = {Path(os.path.expanduser("~/.gitconfig")), Path(xdg) / "git" / "config"}
+        if os.environ.get("GIT_CONFIG_GLOBAL"):
+            files.add(Path(os.environ["GIT_CONFIG_GLOBAL"]))
+        rc, out, _ = self._runner(["git", "config", "--global", "--list", "--show-origin", "--includes"], self._env())
+        h.update(out.encode("utf-8", "replace"))
+        for line in out.splitlines():
+            if line.startswith("file:"):
+                files.add(Path(line[5:].split("\t", 1)[0]))
+        for f in sorted(files):
+            h.update(f"{f}\0".encode())
+            try:
                 h.update(f.read_bytes() if f.is_file() else b"<none>")
+            except OSError:
+                h.update(b"<unreadable>")
         return h.hexdigest()
 
     def worktree_matches_index(self, paths: list[str]) -> bool:

@@ -345,7 +345,8 @@ class Supervisor:
                 "AETHERIA_AUTOPILOT_ITEM_KIND": item.get("kind", "task"),
                 # a worker has no git credentials: a push from any tool it runs fails to authenticate
                 "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/false", "SSH_ASKPASS": "/bin/false",
-                "GIT_SSH_COMMAND": "false", "GH_TOKEN": "", "GITHUB_TOKEN": "",
+                "GIT_SSH_COMMAND": "false", "GH_TOKEN": None, "GITHUB_TOKEN": None, "GH_ENTERPRISE_TOKEN": None,
+                "SSH_AUTH_SOCK": None, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
                 "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "credential.helper", "GIT_CONFIG_VALUE_0": ""}
 
     # ===== reconcile on resume ===================================================================

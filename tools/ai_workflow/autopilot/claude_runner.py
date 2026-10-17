@@ -113,7 +113,11 @@ class ClaudeRunner:
                 env[k] = self.cfg.model
         env.pop("ANTHROPIC_MODEL", None)  # --model is the one source; no ambient override
         env["AETHERIA_AUTOPILOT_ROLE"] = "reviewer" if inv.role in ("review", "plan", "probe") else "worker"
-        env.update(inv.env)
+        for k, v in inv.env.items():  # None means: remove from the child's environment entirely
+            if v is None:
+                env.pop(k, None)
+            else:
+                env[k] = v
         return env
 
     # --- run -----------------------------------------------------------------------------

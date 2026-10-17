@@ -55,7 +55,9 @@ def main() -> int:
                              "prompt_head": prompt[:300],
                              "resume_note": "interrupted attempt" in prompt,
                              "git_cred_helper": os.environ.get("GIT_CONFIG_VALUE_0"),
-                             "git_askpass": os.environ.get("GIT_ASKPASS")}) + "\n")
+                             "git_askpass": os.environ.get("GIT_ASKPASS"),
+                             "gh_token": os.environ.get("GH_TOKEN"),
+                             "git_config_global": os.environ.get("GIT_CONFIG_GLOBAL")}) + "\n")
     steps = scen.get(kind) or scen.get(kind.split(":")[0]) or [{}]
     step = steps[min(n, len(steps) - 1)]
     for path, text in (step.get("write") or {}).items():

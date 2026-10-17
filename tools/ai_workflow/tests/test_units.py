@@ -36,6 +36,8 @@ class Util(unittest.TestCase):
         self.assertFalse(path_matches("docs/CLAUDE.md", ["CLAUDE.md"]))
 
     def test_redaction(self):
+        for t in ('{"password": "hunter2"}', '"GITHUB_TOKEN":"abcdef1234567890abcd"'):
+            self.assertNotIn("hunter2" if "password" in t else "abcdef1234567890abcd", redact(t), t)
         for secret in ("DB_PASSWORD=hunter2", "password: s3cr", "GITHUB_TOKEN=abcdef1234567890abcd", "DB_PASSWORD: hunter2hunter2hunter2",
                        "AWS_SECRET_ACCESS_KEY=AbCdEfGhIjKlMnOpQrSt12"):
             self.assertNotIn(secret.split("=")[-1].split()[-1], redact(secret), secret)
@@ -149,6 +151,30 @@ class GitAllowlist(RepoCase):
         self.assertEqual(g.head(), head)
         with self.assertRaises(GitSafetyError):
             g.create_branch("main", head)
+
+    def test_supervisor_git_never_runs_hooks(self):
+        marker = self.tmp / "hook_ran"
+        hook = self.repo / ".git" / "hooks" / "pre-commit"
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        hook.chmod(0o755)
+        gcfg = self.tmp / "global.gitconfig"
+        evil = self.tmp / "evilhooks"
+        evil.mkdir()
+        (evil / "pre-commit").write_text(f"#!/bin/sh\ntouch {marker}\n")
+        (evil / "pre-commit").chmod(0o755)
+        gcfg.write_text(f"[core]\n\thooksPath = {evil}\n")
+        os.environ["GIT_CONFIG_GLOBAL"] = str(gcfg)
+        try:
+            g = Git(self.repo)
+            self.w("pkg/h.py", "x = 1\n")
+            g.stage_exact(["pkg/h.py"])
+            g.commit("hook probe")
+        finally:
+            os.environ.pop("GIT_CONFIG_GLOBAL", None)
+        self.assertFalse(marker.exists())
+        env = Git._env()
+        keys = {env[f"GIT_CONFIG_KEY_{i}"] for i in range(int(env["GIT_CONFIG_COUNT"]))}
+        self.assertTrue({"core.hooksPath", "core.fsmonitor"} <= keys)
 
     def test_stage_exact_verifies_the_index(self):
         g = Git(self.repo)

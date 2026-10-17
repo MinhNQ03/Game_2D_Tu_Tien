@@ -164,8 +164,12 @@ stays authoritative (`docs/GDSCRIPT_CODE_INTELLIGENCE.md`). Revisit only if GDSc
 - Mode A (an interactive VS Code session): the reviewer agents run `claude-opus-5-5` (verified),
   but Claude Code's own background chores use Haiku unless `ANTHROPIC_DEFAULT_HAIKU_MODEL` /
   `ANTHROPIC_SMALL_FAST_MODEL` are set in your environment; Mode B always pins them.
-- A worker may still run project tools that write inside the repository; the supervisor catches
-  any git/ref/hook/config/evidence change after each call (`worker_wrote_git`) rather than
-  sandboxing the process. Run campaigns in a dedicated worktree if you want an OS-level boundary.
+- A worker may run project tools, and a tool it writes could in principle restore credentials
+  from its own environment and push. The defences are layered, not a sandbox: the CLI allowlist,
+  the edit guard, a worker environment WITHOUT git credentials (tokens and SSH agent removed, no
+  global git config, no credential helper), and a before/after snapshot of local refs, the index,
+  `.git` config/hooks, user git config (with includes), the remote heads and the evidence files
+  that stops the run on any change. Detection is after the fact; for an OS boundary run the
+  supervisor as a separate user or in a container.
 - The edit guard is a second layer; the first is the CLI permission allowlist (`dontAsk` denies
   anything not pre-approved). Shell redirection to a path is checked heuristically.

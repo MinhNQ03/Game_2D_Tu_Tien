@@ -79,10 +79,10 @@ _SECRET_PATTERNS = [
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
     re.compile(r"(?i)(?<![A-Za-z0-9])((?:[A-Za-z0-9]+[_-])*(?:api[_-]?key|access[_-]?key|token|secret|password|passwd|"
-               r"authorization))\b(\s*[:=]\s*|\s+)['\"]?(?!\[REDACTED\])[A-Za-z0-9_\-\.=/+]{12,}['\"]?"),
+               r"authorization))\b(['\"]?\s*[:=]\s*|\s+)['\"]?(?!\[REDACTED\])[A-Za-z0-9_\-\.=/+]{12,}['\"]?"),
     re.compile(r"(?i)bearer\s+[A-Za-z0-9_\-\.=/+]{16,}"),
     # passwords are often short: any value of 4+ characters after a password-like key
-    re.compile(r"(?i)(?<![A-Za-z0-9])((?:[A-Za-z0-9]+[_-])*(?:password|passwd|pwd|secret))\b(\s*[:=]\s*)"
+    re.compile(r"(?i)(?<![A-Za-z0-9])((?:[A-Za-z0-9]+[_-])*(?:password|passwd|pwd|secret))\b(['\"]?\s*[:=]\s*)"
                r"['\"]?(?!\[REDACTED\])[^\s'\"]{4,}['\"]?"),
 ]
 

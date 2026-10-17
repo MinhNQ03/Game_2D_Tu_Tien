@@ -484,6 +484,9 @@ class OwnerRetryAndPublish(RepoCase):
         self.assertEqual(rc, EXIT_OK, st["stop"])
         self.assertEqual(st["items"]["t1"]["status"], "COMPLETE")
         self.assertEqual(st["items"]["t1"]["attempt"], 1)
+        self.assertEqual(len(st["items"]["t1"]["previous_attempts"]), 1)
+        self.assertEqual(st["items"]["t1"]["previous_attempts"][0]["validation"]["unit"]["status"], "FAIL")
+        self.assertEqual(st["items"]["t1"]["checkpoints"], [self.commits_for("t1")[0]])
         self.assertEqual(len(self.commits_for("t1")), 1)
 
     def test_commit_on_top_of_a_checkpoint_is_never_pushed(self):
@@ -618,6 +621,8 @@ class WorkerMisbehaviour(RepoCase):
         impl = [c for c in self.calls() if c["kind"] == "implement"][0]
         self.assertEqual(impl["git_cred_helper"], "")
         self.assertEqual(impl["git_askpass"], "/bin/false")
+        self.assertIsNone(impl["gh_token"])  # removed, not blanked
+        self.assertEqual(impl["git_config_global"], os.devnull)
 
     def test_secrets_never_reach_the_commit_or_report(self):
         secret = "ghp_" + "Z" * 36
