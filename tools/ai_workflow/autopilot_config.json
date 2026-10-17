@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "policy_version": "1.0.0",
+
+  "model": "claude-opus-5-5",
+
+  "claude": {
+    "bin": "claude",
+    "min_cli_version": "2.1.0",
+    "setting_sources": "project",
+    "strict_mcp_config": true,
+    "pin_auxiliary_models": true,
+    "session_persistence": false
+  },
+
+  "limits": {
+    "max_review_fix_cycles": 3,
+    "max_tasks_per_run": 10,
+    "wall_clock_minutes_per_run": 240,
+    "stop_new_stage_when_minutes_left_below": 25,
+    "max_invocations_per_task": 14,
+    "max_invocations_per_run": 90,
+    "max_identical_failure_retries": 1,
+    "max_planner_generated_items_per_run": 3,
+    "ci_poll_timeout_seconds": 1800,
+    "ci_poll_interval_seconds": 60,
+    "invocation": {
+      "implement": {"max_turns": 200, "timeout_seconds": 5400},
+      "fix":       {"max_turns": 150, "timeout_seconds": 3600},
+      "review":    {"max_turns": 80,  "timeout_seconds": 1800},
+      "plan":      {"max_turns": 60,  "timeout_seconds": 1500},
+      "probe":     {"max_turns": 1,   "timeout_seconds": 180}
+    }
+  },
+
+  "budget": {
+    "basis": "Claude Code CLI `total_cost_usd` (list-price estimate; on a subscription it is not the amount billed)",
+    "max_usd_per_task": null,
+    "max_usd_per_run": null,
+    "max_usd_per_campaign": null,
+    "require_explicit_budget_for_billable_runs": true
+  },
+
+  "git": {
+    "remote": "origin",
+    "protected_branches": ["main", "master"],
+    "push_branch_patterns": ["feat/*", "feature/*", "hardening/*", "fix/*", "autopilot/*"],
+    "push": true,
+    "require_ci_success": true,
+    "create_draft_pr": true,
+    "pr_base": "main",
+    "commit_trailer_prefix": "Autopilot",
+    "co_author": "Claude Opus 5.5 <noreply@anthropic.com>"
+  },
+
+  "paths": {
+    "state_dir": ".aetheria-autopilot",
+    "protected": [
+      "CLAUDE.md",
+      ".kiro/settings/**",
+      ".git/**",
+      ".env",
+      ".env.*",
+      "**/*.pem",
+      "**/*.key",
+      "**/id_rsa*",
+      "**/credentials*",
+      ".aetheria-autopilot/**"
+    ],
+    "policy": [
+      ".claude/**",
+      "tools/ai_workflow/**",
+      ".github/workflows/**"
+    ],
+    "default_allowed_write": [
+      "src/**", "data/**", "assets/**", "locale/**", "tests/**", "docs/**",
+      "tools/*.py", "tools/*.gd", "tools/*.uid",
+      "tools/aetheria_art/**", "tools/aetheria_art_pipeline/**", "tools/art_sheet/**",
+      "main.tscn", "project.godot", ".kiro/steering/**"
+    ]
+  },
+
+  "permissions": {
+    "max_parallel_reviewers": 2,
+    "worker_tools": ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "Skill", "TodoWrite"],
+    "worker_bash_allow": [
+      "git status:*", "git diff:*", "git log:*", "git show:*", "git ls-files:*", "git blame:*",
+      "{python} tools/*", "python3 tools/*", "{python} -m unittest *", "python3 -m unittest *",
+      "{godot} --headless --path . *", "{godot} --path . *",
+      "{blender} -b *",
+      "ls:*", "wc:*", "head:*", "tail:*", "cat:*", "file:*", "stat:*", "md5sum:*", "sha256sum:*",
+      "sort:*", "uniq:*", "diff:*", "grep:*", "rg:*", "mkdir -p:*"
+    ],
+    "worker_deny": [
+      "WebFetch", "WebSearch", "Agent", "Task",
+      "Bash(git commit:*)", "Bash(git push:*)", "Bash(git reset:*)", "Bash(git clean:*)",
+      "Bash(git checkout:*)", "Bash(git switch:*)", "Bash(git restore:*)", "Bash(git stash:*)",
+      "Bash(git rebase:*)", "Bash(git merge:*)", "Bash(git branch:*)", "Bash(git add:*)", "Bash(git rm:*)",
+      "Bash(rm:*)", "Bash(curl:*)", "Bash(wget:*)", "Bash(sudo:*)", "Bash(ssh:*)", "Bash(scp:*)",
+      "Bash(gh:*)", "Bash(claude:*)", "Bash(env:*)", "Bash(printenv:*)"
+    ],
+    "blender_candidates": ["~/Downloads/blender-5.2.2-linux-x64/blender", "blender"]
+  },
+
+  "environment": {
+    "godot_bin_candidates": [
+      "$AETHERIA_GODOT",
+      "~/Downloads/Godot_v4.7.2-stable_linux.x86_64",
+      "godot4",
+      "godot"
+    ],
+    "godot_version_prefix": "4.7",
+    "display_fallback": ":0",
+    "python": "/usr/bin/python3"
+  },
+
+  "checks": {
+    "lint": {
+      "cmd": ["{python}", "tools/gdscript_lint.py"],
+      "triggers": ["**/*.gd"], "always": true, "timeout": 300
+    },
+    "lint_selftest": {
+      "cmd": ["{python}", "tools/gdscript_lint.py", "--selftest"],
+      "triggers": ["tools/gdscript_lint.py"], "timeout": 120
+    },
+    "story_catalog": {
+      "cmd": ["{python}", "tools/author_story_data.py", "--check"],
+      "triggers": ["tools/author_story_data.py", "data/**"], "always": true, "timeout": 300
+    },
+    "docs": {
+      "cmd_sequence": [
+        ["{python}", "tools/gen_decision_index.py", "--selftest"],
+        ["{python}", "tools/validate_docs.py", "--selftest"],
+        ["{python}", "tools/validate_docs.py"]
+      ],
+      "triggers": ["docs/**", "tools/validate_docs.py", "tools/gen_decision_index.py"],
+      "always": true, "timeout": 300
+    },
+    "autopilot_selftest": {
+      "cmd": ["{python}", "-m", "unittest", "discover", "-s", "tools/ai_workflow/tests", "-t", "tools/ai_workflow"],
+      "triggers": ["tools/ai_workflow/**", ".claude/**"], "timeout": 900
+    },
+    "godot_import": {
+      "cmd": ["{godot}", "--headless", "--path", ".", "--import"],
+      "triggers": ["src/**", "data/**", "assets/**", "locale/**", "tests/**", "tools/*.gd", "*.tscn", "project.godot"],
+      "needs": ["godot"], "timeout": 900
+    },
+    "godot_parse": {
+      "cmd": ["{godot}", "--headless", "--path", ".", "-s", "res://tools/parse_check.gd"],
+      "triggers": ["**/*.gd", "**/*.tscn", "**/*.tres", "project.godot"],
+      "needs": ["godot"], "after": ["godot_import"], "timeout": 900
+    },
+    "godot_boot": {
+      "cmd": ["{godot}", "--headless", "--path", ".", "--quit-after", "2"],
+      "triggers": ["src/**", "data/**", "assets/**", "locale/**", "*.tscn", "project.godot"],
+      "needs": ["godot"], "after": ["godot_import"], "timeout": 300
+    },
+    "godot_suite": {
+      "cmd": ["{godot}", "--headless", "--path", ".", "-s", "res://tests/run_tests.gd"],
+      "triggers": ["src/**", "data/**", "assets/**", "locale/**", "tests/**", "*.tscn", "project.godot"],
+      "needs": ["godot"], "after": ["godot_import"], "timeout": 1800,
+      "fail_patterns": ["SCRIPT ERROR:", "ObjectDB instances? (was|were) leaked", "resources still in use"],
+      "require_patterns": ["\\[tests\\] RESULT: PASS"],
+      "summary_pattern": "\\[tests\\] ran .*"
+    },
+    "e2e_app":      {"e2e": "run_app_flow"},
+    "e2e_player":   {"e2e": "run_player_flow"},
+    "e2e_world":    {"e2e": "run_world_flow"},
+    "e2e_pet":      {"e2e": "run_pet_flow"},
+    "e2e_npc":      {"e2e": "run_npc_flow"},
+    "e2e_dialogue": {"e2e": "run_dialogue_flow"},
+    "e2e_quest":    {"e2e": "run_quest_flow"},
+    "e2e_story":    {"e2e": "run_story_flow"}
+  },
+
+  "e2e_defaults": {
+    "cmd": ["{godot}", "--headless", "--path", ".", "-s", "res://tests/e2e/{e2e}.gd"],
+    "triggers": ["src/**", "data/**", "assets/**", "locale/**", "tests/e2e/**", "*.tscn", "project.godot"],
+    "needs": ["godot"], "after": ["godot_import"], "timeout": 900,
+    "fail_patterns": ["SCRIPT ERROR:", "ObjectDB instances? (was|were) leaked", "resources still in use", "\\[FAIL\\]"],
+    "require_patterns": ["RESULT: PASS"]
+  },
+
+  "reviewers": {
+    "architecture": {"agent": "aetheria-architecture-reviewer", "always": true},
+    "qa":           {"agent": "aetheria-qa-reviewer", "always": true},
+    "narrative":    {"agent": "aetheria-narrative-reviewer",
+                     "triggers": ["data/story/**", "data/dialogue/**", "data/quests/**", "data/characters/**",
+                                  "data/knowledge/**", "locale/**", "docs/NARRATIVE*", "docs/CANON*", "docs/WORLD_BIBLE.md",
+                                  "docs/CONTENT_BIBLE.md", "tools/author_story_data.py", "src/domain/story/**",
+                                  "src/domain/dialogue/**", "src/domain/quest/**", "src/domain/knowledge/**",
+                                  "src/presentation/story/**", "src/presentation/chronicle/**"]},
+    "art":          {"agent": "aetheria-art-reviewer",
+                     "triggers": ["assets/**", "tools/aetheria_art*/**", "tools/art_sheet/**", "src/presentation/**",
+                                  "**/*.tscn", "**/*.gdshader", "data/fx/**", "data/ambience/**",
+                                  "docs/CHARACTER_ART_BIBLE.md", "docs/MOTION_DESIGN_CONTRACT.md"]},
+    "ui_ux":        {"agent": "aetheria-ui-ux-reviewer",
+                     "triggers": ["src/presentation/ui/**", "src/presentation/hud/**", "src/presentation/menus/**",
+                                  "src/presentation/inventory/**", "src/presentation/chronicle/**",
+                                  "src/presentation/dialogue/**", "src/presentation/quest/**", "src/presentation/shop/**",
+                                  "src/presentation/equipment/**", "src/presentation/skills/**", "src/presentation/cultivation/**",
+                                  "assets/ui/**", "locale/**", "docs/UI_UX_BIBLE.md"]},
+    "gameplay":     {"agent": "aetheria-gameplay-reviewer",
+                     "triggers": ["src/gameplay/**", "src/domain/**", "data/techniques/**", "data/enemies/**",
+                                  "data/combat/**", "data/pets/**", "docs/COMBAT_DESIGN.md", "docs/GAME_FLOW.md"]},
+    "economy":      {"agent": "aetheria-economy-reviewer",
+                     "triggers": ["data/items/**", "data/shops/**", "data/equipment/**", "data/progression/**",
+                                  "data/cultivation/**", "src/domain/shop/**", "src/domain/reward/**",
+                                  "src/domain/progression/**", "src/domain/inventory/**",
+                                  "docs/ECONOMY_CRAFTING_DESIGN.md", "docs/PROGRESSION_CULTIVATION_DESIGN.md"]},
+    "performance":  {"agent": "aetheria-performance-reviewer",
+                     "triggers": ["tests/performance/**", "docs/PERFORMANCE.md", "tools/measure_*"]},
+    "audio":        {"agent": "aetheria-audio-reviewer", "triggers": ["assets/audio/**", "**/*.ogg", "**/*.wav", "**/audio/**"]},
+    "build_release":{"agent": "aetheria-build-release-reviewer",
+                     "triggers": [".github/workflows/**", "export_presets.cfg", "project.godot", "tools/ai_workflow/**", ".claude/**"]}
+  },
+
+  "owner_gates": [
+    {
+      "id": "H21-14",
+      "title": "A person has played the opening (pre-Phase-21 checklist §17.6 / §19.8) and written it down",
+      "source": "docs/handoff/pre-phase-21-hardening.md",
+      "open_pattern": "H21-14[^\\n]*OPEN / OWNER REQUIRED",
+      "blocks_scopes": ["phase-21", "phase-22"],
+      "owner_action": "Play the build per docs/handoff/pre-phase-21-hardening.md §17.6 and §19.8, write the H21-14 record, and change its status in that handoff yourself."
+    },
+    {
+      "id": "ART-DIR-01",
+      "title": "Owner decision: keep 32x48 actors or move to a finer sprite tier",
+      "source": "docs/handoff/experience-art-intelligence-upgrade.md",
+      "open_pattern": "ART-DIR-01 / 02 \\| §3 \\| the owner \\| a decision",
+      "blocks_scopes": ["art-direction-sprite-scale"],
+      "owner_action": "Decide ART-DIR-01 (handoff experience-art-intelligence-upgrade §3) and record it in docs/DECISIONS.md."
+    },
+    {
+      "id": "ART-DIR-02",
+      "title": "Owner decision: brighter palette (Visual DNA change)",
+      "source": "docs/handoff/experience-art-intelligence-upgrade.md",
+      "open_pattern": "ART-DIR-01 / 02 \\| §3 \\| the owner \\| a decision",
+      "blocks_scopes": ["art-direction-palette"],
+      "owner_action": "Decide ART-DIR-02 (a Visual DNA change) and record it in docs/DECISIONS.md."
+    }
+  ],
+
+  "planner": {
+    "source_docs": [
+      ".kiro/steering/01-product.md",
+      ".kiro/steering/03-architecture.md",
+      ".kiro/steering/08-ai-review-protocol.md",
+      "docs/ROADMAP.md",
+      "docs/PHASE_EXECUTION_PROTOCOL.md",
+      "docs/PLAYER_EXPERIENCE_STANDARD.md",
+      "docs/SYSTEM_DEPENDENCY_MATRIX.md",
+      "docs/DECISIONS.md",
+      "docs/handoff/experience-art-intelligence-upgrade.md",
+      "docs/handoff/pre-phase-21-hardening.md"
+    ],
+    "forbidden_claims": [
+      "H21-14 (is |has been )?(closed|satisfied|done|passed)",
+      "owner (has )?(approved|signed off|accepted)",
+      "Phase 2[12] (is )?(started|done|complete|in progress)",
+      "mark Phase 2[12] (as )?(started|done|complete)",
+      "proposal (is|becomes) (now )?canon",
+      "--dangerously-skip-permissions",
+      "git push --force",
+      "git reset --hard"
+    ],
+    "required_prompt_sections": [
+      "Objective and scope",
+      "Verified base and branch policy",
+      "Source-of-truth documents",
+      "Existing implementation and dependencies",
+      "In scope",
+      "Out of scope",
+      "Implementation tasks",
+      "Acceptance criteria",
+      "Required checks",
+      "Constraints",
+      "Checkpoint and reporting",
+      "Prior completed work",
+      "Owner decisions that constrain this task"
+    ]
+  }
+}

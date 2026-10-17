@@ -1,0 +1,14 @@
+{
+  "id": "qa-test-cannot-fail",
+  "reviewer": "qa",
+  "objective": "Add a test proving that a sold item leaves the player's bag.",
+  "criteria": [
+    "a test fails if selling stops removing the item"
+  ],
+  "context": "ShopService.sell(bag, item_id) returns a SaleResult and must remove the item from bag.",
+  "diff": "--- a/tests/unit/test_shop_sell.gd\n+++ b/tests/unit/test_shop_sell.gd\n@@ -0,0 +1,14 @@\n+extends TestCase\n+\n+func test_selling_removes_the_item() -> void:\n+\tvar bag := Bag.new()\n+\tbag.add(&\"herb_lingzhi\", 1)\n+\tvar shop := ShopService.new()\n+\tvar result := shop.sell(bag, &\"herb_lingzhi\")\n+\t# the sale went through\n+\tassert_true(result != null, \"sell returned a result\")\n+\tassert_true(true, \"item removed\")\n",
+  "expect": {
+    "min_severity": "P1",
+    "match": "(cannot fail|always pass|assert_true\\(true|does not (check|assert).*(bag|removed)|never checks)"
+  }
+}

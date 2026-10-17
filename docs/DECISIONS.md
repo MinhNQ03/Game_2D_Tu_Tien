@@ -6240,3 +6240,36 @@ DNA's own 3 % floor), value p95 0.67, sd 0.143. Handoff:
 
 **Gates untouched.** Phase 20 stays DONE; Phase 21 and 22 NOT STARTED; H21-14 OPEN / OWNER
 REQUIRED — no tool run here is a person's playtest.
+
+## D-076 — The autopilot: a local supervisor for autonomous, independently reviewed work items — **Implemented on `feat/aetheria-autonomous-orchestrator`; production campaigns start only on the owner's command** (2026-10-17)
+
+**Context.** The owner asked (2026-10-17) that work continue autonomously after one initial task:
+implement, review independently, fix, verify, checkpoint and compose the next prompt without the
+owner copying reports between sessions — while every gate of `PHASE_EXECUTION_PROTOCOL.md`, the
+CI-failure protocol and the owner gates (H21-14, ART-DIR-01, ART-DIR-02) still hold.
+
+**Decision.** `tools/ai_workflow/` (manual: `tools/ai_workflow/README.md`) is a stdlib-only Python
+supervisor that launches separate headless Claude Code invocations of ONE configured model and
+owns the queue, durable state, branch, budgets and stop conditions. The model's prose is never
+completion evidence: exit codes, `modelUsage`, structured output, the project's own gates (lint,
+catalogs, docs, import, parse, boot, suite, the eight E2E flows, real-window captures) and git
+refs are. Each item runs implement → checks → read-only specialist reviewers in fresh contexts
+(`.claude/agents/aetheria-*-reviewer.md`) → at most three fix rounds, each re-reviewed → forced
+final validation → explicit-path checkpoint with `Autopilot-*` trailers → push of a feature
+branch → CI on the exact SHA. The same agents, checks and review pack serve the native VS Code
+workflow (skill `aetheria-work-item`); `.claude/settings.json` hooks guard destructive git, owner
+files and concurrent writers.
+
+**Boundaries.** It never merges, force-pushes, rewrites history or moves `main`; never closes an
+owner gate (gates are read from the COMMITTED handoffs); never relaxes a limit or a gate to pass.
+A production campaign needs `--activate` and an explicit USD cap. Policy (agent/review
+instructions) changes only through an owner-authored `kind: policy` item that scores at least the
+recorded reviewer-benchmark baseline. Learning is project-level (ledger, tests, benchmark), not
+model training.
+
+**Evidence.** 86 orchestrator tests (scripted CLI; failure, crash and recovery paths, each new
+regression test mutation-checked); three rounds of real independent review of the orchestrator
+itself; real canaries with the configured model in an isolated worktree (seeded defect caught by
+both reviewers → fixed → re-reviewed → checkpoint; SIGTERM inside an implementation and the plan's
+session limit both resumed with one commit per item); every project gate green on the final
+commit. CodeGraph was measured and rejected (0 of 231 GDScript files indexed).

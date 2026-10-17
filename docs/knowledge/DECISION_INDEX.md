@@ -8,7 +8,7 @@
 > `Not recorded` means the source entry states no status — it is **not**
 > inferred as Accepted.
 
-Parsed 75 decisions from `docs/DECISIONS.md`.
+Parsed 76 decisions from `docs/DECISIONS.md`.
 
 | ID | Title | Status | Date |
 |---|---|---|---|
@@ -87,3 +87,4 @@ Parsed 75 decisions from `docs/DECISIONS.md`.
 | D-073 | [Post-Phase-20 experience hardening: the bridge, the choice transaction, the Night shown, the book that explains](../DECISIONS.md#d-073--post-phase-20-experience-hardening-the-bridge-the-choice-transaction-the-night-shown-the-book-that-explains) | DONE. Decided at Gate A before any code of this pass (Checkpoint 0, docs only), on `hardening/pre-phase21-experience`, base `4dd38ec` (`origin/main`; 15 gates, 1188 tests, CI run 38132418506 on that SHA); built in five checkpoints (1224 tests, 50 mutations red, the real window in four combinations). **Not a phase.** Phase 20 stays DONE under D-072; | — |
 | D-074 | [Product direction: online multiplayer-first (supersedes Stage-1 offline-first framing)](../DECISIONS.md#d-074--product-direction-online-multiplayer-first-supersedes-stage-1-offline-first-framing--accepted-2026-10-12) | Accepted | 2026-10-12 |
 | D-075 | [Experience, art, VFX and code-intelligence upgrade: what was built, what waits for the owner](../DECISIONS.md#d-075--experience-art-vfx-and-code-intelligence-upgrade-what-was-built-what-waits-for-the-owner--implemented-on-featexperience-art-intelligence-upgrade-v2-awaiting-owner-review-2026-10-17) | Implemented on `feat/experience-art-intelligence-upgrade-v2`, awaiting owner review | 2026-10-17 |
+| D-076 | [The autopilot: a local supervisor for autonomous, independently reviewed work items](../DECISIONS.md#d-076--the-autopilot-a-local-supervisor-for-autonomous-independently-reviewed-work-items--implemented-on-feataetheria-autonomous-orchestrator-production-campaigns-start-only-on-the-owners-command-2026-10-17) | Implemented on `feat/aetheria-autonomous-orchestrator`; production campaigns start only on the owner's command | 2026-10-17 |

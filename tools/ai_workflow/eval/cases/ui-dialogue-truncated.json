@@ -1,0 +1,14 @@
+{
+  "id": "ui-dialogue-truncated",
+  "reviewer": "ui_ux",
+  "objective": "Show NPC dialogue lines in the dialogue panel.",
+  "criteria": [
+    "every dialogue line is shown whole in vi and en at 1280x720"
+  ],
+  "context": "Vietnamese lines run 30-60% longer than English. The panel is 900x120 px at 1280x720.",
+  "diff": "--- a/src/presentation/dialogue/dialogue_panel.gd\n+++ b/src/presentation/dialogue/dialogue_panel.gd\n@@ -10,6 +10,10 @@ func show_line(text_key: StringName) -> void:\n+\t_line_label.autowrap_mode = TextServer.AUTOWRAP_OFF\n+\t_line_label.clip_text = true\n+\t_line_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS\n+\t_line_label.text = tr(text_key)\n",
+  "expect": {
+    "min_severity": "P1",
+    "match": "(clip|trunc|ellipsis|cut|overrun|wrap|whole)"
+  }
+}

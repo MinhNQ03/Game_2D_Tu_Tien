@@ -8,6 +8,23 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-17 — The autopilot supervisor (`feat/aetheria-autonomous-orchestrator`; tooling, not a phase, D-076)
+
+- **Autonomous work items with independent review.** `tools/ai_workflow/aetheria_autopilot.py`
+  runs an item through implement → the project's own gates → read-only specialist reviewers in
+  fresh contexts → up to three fix rounds → forced final validation → explicit-path checkpoint →
+  push of the feature branch → CI on the exact SHA → the next validated task prompt. Commands:
+  `doctor`, `dry-run`, `start --activate`, `status`, `resume`, `stop`, `retry`, `checks`,
+  `review-pack`, `gates`, `eval`, `canary`. Manual: `tools/ai_workflow/README.md`.
+- **Ten reviewer agents** (`.claude/agents/`), skills `aetheria-work-item` and `aetheria-autopilot`,
+  and `.claude/settings.json` hooks (destructive-git / owner-file / concurrent-writer guard,
+  GDScript lint feedback after an edit, a session digest of the owner gates).
+- **Safety**: one exact model (no fallback), git allowlist (no reset/clean/rebase/merge/force/
+  protected push), owner gates read from the committed handoffs, USD/turn/time/task budgets,
+  atomic resumable state. 86 tests; real canaries recovered from a SIGTERM and from the plan's
+  session limit. Campaign `ui-readability-2026-10` is seeded from the owner's request and waits
+  for the owner's `--activate`.
+
 ### 2026-10-17 — Experience, art, VFX and code-intelligence upgrade (`feat/experience-art-intelligence-upgrade-v2`; not a phase, D-075)
 
 - **Every Origin arrives with a reason and a lead.** The identity screen tells each past in seven

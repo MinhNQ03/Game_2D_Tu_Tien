@@ -1,0 +1,119 @@
+{
+  "id": "ui-readability-2026-10",
+  "title": "Owner request 2026-10-17: whole dialogue text, a large centred satchel and learned-knowledge book with few clear tabs, and a character-art readability pass",
+  "source": "owner message of 2026-10-17 (Vietnamese): characters' dialogue must be shown whole, never cut; the satchel and the things learned must be large in the middle of the screen; fewer tabs, no hard-to-use filter tabs; improve character graphics; keep improving the game",
+  "branch": "feat/ui-readability-autopilot",
+  "scopes_allowed": ["ui-readability", "art-character-readability", "quality-debt-ui"],
+  "allow_planner_items": true,
+  "budget": {"max_usd_per_task": 60, "max_usd_per_campaign": 300},
+  "items": [
+    {
+      "id": "ui-01-dialogue-whole-text",
+      "title": "Dialogue: every line, speaker name and answer shown whole (vi + en)",
+      "scopes": ["ui-readability"],
+      "objective": "No dialogue content is ever truncated: the speaker's name, every line and every answer choice are shown whole in Vietnamese and English at 1280x720 and 1280x800. Today `src/presentation/dialogue/dialogue_panel.gd` clips the speaker title and each answer row with an ellipsis (`clip_text` + `OVERRUN_TRIM_ELLIPSIS`, answers in a 250 px column). A long answer wraps or the column/box grows within the dialogue band; a line too long for the box pages with a visible continue cue instead of being cut.",
+      "in_scope": [
+        "src/presentation/dialogue/** and the dialogue sizes in src/presentation/ui/ui_palette.gd",
+        "a layout test that measures every authored dialogue line, speaker name and answer (data/dialogue/**, both languages) with the real font and asserts it fits or pages, never clips",
+        "tools/capture_ui.gd: capture an open dialogue with its longest answer set (vi 1280x720, en 1280x800)",
+        "docs/UI_UX_BIBLE.md dialogue section and docs/CHANGELOG.md"
+      ],
+      "out_of_scope": ["rewriting any dialogue text or canon", "the identity screen", "new HUD elements", "Phase 21/22"],
+      "tasks": [
+        "read docs/UI_UX_BIBLE.md (dialogue band, HUD budgets) and the dialogue E2E (tests/e2e/run_dialogue_flow.gd)",
+        "remove truncation of content in the dialogue panel; let answers wrap and the box grow inside the dialogue band, page long lines with a cue",
+        "add the measuring layout test that is RED on the current build and GREEN after the change",
+        "extend tools/capture_ui.gd with an open-dialogue state and capture vi 1280x720 and en 1280x800",
+        "update docs"
+      ],
+      "constraints": [
+        "the dialogue band must stay out of the playfield clear zone defined in docs/UI_UX_BIBLE.md; if it cannot, report the conflict instead of breaking the budget",
+        "keyboard selection and Esc behaviour unchanged (dialogue E2E stays green)"
+      ],
+      "source_docs": ["docs/UI_UX_BIBLE.md", "docs/PLAYER_EXPERIENCE_STANDARD.md", ".kiro/steering/07-localization.md", "docs/VISUAL_CRAFT_WORKFLOW.md"],
+      "allowed_paths": ["src/presentation/**", "tests/**", "tools/capture_ui.gd", "docs/UI_UX_BIBLE.md", "docs/CHANGELOG.md", "docs/TEST_PLAN.md", "docs/handoff/**"],
+      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_dialogue", "e2e_npc", "e2e_quest", "e2e_story", "cap_ui01_vi720", "cap_ui01_en800"],
+      "required_captures": [
+        {"id": "cap_ui01_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/ui-01/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/ui-01/vi-1280x720/*.png"},
+        {"id": "cap_ui01_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/ui-01/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/ui-01/en-1280x800/*.png"}
+      ],
+      "acceptance_criteria": [
+        {"id": "C1", "text": "no dialogue content label (speaker, line, answer) uses clip/ellipsis truncation; long answers wrap", "evidence": ["review:ui_ux", "review:qa"]},
+        {"id": "C2", "text": "a layout test measures every authored dialogue line, speaker and answer in vi and en and fails if any would be cut", "evidence": ["check:godot_suite", "review:qa"]},
+        {"id": "C3", "text": "captures of an open dialogue at vi 1280x720 and en 1280x800 show every word of the line and answers, inspected at real size", "evidence": ["check:cap_ui01_vi720", "check:cap_ui01_en800", "review:ui_ux"]},
+        {"id": "C4", "text": "dialogue, NPC, quest and story E2E flows still pass with no SCRIPT ERROR or leak", "evidence": ["check:e2e_dialogue", "check:e2e_npc", "check:e2e_quest", "check:e2e_story"]}
+      ]
+    },
+    {
+      "id": "ui-02-centred-book-satchel",
+      "title": "Satchel opens as a large centred book panel (reusable seam)",
+      "scopes": ["ui-readability"],
+      "depends_on": ["ui-01-dialogue-whole-text"],
+      "objective": "The satchel (inventory + equipment sheet, today a narrow left side panel in src/presentation/hud/gameplay_hud.gd sized by UIPalette.SHEET_PANEL_WIDTH) opens as a LARGE CENTRED book panel that is easy to read: larger item rows and text, the paper-doll and stats beside the list, one obvious close key. Build it as a reusable centred-book seam (a presentation component with tab support) that ui-03 will reuse for the learned-knowledge book — foundation first, content second.",
+      "in_scope": ["a reusable centred book panel component under src/presentation/ui/components/", "the satchel moved into it", "modal input ownership while open (gameplay input gated, Esc closes one level)", "layout + budget tests", "capture of the open satchel vi 1280x720 and en 1280x800", "docs/UI_UX_BIBLE.md"],
+      "out_of_scope": ["inventory rules or item data", "new gameplay", "Phase 21/22"],
+      "tasks": ["design the centred book seam (size relative to the viewport, readable at both aspect ratios)", "move the satchel into it", "tests: open/close, input gating, nothing clipped, both aspect ratios", "captures", "docs"],
+      "constraints": ["UI never drives gameplay truth", "the existing inventory/equipment E2E-covered behaviour stays green", "use the D-050 shared seams (UITheme/UIPalette), no ad-hoc styling"],
+      "source_docs": ["docs/UI_UX_BIBLE.md", "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md", "docs/PLAYER_EXPERIENCE_STANDARD.md"],
+      "allowed_paths": ["src/presentation/**", "tests/**", "tools/capture_ui.gd", "locale/**", "docs/UI_UX_BIBLE.md", "docs/CHANGELOG.md", "docs/TEST_PLAN.md", "docs/handoff/**"],
+      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_app", "e2e_player", "e2e_npc", "e2e_quest", "e2e_pet", "cap_ui02_vi720", "cap_ui02_en800"],
+      "required_captures": [
+        {"id": "cap_ui02_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/ui-02/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/ui-02/vi-1280x720/*.png"},
+        {"id": "cap_ui02_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/ui-02/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/ui-02/en-1280x800/*.png"}
+      ],
+      "acceptance_criteria": [
+        {"id": "C1", "text": "the satchel opens centred, at least 60% of the viewport width at 1280x720, with body text at least the UI body size and nothing clipped", "evidence": ["check:godot_suite", "review:ui_ux"]},
+        {"id": "C2", "text": "the centred book is a reusable component with tab support, owned by presentation, with no gameplay logic", "evidence": ["review:architecture", "artifact:src/presentation/ui/components/**"]},
+        {"id": "C3", "text": "while open, gameplay input is gated and Esc closes it; existing flows stay green", "evidence": ["check:godot_suite", "check:e2e_app", "check:e2e_npc", "check:e2e_quest", "review:qa"]},
+        {"id": "C4", "text": "captures at vi 1280x720 and en 1280x800 show the open satchel readable at real size", "evidence": ["check:cap_ui02_vi720", "check:cap_ui02_en800", "review:ui_ux"]}
+      ]
+    },
+    {
+      "id": "ui-03-knowledge-book-tabs",
+      "title": "Learned knowledge and the Chronicle in the centred book, few clear tabs",
+      "scopes": ["ui-readability"],
+      "depends_on": ["ui-02-centred-book-satchel"],
+      "objective": "The Chronicle (src/presentation/chronicle/chronicle_panel.gd: a 330 px side panel paging six sections — story, self, body, knowledge, people, history — about 10 pages at 1280x720) moves into the centred book seam from ui-02 as its second consumer, with at most four clearly named tabs the player switches with one key each (for example: Journey, What I have learned, People, Self), the learned-knowledge entries large and easy to read, and paging only inside a tab. No filter tab that hides content behind extra presses.",
+      "in_scope": ["chronicle presentation and its tests", "tab model (data/presentation only)", "captures vi 1280x720 and en 1280x800", "docs/UI_UX_BIBLE.md", "H21-20 page-fill rule kept"],
+      "out_of_scope": ["what the Chronicle may reveal (reveal ladder unchanged)", "KnowledgeService rules", "story data", "Phase 21/22"],
+      "tasks": ["map the six sections into at most four tabs without dropping or reordering any entry", "reuse the ui-02 seam (second consumer)", "tests: every entry still reachable, tab keys, paging inside a tab, nothing clipped", "captures", "docs"],
+      "constraints": ["Story does not own knowledge (D-040/C-012): the panel only reads", "no reveal beyond NARRATIVE_MASTER_PLAN's ladder"],
+      "source_docs": ["docs/UI_UX_BIBLE.md", "docs/NARRATIVE_MASTER_PLAN.md", "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md"],
+      "allowed_paths": ["src/presentation/**", "tests/**", "tools/capture_ui.gd", "locale/**", "docs/UI_UX_BIBLE.md", "docs/CHANGELOG.md", "docs/TEST_PLAN.md", "docs/handoff/**"],
+      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_story", "e2e_quest", "e2e_dialogue", "cap_ui03_vi720", "cap_ui03_en800"],
+      "required_captures": [
+        {"id": "cap_ui03_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/ui-03/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/ui-03/vi-1280x720/*.png"},
+        {"id": "cap_ui03_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/ui-03/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/ui-03/en-1280x800/*.png"}
+      ],
+      "acceptance_criteria": [
+        {"id": "C1", "text": "the Chronicle opens in the centred book with at most four named tabs, one key per tab, every former entry still reachable", "evidence": ["check:godot_suite", "review:ui_ux", "review:qa"]},
+        {"id": "C2", "text": "the ui-02 seam is reused unchanged in contract (second consumer), not copied", "evidence": ["review:architecture"]},
+        {"id": "C3", "text": "nothing the reveal ladder holds back becomes visible; the panel only reads knowledge", "evidence": ["review:narrative", "review:architecture"]},
+        {"id": "C4", "text": "captures at vi 1280x720 and en 1280x800 show the learned-knowledge tab large and readable", "evidence": ["check:cap_ui03_vi720", "check:cap_ui03_en800", "review:ui_ux"]}
+      ]
+    },
+    {
+      "id": "art-01-player-readability",
+      "title": "Player character readability pass inside the frozen Visual DNA and 32x48",
+      "scopes": ["art-character-readability"],
+      "depends_on": ["ui-03-knowledge-book-tabs"],
+      "objective": "Make the two player looks read better at 1x in the real hub — clearer silhouette, a face that is not a plastic ball, hands that leave the sleeve, the second look distinct in silhouette and palette — built ONLY through the existing Blender/pixel pipeline, at the frozen 32x48 scale and inside the Visual DNA palette (ART-DIR-01 and ART-DIR-02 stay the owner's decisions and are not touched).",
+      "in_scope": ["tools/aetheria_art_pipeline/** design data and build steps for the player actor", "the regenerated sprite sheets/anchors the game loads", "an in-engine before/after capture via tools/capture_motion.gd", "docs/CHARACTER_ART_BIBLE.md notes"],
+      "out_of_scope": ["sprite scale or palette DNA changes (owner gates ART-DIR-01/02)", "NPCs and enemies", "new animations"],
+      "tasks": ["load .claude/skills/aetheria-visual-craft and follow it", "measure the current player at 1x and magnified", "improve through the pipeline", "regenerate, pngout, verify no unreferenced asset", "capture before/after vi 1280x720 and en 1280x800"],
+      "constraints": ["lossless indexed PNGs via tools/aetheria_art_pipeline/pixel/pngout.py", "ASSET_LICENSES row for anything new", "the subjective final look is the owner's call: record it as a known limitation"],
+      "source_docs": [".claude/skills/aetheria-visual-craft/SKILL.md", "docs/CHARACTER_ART_BIBLE.md", "docs/AETHERIA_ART_PIPELINE.md", "docs/VISUAL_CRAFT_WORKFLOW.md", ".kiro/steering/06-art-assets.md"],
+      "allowed_paths": ["tools/aetheria_art_pipeline/**", "assets/sprites/**", "src/presentation/characters/**", "tests/**", "docs/CHARACTER_ART_BIBLE.md", "docs/ASSET_LICENSES.md", "docs/CHANGELOG.md", "docs/handoff/**"],
+      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_player", "e2e_story", "cap_art01_vi720", "cap_art01_en800"],
+      "required_captures": [
+        {"id": "cap_art01_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/art-01/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/art-01/vi-1280x720/*.png"},
+        {"id": "cap_art01_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/art-01/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/art-01/en-1280x800/*.png"}
+      ],
+      "acceptance_criteria": [
+        {"id": "C1", "text": "the sprite changes are produced by the pipeline (reproducible) at 32x48 inside the DNA palette", "evidence": ["review:art"]},
+        {"id": "C2", "text": "captures show a clearer silhouette, face and hands at 1x and the two looks distinct, inspected at real size", "evidence": ["check:cap_art01_vi720", "check:cap_art01_en800", "review:art"]},
+        {"id": "C3", "text": "player and story flows still pass; no unreferenced or non-indexed asset shipped", "evidence": ["check:e2e_player", "check:e2e_story", "check:godot_suite", "review:art"]}
+      ]
+    }
+  ]
+}
