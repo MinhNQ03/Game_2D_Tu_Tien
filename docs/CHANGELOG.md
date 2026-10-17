@@ -8,6 +8,25 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-17 — Experience, art, VFX and code-intelligence upgrade (`feat/experience-art-intelligence-upgrade-v2`; not a phase, D-075)
+
+- **Every Origin arrives with a reason and a lead.** The identity screen tells each past in seven
+  parts under its own picture (five comparable cards); each vignette adds the step that links the
+  past to Lạc Hà and is staged over that picture. On arrival the purpose line is the Origin's own
+  lead (two personal steps: a person who recognises who they were, then the carter's load), handed
+  over as knowledge (K-14..K-18). The elder and the watch say why they ask a stranger.
+- **Origin pictures** built in Blender from the game's own cultivator and village geometry
+  (painted tier, WebP); **three rendered VFX sequences** (qi gather, Thunder Finger strike, vein
+  rupture) layered over the procedural effects and played on existing cues.
+- **Lạc Hà's floor**: worn pale road centres, wider sunlit drifts, warm flower beds — warm share
+  2.7 % → 3.1–3.4 % (inside the DNA's band).
+- **Code intelligence**: GodotLens (Godot's own language server) verified on the project;
+  `tools/code_intel.py` for data, resources and locale keys.
+- Found and fixed by the story E2E: a lead met by knowledge moved no beat, so the purpose line
+  never updated (`StoryRuntime` now announces a changed line; regression test mutation-checked).
+- Owner decisions left open with evidence: ART-DIR-01 (64×96 vs 32×48 A/B), ART-DIR-02 (a brighter
+  palette is a DNA change). H21-14 stays OPEN; Phase 21/22 NOT STARTED.
+
 ### 2026-10-12 — Visual Craft Upgrade: a reusable design workflow and two proofs (`d063/phase-a`; not a phase)
 
 - **`docs/VISUAL_CRAFT_WORKFLOW.md`**: six stages and a one-screen Visual Design Brief for any

@@ -226,6 +226,65 @@ realm meter now spans the identity plaque). The loop that got there: the first g
 unlike a readable duel); the world was re-lit (value range on paving, earth and meadow), the scene
 re-staged as a ranged exchange, and the techniques made readable.
 
+## 10a. Story art — `blender/build_story_art.py`, `story/grade.py` (experience upgrade)
+
+The PAINTED tier's story pictures (LINEAR, D-044): one per Origin, 1280×720, shown as the
+identity screen's card thumbnails (`UIPalette.IDENTITY_CARD_REGION`) and banner, and as the
+backdrop of that Origin's vignette (`StorySceneData.backdrop_ref`).
+
+```
+blender -b -P tools/aetheria_art_pipeline/blender/build_story_art.py -- \
+    tools/aetheria_art_pipeline/work/story_art [origin ...]      # work/story_art/<id>_raw.png
+python3 tools/aetheria_art_pipeline/build.py origins             # -> assets/ui/aetheria/origins/*.webp
+```
+
+- **Composition first.** Each scene names ONE focal point in its docstring (the burnt convoy,
+  the names board, the bed, the split stone, the half-ledger and the shape in the door) and is
+  lit to put it there: one warm practical light against a cold ground, local mist for depth.
+- **Same vocabulary as the game.** The figure is the canonical cultivator (`player_proto`,
+  posed with `motion.py`, seen from behind so it fits either look); buildings and carts are
+  `props3d` geometry; colours are the material roles of `designs/props.yaml`; outlines are the
+  style's ink hull. Painterly variation is a material (`paint`: two or three tones by an
+  object-space noise + bump), never a texture from elsewhere.
+- **Units are world pixels**, hundreds deep, so fog densities and point-light energies are
+  scaled once (`FOG_SCALE`, `LIGHT_SCALE`) — a world-volume fog over such a scene is a wall.
+- The grade (`story/grade.py`): a light toe lift, a bloom on the practical lights, a faint
+  split tone, a vignette, paper grain; WebP q88 (26–59 KB each). Geometry and seeds are fixed;
+  Eevee's GPU output may differ by a few least-significant bits between machines.
+- **Honest level.** These are stylised 2.5D dioramas, coherent with the game, not hand-painted
+  illustration; the interiors are low key by intent. A painter's pass is the obvious upgrade
+  (H-ART-01 in the experience-upgrade handoff).
+
+## 10b. Rendered VFX sequences — `designs/vfx.yaml` → `blender/build_vfx.py` → `vfx/pack_vfx.py`
+
+```
+python3 tools/aetheria_art_pipeline/build.py vfx-spec
+blender -b -P tools/aetheria_art_pipeline/blender/build_vfx.py -- \
+    tools/aetheria_art_pipeline/work/vfx/spec.json [effect ...]   # intensity passes, 4x
+python3 tools/aetheria_art_pipeline/build.py vfx [effect]        # strips + data/fx/*.tres
+```
+
+- **Layered, not replaced.** The procedural feedback nodes keep drawing what follows live state
+  (motes as many as the vein gives, the bolt's real path); a rendered sequence draws the one
+  moment a hand cannot: a gather that converges, a strike that bursts, a vein that erupts.
+- **Each frame is built for its time t** (no keyframes, no simulation); every variation comes
+  from the effect's `seed`. Blender renders an INTENSITY pass (white emission, alpha =
+  coverage) through the gameplay camera; colour is decided by the packer.
+- **Adaptation**: area reduction to world pixels, alpha in three levels, intensity banded onto
+  the effect's five-tone ramp (dark … white core). Every opaque pixel is a ramp tone.
+- **Refused at pack time**: an empty or fully opaque frame (a rendered background), identical
+  neighbouring frames, an off-ramp pixel, the anchor outside the frame, more than 12 % of a
+  1280×720 screen lit at the game's 2× zoom (style `vfx.peak_screen_share_max`).
+- **Runtime**: `VfxSequenceData` (frame count derived from the strip width) played by
+  `VfxSequencePlayer` — one Sprite2D, `frame` over `hframes`, `_process` only while playing,
+  nearest filter, anchor pixel on the cue's point. Hooks: `CultivationRuntime.meditation_started`
+  (qi_gather at the feet), `SkillRuntime.bolt_struck` (loi_strike, a pool of three in world
+  space), `MapAmbience.pulse` (vein_rupture where the vein's light stands, z 1).
+- **Blend is chosen in the real window**: additive is light (dusk, night: the gather, the
+  rupture); over a sunlit floor it burns to white, so the daytime strike paints (mix).
+- Sizes: qi_gather 14×64×64 (2.6 KB), loi_strike 9×48×48 (1.0 KB), vein_rupture 18×128×112
+  (3.9 KB).
+
 ## 11. Provenance
 
 All production art is ORIGINAL and recorded in `docs/ASSET_LICENSES.md` (P62*, K1–K6): source =

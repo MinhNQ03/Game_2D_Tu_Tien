@@ -214,6 +214,16 @@ handoff already states. A clue with no owed payoff is not allowed to ship (§11)
 | K-11 | the carter's cart, wrecked, with pale vein-stone in its split crates | D-073 · the wreck in the woods | seen; the Thunder-Finger manual spilled from it | 2 | unsurveyed qi-dense material was being hauled out (§4 ACTORS 2: a trading interest buying it) — the buyer is layer 3 | Phase 21 (the material); layer 3 per §9 (the buyer) | OPEN |
 | K-12 | each Origin's own problem, and the one thing only that Origin notices on the trail | P20 · the vignette; D-073 · the five Origin observations | `OriginData.observation_flags` | 2 | §6: each Origin's long-term callback; every personal thread resolves into the Thiên Khế question | per Origin, per §6 | OPEN |
 | K-13 | who saw the sheet first | D-073 · `choice_sheet_shown` (lin / ko / shen) | the choice's record + one knowledge each | — | who stands with the player at the door; must never gate entry | Phase 21 | OPEN |
+| K-14 | the escort's convoy report was sealed at Lạc Hà on the word of the carter who found the ashes — the carter who drove them in | experience upgrade · the elder's greeting to `origin_ho_tieu` | `know_convoy_report` | 2 | why the records disagree (§6 callback); WHO burned the convoy is not owed before layer 3 | per Origin, per §6 | OPEN |
+| K-15 | Lâm Nguyệt passed in the disciple's place, does not know why, and was posted to the frontier; Qi takes crates to Cloud Vale before each trial | experience upgrade · `lin_rival` (`origin_de_tu_bi_loai`) | `know_trial_board` | 2 | "the examination was allocated, not judged" (§6 callback) | per Origin, per §6 | OPEN |
+| K-16 | the porters out of the Lạc Hà woods grew grey nails and cold hands; Qi's is the last cart on that haul | experience upgrade · the watch's greeting to `origin_lang_y` (after the carter's hands) | `know_grey_hands` | 2 | the "disease" was the vein (§6 callback); "someone knew" is layer 3 | per Origin, per §6 | OPEN |
+| K-17 | three notches are no outpost seal; what comes down from the woods rides Qi's cart only | experience upgrade · the watch's greeting to `origin_nghe_nhan` (after the crate stamp) | `know_three_notch` | 2 | "the material you appraised should not have existed" (§6 callback); the buyer is §4 ACTORS 2, layer 3 | per Origin, per §6 | OPEN |
+| K-18 | the mark the mentor copied is the Lạc Hà survey's old notation, the reassigned surveyor's hand — seen lately on Qi's waybills | experience upgrade · `lin_notation` (`origin_thu_thu`) | `know_mentor_mark` | 2 | "the mentor was tracing the same edited chronology" (§6 callback); joins K-06 (the surveyor's line) | per Origin, per §6 | OPEN |
+
+**The five leads converge on one cart (K-14..K-18).** Every Origin's first lead ends at Tề
+Mộc's load — the canon's own convergence point (`STORY_NOTICED_CARTER_*`, the cart that breaks in
+the Night, K-11): the player reaches the shared mystery through their own trouble, and nothing in
+these rows names who buys, who ordered, or why the vein is failing now (CL-15).
 
 **The survey is the long thread (§4 FUTURE PAYOFF):** K-05 → K-06 → K-10 → the field book
 (Phase 21) → "orthodox records are edited for institutional convenience" → Acts VI–VII. Each

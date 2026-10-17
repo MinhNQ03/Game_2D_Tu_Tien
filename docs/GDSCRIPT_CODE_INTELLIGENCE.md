@@ -45,6 +45,12 @@ the repository.
 3. Connection check: the `gdscript_status` tool must answer
    `{"status": "connected", "message": "Connected to Godot LSP", "port": 6005}`.
 
+**Which editor answers.** A Godot editor opened normally on the project ALSO serves the language
+server on 6005. On 2026-10-17 the owner's own editor was open, so the verified queries were
+answered by a Godot 4.7.2 editor on this machine — that one or the headless one started for the
+check; either way the engine's language server, not a text search. If two editors compete for
+the port, start the headless one with another `--lsp-port` and set `GODOT_LSP_PORT` to match.
+
 An agent session only sees MCP servers that were configured when it started: after adding the
 server, start a new session. **Verified here** by a scripted stdio MCP client (the same JSON-RPC
 an agent speaks) — 36 tools listed, every query in §3 answered. An agent that cannot reach a

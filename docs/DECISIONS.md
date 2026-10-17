@@ -6194,3 +6194,49 @@ persistence technology; networking transport or schedule.
 **Provenance:** authored 2026-10-12 against `origin/main` @
 `ce4b94c0e430cbe84182e76c198c2a6ffe470f5c` (CI run 38211074765 SUCCESS); pushed to
 `origin/d063/phase-a`.
+
+## D-075 — Experience, art, VFX and code-intelligence upgrade: what was built, what waits for the owner — **Implemented on `feat/experience-art-intelligence-upgrade-v2`, awaiting owner review** (2026-10-17)
+
+**Context.** After Phase 20 and the pre-Phase-21 gates the owner reported that the five Origins
+felt vague, that the road to Lạc Hà was unmotivated, that the first hour read as errands, and
+that the game still looked flat next to the reference shots. Measured on the real window: the
+identity screen was a three-column form with no "why here" and no picture; the purpose line on
+arrival was "find someone to speak with"; the hub frame had 2.7 % warm pixels (under the Visual
+DNA's own 3 % floor), value p95 0.67, sd 0.143. Handoff:
+`docs/handoff/experience-art-intelligence-upgrade.md`.
+
+**Decision (built; no canon fact changed).**
+1. *Narrative delivery.* `OriginData` carries who the player was, why Lạc Hà, the first lead, a
+   spoiler-safe question about where it goes, its picture, and two PERSONAL STEPS (story
+   conditions the story owner reads) that stand in for the shared objective only while the run
+   is arriving and never block a beat. Each Origin's first lead is one dialogue answer offered
+   to it alone, handed over as knowledge (K-14..K-18 in `NARRATIVE_MASTER_PLAN.md` §9a); every
+   lead converges on Tề Mộc's load, the canon's own convergence point. The new details are
+   AUTHORED CONTENT inside layer 2 (who carried what, what someone saw) — none names a culprit,
+   a buyer, the Thiên Khế or the Tà Đế, and none is entered in `CANON_LEDGER.md`.
+2. *Identity screen*: five comparable cards + the chosen past told in seven parts; keys and the
+   choose-by-accept contract unchanged.
+3. *Story art and VFX*: the painted-tier Origin pictures and three rendered VFX sequences
+   (`AETHERIA_ART_PIPELINE.md` §10a–b), layered over the procedural feedback, hooked to existing
+   cues, presentation only.
+4. *World*: worn road centres, wider sunlit drifts, warm flower beds (warm share now inside the
+   DNA's band).
+5. *Code intelligence*: GodotLens (engine-backed) + `tools/code_intel.py` (data), local config
+   only (`GDSCRIPT_CODE_INTELLIGENCE.md`).
+
+**Explicitly NOT decided — owner decisions, with the evidence gathered:**
+- **ART-DIR-01 — the gameplay pixel baseline.** A 64×96 render of `player_proto` (same physical
+  size, twice the pixels) was placed beside the 32×48 sprite in the real hub. It reads finer
+  (crossed collar, hands, hair locks) but draws a 1-screen-px outline beside a 2-px world — mixed
+  pixel density — for ~4× the sprite cost; at normal scale the gain is small. Recommendation:
+  KEEP 32×48 / 16 px (`06-art-assets.md`, D-046 unchanged) and spend on silhouette, value,
+  environment and VFX; use the painted tier for story and menus (the boundary this upgrade
+  already draws). Not frozen until the owner says so.
+- **ART-DIR-02 — the world palette's brightness.** The references are brighter and more
+  saturated than the frozen Visual DNA ("muted greens and earth under a cool sky; colour is
+  earned"). The floor was improved within the DNA; a brighter world is a DNA change for the
+  owner (`aetheria_style.yaml` `temperature` / `world`).
+- **UI-01** (minimap, HUD budget) stays as the B2/D-063 handoff left it.
+
+**Gates untouched.** Phase 20 stays DONE; Phase 21 and 22 NOT STARTED; H21-14 OPEN / OWNER
+REQUIRED — no tool run here is a person's playtest.
