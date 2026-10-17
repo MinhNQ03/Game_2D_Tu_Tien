@@ -316,7 +316,7 @@ func _origin_card(origin: OriginData) -> Button:
 	words.add_theme_constant_override("separation", 2)
 	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(words)
-	var name_label := _label(UIPalette.FONT_SIZE_BODY + 1, UIPalette.COLOR_TITLE)
+	var name_label := _label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TITLE)
 	name_label.name = "Name"
 	words.add_child(name_label)
 	_card_names[origin.id] = name_label

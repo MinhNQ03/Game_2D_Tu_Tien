@@ -252,6 +252,24 @@ func test_the_identity_screen_fits_the_screen_for_every_origin_in_both_languages
 				assert_true(label.get_line_count() <= label.get_visible_line_count()
 					or label.get_visible_line_count() < 0,
 					"[%s] %s: every line of %s is visible" % [code, origin.id, name])
+			# Every CARD says its name and its line whole (found in the en 1280x800 capture:
+			# a three-line tagline was cut and a long name ran out of its card).
+			for card_origin in (load(ORIGINS_PATH) as OriginCatalogData).entries:
+				var card := screen.find_child("Origin_%s" % card_origin.id, true, false)
+				var name_label := card.find_child("Name", true, false) as Label
+				var needed := name_label.get_theme_font("font").get_string_size(
+					IdentityScreen.CHOSEN_MARK + " " + name_label.text.trim_prefix(
+					IdentityScreen.CHOSEN_MARK + " "), HORIZONTAL_ALIGNMENT_LEFT, -1,
+					name_label.get_theme_font_size("font_size")).x
+				assert_true(needed <= name_label.size.x + 0.5,
+					"[%s] %s: the name, marked, needs %.0f px of %.0f"
+					% [code, card_origin.id, needed, name_label.size.x])
+				var tagline := card.find_child("Tagline", true, false) as Label
+				assert_true(tagline.get_line_count() <= 2,
+					"[%s] %s: the card's line is at most two rows (%d)"
+					% [code, card_origin.id, tagline.get_line_count()])
+				assert_true(card.get_global_rect().encloses(tagline.get_global_rect()),
+					"[%s] %s: the line stays inside its card" % [code, card_origin.id])
 			var begin := screen.find_child("Begin", true, false) as Control
 			assert_true(begin.get_global_rect().end.y <= VIEWPORT.y,
 				"[%s] %s: Set out is on screen" % [code, origin.id])

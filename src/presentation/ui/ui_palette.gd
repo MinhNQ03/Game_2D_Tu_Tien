@@ -249,13 +249,13 @@ const IDENTITY_PORTRAIT_PX := 96
 ## `test_the_identity_screen_fits_the_screen_for_every_origin_in_both_languages`.
 const IDENTITY_LOOK_COLUMN_WIDTH := 200
 ## One Origin card: a thumbnail of its picture, its name and the one-line tagline.
-const IDENTITY_CARD_SIZE := Vector2(340, 82)
-const IDENTITY_CARD_THUMB := Vector2(108, 66)
+const IDENTITY_CARD_SIZE := Vector2(364, 82)
+const IDENTITY_CARD_THUMB := Vector2(96, 66)
 ## The part of a 1280x720 story picture a card's thumbnail shows (its middle, where every
 ## picture keeps its subject).
 const IDENTITY_CARD_REGION := Rect2(288, 168, 704, 452)
 ## The detail column: the picture as a banner, then the past in two columns of text.
-const IDENTITY_DETAIL_WIDTH := 664
+const IDENTITY_DETAIL_WIDTH := 640
 const IDENTITY_BANNER_HEIGHT := 172
 ## The whole composition's width: the 1280 floor less a gutter each side.
 const IDENTITY_WIDTH := 1232
