@@ -35,23 +35,25 @@ ST = style.load()
 
 # Material codes (the order is the paint priority when two shapes overlap: later wins).
 GRASS, STONE, STONE_DARK, EARTH, YARD, WATER, BRIDGE, PADDY, BUND, FOREST, LITTER, \
-    FISSURE, ROCK, COURT, RILL, LUSH = range(16)
+    FISSURE, ROCK, COURT, RILL, LUSH, BLOOM = range(17)
 KINDS = {"grass": GRASS, "stone": STONE, "stone_dark": STONE_DARK, "earth": EARTH,
          "yard": YARD, "water": WATER, "bridge": BRIDGE, "paddy": PADDY, "forest": FOREST,
          "litter": LITTER, "fissure": FISSURE, "rock": ROCK, "court": COURT, "rill": RILL,
-         "lush": LUSH}
+         "lush": LUSH, "flowers": BLOOM}
 ROUGH = {EARTH: 2.2, YARD: 2.5, WATER: 2.0, STONE: 0.0, STONE_DARK: 0.0, BRIDGE: 0.0,
          PADDY: 0.0, FOREST: 3.0, LITTER: 3.2, FISSURE: 1.6, GRASS: 2.5, ROCK: 3.0,
-         COURT: 0.0, RILL: 0.0, LUSH: 3.0}
+         COURT: 0.0, RILL: 0.0, LUSH: 3.0, BLOOM: 3.0}
 # Everything that is turf to its neighbours (a path's shadow lip, a bank's wet ring).
-TURF = (GRASS, LUSH)
+TURF = (GRASS, LUSH, BLOOM)
 PAVED = (STONE, STONE_DARK, COURT)
 
 # Ramps [deep, shadow, base, light] — the DNA world roles where one exists, their neighbours
 # where the ramp needs a step the palette does not name.
 RAMPS = {
     GRASS: [(54, 84, 50), (68, 102, 58), (84, 122, 68), (102, 142, 80), (122, 160, 92)],
-    EARTH: [(92, 82, 70), (118, 106, 90), (142, 128, 108), (168, 154, 132)],
+    # (experience upgrade) a fifth, warm-pale tone: the worn middle of a trodden road, the
+    # brightest thing on a meadow frame, so a road reads as the line that leads somewhere
+    EARTH: [(92, 82, 70), (118, 106, 90), (142, 128, 108), (168, 154, 132), (190, 174, 146)],
     YARD: [(106, 94, 80), (132, 118, 100), (156, 142, 120), (180, 166, 142)],
     STONE: [(100, 102, 110), (124, 126, 133), (146, 148, 154), (168, 170, 175), (190, 191, 195)],
     STONE_DARK: [(72, 74, 82), (88, 90, 99), (104, 107, 116), (122, 125, 133), (140, 143, 150)],
@@ -90,6 +92,17 @@ COURT_WET_RING = 1
 LUSH_DARKER = 0.3
 LUSH_TUFTS = 2.5
 LUSH_FLOWERS = 0.004
+# (experience upgrade) A FLOWER BED: undergrowth in bloom, planted where the village lives —
+# round the spring court, at a house's foot, along a verge. Warm heads over a dark leaf base,
+# CLUSTERED by noise (never sprinkled). Warmth is a signal in this cool frontier (style
+# `temperature`): the measured frame had 2.7% warm pixels, under the DNA's own 3% floor.
+BLOOM_HEADS = [(232, 186, 84), (222, 132, 112), (238, 214, 140), (198, 104, 118)]
+BLOOM_DENSITY = 0.5
+# How far the meadow's sunlit drifts swing (was 0.62): a frame of grass needs a light end and a
+# dark end, or the props have nothing to stand out against (p95 value measured 0.67).
+TURF_DRIFT = 0.82
+# Earth wider than this many px gets a worn, paler middle.
+ROAD_WORN_DEPTH = 7
 
 
 def _hash(x, y, seed):
@@ -217,6 +230,8 @@ def paint(layout_path):
     n_fine = noise(w, h, 3, 13)
     water_depth = _distance_inside([1 if m in (WATER,) else 0 for m in mat], w, h, 6)
     paddy_depth = _distance_inside([1 if m == PADDY else 0 for m in mat], w, h, 3)
+    road_depth = _distance_inside([1 if m == EARTH else 0 for m in mat], w, h,
+                                  ROAD_WORN_DEPTH)
     stone_ids, stone_mortar = _voronoi_stones(w, h, 15, 10, 21)
 
     img = Image.new("RGBA", (w, h))
@@ -283,9 +298,9 @@ def paint(layout_path):
             elif m in TURF:
                 # broad sunlit drifts, a little mid-scale clumping, a whisper of grain: a
                 # meadow, not camouflage (the first pass had the contrast of a pattern)
-                t = 0.5 + 0.62 * (n_big[i] - 0.5) + 0.38 * (n_mid[i] - 0.5) \
+                t = 0.5 + TURF_DRIFT * (n_big[i] - 0.5) + 0.38 * (n_mid[i] - 0.5) \
                     + 0.18 * (n_fine[i] - 0.5)
-                if m == LUSH:
+                if m in (LUSH, BLOOM):
                     t -= LUSH_DARKER
                 c = _tone(RAMPS[GRASS], t)
                 # the grass's shadow on lower ground just below it is painted on THAT ground;
@@ -333,6 +348,9 @@ def paint(layout_path):
             elif m in (EARTH, YARD):
                 ramp = RAMPS[m]
                 t = 0.45 * n_big[i] + 0.4 * n_mid[i] + 0.3 * (n_fine[i] - 0.5) + 0.12
+                if m == EARTH:
+                    # the worn middle: feet and wheels keep it pale and smooth
+                    t += 0.24 * road_depth[i]
                 c = _tone(ramp, t)
                 if at(x, y - 1) in TURF or at(x, y - 2) in TURF:
                     c = ramp[0]          # the turf edge casts its lip of shadow on the path
@@ -404,7 +422,7 @@ def paint(layout_path):
                 if _hash(wxp, wyp, 73) < 0.25 and not below_water:
                     c = RAMPS[GRASS][2]      # grass on the bund's crown
             # wet earth: one ring of dark bank around open water
-            if m in (GRASS, EARTH, FOREST, LUSH):
+            if m in (GRASS, EARTH, FOREST, LUSH, BLOOM):
                 if WATER in (at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)):
                     c = WET_BANK
             px[x, y] = c + (255,)
@@ -414,7 +432,23 @@ def paint(layout_path):
     for y in range(2, h - 2):
         for x in range(1, w - 1):
             i = y * w + x
-            if mat[i] not in (GRASS, FOREST, LUSH):
+            if mat[i] not in (GRASS, FOREST, LUSH, BLOOM):
+                continue
+            if mat[i] == BLOOM:
+                wxp, wyp = x + ox, y + oy
+                clump = n_mid[i] * 0.7 + n_fine[i] * 0.3
+                # a head is a 2x2 cell (one per 3x3 block, so heads never merge into a blob)
+                cell_x, cell_y = wxp // 3, wyp // 3
+                in_head = (wxp % 3) < 2 and (wyp % 3) < 2
+                if clump > 0.42 and in_head and _hash(cell_x, cell_y, 131) < BLOOM_DENSITY:
+                    head = BLOOM_HEADS[int(_hash(cell_x, cell_y, 133) * 3.99)]
+                    lit = (wxp % 3, wyp % 3) == (0, 0)
+                    px[x, y] = (tuple(min(255, v + 22) for v in head) if lit else head) + (255,)
+                elif clump > 0.42 and (wyp % 3) == 2 and _hash(cell_x, cell_y, 131) \
+                        < BLOOM_DENSITY:
+                    px[x, y] = RAMPS[GRASS][0] + (255,)            # the shadow under a head
+                elif clump > 0.36 and _hash(wxp, wyp, 137) < 0.10:
+                    px[x, y] = RAMPS[GRASS][3] + (255,)            # leaves catching light
                 continue
             lush = mat[i] == LUSH
             ramp = RAMPS[GRASS if lush else mat[i]]

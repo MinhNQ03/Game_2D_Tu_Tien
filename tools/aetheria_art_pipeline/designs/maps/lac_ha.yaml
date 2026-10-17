@@ -28,6 +28,15 @@ regions:
   - {kind: lush, poly: [[384, 498], [470, 492], [482, 550], [398, 562]]}             # south grove
   - {kind: lush, poly: [[640, 150], [722, 148], [730, 206], [650, 212]]}             # north-east
   - {kind: lush, path: [[366, 358], [338, 378], [296, 386], [244, 378], [204, 386]], width: 30}
+  # FLOWER BEDS (experience upgrade): where people live, the undergrowth is in bloom — the
+  # warm accents a cool frontier frame was missing (2.7% warm, under the DNA's 3% floor).
+  # Painted before the roads, so every road still wins over a bed: no lane changes.
+  - {kind: flowers, poly: [[246, 214], [334, 212], [338, 236], [244, 238]]}       # NW house foot
+  - {kind: flowers, path: [[204, 286], [262, 290], [336, 292]], width: 12}        # west road verge
+  - {kind: flowers, poly: [[300, 392], [354, 386], [362, 406], [304, 414]]}       # by the runnel
+  - {kind: flowers, path: [[372, 484], [430, 478], [486, 484]], width: 14}        # south grove edge
+  - {kind: flowers, poly: [[246, 520], [334, 518], [338, 532], [244, 534]]}       # SW house foot
+  - {kind: flowers, path: [[664, 340], [720, 336], [770, 340]], width: 10}        # yard verge
   # the paved square in front of the outpost (worn flagstones)
   - {kind: stone, poly: [[392, 236], [628, 236], [652, 262], [652, 360], [626, 384],
                          [404, 384], [380, 362], [380, 258]]}
