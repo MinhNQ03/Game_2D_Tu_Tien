@@ -136,6 +136,9 @@ Proposals are **not** accepted design. Never cite one as authority.
 - **Before changing anything a player will see** (map area, landmark, panel, character
   presentation, motion) → [VISUAL_CRAFT_WORKFLOW.md](../VISUAL_CRAFT_WORKFLOW.md): the
   one-page Visual Design Brief, then the owners it links to.
+- **Before changing a public method, signal, state owner or data id** →
+  [GDSCRIPT_CODE_INTELLIGENCE.md](../GDSCRIPT_CODE_INTELLIGENCE.md): real callers from Godot's
+  own language server (GodotLens), data/locale references from `tools/code_intel.py`.
 - **Before starting a new phase** → [ROADMAP.md](../ROADMAP.md) (exit criteria) +
   [PHASE_EXECUTION_PROTOCOL.md](../PHASE_EXECUTION_PROTOCOL.md) (the 13-gate chain).
 - **Before reviewing a proposal** → confirm its status label; proposals never
