@@ -16,6 +16,13 @@ class_name CastFeedback
 ##
 ## The body: the visual's CAST action, each phase owning a quarter of the sheet whatever its
 ## authored length. A broken cast fizzles (a grey puff) — a refusal is visible, not silent.
+##
+## THE RENDERED STRIKE (experience upgrade): where a bolt lands (`bolt_struck`, the runtime's
+## own hit point), a rendered burst (`data/fx/loi_strike.tres`) cracks out — white core, forks,
+## falling sparks — over the drawn impact. A small fixed set of players is reused round-robin,
+## so a volley allocates nothing.
+const STRIKE_PATH := "res://data/fx/loi_strike.tres"
+const STRIKE_PLAYERS := 3
 
 const PHONG := Color(0.62, 0.90, 0.72)
 const PHONG_LIGHT := Color(0.86, 1.0, 0.90)
@@ -53,6 +60,8 @@ const TRAIL_SECONDS := 0.16
 ## The world-space layer for bolts and their strikes (a bolt that has left the hand does not
 ## follow the caster).
 var _world_layer: Node2D = null
+var _strikes: Array[VfxSequencePlayer] = []
+var _next_strike := 0
 
 
 func _ready() -> void:
@@ -64,6 +73,19 @@ func _ready() -> void:
 	_world_layer.draw.connect(_draw_world)
 	add_child(_world_layer)
 	set_process(false)
+	if ResourceLoader.exists(STRIKE_PATH):
+		var data := load(STRIKE_PATH) as VfxSequenceData
+		for i in STRIKE_PLAYERS:
+			var player := VfxSequencePlayer.new()
+			player.name = "Strike%d" % i
+			_world_layer.add_child(player)
+			player.setup(data)
+			_strikes.append(player)
+
+
+## The rendered strike bursts (empty when their data is absent): for tests and captures.
+func strike_players() -> Array[VfxSequencePlayer]:
+	return _strikes
 
 
 func bind_runtime(runtime: SkillRuntime) -> void:
@@ -119,6 +141,10 @@ func _on_refused(_technique_id: StringName, _reason: StringName) -> void:
 func _on_struck(world_position: Vector2) -> void:
 	_impacts.append([world_position, 0.0])
 	set_process(true)
+	if not _strikes.is_empty():
+		# The world layer is top-level at the origin: a world position is its local position.
+		_strikes[_next_strike].play_at(world_position)
+		_next_strike = (_next_strike + 1) % _strikes.size()
 
 
 func is_animating() -> bool:

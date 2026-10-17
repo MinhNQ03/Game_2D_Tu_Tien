@@ -29,6 +29,9 @@ const PULSE_SECONDS := 1.4
 ## How hard, and how far, a pulse pushes the grass.
 const PULSE_WIND_PX := 5.0
 const PULSE_WIND_RADIUS := 260.0
+## The vein giving way, rendered (experience upgrade): cracks, a column of raw qi, shards, a
+## guttering glow — played once per pulse where the vein's light stands.
+const RUPTURE_PATH := "res://data/fx/vein_rupture.tres"
 
 var _modulate: CanvasModulate = null
 var _lights: Array[AmbienceLight] = []
@@ -37,6 +40,7 @@ var _ambience_id: StringName = &""
 var _tween: Tween = null
 var _time: float = 0.0
 var _pulse_left: float = 0.0
+var _rupture: VfxSequencePlayer = null
 ## 0..1 while a change eases in; lights follow it.
 var _blend: float = 1.0
 var _applied_once: bool = false
@@ -122,6 +126,7 @@ func pulse() -> void:
 	if veins == 0:
 		return
 	_pulse_left = PULSE_SECONDS
+	_play_rupture(origin / float(veins))
 	var wind := get_tree().get_first_node_in_group(WindField.GROUP) as WindField \
 		if is_inside_tree() else null
 	if wind != null:
@@ -131,6 +136,24 @@ func pulse() -> void:
 
 func is_pulsing() -> bool:
 	return _pulse_left > 0.0
+
+
+## The rendered rupture, made on the first pulse and replayed after (null until then).
+func rupture_player() -> VfxSequencePlayer:
+	return _rupture
+
+
+func _play_rupture(global_point: Vector2) -> void:
+	if _rupture == null:
+		if not ResourceLoader.exists(RUPTURE_PATH):
+			return
+		_rupture = VfxSequencePlayer.new()
+		_rupture.name = "Rupture"
+		# Transient VFX sit above the y-sorted world (style `world.depth`).
+		_rupture.z_index = 1
+		add_child(_rupture)
+		_rupture.setup(load(RUPTURE_PATH) as VfxSequenceData)
+	_rupture.play_at(to_local(global_point))
 
 
 func _leaving_seconds() -> float:

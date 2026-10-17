@@ -12,6 +12,10 @@
   build.py props                   Blender prop passes (work/props) -> world prop sprites + data
   build.py ambience                style `ambience` -> data/ambience/ambience_<id>.tres
   build.py ambience-check          exit 1 if those files differ from the style
+  build.py vfx-spec                designs/vfx.yaml -> work/vfx/spec.json (Blender: build_vfx.py)
+  build.py vfx [effect]            work/vfx/<effect>/frame_*.png -> assets/fx strips + data/fx
+  build.py origins                 work/story_art/*_raw.png (Blender, build_story_art.py) ->
+                                   the graded Origin illustrations, assets/ui/aetheria/origins/
 
 Blender is a BUILD tool here, never a runtime dependency: it renders controlled passes into
 work/ (gitignored); this side turns them into the committed 32x48 sheets.
@@ -258,7 +262,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("cmd", choices=["resolve", "design-sheet", "pixel", "all-pixel", "review",
                                        "icons-spec", "icons", "props-spec", "props",
-                                       "ambience", "ambience-check"])
+                                       "ambience", "ambience-check", "origins", "vfx-spec",
+                                       "vfx"])
     ap.add_argument("actor", nargs="?")
     args = ap.parse_args(argv)
     if args.cmd == "resolve":
@@ -286,6 +291,27 @@ def main(argv=None):
     elif args.cmd == "ambience-check":
         write_ambience(check=True)
         print("ambience up to date")
+    elif args.cmd in ("vfx-spec", "vfx"):
+        with open(os.path.join(PIPE, "designs", "vfx.yaml"), encoding="utf-8") as f:
+            vfx = yaml.safe_load(f)
+        if args.cmd == "vfx-spec":
+            os.makedirs(os.path.join(WORK, "vfx"), exist_ok=True)
+            path = os.path.join(WORK, "vfx", "spec.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(vfx, f, indent=1)
+            print(path)
+        else:
+            sys.path.insert(0, os.path.join(PIPE, "vfx"))
+            import pack_vfx
+            for out, size, frames in pack_vfx.pack(vfx, ROOT,
+                                                   [args.actor] if args.actor else None):
+                print("wrote %s (%d frames, %d bytes)" % (os.path.relpath(out, ROOT), frames,
+                                                          size))
+    elif args.cmd == "origins":
+        sys.path.insert(0, os.path.join(PIPE, "story"))
+        import grade
+        for p in grade.build_all(os.path.join(WORK, "story_art"), ROOT):
+            print("wrote", os.path.relpath(p, ROOT), os.path.getsize(p), "bytes")
     elif args.cmd == "props-spec":
         print(write_prop_spec())
     elif args.cmd == "props":

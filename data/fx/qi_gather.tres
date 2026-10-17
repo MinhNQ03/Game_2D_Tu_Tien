@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="VfxSequenceData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/fx/vfx_sequence_data.gd" id="1_vfx"]
+[ext_resource type="Texture2D" path="res://assets/fx/cultivation/qi_gather.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_vfx")
+id = &"qi_gather"
+texture = ExtResource("2_tex")
+frame_size = Vector2i(64, 64)
+anchor = Vector2i(32, 56)
+fps = 12.0
+additive = true

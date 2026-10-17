@@ -25,6 +25,13 @@ class_name CultivationFeedback
 ## fraction of a second, no wind, no light column.
 ##
 ## Zero cost idle: `_process` runs only while seated, breaking through or celebrating.
+##
+## THE RENDERED GATHER (experience upgrade): when a sitting BEGINS, one rendered sequence
+## (`data/fx/qi_gather.tres`, Blender-built) shows the first breath drawing the vein in — a ring
+## of qi rising off the ground, spiralling into the dantian, settling in one pulse. It plays
+## once per sitting, at the feet, and is gone; the live motes above carry the rest. Never a
+## permanent halo, and it knows nothing the runtime did not just say.
+const GATHER_PATH := "res://data/fx/qi_gather.tres"
 
 ## One slow breath while seated, in seconds (the loop over the meditate sheet's breath columns).
 const BREATH_SECONDS := 2.6
@@ -52,11 +59,22 @@ var _breath: float = 0.0
 var _release_age: float = -1.0
 var _level_up_age: float = -1.0
 var _changed_realm: bool = false
+var _gather: VfxSequencePlayer = null
 
 
 func _ready() -> void:
 	z_index = 1
 	set_process(false)
+	if ResourceLoader.exists(GATHER_PATH):
+		_gather = VfxSequencePlayer.new()
+		_gather.name = "Gather"
+		add_child(_gather)
+		_gather.setup(load(GATHER_PATH) as VfxSequenceData)
+
+
+## The rendered gather (null when its data is absent): for tests and captures.
+func gather_player() -> VfxSequencePlayer:
+	return _gather
 
 
 ## Bound (or unbound with null) by the `CultivationRuntime` at session start/end.
@@ -85,6 +103,8 @@ func is_bound() -> bool:
 
 func _on_meditation_started(_site_id: StringName) -> void:
 	_breath = 0.0
+	if _gather != null:
+		_gather.play_at(Vector2.ZERO)
 	var visual := _visual()
 	if visual != null:
 		visual.play_action(CharacterVisualComponent.ACTION_MEDITATE)
@@ -93,6 +113,8 @@ func _on_meditation_started(_site_id: StringName) -> void:
 
 func _on_meditation_ended(_reason: StringName) -> void:
 	_end_meditate_action()
+	if _gather != null:
+		_gather.stop()
 	queue_redraw()
 
 

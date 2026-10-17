@@ -1,0 +1,60 @@
+# Rendered VFX frame sequences (experience upgrade) — the Blender-built layer of an effect.
+#
+# The game's effects are LAYERED: the procedural feedback nodes (CultivationFeedback,
+# CastFeedback) draw what must follow live state (motes as many as the vein gives, the bolt's real
+# path); a rendered sequence draws the one moment a hand cannot draw well at runtime — a gather
+# that converges, a strike that bursts, a vein that erupts. Each sequence obeys the DNA's energy
+# chain (style `vfx.chain`: source -> gather -> focus -> release -> travel -> impact -> dissipate)
+# and colour law (the element's own hue + a white core; never a second element's hue).
+#
+# Units are WORLD PIXELS (one art pixel = one world pixel, the map's density). Blender renders at
+# `render_scale` x; `vfx/pack_vfx.py` reduces, maps every pixel to the effect's ramp, and writes a
+# horizontal strip (the frame count is DERIVED from the width, like every sheet) plus its
+# `VfxSequenceData` resource.
+#
+#   size:    [w, h] of one frame, in world px
+#   anchor:  the frame pixel that sits on the anchor point the cue names (feet, palm, a strike)
+#   frames:  rendered frame count;  fps: playback rate (presentation data, never gameplay time)
+#   ramp:    dark -> light tones of the element; the last is the white core
+#   blend:   add (light that brightens what is under it) | mix
+#   seed:    the one source of variation (deterministic: the same seed draws the same forks)
+
+render_scale: 4
+camera_elevation_deg: 30.0
+
+effects:
+  qi_gather:
+    category: cultivation
+    kind: qi_gather
+    purpose: "qi rises FROM the vein under the seat, spirals in and settles into the dantian; plays when a sitting begins (CultivationRuntime.meditation_started)"
+    size: [64, 64]
+    anchor: [32, 56]          # the seated body's feet; the dantian sits ~20 px above
+    frames: 14
+    fps: 12
+    ramp: ["#2c5f74", "#4f93ad", "#85ccea", "#c4ecf8", "#ffffff"]
+    blend: add
+    seed: 11
+
+  loi_strike:
+    category: skills
+    kind: lightning_burst
+    purpose: "the Thunder Finger's bolt striking: a white core flash, forks that crack outward, sparks that fall and die (SkillRuntime.bolt_struck)"
+    size: [48, 48]
+    anchor: [24, 30]
+    frames: 9
+    fps: 20
+    ramp: ["#4b3a8f", "#7d66d6", "#bc9eff", "#e6dcff", "#ffffff"]
+    blend: add
+    seed: 23
+
+  vein_rupture:
+    category: world_events
+    kind: vein_rupture
+    purpose: "the broken vein giving way (the Night's encounter begins): cracks run out from the vein, a column of raw qi erupts, shards fly, the column falls back into a guttering glow — layer 1 only: something is wrong, nothing says who"
+    size: [128, 112]
+    anchor: [64, 92]
+    frames: 18
+    fps: 12
+    ramp: ["#22495c", "#3f7f99", "#7fc2df", "#c9eef9", "#ffffff"]
+    blend: add
+    seed: 37
