@@ -44,7 +44,9 @@ effects:
     frames: 9
     fps: 20
     ramp: ["#4b3a8f", "#7d66d6", "#bc9eff", "#e6dcff", "#ffffff"]
-    blend: add
+    # MIX, not add: measured in the real window, additive over the sunlit yard burned the whole
+    # burst white and the element's violet was lost (colour law: the element's own hue)
+    blend: mix
     seed: 23
 
   vein_rupture:

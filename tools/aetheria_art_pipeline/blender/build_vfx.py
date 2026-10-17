@@ -220,7 +220,7 @@ def lightning_burst(t, rng_seed):
         for pts in forks:
             n = max(1, int(round((len(pts) - 1) * k)))
             for a, b in zip(pts[:n], pts[1:n + 1]):
-                segment(a, b, 0.45, 0.95 * fade)
+                segment(a, b, 0.45, 0.7 * fade)
     sparks = rng.randint(10, 14)                   # thrown, falling, dimming
     for i in range(sparks):
         ang = rng.uniform(0, math.tau)
@@ -233,7 +233,7 @@ def lightning_burst(t, rng_seed):
                              up * s - 14.0 * s * s))
         if pos.z < 0.0:
             continue
-        blob(pos, 0.7, 0.8 * (1.0 - s))
+        blob(pos, 0.7, 0.62 * (1.0 - s))
     if 0.1 < t < 0.7:                              # the ground answers: a scorched ring
         k = (t - 0.1) / 0.6
         ring((0.0, 0.0, 0.3), 3.0 + 10.0 * _ease_out(k), 0.5, 0.45 * (1.0 - k))

@@ -431,6 +431,11 @@ func _scenario_techniques() -> void:
 	player.global_position = post.global_position + Vector2(-110, 2)
 	for _i in 4:
 		await _settle()  # let the follow camera arrive before sampling
+	# Where the bolt LANDS is the runtime's answer (`bolt_struck`): the rendered strike burst
+	# (experience upgrade) plays there, so the strike strip is centred on that point.
+	var struck: Array[Vector2] = []
+	var on_struck := func(at: Vector2) -> void: struck.append(at)
+	skills.bolt_struck.connect(on_struck)
 	await _hold(&"skill_2")
 	var loi_focus := func() -> Vector2: return player.global_position + Vector2(50, -14)
 	var loi: Array[Image] = []
@@ -440,6 +445,21 @@ func _scenario_techniques() -> void:
 		if i == 3 or i == 8:
 			await _shot("scene_loi_%d" % i)
 	_save_strip("motion_loi", loi)
+	for _i in 180:
+		if not struck.is_empty():
+			break
+		await process_frame
+	skills.bolt_struck.disconnect(on_struck)
+	if struck.is_empty():
+		_fail("techniques: the bolt never landed")
+		return
+	var strike: Array[Image] = []
+	for i in 12:
+		strike.append(_cell(struck[0]))
+		if i == 2:
+			await _shot("scene_loi_strike")
+		await process_frame
+	_save_strip("motion_loi_strike", strike)
 
 
 ## Hold an action across a few frames (the way a hand presses a key), then release.
