@@ -52,7 +52,8 @@ def main() -> int:
         fh.write(json.dumps({"kind": kind, "n": n, "argv": argv, "role_env": os.environ.get("AETHERIA_AUTOPILOT_ROLE"),
                              "item": os.environ.get("AETHERIA_AUTOPILOT_ITEM"),
                              "aux_model": os.environ.get("ANTHROPIC_DEFAULT_HAIKU_MODEL"),
-                             "prompt_head": prompt[:300]}) + "\n")
+                             "prompt_head": prompt[:300],
+                             "resume_note": "interrupted attempt" in prompt}) + "\n")
     steps = scen.get(kind) or scen.get(kind.split(":")[0]) or [{}]
     step = steps[min(n, len(steps) - 1)]
     for path, text in (step.get("write") or {}).items():
@@ -64,6 +65,9 @@ def main() -> int:
             (Path.cwd() / path).unlink()
         except FileNotFoundError:
             pass
+    for cmd in step.get("shell") or []:  # a misbehaving worker (tests of the git invariant)
+        import subprocess
+        subprocess.run(cmd, cwd=Path.cwd(), capture_output=True)
     if step.get("hang"):  # partial work is already on disk, like a real worker mid-task
         time.sleep(3600)
     if step.get("sleep"):

@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.helpers import AI, FAKE, MODEL, RepoCase, item, sh
+from tests.helpers import AI, FAKE, MODEL, REAL_REPO as REAL, RepoCase, item, sh
 
 from autopilot import gates, prompts, review
 from autopilot.claude_runner import ClaudeRunner, Invocation, check_schema
@@ -132,7 +132,11 @@ class GitAllowlist(RepoCase):
                    ("push", "origin", ":feat/test"), ("add", "-A"), ("add", "."), ("commit", "--amend", "-m", "x"),
                    ("commit", "--no-verify", "-m", "x"), ("branch", "-D", "feat/test"), ("switch", "main"),
                    ("restore", "pkg/core.py"), ("stash",), ("checkout", "--", "."), ("config", "user.name", "x"),
-                   ("-C", "/", "status"), ("worktree", "remove", "x"), ("filter-branch",)]
+                   ("-C", "/", "status"), ("worktree", "remove", "x"), ("filter-branch",),
+                   ("push", "--forc", "origin", "feat/test"), ("push", "-uf", "origin", "feat/test"),
+                   ("push", "--force-w", "origin", "feat/test"), ("commit", "--am", "-m", "x"),
+                   ("fetch", "origin", "+main:main"), ("symbolic-ref", "HEAD", "refs/heads/main"),
+                   ("add", "-v", "--", "pkg/core.py"), ("fetch", "--pru", "origin"), ("branch", "--del", "x")]
         for args in refused:
             with self.assertRaises(GitSafetyError, msg=str(args)):
                 g.run(*args)
@@ -208,6 +212,9 @@ class HookGuard(unittest.TestCase):
                     "rm -rf ~", "git commit --amend -m x"):
             self.assertEqual(self.run_hook(self.bash(cmd)), "ask", cmd)
             self.assertEqual(self.run_hook(self.bash(cmd), role="worker", allowed=["src/**"]), "deny", cmd)
+        for cmd in ("git -C . reset --hard", "git -c a=b push -f origin x", "git --no-pager -C /x clean -fd"):
+            self.assertEqual(self.run_hook(self.bash(cmd)), "ask", cmd)
+            self.assertEqual(self.run_hook(self.bash(cmd), role="worker", allowed=["**"]), "deny", cmd)
         for cmd in ("claude --dangerously-skip-permissions", "x --permission-mode bypassPermissions"):
             self.assertEqual(self.run_hook(self.bash(cmd)), "deny")
         for cmd in ("git status", "git diff HEAD", "python3 tools/gdscript_lint.py", "git push origin feat/x"):
@@ -240,6 +247,80 @@ class HookGuard(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in root.iterdir()), before)
         r = subprocess.run([sys.executable, str(GUARD)], input="not json", capture_output=True, text=True)
         self.assertEqual((r.returncode, r.stdout), (0, ""))
+
+
+class OtherHooks(unittest.TestCase):
+    def _hook(self, name, stdin, env_extra=None):
+        env = {k: v for k, v in os.environ.items() if not k.startswith("AETHERIA_AUTOPILOT")}
+        env.update(env_extra or {})
+        return subprocess.run([sys.executable, str(AI / "hooks" / name)], input=stdin, capture_output=True,
+                              text=True, env=env, timeout=120)
+
+    def test_post_edit_lint(self):
+        r = self._hook("post_edit_lint.py", "garbage")
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        r = self._hook("post_edit_lint.py", json.dumps({"tool_input": {"file_path": "/tmp/x.md"}}))
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+        root = Path(tempfile.mkdtemp())
+        (root / "tools").mkdir()
+        (root / "tools" / "gdscript_lint.py").write_text("import sys\nprint('bad.gd:1: GD003 line too long')\nsys.exit(1)\n")
+        gd = root / "bad.gd"
+        gd.write_text("extends Node\n")
+        r = self._hook("post_edit_lint.py", json.dumps({"tool_input": {"file_path": str(gd)}}), {"CLAUDE_PROJECT_DIR": str(root)})
+        out = json.loads(r.stdout)["hookSpecificOutput"]
+        self.assertEqual(out["hookEventName"], "PostToolUse")
+        self.assertIn("GD003", out["additionalContext"])
+
+    def test_session_context(self):
+        r = self._hook("session_context.py", "{}", {"CLAUDE_PROJECT_DIR": str(REAL)})
+        self.assertEqual(r.returncode, 0)
+        out = json.loads(r.stdout)["hookSpecificOutput"]
+        self.assertEqual(out["hookEventName"], "SessionStart")
+        self.assertIn("open owner gates", out["additionalContext"])
+        r = self._hook("session_context.py", "{}", {"AETHERIA_AUTOPILOT_ROLE": "worker"})
+        self.assertEqual(r.stdout, "")
+
+
+class CIPolling(unittest.TestCase):
+    def gh(self, runs_seq):
+        from autopilot.ci import GitHub
+        seq = list(runs_seq)
+        t = [0.0]
+
+        def fake_gh(args, cwd, timeout=60):
+            if "annotations" in args[1]:
+                return 0, json.dumps([{"path": "tests/x.gd", "start_line": 3, "message": "[FAIL] boom"}]), ""
+            runs = seq.pop(0) if len(seq) > 1 else seq[0]
+            return 0, json.dumps({"check_runs": runs}), ""
+
+        def sleep(s):
+            t[0] += s
+        return GitHub(".", "o/r", gh=fake_gh, sleep=sleep, clock=lambda: t[0])
+
+    def run_(self, st, concl="success", ann=False):
+        r = {"status": st, "conclusion": concl, "name": "Foundation gates", "html_url": "u"}
+        if ann:
+            r["output"] = {"annotations_url": "https://api.github.com/repos/o/r/check-runs/1/annotations"}
+        return r
+
+    def test_success_failure_timeout_none(self):
+        g = self.gh([[self.run_("in_progress", None)], [self.run_("completed", "success")]])
+        self.assertEqual(g.wait_for_ci("abc", 600, 10)["conclusion"], "success")
+        g = self.gh([[self.run_("completed", "timed_out", ann=True)]])
+        r = g.wait_for_ci("abc", 600, 10)
+        self.assertEqual(r["conclusion"], "failure")
+        self.assertIn("[FAIL] boom", r["annotations"][0])
+        g = self.gh([[self.run_("in_progress", None)]])
+        self.assertEqual(g.wait_for_ci("abc", 60, 10)["conclusion"], "timeout")
+        g = self.gh([[]])
+        self.assertEqual(g.wait_for_ci("abc", 60, 10)["conclusion"], "none")
+
+    def test_gh_wrapper_refuses_writes(self):
+        from autopilot.ci import _gh
+        for args in (["api", "-X", "DELETE", "repos/o/r"], ["pr", "merge", "1"], ["pr", "create", "--title", "x"],
+                     ["repo", "delete"]):
+            with self.assertRaises(ValueError):
+                _gh(args, ".")
 
 
 class Runner(RepoCase):
@@ -289,6 +370,18 @@ class Runner(RepoCase):
                                                  "properties": {"a": {"type": "integer"}}}), [])
         self.assertTrue(check_schema({"a": True}, {"type": "object", "properties": {"a": {"type": "integer"}}}))
         self.assertTrue(check_schema(None, review.REVIEW_SCHEMA))
+
+
+class CommitMessageRedaction(RepoCase):
+    def test_commit_message_layer_redacts_on_its_own(self):
+        from autopilot.supervisor import RunOptions, Supervisor
+        sup = Supervisor(self.cfg(), RunOptions())
+        it = new_item(item("t1"))
+        it["worker_report"] = {"summary": "token ghp_" + "Q" * 36}
+        it["known_limitations"] = ["password=SuperSecretValue12345"]
+        msg = sup.commit_message(it, "t1.0.abc")
+        self.assertNotIn("Q" * 36, msg)
+        self.assertNotIn("SuperSecretValue12345", msg)
 
 
 class PromptValidation(RepoCase):

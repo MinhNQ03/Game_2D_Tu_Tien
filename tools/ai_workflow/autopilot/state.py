@@ -41,7 +41,7 @@ TRANSITIONS: dict[str, set[str]] = {
     VALIDATING: {REVIEW_REQUIRED, FIX_REQUIRED, READY_FOR_CHECKPOINT} | _ANY_BLOCK,
     REVIEW_REQUIRED: {FIX_REQUIRED, VALIDATING} | _ANY_BLOCK,
     FIX_REQUIRED: {IN_PROGRESS} | _ANY_BLOCK,
-    READY_FOR_CHECKPOINT: {CHECKPOINTED} | _ANY_BLOCK,
+    READY_FOR_CHECKPOINT: {CHECKPOINTED, VALIDATING} | _ANY_BLOCK,  # VALIDATING: tree changed after final checks
     CHECKPOINTED: {COMPLETE, FIX_REQUIRED} | _ANY_BLOCK,
     # A blocked item only moves on through the supervisor's resume/retry path, which restores
     # the status recorded in `resume_status` (never a jump to COMPLETE).

@@ -24,7 +24,7 @@ from .lock import LockHeld, RepoLock
 from .state import (ACTIVE, BLOCKED_ENVIRONMENT, BLOCKED_OWNER, CHECKPOINTED, COMPLETE, FAILED,
                     FIX_REQUIRED, IN_PROGRESS, QUEUED, READY_FOR_CHECKPOINT, REVIEW_REQUIRED,
                     VALIDATING, StateError, StateStore, empty_state, new_item, set_stage, transition)
-from .util import atomic_write_text, now_iso, path_matches, sha256_file
+from .util import atomic_write_text, now_iso, path_matches, redact, sha256_file
 from .validation import BLOCKED, FAIL, PASS, Validator, select_checks
 
 EXIT_OK, EXIT_BLOCKED, EXIT_LOCK, EXIT_LIMIT, EXIT_INTERRUPTED, EXIT_CONFIG = 0, 2, 3, 4, 5, 6
@@ -211,13 +211,22 @@ class Supervisor:
             self.policy_guard()
             marker = self._invocation_start(iid, inv, cap)
             self.reserved_usd += cap or 0.0
+            before = self.git.snapshot()
         try:
             res = self.runner.run(inv)
         finally:
             with self.mu:
                 self.reserved_usd -= cap or 0.0
         with self.mu:
-            return self._invocation_end(iid, inv, marker, res)
+            out = self._invocation_end(iid, inv, marker, res)
+            after = self.git.snapshot()
+            if after != before:
+                changed = [k for k in before if before[k] != after[k]]
+                raise Stop("worker_wrote_git", f"{inv.role} invocation changed git {changed} (before HEAD "
+                           f"{before['head'][:10]} on {before['branch']}, after {after['head'][:10]} on "
+                           f"{after['branch']}); only the supervisor may commit, stage or move refs — nothing "
+                           "was adopted; inspect and repair by hand", EXIT_BLOCKED)
+            return out
 
     def _invocation_start(self, iid: str, inv: Invocation, cap: float | None) -> dict:
         lim = self.cfg.limits["invocation"][inv.role]
@@ -367,6 +376,12 @@ class Supervisor:
             if len(owners) == 1:
                 cur = owners[0]
                 self.state["current_item"] = cur
+        if dirty and cur:
+            at_stop = self.item(cur).get("tree_at_stop")
+            if at_stop and at_stop != self.git.tree_fingerprint():
+                raise Stop("unowned_changes", f"the worktree changed while the run was stopped ({cur}'s work was "
+                           f"{at_stop[:12]}, now {self.git.tree_fingerprint()[:12]}): those edits are not the item's — "
+                           "preserved; commit or move them, then resume", EXIT_BLOCKED)
         if dirty:
             owner_ok = cur and (self.item(cur)["status"] in mid_flight or (
                 self.item(cur)["status"] == BLOCKED_ENVIRONMENT and self.item(cur).get("resume_status") in mid_flight)) \
@@ -420,6 +435,7 @@ class Supervisor:
     # ===== stage handlers ==========================================================================
     def run_item(self, iid: str) -> None:
         self.state["current_item"] = iid
+        self.item(iid)["tree_at_stop"] = None
         self.save()
         for _ in range(64):  # every handler advances the status; a bounded loop guards against bugs
             it = self.item(iid)
@@ -758,7 +774,7 @@ class Supervisor:
         lim = "\n".join(f"- {x}" for x in it["known_limitations"][:10]) or "- none recorded"
         title = it["title"] if len(it["title"]) <= 60 else it["title"][:57] + "..."
         kind = {"policy": "chore(autopilot)", "docs": "docs"}.get(it.get("kind"), "feat")
-        return (f"{kind}: {title}\n\n{(it.get('worker_report') or {}).get('summary', '')[:1200]}\n\n"
+        return redact(f"{kind}: {title}\n\n{(it.get('worker_report') or {}).get('summary', '')[:1200]}\n\n"
                 f"Acceptance:\n{crit}\n\nChecks: {checks}\nReview cycles: {it['review_cycle']}, fix rounds: {it['fix_rounds']}\n"
                 f"Known limitations:\n{lim}\n\n"
                 f"{p}-Item: {it['id']}\n{p}-Checkpoint: {token}\n{p}-Policy: {self.cfg.raw['policy_version']}"
@@ -776,6 +792,10 @@ class Supervisor:
         if not ok:
             self.to(iid, FAILED, f"scope guard at checkpoint: {why}")
             return
+        expected_head = it["checkpoints"][-1] if it["checkpoints"] else it["base_sha"]
+        if self.git.head() != expected_head:
+            raise Stop("head_moved", f"HEAD {self.git.head()[:10]} is not the item's last verified point "
+                       f"{expected_head[:10]}; refusing to checkpoint on top of an unknown commit", EXIT_BLOCKED)
         fp_now = self.git.tree_fingerprint()
         if fp_now != it.get("last_fingerprint"):
             self.to(iid, VALIDATING, "tree changed after final validation; validating again", stage="final")
@@ -904,16 +924,16 @@ class Supervisor:
 
     def complete(self, iid: str, note: str) -> None:
         it = self.item(iid)
+        if f"complete:{it['checkpoint_sha']}" not in it["applied_events"]:
+            self.state["totals"]["tasks_completed"] += 1
+            self.state["run"]["tasks_done"] += 1
         self.to(iid, COMPLETE, note, event_id=f"complete:{it['checkpoint_sha']}", stage=None)
-        self.state["totals"]["tasks_completed"] += 1
-        self.state["run"]["tasks_done"] += 1
         self.write_report(iid, it["checkpoint_sha"])
-        self.save()
 
     def pr_body(self) -> str:
         rows = "\n".join(f"- `{i}` {self.item(i)['status']} {self.item(i).get('checkpoint_sha') or ''}: {self.item(i)['title']}"
                          for i in self.state["order"])
-        return (f"Autopilot campaign `{self.state['campaign']['id']}` (draft — never merged automatically).\n\n{rows}\n\n"
+        return redact(f"Autopilot campaign `{self.state['campaign']['id']}` (draft — never merged automatically).\n\n{rows}\n\n"
                 "Each checkpoint commit carries Autopilot-Item / -Checkpoint / -Policy / -Model trailers.\n\n"
                 "🤖 Generated with [Claude Code](https://claude.com/claude-code)\n")
 
@@ -942,7 +962,7 @@ class Supervisor:
                          + (f" ({f.get('file')}:{f.get('line')})" if f.get("file") else ""))
         lines += ["", "## Known limitations", ""] + [f"- {x}" for x in it["known_limitations"]] + [""]
         p = d / f"{iid}.md"
-        atomic_write_text(p, "\n".join(lines))
+        atomic_write_text(p, redact("\n".join(lines)))
         return p
 
     # ===== next task ===============================================================================
@@ -975,6 +995,8 @@ class Supervisor:
         spec = res.structured["item"]
         spec.pop("extra_checks", None)  # planner items use only the reviewed, configured checks
         spec.pop("canary_seed", None)
+        spec["kind"] = "task"  # only the owner may author a policy item
+        spec["allowed_paths"] = [p for p in spec.get("allowed_paths", []) if not self._reaches_policy(p)]
         spec["id"] = "auto-" + "".join(ch for ch in spec.get("id", "item").lower() if ch.isalnum() or ch == "-")[:40]
         if spec["id"] in self.state["items"]:
             spec["id"] += "-" + uuid.uuid4().hex[:4]
@@ -991,6 +1013,17 @@ class Supervisor:
         self.save()
         self.store.log("planner_item", {"item": item["id"], "title": item["title"]})
         return item["id"]
+
+    def _reaches_policy(self, pattern: str) -> bool:
+        """True when a write pattern could cover a policy or rooted protected path (or everything)."""
+        pre = pattern.split("*")[0]
+        if not pre:
+            return True
+        for q in self.cfg.paths["policy"] + self.cfg.paths["protected"]:
+            qp = q.split("*")[0]
+            if qp and (qp.startswith(pre) or pre.startswith(qp)):
+                return True
+        return False
 
     def next_preview(self) -> dict | None:
         nxt = None
@@ -1078,6 +1111,13 @@ class Supervisor:
         if self.state is None:
             return
         cur = self.state.get("current_item")
+        try:
+            owner = cur or next((i for i in self.state["order"] if self.item(i)["status"] == BLOCKED_ENVIRONMENT
+                                 and self.item(i).get("resume_status")), None)
+            if owner:
+                self.item(owner)["tree_at_stop"] = self.git.tree_fingerprint()
+        except Exception:  # noqa: BLE001 - a stop must be recorded even if git is unhappy
+            pass
         self.state["stop"] = {"reason": s.reason, "detail": s.detail[:2000], "at": now_iso(), "code": s.code,
                               "current_item": cur, "stage": self.item(cur)["stage"] if cur else None,
                               "resume": "python3 tools/ai_workflow/aetheria_autopilot.py resume"}

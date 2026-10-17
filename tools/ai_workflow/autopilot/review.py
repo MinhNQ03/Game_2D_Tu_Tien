@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-from .util import path_matches, sha256_text
+from .util import path_matches, redact, sha256_text
 
 REVIEW_SCHEMA = {
     "type": "object",
@@ -234,7 +234,7 @@ def trace_criteria(item: dict, validation: dict, reviews: dict[str, dict], chang
 
 def write_pack(pack_dir: Path, diff_text: str, worker_report: dict | None, changed: list[str]) -> None:
     pack_dir.mkdir(parents=True, exist_ok=True)
-    (pack_dir / "diff.patch").write_text(diff_text, encoding="utf-8")
-    (pack_dir / "worker_report.json").write_text(json.dumps(worker_report or {}, indent=2, ensure_ascii=False),
+    (pack_dir / "diff.patch").write_text(redact(diff_text), encoding="utf-8")
+    (pack_dir / "worker_report.json").write_text(redact(json.dumps(worker_report or {}, indent=2, ensure_ascii=False)),
                                                  encoding="utf-8")
     (pack_dir / "changed_paths.txt").write_text("\n".join(changed) + "\n", encoding="utf-8")

@@ -175,6 +175,8 @@ class Interruption(RepoCase):
         # the resumed implementation was told about the partial work
         impl = [c for c in self.calls() if c["kind"] == "implement"]
         self.assertEqual(len(impl), 2)
+        self.assertFalse(impl[0]["resume_note"])
+        self.assertTrue(impl[1]["resume_note"])  # told to continue from the partial work
         events = [json.loads(x) for x in (self.repo / ".aetheria-autopilot/audit.jsonl").read_text().splitlines()]
         self.assertTrue(any(e.get("event") == "reconcile" for e in events))
         # resuming a finished campaign does nothing and creates no commit
@@ -253,6 +255,43 @@ class CrashRecovery(RepoCase):
         rc = self.sup(push=False).run()
         self.assertEqual(rc, EXIT_OK, self.state()["stop"])
         self.assertEqual(len(self.commits_for("t1")), 1)
+
+    def test_crash_between_add_and_commit_of_a_new_file(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/new_mod.py": "X = 1\n"}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s = self.sup(push=False)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+
+        def crash_commit(msg):
+            raise KeyboardInterrupt("crash after git add of a new file")
+
+        s.git.commit = crash_commit
+        with self.assertRaises(KeyboardInterrupt):
+            s.run()
+        self.assertIn("pkg/new_mod.py", sh(self.repo, "git", "diff", "--cached", "--name-only"))
+        rc = self.sup(push=False).run()
+        self.assertEqual(rc, EXIT_OK, self.state()["stop"])
+        self.assertEqual(len(self.commits_for("t1")), 1)
+
+    def test_owner_edit_while_stopped_is_not_adopted(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s = self.sup(push=False)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        real = s.h_validate
+
+        def stop_before_validation(iid):
+            from autopilot.supervisor import Stop
+            raise Stop("stop_requested", "owner pressed stop", EXIT_INTERRUPTED)
+
+        s.h_validate = stop_before_validation
+        self.assertEqual(s.run(), EXIT_INTERRUPTED)
+        self.w("pkg/owner_note.py", "# the owner typed this while the run was stopped\n")
+        rc = self.sup(push=False).run()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "unowned_changes")
+        self.assertEqual(self.commits_for("t1"), [])
+        self.assertTrue((self.repo / "pkg/owner_note.py").exists())
 
     def test_corrupt_state_uses_backup_and_double_corruption_blocks(self):
         self._scen()
@@ -410,6 +449,46 @@ class ItemDeclaredChecks(RepoCase):
         self.assertEqual(st["items"]["t1"]["validation"]["cap_y"]["status"], "BLOCKED")
 
 
+class WorkerMisbehaviour(RepoCase):
+    def test_a_worker_commit_is_never_adopted(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD},
+                                          "shell": [["git", "add", "-A"], ["git", "commit", "-qm", "sneaky"]]}]})
+        _, rc = self.start([item("t1")], push=False)
+        st = self.state()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(st["stop"]["reason"], "worker_wrote_git")
+        self.assertEqual(self.commits_for("t1"), [])
+        self.assertNotEqual(st["items"]["t1"]["status"], "COMPLETE")
+
+    def test_secrets_never_reach_the_commit_or_report(self):
+        secret = "ghp_" + "Z" * 36
+        self.scenario_set({"implement": [{**ok(f"used token {secret} to test"), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        _, rc = self.start([item("t1")], push=False)
+        self.assertEqual(rc, EXIT_OK, self.state()["stop"])
+        body = sh(self.repo, "git", "log", "-1", "--format=%B")
+        self.assertNotIn(secret, body)
+        self.assertIn("[REDACTED]", body)
+        for p in (self.repo / ".aetheria-autopilot").rglob("*"):
+            if p.is_file() and p.suffix in (".json", ".md", ".jsonl", ".txt", ".patch"):
+                self.assertNotIn(secret, p.read_text(errors="replace"), str(p))
+
+    def test_planner_cannot_grant_itself_policy_powers(self):
+        prop = item("power", objective="Tune the reviewer limits", scopes=["test"], kind="policy",
+                    allowed_paths=["tools/ai_workflow/**", ".claude/**", "**", "pkg/**"])
+        self.scenario_set({"plan": [{"structured": {"decision": "PROPOSE", "reason": "x", "item": prop}},
+                                    {"structured": {"decision": "NO_ELIGIBLE_WORK", "reason": "x", "item": None}}],
+                           "implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD + "#p\n"}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s = self.sup(push=False, allow_planner=True)
+        s.init_campaign(self.campaign([], scopes_allowed=["test"]), "test", False)
+        s.run()
+        st = self.state()
+        auto = st["items"][[i for i in st["order"] if i.startswith("auto-")][0]]
+        self.assertEqual(auto["kind"], "task")
+        self.assertEqual(auto["allowed_paths"], ["pkg/**"])
+
+
 class Budgets(RepoCase):
     def _scen(self, usd=0.01):
         self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}, "usd": usd},
@@ -436,10 +515,11 @@ class Budgets(RepoCase):
         st = self.state()
         self.assertEqual(rc, EXIT_LIMIT)
         self.assertEqual(st["stop"]["reason"], "usd_budget")
-        self.assertLessEqual(st["run"]["usd_estimated"], 8.0)
-        for c in self.calls():
-            cap = float(c["argv"][c["argv"].index("--max-budget-usd") + 1])
-            self.assertLessEqual(cap, 6.0)
+        self.assertLessEqual(st["run"]["usd_estimated"], 6.0 + 1e-9)
+        caps = {c["kind"]: float(c["argv"][c["argv"].index("--max-budget-usd") + 1]) for c in self.calls()}
+        self.assertLessEqual(caps["implement"], 6.0)
+        reviews = [float(c["argv"][c["argv"].index("--max-budget-usd") + 1]) for c in self.calls() if c["kind"].startswith("review")]
+        self.assertLessEqual(sum(reviews), 2.0 + 1e-9)  # the two parallel reviews split what was left
 
     def test_wall_clock_budget(self):
         self._scen()
@@ -524,14 +604,18 @@ class ReviewJudgement(RepoCase):
     def test_reraised_dispute_stays_material_and_blocks(self):
         self.scenario_set({
             "implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
-            "fix": [{**ok("disputed", finding_dispositions=[])}],
+            "fix": [{**ok("disputed", finding_dispositions=[{"finding_id": "qa-c1-1", "disposition": "DISPUTED",
+                                                             "note": "I think it is fine"}])}],
             "review:qa": [review_reject()],
             "review:architecture": [review_pass()],
         })
         _, rc = self.start([item("t1")], push=False)
         st = self.state()
-        self.assertEqual(st["items"]["t1"]["status"], "FAILED")
-        self.assertTrue(any(f.get("repeat_of") for f in st["items"]["t1"]["findings"]))
+        t1 = st["items"]["t1"]
+        self.assertEqual(t1["status"], "FAILED")
+        self.assertEqual(t1["findings"][0]["disposition"], "REOPENED")
+        self.assertTrue(any(f.get("repeat_of") == "qa-c1-1" for f in t1["findings"]))
+        self.assertEqual(self.commits_for("t1"), [])
 
     def test_criteria_without_evidence_never_complete(self):
         self.scenario_set({

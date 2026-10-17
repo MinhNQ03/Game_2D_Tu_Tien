@@ -63,6 +63,9 @@ def _bullets(xs: list[str], empty: str = "- (none)") -> str:
 
 def prior_work(state: dict, item: dict) -> str:
     rows = []
+    if item.get("kind") == "policy" and (item.get("source") != "owner" or
+                                         (state["campaign"].get("mode") == "production" and not state["campaign"].get("activated_by_owner"))):
+        problems.append("a policy item must be authored by the owner in an activated campaign")
     for dep in item.get("depends_on", []):
         d = state["items"].get(dep)
         if d:
@@ -222,6 +225,9 @@ def validate_task_prompt(cfg, state: dict, item: dict, prompt: str) -> list[str]
                 problems.append(f"criterion {c['id']} names unknown reviewer {ref}")
             if kind not in ("check", "review", "artifact", "owner"):
                 problems.append(f"criterion {c['id']} has unknown evidence kind {kind}")
+    if item.get("kind") == "policy" and (item.get("source") != "owner" or
+                                         (state["campaign"].get("mode") == "production" and not state["campaign"].get("activated_by_owner"))):
+        problems.append("a policy item must be authored by the owner in an activated campaign")
     for dep in item.get("depends_on", []):
         d = state["items"].get(dep)
         if d is None:

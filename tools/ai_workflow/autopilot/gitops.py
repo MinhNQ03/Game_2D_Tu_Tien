@@ -53,6 +53,29 @@ class StatusEntry:
     path: str
 
 
+# Write subcommands accept EXACTLY these options (anything else, including abbreviations such as
+# `--forc` or bundles such as `-uf`, is refused).
+_WRITE_FLAGS = {
+    "push": {"--porcelain", "-u", "--set-upstream"},
+    "commit": {"-q", "--quiet", "-m", "-F"},
+    "add": set(),
+    "switch": {"-c", "-q"},
+}
+
+
+def _expand_flags(args: list[str]) -> list[str]:
+    """Split bundled short flags (`-uf` -> `-u`, `-f`) so each is judged on its own."""
+    out = []
+    for a in args:
+        if a == "--":
+            break
+        if len(a) > 2 and a.startswith("-") and not a.startswith("--") and a[1:].isalpha():
+            out += [f"-{c}" for c in a[1:]]
+        else:
+            out.append(a)
+    return out
+
+
 def _safe_args(args: list[str], protected: list[str]) -> None:
     if not args:
         raise GitSafetyError("empty git command")
@@ -63,11 +86,29 @@ def _safe_args(args: list[str], protected: list[str]) -> None:
     if sub not in READ_ONLY and sub not in WRITE:
         raise GitSafetyError(f"git {sub} is not on the supervisor allowlist")
     bad = _FORBIDDEN_FLAGS.get(sub, set())
-    for a in args[1:]:
-        if a == "--":
-            break
-        if a in bad or any(a.startswith(f + "=") for f in bad if f.startswith("--")):
+    flags = _expand_flags(args[1:])
+    if sub in _WRITE_FLAGS:
+        allowed = _WRITE_FLAGS[sub]
+        skip_next = False
+        for a in flags:
+            if skip_next:
+                skip_next = False
+                continue
+            if a.startswith("-"):
+                if a.split("=")[0] not in allowed:
+                    raise GitSafetyError(f"git {sub} {a} is not an allowed option")
+                skip_next = a in ("-m", "-F", "-c")  # the option's value is not a flag
+    for a in flags:
+        name = a.split("=")[0]
+        if a in bad or name in bad:
             raise GitSafetyError(f"git {sub} {a} is refused by policy")
+        if name.startswith("--") and len(name) > 3 and any(f.startswith(name) for f in bad if f.startswith("--")):
+            raise GitSafetyError(f"git {sub} {a} abbreviates a refused option")
+    positional = [a for a in args[1:] if not a.startswith("-")]
+    if sub == "fetch" and any(":" in a or a.startswith("+") for a in positional):
+        raise GitSafetyError("git fetch with a refspec is refused (it could move local refs)")
+    if sub == "symbolic-ref" and len(positional) > 1:
+        raise GitSafetyError("git symbolic-ref may only read")
     if sub == "config" and len([a for a in args[1:] if not a.startswith("-")]) > 1 and "--get" not in args:
         raise GitSafetyError("git config may only read values")
     if sub == "branch" and any(not a.startswith("-") for a in args[1:]):
@@ -176,20 +217,27 @@ class Git:
         return text
 
     def tree_fingerprint(self) -> str:
-        """Content fingerprint of HEAD + every uncommitted change (tracked diff and untracked
-        file bytes). Two equal fingerprints mean a check would see the same inputs."""
+        """Content fingerprint of HEAD + the bytes of every changed path in the working tree.
+        Independent of the index: staging a file (or a crash between add and commit) does not
+        change it, only content does."""
         h = hashlib.sha256()
         h.update(self.head().encode())
-        h.update(self.run("diff", "--no-color", "--no-ext-diff", "--binary", "HEAD").encode("utf-8", "replace"))
         for e in sorted(self.status(), key=lambda e: e.path):
-            if e.code == "??":
-                fp = self.repo / e.path
-                h.update(e.path.encode())
-                try:
-                    h.update(fp.read_bytes())
-                except OSError:
-                    h.update(b"<unreadable>")
+            fp = self.repo / e.path
+            h.update(b"\0" + e.path.encode() + b"\0")
+            try:
+                h.update(fp.read_bytes() if fp.is_file() else b"<dir>")
+            except FileNotFoundError:
+                h.update(b"<deleted>")
+            except OSError:
+                h.update(b"<unreadable>")
         return h.hexdigest()
+
+    def snapshot(self) -> dict:
+        """Everything a worker must not change in git: HEAD, branch, local refs, the index."""
+        return {"head": self.head(), "branch": self.branch(),
+                "refs": self.run("for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/tags"),
+                "staged": self.staged_paths()}
 
     def commits_with_trailer(self, key: str, value: str, rev_range: str = "HEAD", limit: int = 200) -> list[str]:
         out = self.run("log", f"-{limit}", "--format=%H%x00%B%x1e", rev_range)

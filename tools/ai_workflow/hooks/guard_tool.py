@@ -52,6 +52,16 @@ GIT_WRITE = r"\bgit\s+(add|commit|push|reset|clean|checkout|switch|restore|stash
 REDIRECT = re.compile(r"(?<![0-9&])>{1,2}\s*([^\s;&|]+)")
 
 
+_GIT_GLOBALS = re.compile(r"\bgit((?:\s+(?:(?:-C|-c|--git-dir|--work-tree|--namespace|--exec-path)(?:\s+|=)\S+"
+                         r"|--no-pager|--paginate|-p|-P|--bare|--no-replace-objects|--literal-pathspecs|--no-optional-locks)))+\s+")
+
+
+def normalize_git(cmd: str) -> str:
+    """`git -C . -c a=b --no-pager reset --hard` -> `git reset --hard`, so global options cannot
+    hide a destructive subcommand from the patterns below."""
+    return _GIT_GLOBALS.sub("git ", cmd)
+
+
 def repo_root() -> Path:
     env = os.environ.get("CLAUDE_PROJECT_DIR")
     return Path(env).resolve() if env else HERE.parents[3]
@@ -96,7 +106,7 @@ def decide(event: dict, env: dict, root: Path) -> tuple[str | None, str]:
     strict = role in ("worker", "reviewer")
 
     if tool == "Bash":
-        cmd = str(ti.get("command", ""))
+        cmd = normalize_git(str(ti.get("command", "")))
         for rx, why in ALWAYS_DENY:
             if re.search(rx, cmd):
                 return "deny", why

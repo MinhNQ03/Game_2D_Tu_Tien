@@ -153,6 +153,14 @@ class ClaudeRunner:
                 rc = child.returncode
         except (FileNotFoundError, PermissionError, NotADirectoryError) as e:
             return self._fail("cli_missing", f"cannot execute {bin_}: {e.strerror}", None, out_path, start)
+        for pth in (out_path, err_path):  # never keep a secret the child printed
+            try:
+                raw = pth.read_text(encoding="utf-8", errors="replace")
+                red = redact(raw)
+                if red != raw:
+                    pth.write_text(red, encoding="utf-8")
+            except OSError:
+                pass
         if rc is not None and rc < 0:
             return self._fail("interrupted", f"invocation killed by signal {-rc}", rc, out_path, start)
         return self.judge(out_path, err_path, rc, inv, start)
