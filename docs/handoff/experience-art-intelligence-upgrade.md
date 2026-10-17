@@ -105,8 +105,11 @@ A/B. The en 1280×800 matrix and the five vignettes: §7.
   all five Origins, the opening, the hub) and the five Origins' vignettes (vi 1280×720, 8 frames
   each). The en matrix showed two card defects (a third tagline row cut off, a long name running
   out of its card); fixed in `d4b0de4` and pinned by a new measurement in the layout test, which
-  was red before the fix. **The en identity screen was not re-captured after that fix** — the
-  fix is verified by the measurement, not by a new picture.
+  was red before the fix. The en 1280×800 identity screen was then captured again on the fixed
+  build and opened: every card shows its whole name (marked) and its line.
+- **CI**: the docs commit `489463c` failed the docs gate (`[docs] SELFTEST FAIL: full
+  count==74` — the decision-index selftest pinned the count, so D-075 broke it). Reproduced
+  locally, root cause fixed once in `efaa21a` (the selftest now counts the file's own headings);
+  CI run 39016588494 on `efaa21a`: **success**.
 - **Not run here**: the owner's playtest (H21-14); a capture of the five vignettes in English;
   `visual_benchmark.py` (the before/after numbers in §3 are this run's own measure script).
-- CI: green on `8c42cf7`; the final SHA's run is reported in the hand-over message.
