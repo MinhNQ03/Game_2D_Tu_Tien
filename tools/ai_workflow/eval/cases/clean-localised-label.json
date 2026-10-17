@@ -1,0 +1,13 @@
+{
+  "id": "clean-localised-label",
+  "reviewer": "ui_ux",
+  "objective": "Localise the inventory title.",
+  "criteria": [
+    "the title uses a translation key present in vi and en"
+  ],
+  "context": "locale/ui.csv already has INV_TITLE with vi 'Túi đồ' and en 'Inventory'. Labels use UITheme.title().",
+  "diff": "--- a/src/presentation/inventory/inventory_panel.gd\n+++ b/src/presentation/inventory/inventory_panel.gd\n@@ -22,7 +22,7 @@ func _build_header() -> void:\n-\t_title.text = \"Inventory\"\n+\t_title.text = tr(&\"INV_TITLE\")\n",
+  "expect": {
+    "clean": true
+  }
+}

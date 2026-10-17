@@ -42,3 +42,7 @@ tools/aetheria_art_pipeline/work/
 # of res:// via docs/.gdignore); the committed README and annotation describe it, and the scorer
 # reports "reference missing" rather than inventing numbers without it.
 docs/visual_benchmarks/*.png
+
+# Autopilot supervisor runtime state (tools/ai_workflow): task state, audit log, invocation
+# envelopes, prompts, check logs and captures. Local evidence only — never committed.
+.aetheria-autopilot/

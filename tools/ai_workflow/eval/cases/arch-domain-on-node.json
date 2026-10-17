@@ -1,0 +1,15 @@
+{
+  "id": "arch-domain-on-node",
+  "reviewer": "architecture",
+  "objective": "Let the quest domain count enemy kills.",
+  "criteria": [
+    "the domain stays engine-free (no Node types)",
+    "no new autoload"
+  ],
+  "context": "Layering is presentation -> gameplay -> domain -> data; a domain class must run with no scene tree (L-036). Autoload budget is frozen at five (D-017).",
+  "diff": "--- a/src/domain/quest/kill_counter.gd\n+++ b/src/domain/quest/kill_counter.gd\n@@ -0,0 +1,12 @@\n+class_name KillCounter\n+extends Node\n+\n+var _counts: Dictionary = {}\n+\n+func _ready() -> void:\n+\tget_tree().root.get_node(\"CombatEvents\").enemy_killed.connect(_on_kill)\n+\n+func _on_kill(enemy: CharacterBody2D) -> void:\n+\t_counts[enemy.enemy_id] = _counts.get(enemy.enemy_id, 0) + 1\n",
+  "expect": {
+    "min_severity": "P1",
+    "match": "(Node|scene tree|layer|domain|CharacterBody2D|get_tree)"
+  }
+}
