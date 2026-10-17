@@ -467,6 +467,46 @@ class GitSafetyAndPreflight(RepoCase):
         self.assertEqual(len(self.commits_for("t1")), 1)
 
 
+class OwnerRetryAndPublish(RepoCase):
+    def test_owner_retry_runs_a_failed_item_again(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": "def add(a, b):\n    return a * b\n"}}],
+                           "fix": [{**ok("no change")}]})
+        _, rc = self.start([item("t1")], push=False)
+        self.assertEqual(self.state()["items"]["t1"]["status"], "FAILED")
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        r = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "aetheria_autopilot.py"), "retry", "t1",
+                            "--reason", "owner fixed the brief"], cwd=self.repo, env=dict(os.environ), capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.w("pkg/core.py", "def add(a, b):\n    return a + b\n")  # the owner reset their tree before retrying
+        rc = self.sup(push=False).run()
+        st = self.state()
+        self.assertEqual(rc, EXIT_OK, st["stop"])
+        self.assertEqual(st["items"]["t1"]["status"], "COMPLETE")
+        self.assertEqual(st["items"]["t1"]["attempt"], 1)
+        self.assertEqual(len(self.commits_for("t1")), 1)
+
+    def test_commit_on_top_of_a_checkpoint_is_never_pushed(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s = self.sup()
+
+        def stop_before_publish(iid):
+            from autopilot.supervisor import Stop
+            raise Stop("stop_requested", "stop", EXIT_INTERRUPTED)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        s.h_publish = stop_before_publish
+        s.run()
+        self.assertEqual(self.state()["items"]["t1"]["status"], "CHECKPOINTED")
+        self.w("pkg/extra.py", "x = 1\n")
+        sh(self.repo, "git", "add", "--", "pkg/extra.py")
+        sh(self.repo, "git", "commit", "-qm", "unverified")
+        rc = self.sup().run()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "head_moved")
+        self.assertEqual(sh(self.repo, "git", "ls-remote", "origin", "refs/heads/feat/test"), "")
+
+
 class ItemDeclaredChecks(RepoCase):
     def test_required_capture_and_extra_check_run_with_repo_placeholder(self):
         self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
@@ -536,6 +576,40 @@ class WorkerMisbehaviour(RepoCase):
                                           "shell": [["git", "add", "-A"], ["git", "commit", "-qm", "sneaky"]]}]})
         _, rc = self.start([item("t1")], push=False)
         self.assertEqual(self.state()["stop"]["reason"], "worker_wrote_git")
+
+    def _misbehave(self, shell, writes=None):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD, **(writes or {})}, "shell": shell}]})
+        _, rc = self.start([item("t1")], push=False)
+        st = self.state()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(st["stop"]["reason"], "worker_wrote_git")
+        return st["stop"]["detail"]
+
+    def test_each_snapshot_key_is_guarded(self):
+        self.assertIn("'remote'", self._misbehave([["git", "push", "-q", "origin", "HEAD:refs/heads/feat/sneak"]]))
+
+    def test_tag_is_guarded(self):
+        self.assertIn("'refs'", self._misbehave([["git", "tag", "sneaky"]]))
+
+    def test_staging_is_guarded(self):
+        self.assertIn("'staged'", self._misbehave([["git", "add", "--", "pkg/core.py"]]))
+
+    def test_global_git_config_is_guarded(self):
+        home = self.tmp / "home"
+        home.mkdir()
+        os.environ["HOME"] = str(home)
+        os.environ.pop("XDG_CONFIG_HOME", None)
+        det = self._misbehave([], writes={str(home / ".gitconfig"): "[core]\n\thooksPath = /tmp/evil\n"})
+        self.assertIn("'gitfiles'", det)
+
+    def test_reviewer_that_changes_the_tree_is_caught(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [{**review_pass(), "write": {"pkg/core.py": GOOD_ADD + "# reviewer edit\n"}}],
+                           "review:architecture": [review_pass()]})
+        _, rc = self.start([item("t1")], push=False)
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertIn("'tree'", self.state()["stop"]["detail"])
+        self.assertEqual(self.commits_for("t1"), [])
 
     def test_worker_has_no_git_credentials(self):
         self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],

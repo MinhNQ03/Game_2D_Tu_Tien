@@ -107,6 +107,12 @@ checkpoint commit present in git but not in state (adopted, never duplicated), a
 with "continue from the partial work"), checkpoints that are not in history (blocked). If
 `state.json` is corrupt it uses `state.json.bak`; if both are, it refuses to run.
 
+Owner edits made while a run is stopped are refused on resume (the tree must equal the one the
+supervisor last recorded: at the stop, at a worker's end, or after checks). One window remains: a
+HARD crash while a worker is mid-call — then nobody can tell the worker's partial work from an
+edit made before resume, so the dirty paths are adopted and listed in the resume note. Do not
+edit the worktree of a crashed run; inspect `git status` and `status` first.
+
 The lock is an OS lock on an open descriptor: a crashed supervisor cannot leave a lock behind.
 While a run holds it, the edit guard refuses edits from interactive sessions in this worktree.
 
@@ -119,7 +125,7 @@ recorded baseline; every checkpoint names its policy fingerprint; rollback is `g
 
 ## 8. Testing the orchestrator
 
-`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` — scripted CLI
+`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` (86 tests) — scripted CLI
 (`tests/fake_claude.py`, never presented as a real model), throwaway repos with a bare local
 remote. Covers: rejection→fix→re-review→checkpoint→push→next task; cycle limit; owner gates (and a
 worker trying to close one); SIGTERM mid-implementation + resume; concurrent supervisor refused;
@@ -129,7 +135,10 @@ push failure without retry then recovery; task/USD/clock/call budgets; model mis
 unavailable model, missing CLI, doctor NATIVE_ONLY; unsupported/disputed/re-raised findings;
 criteria without evidence; identical failure re-classified; planner accept/reject; CI failure →
 second checkpoint, CI timeout; policy edit mid-run; the policy benchmark gate; git allowlist; lock
-crash safety; hook guard decisions and idempotency; runner outcomes and timeout kill.
+crash safety; hook guard decisions and idempotency; runner outcomes and timeout kill; the git
+invariant per snapshot key (HEAD, refs, index, remote, .git and global config, evidence files);
+reviewers that touch the tree; owner retry; a commit on top of a checkpoint is never pushed.
+Every regression test added after an independent review was mutation-checked (red without its fix).
 
 `canary --max-usd-run N` runs the REAL CLI and model in a separate worktree on a local
 `autopilot/canary-*` branch (nothing pushed) and verifies rejection → fix → re-review →
@@ -148,7 +157,15 @@ stays authoritative (`docs/GDSCRIPT_CODE_INTELLIGENCE.md`). Revisit only if GDSc
 
 - Same-model reviewers are independent contexts, not independent judgement; deterministic checks
   and human gates remain the authority. Subjective look and fun are owner gates.
-- Cost figures are estimates; on a subscription the binding limit is the plan's usage window
-  (a `rate_limited` stop then waits for `resume`).
+- Cost figures are estimates; on a subscription the binding limit is the plan's usage window.
+  Verified 2026-10-17: a canary hit "You've hit your session limit · resets 8:10pm"; the run
+  stopped as `rate_limited` with its state intact and `resume` after the reset finished it with
+  one commit per item. A campaign therefore spans several `resume`s on a Pro plan.
+- Mode A (an interactive VS Code session): the reviewer agents run `claude-opus-5-5` (verified),
+  but Claude Code's own background chores use Haiku unless `ANTHROPIC_DEFAULT_HAIKU_MODEL` /
+  `ANTHROPIC_SMALL_FAST_MODEL` are set in your environment; Mode B always pins them.
+- A worker may still run project tools that write inside the repository; the supervisor catches
+  any git/ref/hook/config/evidence change after each call (`worker_wrote_git`) rather than
+  sandboxing the process. Run campaigns in a dedicated worktree if you want an OS-level boundary.
 - The edit guard is a second layer; the first is the CLI permission allowlist (`dontAsk` denies
   anything not pre-approved). Shell redirection to a path is checked heuristically.

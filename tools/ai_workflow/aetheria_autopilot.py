@@ -272,7 +272,12 @@ def cmd_retry(cfg, a) -> int:
             return 2
         from autopilot.state import transition
         transition(st, a.item, "QUEUED", f"owner re-queued: {a.reason}", store=store,
-                   review_cycle=0, fix_rounds=0, stage=None, owner_action=None, failure_signatures={})
+                   review_cycle=0, fix_rounds=0, stage=None, owner_action=None, failure_signatures={},
+                   checkpoint_token=None, pending_fixes=[], tree_known=None, tree_at_stop=None,
+                   attempt=int(it.get("attempt", 0)) + 1)
+        # a new attempt: earlier event ids must not swallow this attempt's transitions (the
+        # history keeps the full audit trail of the previous attempt)
+        it["applied_events"] = []
         store.save(st)
         print(f"[autopilot] {a.item} -> QUEUED (history kept)")
         return 0

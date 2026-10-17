@@ -36,7 +36,7 @@ class Util(unittest.TestCase):
         self.assertFalse(path_matches("docs/CLAUDE.md", ["CLAUDE.md"]))
 
     def test_redaction(self):
-        for secret in ("GITHUB_TOKEN=abcdef1234567890abcd", "DB_PASSWORD: hunter2hunter2hunter2",
+        for secret in ("DB_PASSWORD=hunter2", "password: s3cr", "GITHUB_TOKEN=abcdef1234567890abcd", "DB_PASSWORD: hunter2hunter2hunter2",
                        "AWS_SECRET_ACCESS_KEY=AbCdEfGhIjKlMnOpQrSt12"):
             self.assertNotIn(secret.split("=")[-1].split()[-1], redact(secret), secret)
         for secret in ("sk-ant-api03-abcdefghijklmnop", "ghp_" + "a" * 36, "token=abcdef1234567890XYZ",
@@ -141,7 +141,8 @@ class GitAllowlist(RepoCase):
                    ("fetch", "origin", "+main:main"), ("symbolic-ref", "HEAD", "refs/heads/main"),
                    ("add", "-v", "--", "pkg/core.py"), ("fetch", "--pru", "origin"), ("branch", "--del", "x"),
                    ("worktree", "add", "-B", "x", "/tmp/x", "HEAD"), ("worktree", "add", "-f", "-b", "y", "/tmp/y", "HEAD"),
-                   ("worktree", "add", "-b", "main", "/tmp/z", "HEAD"), ("branch", "--set-upstream-to", "origin/main")]
+                   ("worktree", "add", "-b", "main", "/tmp/z", "HEAD"), ("branch", "--set-upstream-to", "origin/main"),
+                   ("push", "origin", "HEAD"), ("push", "origin", "refs/heads/main"), ("push", "origin", "@")]
         for args in refused:
             with self.assertRaises(GitSafetyError, msg=str(args)):
                 g.run(*args)
@@ -189,6 +190,7 @@ class Lock(unittest.TestCase):
         self.assertTrue(RepoLock(d).is_held_by_other())
         p.send_signal(signal.SIGKILL)  # a crash: no release, no cleanup
         p.wait()
+        p.stdout.close()
         lk = RepoLock(d)
         lk.acquire("after-crash")  # the kernel dropped the lock with the process
         self.assertEqual(lk.recovered_stale.get("run_id"), "holder")

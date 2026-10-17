@@ -250,6 +250,8 @@ class Supervisor:
                     h.update(str(f.relative_to(self.cfg.state_dir)).encode())
                     h.update(f.read_bytes())
         snap["state_evidence"] = h.hexdigest()
+        if not worker:  # a reviewer or planner must leave the working tree exactly as it found it
+            snap["tree"] = self.git.tree_fingerprint()
         return snap
 
     def _invocation_start(self, iid: str, inv: Invocation, cap: float | None) -> dict:
@@ -880,6 +882,9 @@ class Supervisor:
         it = self.item(iid)
         camp = self.state["campaign"]
         sha = it["checkpoint_sha"]
+        if self.git.head() != sha:
+            raise Stop("head_moved", f"{iid}: HEAD {self.git.head()[:10]} is not the verified checkpoint {sha[:10]}; "
+                       "an unverified commit sits on top — nothing pushed", EXIT_BLOCKED)
         push, need_ci, want_pr = self.publish_flags()
         if not push:
             it["known_limitations"].append("checkpoint is local only: push disabled for this run")

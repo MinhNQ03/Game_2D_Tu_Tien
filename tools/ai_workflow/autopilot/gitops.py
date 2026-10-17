@@ -136,6 +136,8 @@ def _safe_args(args: list[str], protected: list[str]) -> None:
         if len(positional) != 2:
             raise GitSafetyError("git push must name exactly <remote> <branch>")
         ref = positional[1]
+        if ref == "HEAD" or ref.startswith("refs/") or ref.startswith("@"):
+            raise GitSafetyError(f"git push must name a plain branch, not {ref!r}")
         if ":" in ref or ref.startswith("+"):
             raise GitSafetyError(f"refspec {ref!r} is refused (no renames, deletes or forced refs)")
         if any(fnmatch.fnmatchcase(ref, p) for p in protected):
@@ -149,6 +151,22 @@ class Git:
         self._runner = runner or self._default_runner
         self.log: list[dict] = []
 
+    @staticmethod
+    def _env() -> dict:
+        """The supervisor's git never runs repository or user hooks and never asks for input:
+        a hook or fsmonitor planted by a worker cannot execute inside a checkpoint or a push."""
+        env = dict(os.environ)
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        env["LC_ALL"] = "C"
+        overrides = [("core.hooksPath", os.devnull), ("core.fsmonitor", "false"),
+                     ("commit.gpgSign", "false")]
+        n = int(env.get("GIT_CONFIG_COUNT", "0") or 0)
+        for i, (k, v) in enumerate(overrides, start=n):
+            env[f"GIT_CONFIG_KEY_{i}"] = k
+            env[f"GIT_CONFIG_VALUE_{i}"] = v
+        env["GIT_CONFIG_COUNT"] = str(n + len(overrides))
+        return env
+
     def _default_runner(self, argv: list[str], env: dict) -> tuple[int, str, str]:
         p = subprocess.run(argv, cwd=self.repo, capture_output=True, text=True, env=env, timeout=600)
         return p.returncode, p.stdout, p.stderr
@@ -156,10 +174,7 @@ class Git:
     def run(self, *args: str, check: bool = True) -> str:
         argl = list(args)
         _safe_args(argl, self.protected)
-        env = dict(os.environ)
-        env.setdefault("GIT_TERMINAL_PROMPT", "0")  # never hang on a credential prompt
-        env["LC_ALL"] = "C"
-        rc, out, err = self._runner(["git", *argl], env)
+        rc, out, err = self._runner(["git", *argl], self._env())
         self.log.append({"cmd": ["git", *argl], "rc": rc})
         if check and rc != 0:
             raise GitError(argl, rc, out, err)
@@ -179,7 +194,7 @@ class Git:
     def is_ancestor(self, a: str, b: str) -> bool:
         argv = ["merge-base", "--is-ancestor", a, b]
         _safe_args(argv, self.protected)
-        rc, _, _ = self._runner(["git", *argv], dict(os.environ))
+        rc, _, _ = self._runner(["git", *argv], self._env())
         return rc == 0
 
     def status(self) -> list[StatusEntry]:
@@ -272,6 +287,13 @@ class Git:
                     if f.is_file():
                         h.update(f"{f.name}:{f.stat().st_mode}\0".encode())
                         h.update(f.read_bytes())
+        # user-level git config too: a worker could otherwise plant core.hooksPath globally
+        xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+        for f in (Path(os.path.expanduser("~/.gitconfig")), Path(xdg) / "git" / "config",
+                  Path(os.environ["GIT_CONFIG_GLOBAL"]) if os.environ.get("GIT_CONFIG_GLOBAL") else None):
+            if f is not None:
+                h.update(f"{f}\0".encode())
+                h.update(f.read_bytes() if f.is_file() else b"<none>")
         return h.hexdigest()
 
     def worktree_matches_index(self, paths: list[str]) -> bool:
