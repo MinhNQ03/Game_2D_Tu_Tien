@@ -47,6 +47,15 @@ const SETTLE_FRAMES := 12
 ## because it only costs time on the slow path; a run that never finds a menu still fails.
 const MENU_WAIT_FRAMES := 240
 
+## The frame rate the run is paced at, by the tool itself rather than by the display. A vsynced
+## window in a LOCKED X session is presented at ~1 Hz (931 ms/frame, D-063 A0): a full run is
+## about a thousand frames, so it took fifteen minutes (UI-01: the en run finished in 14 min, the
+## vi run was killed at its 900 s budget after shot 15), and every settle let ~0.9 s of world
+## run per frame, a wolf closing in between two staged shots. Vsync off and 60 fps is what
+## `--disable-vsync --max-fps 60` gives every other real-window tool (`playtest_flow.gd`); here
+## no caller can forget it (`tests/unit/tools/test_capture_ui_pacing.gd`).
+const PACED_FPS := 60
+
 var _out_dir := "user://ui_captures"
 var _language := "vi"
 var _written: Array[String] = []
@@ -63,6 +72,8 @@ func _initialize() -> void:
 		_out_dir = String(args[1])
 	if args.size() >= 4 and String(args[2]) == "vignette":
 		_vignette_origin = StringName(String(args[3]))
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = PACED_FPS
 	_run.call_deferred()
 
 
@@ -162,6 +173,7 @@ func _run() -> void:
 			if hud.has_method("is_sect_panel_open") and bool(hud.call("is_sect_panel_open")):
 				_toggle_panel(hud, "_sect_panel")
 			await _capture_satchel_and_equipment(main, hud)
+			await _capture_dialogue(hud)
 		await _capture_the_night(main)
 
 	print("[capture] wrote %d file(s) to %s" % [_written.size(), _out_dir])
@@ -438,6 +450,131 @@ func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:
 		_failed = true
 
 
+## 12-13 (UI-01): an open dialogue at its fullest, in the language of the run — the line whose
+## answers take the most room (its largest set that can be offered together, `DialogueOffers`)
+## and the longest line said. STAGED through the HUD's own `set_dialogue_view`, the view a talk
+## pushes, so no conversation opens and nothing the later frames show is changed; the real-key
+## path is the Dialogue E2E's. A box that did not open writes no file and fails the run.
+func _capture_dialogue(hud: Node) -> void:
+	var catalog := load(DialogueRuntime.CATALOG_PATH) as DialogueCatalogData
+	var loc := root.get_node_or_null("Localization")
+	if catalog == null or loc == null or not hud.has_method("set_dialogue_view"):
+		push_error("[capture] no dialogue catalog, Localization or HUD dialogue seam")
+		_failed = true
+		return
+	var widest: Array = []  # [dialogue, line]
+	var widest_rank := Vector2i(-1, -1)  # (answers offered together, their characters)
+	var longest: Array = []
+	var longest_chars := -1
+	for dialogue in catalog.entries:
+		for line in dialogue.nodes:
+			var offered := DialogueOffers.largest(line)
+			var chars := 0
+			for option in offered:
+				chars += String(loc.call("t", String(option.text_key))).length()
+			if Vector2i(offered.size(), chars) > widest_rank:
+				widest_rank = Vector2i(offered.size(), chars)
+				widest = [dialogue, line]
+			var said := String(loc.call("t", String(line.text_key))).length()
+			if said > longest_chars:
+				longest_chars = said
+				longest = [dialogue, line]
+	var shots := [["12_dialogue_longest_answers", widest], ["13_dialogue_longest_line", longest]]
+	for serial in shots.size():
+		var shot: Array = shots[serial]
+		var pick: Array = shot[1]
+		hud.call("set_dialogue_view", DialogueOffers.view_of(pick[0], pick[1], serial + 1))
+		await _settle()
+		if not bool(hud.call("is_dialogue_open")):
+			push_error("[capture] the dialogue box did not open for %s" % pick[1].id)
+			_failed = true
+			return
+		print("[capture] %s: %s/%s" % [shot[0], pick[0].id, pick[1].id])
+		_check_dialogue_band(hud.call("dialogue_panel") as DialoguePanel, shot[0])
+		await _shot(shot[0])
+	await _capture_dialogue_paged(hud, catalog, loc)
+	hud.call("set_dialogue_view", DialogueView.make_closed())
+	await _settle()
+
+
+## 14-16 (UI-01): the states no shipped line reaches yet — a line too long for the box (its
+## first page, with the more cue and the answers held back), its last page with an answer too
+## long for its column (wrapped under its first word) that makes the set too tall for the band
+## (a window of whole answers, the cue below lit), and the window moved down to the last answer
+## (the cue above lit). The panel is handed a STAGED localisation that says three real lines as
+## one and every offered answer as one, in the language of the run, the way a translation that
+## grew would; the real one is restored afterwards. Every shot fails the run if the box is
+## taller than its band.
+func _capture_dialogue_paged(hud: Node, catalog: DialogueCatalogData, loc: Node) -> void:
+	var panel := hud.call("dialogue_panel") as DialoguePanel
+	var dialogue := catalog.dialogue_of_speaker(&"actor_scout_ko")
+	var line := dialogue.node(&"ko_hub") if dialogue != null else null
+	if panel == null or line == null:
+		push_error("[capture] no dialogue panel or no ko_hub line to page")
+		_failed = true
+		return
+	var view := DialogueOffers.view_of(dialogue, line, 3)
+	var said := " ".join([String(loc.call("t", "DLG_LIN_RIVAL")),
+		String(loc.call("t", "DLG_LIN_NOTATION")), String(loc.call("t", "DLG_LIN_SHEET_READ"))])
+	# The first answer says every answer offered with it, as one: wider than its column.
+	var answer_key := String(view.choices[0]["text_key"])
+	var answers: PackedStringArray = []
+	for option in view.choices:
+		answers.append(String(loc.call("t", String(option["text_key"]))))
+	var answer := ", ".join(answers)
+	var staged := StagedText.new(loc, {String(line.text_key): said, answer_key: answer})
+	panel.set("_loc", staged)
+	hud.call("set_dialogue_view", view)
+	await _settle()
+	if panel.page_count() < 2:
+		push_error("[capture] the staged long line did not page (%d)" % panel.page_count())
+		_failed = true
+	else:
+		print("[capture] 14_dialogue_paged: %s/%s, page 1 of %d" % [dialogue.id, line.id,
+			panel.page_count()])
+		_check_dialogue_band(panel, "14_dialogue_paged")
+		await _shot("14_dialogue_paged")
+		while panel.next_page():
+			pass
+		await _settle()
+		var wrapped := panel.find_child("Answer", true, false) as Label
+		if wrapped == null or wrapped.get_line_count() < 2:
+			push_error("[capture] the staged long answer did not wrap")
+			_failed = true
+		var shown := panel.shown_choice_indices()
+		if shown.size() >= view.choices.size():
+			push_error("[capture] the staged answer set was not windowed (%s)" % [shown])
+			_failed = true
+		print("[capture] 15_dialogue_paged_last: page %d of %d, answers %s of %d" % [
+			panel.page_index() + 1, panel.page_count(), shown, view.choices.size()])
+		_check_dialogue_band(panel, "15_dialogue_paged_last")
+		await _shot("15_dialogue_paged_last")
+		panel.move_selection(-1)  # wraps round to the last answer
+		await _settle()
+		shown = panel.shown_choice_indices()
+		if not shown.has(view.choices.size() - 1):
+			push_error("[capture] the answer window did not follow the selection (%s)" % [shown])
+			_failed = true
+		print("[capture] 16_dialogue_answers_window: answers %s of %d" % [shown,
+			view.choices.size()])
+		_check_dialogue_band(panel, "16_dialogue_answers_window")
+		await _shot("16_dialogue_answers_window")
+	panel.set("_loc", loc)
+	staged.free()
+
+
+## Fail the run if the open box is taller than the band below the playfield clear zone.
+func _check_dialogue_band(panel: DialoguePanel, shot: String) -> void:
+	if panel == null:
+		return
+	var allowed := root.get_visible_rect().size.y * (1.0 - UIPalette.PLAYFIELD_CLEAR_ZONE.end.y) \
+		- UIPalette.HUD_MARGIN
+	if panel.size.y > allowed + 0.5:
+		push_error("[capture] %s: the dialogue box is %.0f px tall, the band allows %.0f"
+			% [shot, panel.size.y, allowed])
+		_failed = true
+
+
 ## The player body under the HUD's map (`PlayerHost`), or null.
 func _player(hud: Node) -> Node2D:
 	var host := hud.get_parent().get_node_or_null("PlayerHost")
@@ -555,3 +692,19 @@ func _first_disabled(buttons: Array[Button]) -> Button:
 		if button.disabled:
 			return button
 	return null
+
+
+## Localization that says the given texts for the given keys and defers everything else.
+class StagedText extends Node:
+	var _real: Node
+	var _said: Dictionary
+
+	func _init(real: Node, said: Dictionary) -> void:
+		_real = real
+		_said = said
+
+	func t(key: String) -> String:
+		return String(_said[key]) if _said.has(key) else String(_real.call("t", key))
+
+	func t_args(key: String, args: Dictionary) -> String:
+		return String(_real.call("t_args", key, args))

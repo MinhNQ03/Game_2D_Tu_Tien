@@ -8,6 +8,39 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-17 — UI-01: every dialogue line, name and answer shown whole (`feat/ui-readability-autopilot`; not a phase)
+
+- **Nothing said is cut.** The dialogue box no longer clips the speaker's title or any answer
+  with an ellipsis: the title and the answers wrap in their column (an answer hangs under its
+  own first word), and a line longer than three wrapped lines pages — the keys row opens with
+  … (a glyph of the built-in font, asserted by the test) and *Continue*, confirm turns the page, the answers wait for the last page. Keyboard
+  selection and Esc are unchanged for every shipped line (none pages today).
+- **The box keeps to its band at run time.** The answers' column is held to the height the band
+  below the playfield clear zone leaves (`DialoguePanel.max_height`, 162 px at 1280x720, 182 at
+  1280x800, from the viewport): an answer set too tall for it is shown as a window of whole
+  answers that follows the selection, a … cue lit above or below where answers are hidden. The
+  first captures showed a staged five-answer set with a wrapped answer push the box to ~200 px
+  at 1280x720; no shipped set is windowed today.
+- **Measured, not trusted.** `tests/unit/presentation/test_dialogue_whole_text.gd` lays out all
+  164 authored lines (vi + en) with their speaker and largest answer set in the real panel and
+  fails on any clip, trim, overflowing word, short label, label outside the box, unshown wrapped
+  line or a box in the playfield clear zone (tallest 154 of 162 px). RED on `38fd03a`.
+- `tools/capture_ui.gd` captures an open dialogue (12: the line with the largest answer set,
+  13: the longest line), staged through the HUD's own `set_dialogue_view`, and the states no
+  shipped line reaches yet through a staged localisation (14: a line that pages, its first page
+  with the … cue and the answers held back; 15: its last page with an answer that wraps, its set
+  windowed; 16: the window moved to the last answer), and fails the run if any dialogue shot's
+  box is taller than the band. A page
+  turned while the box is still fading open (a doubled press) now restores the box's opacity
+  and the portrait's place instead of leaving them where the killed fade stopped. The "largest offer"
+  rule moved to `tests/framework/dialogue_offers.gd` (`DialogueOffers`), shared by the tests
+  and the tool.
+- `tools/capture_ui.gd` now paces itself (vsync off, 60 fps). A vsynced window in a locked
+  X session is shown at ~1 Hz (D-063), so a full run of about a thousand frames took ~15 min:
+  the en run finished in 14 min, and the vi run went over its 900 s budget and was killed after
+  shot 15. The settles also let ~0.9 s of world run per frame, so a wolf could close in between
+  two staged shots. `tests/unit/tools/test_capture_ui_pacing.gd` keeps the pacing in place.
+
 ### 2026-10-17 — The autopilot supervisor (`feat/aetheria-autonomous-orchestrator`; tooling, not a phase, D-076)
 
 - **Autonomous work items with independent review.** `tools/ai_workflow/aetheria_autopilot.py`

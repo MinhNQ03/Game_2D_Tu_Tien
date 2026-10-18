@@ -168,9 +168,24 @@ const FIGURE_DAIS_RIM := Color(0.72, 0.80, 0.88, 0.38)
 ## three-line sentence beside the medallion and the answers; `DIALOGUE_LINE_MIN_HEIGHT` holds
 ## two lines of `FONT_SIZE_BODY` (the longest shipped line, in either language, wraps to two)
 ## so the box does not change height from line to line.
+##
+## NOTHING SAID IS CUT (UI-01). The speaker's title and every answer WRAP inside their column
+## (an answer is never trimmed to fit `DIALOGUE_CHOICE_WIDTH`), and a line taller than
+## `DIALOGUE_LINE_MAX_LINES` wrapped lines PAGES: the box shows that many, the keys row opens
+## with `DIALOGUE_MORE_CUE` and confirm turns the page, the answers waiting for the last one.
+## The cap is what keeps the box out of the playfield clear zone at 1280x720: a fourth line
+## measured 183 px against the 162 px the band allows. An answer that wraps grows its column,
+## and the column is held to the band at run time (`DialoguePanel.max_height`): a set too tall
+## for it is shown as a window of whole answers that follows the selection.
+## `test_dialogue_whole_text.gd` measures every authored line with its largest answer set
+## against that bound, in both languages. The cue is U+2026: the project sets no
+## font, and the engine's built-in one (Open Sans) carries the ellipsis itself, so the cue never
+## depends on a system fallback font a player's machine may not have (a ▾ would).
 const DIALOGUE_BOX_WIDTH := 860
 const DIALOGUE_CHOICE_WIDTH := 250
 const DIALOGUE_LINE_MIN_HEIGHT := 46
+const DIALOGUE_LINE_MAX_LINES := 3
+const DIALOGUE_MORE_CUE := "…"
 ## The session prompt (D-068): narrow enough to read as a question, wide enough for one
 ## sentence in either language on two lines.
 const SESSION_PROMPT_WIDTH := 420

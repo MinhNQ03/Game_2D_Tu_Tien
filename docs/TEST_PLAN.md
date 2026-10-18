@@ -1132,7 +1132,26 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   speaks, how, and what can be answered, in Vietnamese; no shipped line, answer or mood
   renders as a raw key in either language; selection wraps and a request names the line it
   answers; the box, AS LAID OUT, fits under the clear zone for every shipped line in both
-  languages; no shipped answer is truncated; mood colours are palette roles.
+  languages; no shipped answer is truncated (UI-01: every word fits its column and every line
+  it wraps to is shown); mood colours are palette roles.
+- `tests/unit/presentation/test_dialogue_whole_text.gd` (7, UI-01) — no label in the box clips
+  or trims; EVERY authored line (164 in vi + en), with its speaker's real name and title and its
+  largest answer set (`tests/framework/dialogue_offers.gd`, shared with the capture tool), laid
+  out with the real font and measured on every page: no word wider than its column, no wrapped
+  label shorter than its lines, nothing drawn outside the box, the pages together show every
+  wrapped line, the box under the clear zone (tallest 154 of 162 px, vi `ko_pills_offer`); a
+  line too long for the box pages with the more-cue, the answers wait for its last page and
+  confirm turns the page without answering; a page turned by a doubled press while the box is
+  still fading open leaves it fully shown and the portrait in place; a long answer wraps whole
+  under its marker; an answer set too tall for the band (staged: five answers, the first
+  saying all five) is shown as a window of whole answers that follows the selection, the cues
+  lit on the hidden side, the box at most 162 px at 1280x720 at every step and every answer
+  shown on the walk; the answer height the window is chosen by equals the laid-out row height
+  for every authored answer in both languages. RED on
+  `38fd03a` (the title and every answer clipped with an ellipsis).
+- `tests/unit/tools/test_capture_ui_pacing.gd` (2, UI-01) — `tools/capture_ui.gd` turns vsync
+  off and caps the frame rate (`PACED_FPS`) in `_initialize`, before its run; a vsynced window
+  in a locked session presents at ~1 Hz and the vi capture went over its 900 s budget.
 - `tests/performance/test_dialogue_budget.gd` (2) — nothing in a closed conversation processes;
   `eligible_choices` measured (see `PERFORMANCE.md`).
 - `tests/unit/bootstrap/test_session_lifecycle.gd` — 15 subsystems, `DialogueRuntime` last.

@@ -11,6 +11,17 @@ class_name DialoguePanel
 ## UI_MODAL context: move_up / move_down choose an answer, `interact` says it (or acknowledges
 ## a line that offers none). Leaving (Esc) is the HUD's.
 ##
+## NOTHING SAID IS CUT (UI-01): no label here clips or trims. The title and the answers wrap in
+## their column; a line longer than `UIPalette.DIALOGUE_LINE_MAX_LINES` wrapped lines pages —
+## the keys row opens with the more-cue, `interact` turns the page, and the answers appear on
+## the last page (until then the move keys choose nothing and confirm answers nothing).
+##
+## THE BOX NEVER LEAVES ITS BAND. The answers' column is held to the height the band below the
+## playfield clear zone leaves (`max_height`, from the viewport at run time): answers that
+## would not fit together are shown as a WINDOW of whole answers that follows the selection, a
+## more-cue above or below saying answers are hidden that way. No answer is cut, and the move
+## keys reach every one exactly as before.
+##
 ## It decides nothing. The answers listed are the ones `DialogueService` offered into the
 ## `DialogueView`; a press REQUESTS one, naming the line it answers, and what happens comes
 ## back as a new view. REACTION and TRANSITION are cosmetic tweens started when the line
@@ -24,6 +35,9 @@ const OPEN_SECONDS := 0.14
 const LINE_SECONDS := 0.12
 ## How far the portrait dips when the speaker gestures with a line, in pixels.
 const NOD_PX := 3.0
+## The selection marker before an answer, and the air around an answer's text in its row.
+const ANSWER_MARKER := "▸"
+const ROW_AIR_PX := 1
 
 var _loc: Node = null
 var _input: Node = null
@@ -36,8 +50,18 @@ var _keys: Label
 var _choices_column: VBoxContainer
 var _choices_rule: ColorRect
 var _choice_list: VBoxContainer
+## The rows of the current answers (old ones may still be children, queued for freeing), the
+## more-cues at either end of a window of them, and the first answer the window shows.
+var _rows: Array[Control] = []
+var _choices_above: Label
+var _choices_below: Label
+var _choice_top: int = 0
+var _windowed := false
 var _view: DialogueView = null
 var _selected: int = 0
+## The page of the current line being shown, of `_pages` (a line that fits is one page).
+var _page: int = 0
+var _pages: int = 1
 ## The process frame the current line appeared on. The press that brought it up — `interact`
 ## on the speaker, or the answer that led here — is still "just pressed" for the rest of that
 ## frame; reading it here too would answer the new line with the old press.
@@ -87,8 +111,7 @@ func _ready() -> void:
 	_title = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	_title.name = "SpeakerTitle"
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_title.clip_text = true
-	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	who.add_child(_title)
 	_mood = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	_mood.name = "Mood"
@@ -98,6 +121,10 @@ func _ready() -> void:
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_text.custom_minimum_size = Vector2(0, UIPalette.DIALOGUE_LINE_MIN_HEIGHT)
+	_text.max_lines_visible = UIPalette.DIALOGUE_LINE_MAX_LINES
+	# How many pages a line takes is only known at the width it is laid out at — counted once
+	# the layout pass that gave it that width is over (deferred), not in the middle of it.
+	_text.resized.connect(_repage, CONNECT_DEFERRED)
 	speech.add_child(_text)
 	_keys = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_ACCENT)
 	_keys.name = "Keys"
@@ -114,11 +141,16 @@ func _ready() -> void:
 	_choices_column.name = "Choices"
 	_choices_column.custom_minimum_size = Vector2(UIPalette.DIALOGUE_CHOICE_WIDTH, 0)
 	_choices_column.alignment = BoxContainer.ALIGNMENT_CENTER
+	_choices_column.add_theme_constant_override("separation", 0)
 	row.add_child(_choices_column)
+	_choices_above = _more_cue("ChoicesAbove")
 	_choice_list = VBoxContainer.new()
 	_choice_list.name = "ChoiceRows"
 	_choice_list.add_theme_constant_override("separation", 0)
 	_choices_column.add_child(_choice_list)
+	_choices_below = _more_cue("ChoicesBelow")
+	# The band is a share of the screen: a window resized mid-conversation re-fits the answers.
+	get_viewport().size_changed.connect(refresh)
 	set_process(false)
 	refresh()
 
@@ -130,6 +162,8 @@ func set_view(view: DialogueView) -> void:
 	_view = view
 	if new_line:
 		_selected = 0
+		_page = 0
+		_choice_top = 0
 		_line_frame = Engine.get_process_frames()
 	refresh()
 	if new_line:
@@ -184,18 +218,65 @@ func has_portrait() -> bool:
 	return _portrait != null and _portrait.texture != null
 
 
-## Move the selection by `step` answers (wraps), as the move keys do.
+## How many pages the current line takes, and which one is shown (0-based).
+func page_count() -> int:
+	return _pages
+
+
+func page_index() -> int:
+	return _page
+
+
+## The tallest the box may be: the band the playfield clear zone leaves below it, less the
+## margin the HUD holds the box above the screen's edge (UI_UX_BIBLE §3c). 162 px at 1280x720.
+func max_height() -> float:
+	var screen := get_viewport_rect().size.y if is_inside_tree() \
+		else float(ProjectSettings.get_setting("display/window/size/viewport_height", 720))
+	return screen * (1.0 - UIPalette.PLAYFIELD_CLEAR_ZONE.end.y) - UIPalette.HUD_MARGIN
+
+
+## The answers the box shows now, as indices into `choice_ids()`: all of them, unless the set
+## is too tall for the band and is shown as a window that follows the selection.
+func shown_choice_indices() -> Array[int]:
+	var shown: Array[int] = []
+	for i in _rows.size():
+		if _rows[i].visible:
+			shown.append(i)
+	return shown
+
+
+## Show the next page of a line that pages. False (and nothing changes) on its last page.
+func next_page() -> bool:
+	if _page >= _pages - 1:
+		return false
+	_page += 1
+	_repage()
+	_settle_line()
+	return true
+
+
+## Back to the line's first page (a new line always starts there).
+func reset_page() -> void:
+	_page = 0
+	_repage()
+
+
+## Move the selection by `step` answers (wraps), as the move keys do. Nothing is chosen while
+## the line still has a page to read: its answers are not on screen yet.
 func move_selection(step: int) -> void:
 	var n := choice_ids().size()
-	if n == 0:
+	if n == 0 or _page < _pages - 1:
 		return
 	_selected = posmod(_selected + step, n)
 	refresh()
 
 
-## Say the selected answer — or, on a line that offers none, acknowledge it.
+## Say the selected answer — or, on a line that offers none, acknowledge it. On a page that is
+## not the line's last, turn the page instead.
 func confirm() -> void:
 	if _view == null or not _view.open:
+		return
+	if next_page():
 		return
 	var choice_id := selected_choice_id()
 	if choice_id == &"":
@@ -221,6 +302,7 @@ func refresh() -> void:
 		return
 	for child in _choice_list.get_children():
 		child.queue_free()
+	_rows.clear()
 	if _view == null or not _view.open:
 		_text.text = ""
 		return
@@ -240,11 +322,127 @@ func refresh() -> void:
 	_choices_column.visible = not _view.choices.is_empty()
 	_choices_rule.visible = _choices_column.visible
 	for i in _view.choices.size():
-		_choice_list.add_child(_row(_t(String(_view.choices[i]["text_key"])), i == _selected))
+		_rows.append(_row(_t(String(_view.choices[i]["text_key"])), i == _selected))
+		_choice_list.add_child(_rows[i])
+	_window_choices()
+	_repage()
+
+
+## Hold the answers' column inside the band: if the whole set is taller than the box may be,
+## show the run of whole answers around the selection that fits, a more-cue at each end (lit
+## only on the side that hides answers, so the box keeps its height as the selection moves).
+## Measured from the text and the font, not read back from a layout pass: a wrapped label's
+## height settles frames later, and the box must never be drawn too tall in between.
+func _window_choices() -> void:
+	var heights: Array[float] = []
+	var total := 0.0
+	for i in _rows.size():
+		heights.append(_answer_height(_t(String(_view.choices[i]["text_key"]))))
+		total += heights[i]
+	var budget := max_height() - get_theme_stylebox("panel").get_minimum_size().y
+	_windowed = total > budget
+	if not _windowed:
+		_choice_top = 0
+		for row in _rows:
+			row.visible = true
+		return
+	budget -= _choices_above.get_minimum_size().y + _choices_below.get_minimum_size().y
+	var n := _rows.size()
+	var top := mini(_choice_top, _selected)
+	var end := _window_end(heights, top, budget)
+	if _selected > end:
+		# Moving down past the window: the selection becomes its last answer.
+		top = _selected
+		while top > 0 and _sum(heights, top - 1, _selected) <= budget:
+			top -= 1
+		end = _window_end(heights, top, budget)
+	_choice_top = top
+	for i in n:
+		_rows[i].visible = i >= top and i <= end
+	_choices_above.modulate.a = 1.0 if top > 0 else 0.0
+	_choices_below.modulate.a = 1.0 if end < n - 1 else 0.0
+
+
+## The last answer of a window that starts at `top` and fits in `budget` (at least `top`).
+func _window_end(heights: Array[float], top: int, budget: float) -> int:
+	var end := top
+	while end + 1 < heights.size() and _sum(heights, top, end + 1) <= budget:
+		end += 1
+	return end
+
+
+func _sum(heights: Array[float], first: int, last: int) -> float:
+	var total := 0.0
+	for i in range(first, last + 1):
+		total += heights[i]
+	return total
+
+
+## How tall an answer's row lays out: its text wrapped at the answer label's width in the
+## column the way the label wraps it (AUTOWRAP_WORD_SMART) and the marker beside it, plus the
+## row's air above and below. Shaped, as the labels are, so a glyph from a fallback font counts.
+func _answer_height(text: String) -> float:
+	var font := _text.get_theme_font("font")
+	var font_size := UIPalette.FONT_SIZE_BODY
+	var marker := TextLine.new()
+	marker.add_string(ANSWER_MARKER, font, font_size)
+	var paragraph := TextParagraph.new()
+	paragraph.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND \
+		| TextServer.BREAK_ADAPTIVE
+	paragraph.width = UIPalette.DIALOGUE_CHOICE_WIDTH - UIPalette.SPACE_SM - ROW_AIR_PX \
+		- UIPalette.ROW_GAP - marker.get_size().x
+	paragraph.add_string(text, font, font_size)
+	var answer := 0.0
+	for i in paragraph.get_line_count():
+		answer += paragraph.get_line_size(i).y
+	answer += maxi(0, paragraph.get_line_count() - 1) * _text.get_theme_constant("line_spacing")
+	return maxf(answer, marker.get_size().y) + 2 * ROW_AIR_PX
+
+
+## Page the line at the width it was laid out at: show this page's wrapped lines, the answers
+## only on the last page, and keys that say what confirm does here.
+func _repage() -> void:
+	if _view == null or not _view.open:
+		return
+	var per_page := UIPalette.DIALOGUE_LINE_MAX_LINES
+	# Before its first layout a wrapping label is one pixel wide, and "every letter on its own
+	# line" is not a page count: the line is one page until `resized` says otherwise.
+	_pages = 1 if _text.size.x <= 1.0 \
+		else maxi(1, ceili(float(_text.get_line_count()) / per_page))
+	_page = clampi(_page, 0, _pages - 1)
+	_text.lines_skipped = _page * per_page
+	# A paged line keeps a full page's height on its shorter last page: the box must not jump.
+	var line_px := _text.get_line_height() + _text.get_theme_constant("line_spacing")
+	_text.custom_minimum_size.y = UIPalette.DIALOGUE_LINE_MIN_HEIGHT if _pages == 1 \
+		else maxf(UIPalette.DIALOGUE_LINE_MIN_HEIGHT, line_px * per_page)
+	var last := _page == _pages - 1
+	_choice_list.visible = last
+	_choices_above.visible = last and _windowed
+	_choices_below.visible = last and _windowed
+	var keys := {"confirm": _key(&"interact"), "close": _key(&"open_menu")}
+	if not last:
+		_keys.text = "%s %s" % [UIPalette.DIALOGUE_MORE_CUE,
+			_t_args("UI_DIALOGUE_KEYS_CONTINUE", keys)]
+		return
 	var keys_key := "UI_DIALOGUE_KEYS_CHOOSE"
 	if _view.choices.is_empty():
 		keys_key = "UI_DIALOGUE_KEYS_CONTINUE" if _view.continues else "UI_DIALOGUE_KEYS_END"
-	_keys.text = _t_args(keys_key, {"confirm": _key(&"interact"), "close": _key(&"open_menu")})
+	_keys.text = _t_args(keys_key, keys)
+
+
+## A new page settles in the way a new line does. A page turn can land while the box is still
+## fading open or the portrait is mid-nod (a doubled press), so restore what the killed tween
+## was animating, as _react's non-opening branch does.
+func _settle_line() -> void:
+	if not is_inside_tree():
+		return
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
+	modulate.a = 1.0
+	_portrait.position = Vector2.ZERO
+	_tween = create_tween()
+	_text.modulate.a = 0.0
+	_tween.tween_property(_text, "modulate:a", 1.0, LINE_SECONDS)
 
 
 ## The cosmetic answer to a new line: the box fades in when it opens, a new line settles in,
@@ -276,17 +474,41 @@ func _row(text: String, selected: bool) -> Control:
 	style.set_border_width_all(1 if selected else 0)
 	# One pixel of air around the text: four answers must fit beside the 96 px medallion, or
 	# the box grows and pushes the announcement band into the playfield's clear zone.
-	style.set_content_margin_all(1)
+	style.set_content_margin_all(ROW_AIR_PX)
 	style.content_margin_left = UIPalette.SPACE_SM
 	frame.add_theme_stylebox_override("panel", style)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var label := _label(UIPalette.FONT_SIZE_BODY,
-		UIPalette.COLOR_TEXT if selected else UIPalette.COLOR_TEXT_MUTED)
-	label.text = ("▸ %s" if selected else "  %s") % text
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	frame.add_child(label)
+	var colour := UIPalette.COLOR_TEXT if selected else UIPalette.COLOR_TEXT_MUTED
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", UIPalette.ROW_GAP)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(line)
+	# The marker is always laid out (hidden by alpha) so a wrapped answer hangs under its own
+	# first word, and selecting one never moves the text.
+	var marker := _label(UIPalette.FONT_SIZE_BODY, colour)
+	marker.name = "Marker"
+	marker.text = ANSWER_MARKER
+	marker.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	marker.modulate.a = 1.0 if selected else 0.0
+	line.add_child(marker)
+	var label := _label(UIPalette.FONT_SIZE_BODY, colour)
+	label.name = "Answer"
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(label)
 	return frame
+
+
+## A more-cue at one end of the answers' column, shown only while the answers are windowed.
+func _more_cue(cue_name: String) -> Label:
+	var cue := _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_ACCENT)
+	cue.name = cue_name
+	cue.text = UIPalette.DIALOGUE_MORE_CUE
+	cue.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cue.visible = false
+	_choices_column.add_child(cue)
+	return cue
 
 
 func _label(size: int, colour: Color) -> Label:

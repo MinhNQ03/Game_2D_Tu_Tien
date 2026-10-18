@@ -239,77 +239,10 @@ func test_the_box_fits_under_the_clear_zone_in_both_languages() -> void:
 	free_node(hud)
 
 
-## The largest set of `line`'s answers that some state of the world offers TOGETHER.
-##
-## A quest is in exactly one phase and a thing is either known or not, so answers conditioned
-## on different phases of one quest — or on knowing and on not knowing the same thing — are
-## mutually exclusive by construction; every state of those two owners is tried and the widest
-## offer kept. Regard is NOT modelled: a regard condition is assumed met, which can only make
-## the measured box taller than any real one.
+## The largest set of `line`'s answers that some state of the world offers TOGETHER (the rule
+## is `DialogueOffers.largest`, shared with the whole-text test and the capture tool).
 func _largest_offer(line: DialogueNodeData) -> Array[DialogueChoiceData]:
-	var quests: Array[StringName] = []
-	var facts: Array[StringName] = []
-	var flag_top: Dictionary = {}
-	var origins: Array[StringName] = []
-	for option in line.choices:
-		for condition in option.conditions:
-			if condition.kind == DialogueConditionData.Kind.QUEST_PHASE \
-					and not quests.has(condition.quest_id):
-				quests.append(condition.quest_id)
-			elif condition.kind == DialogueConditionData.Kind.KNOWS \
-					and not facts.has(condition.knowledge_id):
-				facts.append(condition.knowledge_id)
-			elif condition.kind == DialogueConditionData.Kind.FLAG:
-				# A story flag holds 0..the largest value any answer here asks it for.
-				flag_top[condition.flag_id] = maxi(int(flag_top.get(condition.flag_id, 0)),
-					condition.value)
-			elif condition.kind == DialogueConditionData.Kind.ORIGIN \
-					and not origins.has(condition.origin_id):
-				origins.append(condition.origin_id)
-	var phases := QuestData.Phase.size()
-	var states := int(pow(phases, quests.size())) * int(pow(2, facts.size()))
-	for flag_id: StringName in flag_top:
-		states *= int(flag_top[flag_id]) + 1
-	states *= origins.size() + 1  # a run has ONE Origin: one of these, or another
-	var best: Array[DialogueChoiceData] = []
-	for state in states:
-		var phase_of: Dictionary = {}
-		var known: Dictionary = {}
-		var rest := state
-		for quest_id in quests:
-			phase_of[quest_id] = rest % phases
-			rest /= phases
-		for fact in facts:
-			known[fact] = rest % 2 == 1
-			rest /= 2
-		var flag_at: Dictionary = {}
-		for flag_id: StringName in flag_top:
-			var span := int(flag_top[flag_id]) + 1
-			flag_at[flag_id] = rest % span
-			rest /= span
-		var origin_at := rest  # == origins.size() means "none of these"
-		var offered: Array[DialogueChoiceData] = []
-		for option in line.choices:
-			var met := true
-			for condition in option.conditions:
-				var holds := true
-				if condition.kind == DialogueConditionData.Kind.QUEST_PHASE:
-					holds = int(phase_of[condition.quest_id]) == int(condition.quest_phase)
-				elif condition.kind == DialogueConditionData.Kind.KNOWS:
-					holds = bool(known[condition.knowledge_id])
-				elif condition.kind == DialogueConditionData.Kind.FLAG:
-					holds = int(flag_at[condition.flag_id]) >= condition.value
-				elif condition.kind == DialogueConditionData.Kind.ORIGIN:
-					holds = origins.find(condition.origin_id) == origin_at
-				else:
-					continue  # regard: assumed met
-				if holds == condition.negate:
-					met = false
-			if met:
-				offered.append(option)
-		if offered.size() > best.size():
-			best = offered
-	return best
+	return DialogueOffers.largest(line)
 
 
 func test_the_largest_offer_is_the_widest_set_that_can_be_shown_together() -> void:
@@ -335,7 +268,9 @@ func test_the_largest_offer_is_the_widest_set_that_can_be_shown_together() -> vo
 
 
 ## An answer must say what it is about: none may be cut short by the column (the first English
-## capture showed "Tell him what the stele reco…").
+## capture showed "Tell him what the stele reco…"). Since UI-01 a long answer WRAPS: every
+## authored answer is measured — each word fits the column and every wrapped line is shown.
+## (`test_dialogue_whole_text.gd` measures the rest of the box the same way.)
 func test_no_shipped_answer_is_truncated_in_either_language() -> void:
 	var catalog := load(DIALOGUES) as DialogueCatalogData
 	var hud := _hud()
@@ -357,12 +292,21 @@ func test_no_shipped_answer_is_truncated_in_either_language() -> void:
 				for row in panel.find_child("ChoiceRows", true, false).get_children():
 					if row.is_queued_for_deletion():
 						continue
-					var label := row.get_child(0) as Label
-					var needed := label.get_theme_font("font").get_string_size(label.text,
-						HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
-					assert_true(needed <= label.size.x + 0.5,
-						"[%s] '%s' needs %.0f px and has %.0f" % [code, label.text, needed,
-							label.size.x])
+					var label := row.find_child("Answer", true, false) as Label
+					assert_false(label.clip_text, "[%s] '%s' is never clipped" % [code, label.text])
+					assert_eq(label.text_overrun_behavior, TextServer.OVERRUN_NO_TRIMMING,
+						"[%s] '%s' is never trimmed" % [code, label.text])
+					var font := label.get_theme_font("font")
+					for word in label.text.split(" ", false):
+						var needed := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1,
+							label.get_theme_font_size("font_size")).x
+						assert_true(needed <= label.size.x + 0.5,
+							"[%s] '%s': '%s' needs %.0f px and has %.0f" % [code, label.text,
+								word, needed, label.size.x])
+					assert_eq(label.get_visible_line_count(), label.get_line_count(),
+						"[%s] '%s' shows every line it wraps to" % [code, label.text])
+					assert_true(label.size.y + 0.5 >= label.get_minimum_size().y,
+						"[%s] '%s' is as tall as its lines" % [code, label.text])
 	_use_language("vi")
 	free_node(hud)
 
