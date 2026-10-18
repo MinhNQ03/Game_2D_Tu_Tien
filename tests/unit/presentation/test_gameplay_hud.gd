@@ -88,9 +88,11 @@ func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 	# proving a graphic treatment, not floating text. FIVE prompts are built (attack, interact,
 	# sect, politics, menu) and interact is visible here, so all five carry a badge — the old
 	# ">= 2 (interact + menu)" was written when the strip had two rows and had stopped
-	# describing the HUD three prompts ago. The closed satchel book (UI-02) is not counted: its
-	# close and turn keys and its tab are the book's own, asserted in `test_book_panel.gd`.
-	var badges := _key_badge_count(hud, hud.inventory_panel())
+	# describing the HUD three prompts ago. The closed books — the satchel (UI-02) and the
+	# Chronicle (UI-03) — are not counted: their close and turn keys and their tabs are the
+	# book's own, asserted in `test_book_panel.gd` and `test_chronicle.gd`.
+	var badges := _key_badge_count(hud, [hud.inventory_panel(), hud.chronicle_panel()]
+		as Array[Node])
 	assert_eq(badges, 7,
 		("each of the seven prompts (attack, interact, cultivate, pet, sect, politics, menu) has a "
 			+ "graphic "
@@ -202,8 +204,8 @@ func _all_label_text(node: Node) -> Array:
 
 ## Count key-badge chips: PanelContainers whose only child is a Label (the UIKeyBadge shape).
 ## `skip`: a subtree left out of the count.
-func _key_badge_count(node: Node, skip: Node = null) -> int:
-	if node == skip:
+func _key_badge_count(node: Node, skip: Array[Node] = []) -> int:
+	if node in skip:
 		return 0
 	var n := 0
 	if node is PanelContainer and node.get_child_count() == 1 and node.get_child(0) is Label:
@@ -424,11 +426,11 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 		# Its width is fixed by the anchors, so content can never widen it either.
 		assert_eq(int(absf(panel.offset_right - panel.offset_left)), UIPalette.SIDE_PANEL_WIDTH,
 			"'%s' takes its width from a named token, not from its content" % panel.name)
-	# The satchel left the edge for the centred book (UI-02); `test_book_panel.gd` holds it to
-	# the same rule — a box the screen defines — at both aspect ratios.
-	assert_eq(side_panels, 5, ("all five side panels (sect, politics, shop, journal, "
-		+ "chronicle) are bounded boxes (got %d)")
-			% side_panels)
+	# The satchel (UI-02) and the Chronicle (UI-03) left the edge for the centred book;
+	# `test_book_panel.gd` and `test_chronicle.gd` hold it to the same rule — a box the screen
+	# defines — at both aspect ratios.
+	assert_eq(side_panels, 4, ("all four side panels (sect, politics, shop, journal) are "
+		+ "bounded boxes (got %d)") % side_panels)
 	free_node(hud)
 
 
@@ -626,9 +628,9 @@ func test_side_panels_scroll_their_content() -> void:
 		assert_eq(int(scroll.mouse_filter), int(Control.MOUSE_FILTER_STOP),
 			"and it accepts mouse input, or the wheel passes through and clipped content "
 				+ "becomes unreachable (every other node in the panel is IGNORE)")
-	# Five: the satchel is the centred book now (UI-02), and its rows scroll inside the book's
-	# page (`test_inventory_panel.gd`).
-	assert_eq(scrollers, 5, "all five side panels scroll (got %d)" % scrollers)
+	# Four: the satchel (UI-02) and the Chronicle (UI-03) are the centred book now, and their
+	# pages scroll inside it (`test_inventory_panel.gd`, `test_chronicle.gd`).
+	assert_eq(scrollers, 4, "all four side panels scroll (got %d)" % scrollers)
 	free_node(hud)
 
 

@@ -1,13 +1,19 @@
-extends PanelContainer
+extends UIBookPanel
 class_name ChroniclePanel
-## ChroniclePanel — Aetheria presentation (the Chronicle, Phase 20, D-072 §8; D-073 §4).
+## ChroniclePanel — Aetheria presentation (the Chronicle, Phase 20, D-072 §8; D-073 §4; UI-03).
 ##
 ## THE ONE BOOK for everything the player may read about their own run that has no other
-## home: the road so far, who they are, their body and path, what they know, whom they have
-## met — and, as the story grows, the earlier road. A READING panel in the shared side-panel
-## frame, like the quest journal: not modal, takes no input context, closes with every reading
-## surface on Esc and when something hostile turns on the player. Its key opens it, turns the
-## page, and closes it after the last page.
+## home: the road so far, what they know, whom they have met, who they are and their body and
+## path. Since UI-03 it is the SECOND page set of the centred book (`UIBookPanel`, UI-02): it
+## opens in the middle of the screen through the HUD's one book seam, holds a UI_MODAL context
+## while open, and its own key or Esc closes it.
+##
+## FOUR TABS, ONE KEY EACH. The six sections it always had are read under four named tabs —
+## the journey (the road so far, then the earlier road), what you know, the people you met, and
+## yourself (who you are, then body and path) — each opened by its own key (the digit keys of
+## the dock, which the world does not hear while the book holds the keys) or turned to with the
+## book's move-left / move-right. Inside a tab move-up / move-down turn its pages. Nothing hides
+## behind a filter: every line of every section is in exactly one tab, in its old order.
 ##
 ## PURE PRESENTATION, AND AN OVERVIEW — NOT AN OWNER. It renders a `ChronicleView` (story,
 ## Origin, knowledge, people, combat stats) and the views the HUD is already handed by their
@@ -17,20 +23,37 @@ class_name ChroniclePanel
 ##
 ## PAGES ARE PACKED, NOT TRUNCATED. Each section's lines are grouped into blocks that stay
 ## together (a person with their regard, a record) and the blocks are packed into as many
-## pages as the panel's height needs, measured with the font the labels are drawn in. Nothing
-## is dropped to fit: the newest records fill the first page and the older ones follow at the
-## END of the book ("earlier on the road"), so the pages a player wants most come first.
+## pages of their tab as the page's height needs, measured with the font the labels are drawn
+## in. Nothing is dropped to fit: the newest records fill the journey's first page and the
+## older ones follow it ("the earlier road").
 
 const PAGE_STORY := &"story"
 const PAGE_SELF := &"self"
 const PAGE_BODY := &"body"
 const PAGE_KNOWLEDGE := &"knowledge"
 const PAGE_PEOPLE := &"people"
-## Records that did not fit the first page: the earlier road, after everything else.
+## Records that did not fit the first page: the earlier road, after the road so far.
 const PAGE_HISTORY := &"history"
-## The sections in reading order. `PAGE_HISTORY` is filled from the story's overflow.
-const SECTIONS: Array[StringName] = [PAGE_STORY, PAGE_SELF, PAGE_BODY, PAGE_KNOWLEDGE,
-	PAGE_PEOPLE, PAGE_HISTORY]
+
+const TAB_JOURNEY := &"journey"
+const TAB_KNOWLEDGE := &"knowledge"
+const TAB_PEOPLE := &"people"
+const TAB_SELF := &"self"
+## The tabs in the strip's order; the first is the one the book opens on.
+const TABS: Array[StringName] = [TAB_JOURNEY, TAB_KNOWLEDGE, TAB_PEOPLE, TAB_SELF]
+## The sections each tab holds, in reading order. Every section is in exactly one tab.
+const TAB_SECTIONS := {
+	TAB_JOURNEY: [PAGE_STORY, PAGE_HISTORY],
+	TAB_KNOWLEDGE: [PAGE_KNOWLEDGE],
+	TAB_PEOPLE: [PAGE_PEOPLE],
+	TAB_SELF: [PAGE_SELF, PAGE_BODY],
+}
+## The key that opens each tab, in `TABS` order: the dock's digit keys. While the book is open
+## the HUD holds a UI_MODAL context, so no technique is cast by them.
+const TAB_ACTIONS: Array[StringName] = [&"skill_1", &"skill_2", &"skill_3", &"skill_4"]
+## The keys that turn the pages INSIDE a tab (move-left / move-right turn the tabs: the book's).
+const LEAF_PREV_ACTION := &"move_up"
+const LEAF_NEXT_ACTION := &"move_down"
 const CHRONICLE_ACTION := &"chronicle"
 ## The action a technique in dock slot N is cast with (the dock's own actions).
 const SKILL_ACTION_FORMAT := "skill_%d"
@@ -39,12 +62,12 @@ const STYLE_HEAD := &"head"
 const STYLE_LINE := &"line"
 const STYLE_ACCENT := &"accent"
 const STYLE_MUTED := &"muted"
-## The gap between the lines of ONE block (a person and their regard, a thing known and what
-## it says) and between two blocks: lines that belong together sit together, and the eye finds
-## where one thing ends. (At one uniform gap a person took a page to themselves.)
 ## A line with this key is drawn as the `CharacterCard`, at `CARD_HEIGHT`.
 const CARD := &"card"
 const CARD_HEIGHT := float(CharacterCard.WELL_SIZE.y) + 4.0
+## The gap between the lines of ONE block (a person and their regard, a thing known and what
+## it says) and between two blocks: lines that belong together sit together, and the eye finds
+## where one thing ends. (At one uniform gap a person took a page to themselves.)
 const LINE_GAP := 2
 const BLOCK_GAP := UIPalette.SPACE_MD
 ## Rounding room per label: a Label's minimum height is a whole number of pixels.
@@ -54,20 +77,22 @@ const MIN_BODY_HEIGHT := 120.0
 ## Under this share of a page's room, a page reads as empty.
 const SPARSE_FRACTION := 1.0 / 3.0
 
-var _loc: Node = null
-var _input: Node = null
-var _title: Label
-var _list: VBoxContainer
-var _body: Control
-var _keys: Label
+## One per tab, in `TABS` order: the page's heading line, its page count, its body and lines.
+var _captions: Array[Label] = []
+var _counters: Array[Label] = []
+var _bodies: Array[Control] = []
+var _lists: Array[VBoxContainer] = []
 var _view: ChronicleView = null
-var _page: int = 0
-## Every page of the book right now: `{ section: StringName, blocks: Array }`, a block being
-## an Array of `{ text: String, style: StringName }`.
-var _pages: Array[Dictionary] = []
+## The page shown INSIDE the current tab.
+var _leaf: int = 0
+## Every page of the book right now, tab by tab in `TABS` order:
+## `{ tab: StringName, section: StringName, blocks: Array }`, a block being an Array of
+## `{ text: String, style: StringName }`.
+var _leaves: Array[Dictionary] = []
 var _dirty: bool = true
-## The body's height as the engine laid it out (0 until it has: a closed panel has no size).
+## The body's size as the engine laid it out (zero until it has: a closed book has no size).
 var _laid_out_height: float = 0.0
+var _laid_out_width: float = 0.0
 var _remeasure_queued: bool = false
 
 # What the HUD is told by the owners, handed on (never asked for here).
@@ -83,40 +108,64 @@ var _pet: PetView = null
 
 
 func _ready() -> void:
-	_loc = get_node_or_null("/root/Localization")
-	_input = get_node_or_null("/root/InputService")
-	add_theme_stylebox_override("panel", UITheme.panel_stylebox())
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if _title == null:
-		_build()
+	super()
+	if _lists.is_empty():
+		_build_tabs()
+	page_changed.connect(_on_tab_changed)
 	visibility_changed.connect(_on_visibility_changed)
 	_refresh()
 
 
-func _build() -> void:
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	add_child(column)
-	# ONE line, always (clipped, never wrapped): a title that wrapped on some pages changed
-	# the body's height from page to page, which re-packed the book while it was being read.
-	_title = _label(UIPalette.FONT_SIZE_SUBTITLE, UIPalette.COLOR_TITLE)
-	_title.clip_text = true
-	_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	column.add_child(_title)
-	column.add_child(UITheme.ornament_divider())
-	var body := PanelContainer.new()
-	body.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(body)
-	_body = body
-	_list = UITheme.scroll_body(body)
-	_list.name = "Lines"
-	_list.add_theme_constant_override("separation", BLOCK_GAP)
-	_keys = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_ACCENT)
-	_keys.name = "Keys"
-	column.add_child(_keys)
-	_body.resized.connect(_on_body_resized)
+func _build_tabs() -> void:
+	set_title_key("UI_CHRONICLE_TITLE")
+	for tab in TABS:
+		var page := VBoxContainer.new()
+		page.name = "Tab_%s" % String(tab).capitalize()
+		page.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+		page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# The page's heading and where in the tab the reader is, on ONE line that never wraps:
+		# a heading that wrapped on some pages would change the room and re-pack the tab.
+		var heading := HBoxContainer.new()
+		heading.add_theme_constant_override("separation", UIPalette.SPACE_LG)
+		heading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		page.add_child(heading)
+		var caption := _label(UIPalette.BOOK_TAB_FONT_SIZE, UIPalette.COLOR_TITLE)
+		caption.name = "Caption"
+		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		caption.clip_text = true
+		caption.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		heading.add_child(caption)
+		var counter := _label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TEXT_MUTED)
+		counter.name = "PageCount"
+		counter.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		heading.add_child(counter)
+		var body := PanelContainer.new()
+		body.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		page.add_child(body)
+		var list := UITheme.scroll_body(body)
+		list.name = "Lines"
+		list.add_theme_constant_override("separation", BLOCK_GAP)
+		body.resized.connect(_on_body_resized)
+		_captions.append(caption)
+		_counters.append(counter)
+		_bodies.append(body)
+		_lists.append(list)
+		add_page("UI_CHRONICLE_TAB_%s" % String(tab).to_upper(), page)
+
+
+## A tab names the key that opens it: "1 Hành trình". The book draws the plate and the lit
+## state; only the words are this book's.
+func _tab(key: String, selected: bool) -> Control:
+	var plate := super(key, selected)
+	var index := _tab_keys.find(key)
+	if index >= 0 and index < TAB_ACTIONS.size():
+		for child in plate.get_children():
+			if child is Label:
+				(child as Label).text = _t_args("UI_CHRONICLE_TAB_LABEL", {
+					"key": _key_label(TAB_ACTIONS[index]), "name": (child as Label).text})
+	return plate
 
 
 # --- What the book is told ---------------------------------------------------------
@@ -187,16 +236,16 @@ func _technique_signature(view: SkillView) -> String:
 ## is next opened, however many times its sources changed in between.
 func _changed() -> void:
 	_dirty = true
-	if _title != null and visible:
+	if not _lists.is_empty() and visible:
 		_refresh()
 
 
 func _on_visibility_changed() -> void:
-	if not visible or _title == null:
+	if not visible or _lists.is_empty():
 		return
 	_take_laid_out_size()
 	_refresh()
-	# A panel shown for the first time is laid out on the NEXT frame: measure again then.
+	# A book shown for the first time is laid out on the NEXT frame: measure again then.
 	_queue_remeasure()
 
 
@@ -217,12 +266,18 @@ func _remeasure() -> void:
 		_refresh()
 
 
-## Adopt the body's size if the engine has given it one. True when the room changed.
+## Adopt the shown tab's body size if the engine has given it one. True when the room changed.
+## (Every tab's page has the same shape, so one tab's room is every tab's.)
 func _take_laid_out_size() -> bool:
-	if _body == null or _body.size.y < MIN_BODY_HEIGHT \
-			or absf(_body.size.y - _laid_out_height) < 0.5:
+	if _bodies.is_empty():
 		return false
-	_laid_out_height = _body.size.y
+	var body := _bodies[current_page()]
+	var list := _lists[current_page()]
+	if body.size.y < MIN_BODY_HEIGHT or absf(body.size.y - _laid_out_height) < 0.5:
+		return false
+	_laid_out_height = body.size.y
+	if list.size.x > 40.0:
+		_laid_out_width = list.size.x
 	return true
 
 
@@ -232,61 +287,165 @@ func _on_body_resized() -> void:
 		_queue_remeasure()
 
 
-# --- Pages -------------------------------------------------------------------------
+# --- Tabs and pages ----------------------------------------------------------------
 
+## The book as it opens: the first tab, its first page.
 func reset_page() -> void:
-	_page = 0
+	_leaf = 0
 	_dirty = true
-	if _title != null:
+	if _lists.is_empty():
+		return
+	if current_page() != 0:
+		select_page(0)  # `_on_tab_changed` lays the tab out
+	else:
 		_refresh()
 
 
-## Turn to the next page. False when there is none: the caller closes the book.
-func advance_page() -> bool:
+## The tab whose key was pressed, from its first page (the same key again goes back to it).
+func select_tab(tab: StringName) -> void:
+	var index := TABS.find(tab)
+	if index < 0:
+		return
+	_leaf = 0
+	if index != current_page():
+		select_page(index)
+	else:
+		_render()
+
+
+func tab_id() -> StringName:
+	return TABS[current_page()] if current_page() < TABS.size() else TAB_JOURNEY
+
+
+func _on_tab_changed(_index: int) -> void:
+	_leaf = 0
+	_refresh()
+	# The new tab's page has not been laid out while it was hidden: measure it next frame.
+	_queue_remeasure()
+
+
+## Turn to the next page of the shown tab. False on its last page (nothing happens).
+func next_page() -> bool:
 	_repack_if_needed()
-	if _page >= _pages.size() - 1:
+	if _leaf >= tab_page_count() - 1:
 		return false
-	_page += 1
+	_leaf += 1
 	_render()
 	return true
 
 
-## The section the current page belongs to (`PAGE_*`).
+## Turn back one page in the shown tab. False on its first page.
+func previous_page() -> bool:
+	_repack_if_needed()
+	if _leaf <= 0:
+		return false
+	_leaf -= 1
+	_render()
+	return true
+
+
+## Turn to the next page in READING ORDER: the next page of this tab, else the first page of
+## the next tab. False after the book's last page — for tests and captures, which read it all.
+func advance_page() -> bool:
+	if next_page():
+		return true
+	if current_page() >= TABS.size() - 1:
+		return false
+	select_page(current_page() + 1)
+	return true
+
+
+## Read the book's keys while open: one key per tab, and the page keys inside a tab (the
+## book's own move-left / move-right turn the tabs; the HUD owns its close keys).
+func _process(delta: float) -> void:
+	super(delta)
+	if _input == null or not visible:
+		return
+	for index in TAB_ACTIONS.size():
+		if _input.call("is_modal_action_just_pressed", TAB_ACTIONS[index]):
+			select_tab(TABS[index])
+			return
+	if _input.call("is_modal_action_just_pressed", LEAF_PREV_ACTION):
+		previous_page()
+	elif _input.call("is_modal_action_just_pressed", LEAF_NEXT_ACTION):
+		next_page()
+
+
+## The section the shown page belongs to (`PAGE_*`).
 func page_id() -> StringName:
+	var at := _leaf_index()
+	return _leaves[at]["section"] if at >= 0 else PAGE_STORY
+
+
+## How many pages the shown tab has.
+func tab_page_count() -> int:
 	_repack_if_needed()
-	return _pages[_page]["section"] if _page < _pages.size() else PAGE_STORY
+	var count := 0
+	for leaf in _leaves:
+		count += int(leaf["tab"] == tab_id())
+	return count
 
 
-func page_count() -> int:
+## Which page of the shown tab is shown (from 0).
+func tab_page_index() -> int:
+	return _leaf
+
+
+## How many pages the whole book has, every tab together.
+func book_page_count() -> int:
 	_repack_if_needed()
-	return _pages.size()
+	return _leaves.size()
 
 
-func page_index() -> int:
-	return _page
+## Where the shown page is in `_leaves` (-1 when the book has none).
+func _leaf_index() -> int:
+	_repack_if_needed()
+	var tab := tab_id()
+	var seen := 0
+	for index in _leaves.size():
+		if _leaves[index]["tab"] != tab:
+			continue
+		if seen == _leaf:
+			return index
+		seen += 1
+	return -1
 
 
-## Every line the page shows, in order — for tests and captures.
+## Every line the shown page shows, in order — for tests and captures.
 func page_lines() -> Array[String]:
 	var out: Array[String] = []
-	if _list != null:
-		for block in _list.get_children():
-			if block.is_queued_for_deletion():
-				continue
-			for child in block.get_children():
-				if child is Label:
-					out.append((child as Label).text)
-				elif child is CharacterCard:
-					out.append(String(child.get_meta(&"line", "")))
+	if _lists.is_empty():
+		return out
+	for block in _lists[current_page()].get_children():
+		if block.is_queued_for_deletion():
+			continue
+		for child in block.get_children():
+			if child is Label:
+				out.append((child as Label).text)
+			elif child is CharacterCard:
+				out.append(String(child.get_meta(&"line", "")))
 	return out
 
 
-## Every line of EVERY page, in reading order — for tests ("nothing was dropped to fit").
+## Every line of EVERY page, tab by tab in reading order — for tests ("nothing was dropped").
 func all_lines() -> Array[String]:
 	_repack_if_needed()
 	var out: Array[String] = []
-	for page in _pages:
-		for block: Array in page["blocks"]:
+	for leaf in _leaves:
+		for block: Array in leaf["blocks"]:
+			for line: Dictionary in block:
+				out.append(String(line["text"]))
+	return out
+
+
+## Every line of one section, over however many pages it takes — for tests.
+func section_lines(section: StringName) -> Array[String]:
+	_repack_if_needed()
+	var out: Array[String] = []
+	for leaf in _leaves:
+		if leaf["section"] != section:
+			continue
+		for block: Array in leaf["blocks"]:
 			for line: Dictionary in block:
 				out.append(String(line["text"]))
 	return out
@@ -296,79 +455,98 @@ func all_lines() -> Array[String]:
 func tallest_page_height() -> float:
 	_repack_if_needed()
 	var tallest := 0.0
-	for page in _pages:
-		tallest = maxf(tallest, _blocks_height(page["blocks"]))
+	for leaf in _leaves:
+		tallest = maxf(tallest, _blocks_height(leaf["blocks"]))
 	return tallest
 
 
 ## The room one page has, in pixels: what the engine laid out, or — before it has — what the
-## side-panel frame will give this panel in the current window, less its own title, divider,
-## footer and padding. The same arithmetic `GameplayHUD._bound_side_panel` anchors it by.
+## centred book's frame (`UIPalette.BOOK_SCREEN_INSET` above and below) leaves a page in the
+## current window once its title, tab strip, dividers, keys and heading line are drawn.
 func body_height() -> float:
 	if _laid_out_height > 0.0:
 		return _laid_out_height
 	var window := get_viewport_rect().size.y if is_inside_tree() \
 		else float(ProjectSettings.get_setting("display/window/size/viewport_height", 720))
-	var frame := window - 2.0 * float(UIPalette.HUD_MARGIN) \
-		- float(UIPalette.TOP_PLAQUE_RESERVE + UIPalette.PROMPT_STRIP_RESERVE)
-	# Title (one line; a wrapped title is the engine's to measure, not this estimate's — an
-	# autowrap label with no width yet reports a column one letter wide), divider, footer.
+	var frame_height := window - 2.0 * float(UIPalette.BOOK_SCREEN_INSET)
 	var font := get_theme_default_font()
+	# The book's column: header, tab strip, divider, pages, divider, keys (five gaps); the
+	# keys line is one line of body text (an autowrap label with no width yet reports a
+	# column one letter wide, so it is the font that is asked, not the label).
 	var chrome := UITheme.panel_stylebox().get_minimum_size().y \
-		+ 3.0 * float(UIPalette.SPACE_SM) \
-		+ font.get_height(UIPalette.FONT_SIZE_SUBTITLE) \
-		+ font.get_height(UIPalette.FONT_SIZE_HINT) \
-		+ float(UIPalette.SPACE_MD)
-	return maxf(MIN_BODY_HEIGHT, frame - chrome)
+		+ 5.0 * float(UIPalette.SPACE_SM) \
+		+ 2.0 * float(UIPalette.ORNAMENT_DIVIDER_HEIGHT) \
+		+ font.get_height(UIPalette.FONT_SIZE_BODY)
+	var header := find_child("Header", true, false) as Control
+	var strip := find_child("Tabs", true, false) as Control
+	chrome += header.get_combined_minimum_size().y if header != null else 0.0
+	chrome += strip.get_combined_minimum_size().y if strip != null else 0.0
+	# The page's own heading line, and the gap under it.
+	chrome += maxf(font.get_height(UIPalette.BOOK_TAB_FONT_SIZE),
+		font.get_height(UIPalette.FONT_SIZE_BODY)) + float(UIPalette.SPACE_SM)
+	return maxf(MIN_BODY_HEIGHT, frame_height - chrome)
 
 
 func refresh_language() -> void:
 	_dirty = true
+	refresh_book_text()
 	_refresh()
 
 
 func _refresh() -> void:
-	if _title == null:
+	if _lists.is_empty():
 		return
 	_repack_if_needed()
 	_render()
 
 
 func _repack_if_needed() -> void:
-	if not _dirty and not _pages.is_empty():
+	if not _dirty and not _leaves.is_empty():
 		return
 	_dirty = false
-	_pages.clear()
+	_leaves.clear()
 	if _view == null or not _view.available:
-		_pages.append({"section": PAGE_STORY,
-			"blocks": [[_row(_t("UI_CHRONICLE_EMPTY"), STYLE_MUTED)]]})
-		_page = 0
+		# Nothing written yet: every tab says so, so no key opens an empty page.
+		for tab in TABS:
+			_leaves.append({"tab": tab, "section": (TAB_SECTIONS[tab] as Array)[0],
+				"blocks": [[_row(_t("UI_CHRONICLE_EMPTY"), STYLE_MUTED)]]})
+		_leaf = 0
 		return
 	var room := body_height()
 	var story := _pack(_story_blocks(), room)
-	_pages.append({"section": PAGE_STORY, "blocks": story[0] if not story.is_empty() else []})
-	for section: StringName in [PAGE_SELF, PAGE_BODY, PAGE_KNOWLEDGE, PAGE_PEOPLE]:
-		for blocks: Array in _pack(_section_blocks(section), room):
-			_pages.append({"section": section, "blocks": blocks})
+	_leaves.append({"tab": TAB_JOURNEY, "section": PAGE_STORY,
+		"blocks": story[0] if not story.is_empty() else []})
 	for i in range(1, story.size()):
-		_pages.append({"section": PAGE_HISTORY, "blocks": story[i]})
-	_page = clampi(_page, 0, _pages.size() - 1)
+		_leaves.append({"tab": TAB_JOURNEY, "section": PAGE_HISTORY, "blocks": story[i]})
+	for tab in [TAB_KNOWLEDGE, TAB_PEOPLE, TAB_SELF]:
+		for section: StringName in TAB_SECTIONS[tab]:
+			for blocks: Array in _pack(_section_blocks(section), room):
+				_leaves.append({"tab": tab, "section": section, "blocks": blocks})
+	_leaf = clampi(_leaf, 0, maxi(0, tab_page_count() - 1))
 
 
 func _render() -> void:
-	for child in _list.get_children():
-		_list.remove_child(child)
-		child.queue_free()
-	if _pages.is_empty():
+	for list in _lists:
+		for child in list.get_children():
+			list.remove_child(child)
+			child.queue_free()
+	var at := _leaf_index()
+	if at < 0:
 		return
-	var page: Dictionary = _pages[_page]
-	_title.text = "%s — %s" % [_t("UI_CHRONICLE_TITLE"),
-		_t("UI_CHRONICLE_PAGE_%s" % String(page["section"]).to_upper())]
-	# On the last page the key closes the book, and the footer says so.
-	_keys.text = _t_args("UI_CHRONICLE_KEYS" if _page < _pages.size() - 1
-		else "UI_CHRONICLE_KEYS_LAST", {"key": _key_label(CHRONICLE_ACTION),
-		"page": _page + 1, "pages": _pages.size()})
-	for block: Array in page["blocks"]:
+	var tab := current_page()
+	var leaf: Dictionary = _leaves[at]
+	var pages := tab_page_count()
+	_captions[tab].text = _t("UI_CHRONICLE_PAGE_%s" % String(leaf["section"]).to_upper())
+	_counters[tab].text = _t_args("UI_CHRONICLE_PAGE_OF", {"page": _leaf + 1, "pages": pages}) \
+		if pages > 1 else ""
+	# The close key is the book's (in its header); this line says what the page's keys do.
+	var tab_keys: Array[String] = []
+	for action in TAB_ACTIONS:
+		tab_keys.append(_key_label(action))
+	set_keys_text(_t_args("UI_CHRONICLE_BOOK_KEYS" if pages > 1 else "UI_CHRONICLE_BOOK_KEYS_ONE",
+		{"tabs": "/".join(tab_keys),
+		"turn": "%s/%s" % [_key_label(LEAF_PREV_ACTION), _key_label(LEAF_NEXT_ACTION)]}))
+	for block: Array in leaf["blocks"]:
 		var group := VBoxContainer.new()
 		group.add_theme_constant_override("separation", LINE_GAP)
 		group.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -379,7 +557,7 @@ func _render() -> void:
 			var label := _styled(line["style"])
 			label.text = String(line["text"])
 			group.add_child(label)
-		_list.add_child(group)
+		_lists[tab].add_child(group)
 
 
 # --- Packing -----------------------------------------------------------------------
@@ -453,18 +631,22 @@ func _blocks_height(blocks: Array) -> float:
 	return total + float(maxi(0, blocks.size() - 1) * BLOCK_GAP)
 
 
-## The height the CURRENT page really takes, as the engine laid its labels out — what a
-## layout test must compare with the room (the packing estimate cannot check itself).
+## The height the SHOWN page really takes, as the engine laid its labels out — what a layout
+## test must compare with the room (the packing estimate cannot check itself).
 func rendered_height() -> float:
-	return _list.get_combined_minimum_size().y if _list != null else 0.0
+	return _lists[current_page()].get_combined_minimum_size().y if not _lists.is_empty() \
+		else 0.0
 
 
-## The width a line wraps at: the list's own once the engine has laid it out (a list that has
-## not been laid out reports a few pixels, which would wrap every word onto its own line).
+## The width a line wraps at: the list's own once the engine has laid it out, or — before it
+## has (a list not laid out reports a few pixels, which would wrap every word onto its own
+## line) — the book's frame less its padding and the scrollbar's gutter.
 func _list_width() -> float:
-	if _laid_out_height > 0.0 and _list != null and _list.size.x > 40.0:
-		return _list.size.x
-	return float(UIPalette.SIDE_PANEL_WIDTH - UIPalette.SCROLLBAR_GUTTER) \
+	if _laid_out_width > 0.0:
+		return _laid_out_width
+	var window := get_viewport_rect().size.x if is_inside_tree() \
+		else float(ProjectSettings.get_setting("display/window/size/viewport_width", 1280))
+	return window * UIPalette.BOOK_WIDTH_FRACTION - float(UIPalette.SCROLLBAR_GUTTER) \
 		- UITheme.panel_stylebox().get_minimum_size().x
 
 
@@ -587,11 +769,13 @@ func _body_blocks() -> Array:
 	return blocks
 
 
+## What you know: each thing's name, and what it says in the body colour — the page a player
+## opens this tab to read, so nothing on it is muted.
 func _knowledge_blocks() -> Array:
 	var blocks: Array = []
 	for entry in _view.knowledge:
 		blocks.append([_row(_t(String(entry["name_key"])), STYLE_HEAD),
-			_row(_t(String(entry["desc_key"])), STYLE_MUTED)])
+			_row(_t(String(entry["desc_key"])), STYLE_LINE)])
 	if blocks.is_empty():
 		blocks.append([_row(_t("UI_CHRONICLE_NO_KNOWLEDGE"), STYLE_MUTED)])
 	return blocks
@@ -638,9 +822,10 @@ func _row(text: String, style: StringName) -> Dictionary:
 	return {"text": text, "style": style}
 
 
+## The book reads at arm's length (`UI_UX_BIBLE.md` §8d): a heading at the book's row size,
+## every other line at the body size at least.
 func _font_size(style: StringName) -> int:
-	return UIPalette.FONT_SIZE_BODY if style == STYLE_HEAD or style == STYLE_ACCENT \
-		else UIPalette.FONT_SIZE_HINT
+	return UIPalette.BOOK_ROW_FONT_SIZE if style == STYLE_HEAD else UIPalette.FONT_SIZE_BODY
 
 
 func _styled(style: StringName) -> Label:
@@ -657,31 +842,5 @@ func _styled(style: StringName) -> Label:
 	return label
 
 
-func _label(size: int, color: Color) -> Label:
-	var label := Label.new()
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", color)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
-
-
 func _capitalised(text: String) -> String:
 	return text.substr(0, 1).to_upper() + text.substr(1) if text != "" else text
-
-
-func _key_label(action: StringName) -> String:
-	if _input != null and _input.has_method("get_action_display_label"):
-		return String(_input.call("get_action_display_label", action))
-	return String(action)
-
-
-func _t(key: String) -> String:
-	if _loc == null:
-		return key
-	return String(_loc.call("t", key))
-
-
-func _t_args(key: String, args: Dictionary) -> String:
-	if _loc == null:
-		return key
-	return String(_loc.call("t_args", key, args))

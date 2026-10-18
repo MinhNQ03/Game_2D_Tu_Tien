@@ -8,6 +8,31 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-18 — UI-03: the Chronicle in the centred book, four tabs (`feat/ui-readability-autopilot`; not a phase)
+
+- **The book's second page set.** `ChroniclePanel` now extends `UIBookPanel` (the ui-02 seam,
+  unchanged) instead of being a 330 px side panel, and the HUD opens it through the same
+  `_open_book_surface` / `_close_book` seam as the satchel (`open_chronicle` / `close_chronicle`):
+  modal while open, every side panel closed, its own key (B) or Esc closes it. It is no longer
+  bounded as a side panel.
+- **Four named tabs, one key each.** The six sections are read under Journey (the road so far,
+  then the earlier road), Learned (what you know), People and Yourself (who you are, then body
+  and path) — `Hành trình`, `Hiểu biết`, `Nhân vật`, `Bản thân`. Each tab shows the key that
+  opens it (1–4, the dock's digit keys, read only while the book holds the keys); the book's
+  move-left / move-right turn the tabs; move-up / move-down turn the pages inside a tab, with
+  "Page n of m" beside the page's heading. No line was dropped or reordered inside its section.
+- **Large and readable.** Headings and the name of each thing known are 20 px
+  (`BOOK_ROW_FONT_SIZE`), every other line 16 px (were 16 and 14); what a thing known says is in
+  the body colour, not muted. The character card's band (the Yourself tab) has its slot names,
+  stat names and numbers at 16 px (were 14). Pages pack for the book's room (H21-20's page-fill
+  rule kept).
+- Locale: `UI_CHRONICLE_TAB_*`, `UI_CHRONICLE_TAB_LABEL`, `UI_CHRONICLE_PAGE_OF`,
+  `UI_CHRONICLE_BOOK_KEYS`, `UI_CHRONICLE_BOOK_KEYS_ONE` added; `UI_CHRONICLE_KEYS` and
+  `UI_CHRONICLE_KEYS_LAST` removed; `UI_BOOK_TURN` (the book's tab-turn key) now says "Switch
+  tab" / "Đổi mục" — it turns tabs, and the Chronicle's pages turn on other keys.
+- Tests: see `TEST_PLAN.md` (UI-03). The capture run's 26 frames are now the Chronicle book,
+  named by tab and page (`26_chronicle_NN_<tab>_<page>_<section>`).
+
 ### 2026-10-18 — UI-02: the satchel opens as a large centred book (`feat/ui-readability-autopilot`; not a phase)
 
 - **A reusable centred book.** `UIBookPanel` (`src/presentation/ui/components/ui_book_panel.gd`)

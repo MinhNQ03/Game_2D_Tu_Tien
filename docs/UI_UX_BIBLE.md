@@ -256,7 +256,7 @@ measurements.
 | Pet | companion state |
 | Party / Social | reserved for P-32+; nothing now |
 | World Event | what is happening in the world without the player |
-| Story Chronicle | the player's own history — the Tà Đế identity surface |
+| Story Chronicle | the player's own history — the Tà Đế identity surface. **Exists** (P-20) and since UI-03 is the centred book's second page set: four tabs, Journey, Learned, People, Yourself (§8d) |
 
 ## 6. The UI must communicate world scale
 
@@ -404,7 +404,7 @@ with three untinted buttons — not a decision, just construction nobody copied.
 The character is shown as a FIGURE wherever a surface is about them: the game's own sprite
 at an integer scale in a well, the two things it can wear in slots beside it (an empty slot
 says what it is for), the numbers combat reads on plates. One component (`CharacterCard`),
-fed by views, in the satchel and on the Chronicle's body page. Rules it is held to:
+fed by views, in the satchel and on the Chronicle's body pages. Rules it is held to:
 
 - the figure is the world's sprite component — never a second drawing of the character;
 - a name wraps beside its slot and is never cut; a number nobody told is a dash, not a zero;
@@ -416,7 +416,7 @@ It does not change §3c: no minimap, no MP bar, the centre clear, the HUD inside
 
 ## 8d. The centred book (UI-02 — binding on every modal reading surface)
 
-A surface the player opens to READ — the satchel now, the learned-knowledge book next — is a
+A surface the player opens to READ — the satchel, and since UI-03 the Chronicle — is a
 centred book (`UIBookPanel`, `src/presentation/ui/components/`), not a side panel. Rules:
 
 - **Sized by the viewport, never by content.** The frame is `BOOK_WIDTH_FRACTION` (0.72) of the
@@ -431,7 +431,8 @@ centred book (`UIBookPanel`, `src/presentation/ui/components/`), not a side pane
   and keys at least `FONT_SIZE_BODY` — and EVERY label on the page, the character sheet beside
   the list included (slot names and stat names at `FONT_SIZE_BODY`, the numbers at
   `BOOK_ROW_FONT_SIZE`; a worn thing's name in the body colour, an empty slot's muted) —
-  measured by `test_book_panel.gd`, not judged. The Chronicle's band keeps the hint size.
+  measured by `test_book_panel.gd` and `test_chronicle.gd`, not judged. The character card's
+  band (the Chronicle's) is at `FONT_SIZE_BODY` too.
 - **Modal.** Open, it holds a UI_MODAL context (the world does not move), every side panel
   closes, the prompt strip stands down, and a scrim (`BOOK_SCRIM`) lays the world back. It may
   cover the clear zone and the top plaques: the player chose to read instead of play. Every other
@@ -444,6 +445,29 @@ centred book (`UIBookPanel`, `src/presentation/ui/components/`), not a side pane
   HUD owns — side panels closing, layer order, the notice band, the UI_MODAL context, Esc and
   the book's own toggle key — runs through `_open_book_surface(book, toggle)` / `_close_book()`.
   A new book is one more caller of that seam, never a copy of its branches.
+- **Few tabs, each with its own key (UI-03).** A book with tabs has at most FOUR, each named
+  for what it holds and showing the key that opens it ("1 Hành trình"); the book's move-left /
+  move-right switch between them (`UI_BOOK_TURN`: "Đổi mục" / "Switch tab"). A tab is never a
+  filter: every line is in exactly one tab, in the order its section always had. A tab longer
+  than its page is paged INSIDE the tab (move-up / move-down, "Trang n/m" beside the page's
+  heading), packed for the page's room with H21-20's rule (no page but a section's last under a
+  third full).
+
+### The Chronicle in the book (UI-03)
+
+The Chronicle (D-072 §8, D-073 §4) is the book's second page set. Its six sections sit under four
+tabs, in this order, keys 1–4 (the dock's digit keys — no technique is cast while the book holds
+the keys):
+
+| Tab (vi / en) | Holds, in reading order |
+|---|---|
+| Hành trình / Journey | the road so far (chapter, what to do now, decisions, records newest first), then the earlier road |
+| Hiểu biết / Learned | what you know: each thing's name at 20 px, what it says at 16 px in the body colour |
+| Nhân vật / People | each person met, each regard named, banded and numbered, the decisions under them |
+| Bản thân / Yourself | who you are (name, Origin, aims, what only you noticed), then body and path (the card, the numbers, worn, techniques, companion, place) |
+
+It opens on Journey with its own key (B) and closes with it or Esc. It reads only what the
+`ChronicleView` and the HUD's views hand it: what it may reveal is unchanged by the tabs.
 
 ## 9. What this document does NOT do
 

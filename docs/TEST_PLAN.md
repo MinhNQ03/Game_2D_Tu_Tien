@@ -1175,6 +1175,32 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   ratios. `test_inventory_panel.gd` (2) holds the overflow cases on a 1280x720 screen against
   the book's frame; the HUD side-panel tests count five side panels; the world E2E's satchel
   proof closes the book with a real Esc and checks that nothing asked about leaving.
+- `tests/unit/presentation/test_chronicle.gd` (+4, UI-03) — the Chronicle in the centred book.
+  Four tabs (journey, learned, people, yourself), at most four, each plate reading "<key>
+  <name>" with the `InputService` glyph of `skill_1`…`skill_4` and the localised name in vi and
+  en; opened through the HUD it holds the keys (gameplay suspended) on the journey tab; each tab
+  key opens its tab, move-down / move-up turn the pages inside a tab (a 60-record road), move-
+  right / move-left turn the tabs; its own key closes it and gives the keys back, Esc closes it
+  and asks nothing about leaving, and opening the satchel closes it (one book at a time). Read
+  through the tabs alone at 1280x720 and 1280x800 in vi and en, every line of the book is met
+  once in `all_lines()` order and every section is whole and in its order (20 records, eight
+  things known). The learned tab names a thing known at `BOOK_ROW_FONT_SIZE` and says what it
+  is at the body size in the body colour; on every page of every tab every label lies inside
+  the frame, is at the body size at least (the book's own keycaps excepted — `test_book_panel.gd`),
+  and shows every wrapped line; every page fits its room. The panel's source names no gameplay,
+  domain, service, runtime, bus or save, and extends `UIBookPanel`. The existing tests read the
+  sections tab by tab (journey, learned, people, yourself), the earlier road inside the journey
+  tab right after the road so far, and the long history at six times the shipped story (the
+  book's page holds about twice the side panel's). `test_book_panel.gd`'s modal test opens the
+  Chronicle before the satchel and checks the satchel closed it; the HUD side-panel tests count
+  four side panels and leave both books' keycaps out of the prompt count. The story E2E (8g)
+  opens the book with the real key, turns a tab with move-right while the player stands still,
+  opens every tab with its key and every page with move-down, reads every page once, and closes
+  it with its own key and with Esc. Step 13, with the thunder finger known and qi for it (the
+  wave held still so no foe closes the book), opens the book and presses all four tab keys —
+  the dock's skill keys — and checks that no cast was started or refused, no bolt flew and no
+  cooldown began. The empty-book test checks, with no view, that every tab says the book is
+  empty in vi and en (never a blank page).
 - `tests/unit/tools/test_capture_ui_pacing.gd` (2, UI-01) — `tools/capture_ui.gd` turns vsync
   off and caps the frame rate (`PACED_FPS`) in `_initialize`, before its run; a vsynced window
   in a locked session presents at ~1 Hz and the vi capture went over its 900 s budget.

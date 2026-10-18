@@ -123,7 +123,7 @@ func test_the_satchel_and_the_book_show_the_same_person_from_the_same_feeds() ->
 	var book := hud.chronicle_panel()
 	book.visible = true
 	book.reset_page()
-	for _i in book.page_count():
+	for _i in book.book_page_count():
 		if book.page_id() == ChroniclePanel.PAGE_BODY:
 			break
 		book.advance_page()

@@ -552,7 +552,7 @@ func test_real_story_flow() -> void:
 	assert_eq(service.state().beat_id, &"beat_leaving", "the mystery is in hand")
 	_step("8f. the elder's account; a first deliberate cultivation; the suppressed sheet")
 
-	# --- 8g. the Chronicle: one book, a real key, never modal ----------------------------------
+	# --- 8g. the Chronicle: the centred book, four tabs, a real key each ------------------------
 	var book := hud.chronicle_panel()
 	assert_false(hud.is_chronicle_open(), "the book is closed until asked for")
 	await _press_until(CHRONICLE, func() -> bool: return hud.is_chronicle_open())
@@ -562,27 +562,39 @@ func test_real_story_flow() -> void:
 		"which records the Night (%s)" % str(story_page))
 	assert_true(story_page.has("◆ " + String(loc.call("t", "STORY_CHOICE_NIGHT_STAND_STOOD"))),
 		"and the decision made there")
-	assert_eq(int(input.call("current_context")), int(input.Context.GAMEPLAY),
-		"reading takes no input context")
+	assert_eq(int(input.call("current_context")), int(input.Context.UI_MODAL),
+		"the centred book holds the keys while it is open (UI-03)")
+	# The move keys turn the book, not the player: the world stands still while it is read.
 	var read_from := player.global_position
-	Input.action_press(MOVE_RIGHT)
-	await _wait_until(func() -> bool: return player.global_position.x > read_from.x + 4.0, 60)
-	Input.action_release(MOVE_RIGHT)
-	assert_true(player.global_position.x > read_from.x + 4.0 and hud.is_chronicle_open(),
-		"the player walks with the book open")
-	# The same real key turns every page and, after the last, closes the book. Each section
-	# says what its OWNER holds (D-073 §4), read here as the player would read it.
+	await _press_until(MOVE_RIGHT, func() -> bool:
+		return book.tab_id() == ChroniclePanel.TAB_KNOWLEDGE)
+	assert_eq(book.tab_id(), ChroniclePanel.TAB_KNOWLEDGE, "move-right turned to the next tab")
+	assert_true(player.global_position.distance_to(read_from) < 1.0,
+		"and the player did not walk")
+	# Every tab by its own key, then every page of it with move-down: each section says what
+	# its OWNER holds (D-073 §4), read here as the player would read it.
 	var read := {}
-	var turns := 0
-	while hud.is_chronicle_open() and turns < 24:
-		var section := book.page_id()
-		if not read.has(section):
-			read[section] = []
-		(read[section] as Array).append_array(book.page_lines())
-		await _fire_action(CHRONICLE)
-		turns += 1
-	assert_false(hud.is_chronicle_open(), "and after the last page the key closes the book")
-	assert_eq(turns, book.page_count(), "one press per page: no page was skipped or doubled")
+	var pages_read := 0
+	for index in ChroniclePanel.TABS.size():
+		var tab: StringName = ChroniclePanel.TABS[index]
+		await _press_until(ChroniclePanel.TAB_ACTIONS[index], func() -> bool:
+			return book.tab_id() == tab and book.tab_page_index() == 0)
+		assert_eq(book.tab_id(), tab, "its key opened the '%s' tab" % tab)
+		while true:
+			var section := book.page_id()
+			if not read.has(section):
+				read[section] = []
+			(read[section] as Array).append_array(book.page_lines())
+			pages_read += 1
+			if book.tab_page_index() >= book.tab_page_count() - 1:
+				break
+			var leaf := book.tab_page_index()
+			await _press_until(MOVE_DOWN, func() -> bool: return book.tab_page_index() == leaf + 1)
+	assert_eq(pages_read, book.book_page_count(), "every page was read, none skipped or doubled")
+	await _press_until(CHRONICLE, func() -> bool: return not hud.is_chronicle_open())
+	assert_false(hud.is_chronicle_open(), "its own key closes the book")
+	assert_eq(int(input.call("current_context")), int(input.Context.GAMEPLAY),
+		"and the keys are the world's again")
 	for section: StringName in [ChroniclePanel.PAGE_STORY, ChroniclePanel.PAGE_SELF,
 			ChroniclePanel.PAGE_BODY, ChroniclePanel.PAGE_KNOWLEDGE, ChroniclePanel.PAGE_PEOPLE]:
 		assert_true(read.has(section), "the book has a '%s' page" % section)
@@ -640,7 +652,7 @@ func test_real_story_flow() -> void:
 	await _fire_action(OPEN_MENU)
 	assert_false(hud.is_chronicle_open(), "Esc closes it like every reading surface")
 	assert_eq(hud.session_prompt_kind(), &"", "without asking about leaving")
-	_step("8g. the Chronicle opened, paged and closed with real keys; the player kept walking")
+	_step("8g. the Chronicle opened in the centred book; every tab and page read with real keys")
 
 	# --- 8h. the way out: the carter, the road ahead, and what the player leaves holding -------
 	assert_false((hub.get_node("Visual/Decor/CarterCart") as Node2D).visible,
@@ -1043,6 +1055,33 @@ func test_real_story_flow() -> void:
 	for enemy in combat.enemies():
 		if String(enemy.name).begins_with(NIGHT_PREFIX):
 			wave.append(enemy)
+	# UI-03: the Chronicle's tab keys are the dock's skill keys. With the thunder finger known
+	# and breath for it, the open book casts nothing on any of them. The wave is held still while
+	# the book is read: a foe that engages closes every book by design (D-072 §6), which would
+	# hand the keys back to the world mid-check.
+	for enemy in combat.enemies():
+		enemy.process_mode = Node.PROCESS_MODE_DISABLED
+	var tab_hud := _find_hud(router.call("get_current_scene"))
+	var cast_requests: Array[StringName] = []
+	var on_cast := func(id: StringName) -> void: cast_requests.append(id)
+	var on_refused := func(id: StringName, _reason: StringName) -> void: cast_requests.append(id)
+	skills.cast_started.connect(on_cast)
+	skills.cast_refused.connect(on_refused)
+	await _press_until(CHRONICLE, func() -> bool: return tab_hud.is_chronicle_open())
+	for index in ChroniclePanel.TABS.size():
+		var tab: StringName = ChroniclePanel.TABS[index]
+		await _press_until(ChroniclePanel.TAB_ACTIONS[index], func() -> bool:
+			return tab_hud.chronicle_panel().tab_id() == tab)
+		assert_true(tab_hud.is_chronicle_open() and tab_hud.chronicle_panel().tab_id() == tab,
+			"its key opened the '%s' tab of the open book" % tab)
+	await _press_until(CHRONICLE, func() -> bool: return not tab_hud.is_chronicle_open())
+	skills.cast_started.disconnect(on_cast)
+	skills.cast_refused.disconnect(on_refused)
+	for enemy in combat.enemies():
+		enemy.process_mode = Node.PROCESS_MODE_INHERIT
+	assert_true(cast_requests.is_empty() and skills.bolts().is_empty()
+			and skills.cooldown_left(&"tech_loi_chi") == 0.0,
+		"no technique was cast by the tab keys while the book was open (%s)" % str(cast_requests))
 	wave[1].call("take_damage", 99999)
 	wave[0].call("take_damage", int(wave[0].call("get_current_health")) - 1)
 	await scene_tree.physics_frame

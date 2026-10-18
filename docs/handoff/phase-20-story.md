@@ -146,7 +146,10 @@ here · what the player does with it · owner of what it changes · `vi` / `en` 
 | The people they have met | nowhere | a People page in the Chronicle |
 | Story so far, choices that mattered | nowhere | the Chronicle's first page |
 
-One book, non-modal, on the journal's reading-panel pattern. No future tabs.
+One book, on the journal's reading-panel pattern — **superseded by UI-03 (2026-10-18):** the
+centred book, modal while open, four tabs (`UI_UX_BIBLE.md` §8d). D-072 §8 and D-073 §L in
+`DECISIONS.md` still read "non-modal" / "Not modal"; that record is outside UI-03's writable set
+and is left for the owner/supervisor to amend with a dated "superseded in part by UI-03" note.
 
 ## 8. Debt
 
@@ -229,7 +232,7 @@ Act-I play (`chapter_ke_vo_danh` / `beat_standing`).
 |---|---|---|
 | The purpose line is never blank: taken-on quest → story → quest on offer → the road | HUD, from the owners' views | `test_the_purpose_line_is_arbitrated_…`, `…always_says_what_the_player_is_about`; E2E 8a, 8h |
 | Every story objective fits the plaque's one row, vi and en | content | `test_every_shipped_story_objective_fits_one_row_in_both_languages` (all 13 were too long; rewritten) |
-| One book, four pages, read-only, never modal; key opens / pages / closes; Esc closes | `ChroniclePanel` + HUD | `test_chronicle.gd` (3); E2E 8g (the player walks with it open) |
+| One book, four pages, read-only, never modal; key opens / pages / closes; Esc closes — **superseded by UI-03 (2026-10-18):** the Chronicle is the centred book's second page set, modal while open, four tabs with a key each, pages turned inside a tab; its key or Esc closes it (`UI_UX_BIBLE.md` §8d) | `ChroniclePanel` + HUD | `test_chronicle.gd`; E2E 8g (every tab and page read with real keys; the player stands still while reading) |
 | The world line names whom it is about | `WorldRuntime` → `WorldSimView` | `test_the_world_line_names_who_it_is_about` |
 | The prologue hands over all five things and ends in open play | Story | E2E 8h |
 

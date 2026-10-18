@@ -192,7 +192,7 @@ UI_INVENTORY_TITLE,Satchel,Túi đồ
 UI_INVENTORY_EMPTY,The satchel is empty.,Túi trống không.
 UI_INVENTORY_KEYS,{move} Choose · {use} Use,{move} Chọn · {use} Dùng
 UI_BOOK_CLOSE,Close,Đóng
-UI_BOOK_TURN,Turn the page,Lật trang
+UI_BOOK_TURN,Switch tab,Đổi mục
 UI_HUD_INVENTORY_ACTION,Satchel,Túi đồ
 UI_ITEM_GAINED,Gained: {name} ×{count}  ({key} satchel),Nhận được: {name} ×{count}  ({key} túi đồ)
 UI_ITEM_USED,Used: {name},Đã dùng: {name}
@@ -580,7 +580,14 @@ UI_CHRONICLE_PAGE_STORY,The road so far,Đường đã qua
 UI_CHRONICLE_PAGE_SELF,Who you are,Ngươi là ai
 UI_CHRONICLE_PAGE_KNOWLEDGE,What you know,Điều ngươi biết
 UI_CHRONICLE_PAGE_PEOPLE,People you met,Người đã gặp
-UI_CHRONICLE_KEYS,{key} Next page · Esc Close · {page}/{pages},{key} Trang sau · Esc Đóng · {page}/{pages}
+UI_CHRONICLE_TAB_JOURNEY,Journey,Hành trình
+UI_CHRONICLE_TAB_KNOWLEDGE,Learned,Hiểu biết
+UI_CHRONICLE_TAB_PEOPLE,People,Nhân vật
+UI_CHRONICLE_TAB_SELF,Yourself,Bản thân
+UI_CHRONICLE_TAB_LABEL,{key} {name},{key} {name}
+UI_CHRONICLE_PAGE_OF,Page {page} of {pages},Trang {page}/{pages}
+UI_CHRONICLE_BOOK_KEYS,{tabs} Choose a tab · {turn} Previous/next page,{tabs} Chọn mục · {turn} Trang trước/sau
+UI_CHRONICLE_BOOK_KEYS_ONE,{tabs} Choose a tab,{tabs} Chọn mục
 UI_CHRONICLE_EMPTY,Nothing is written yet.,Chưa có gì được ghi lại.
 UI_CHRONICLE_NOW,Now:,Trước mắt:
 UI_CHRONICLE_GOAL,What you came for:,Điều ngươi tìm:
@@ -598,7 +605,6 @@ STORY_SCENE_AHEAD_1,"Word of the broken vein travels faster than any cart. The p
 STORY_SCENE_AHEAD_2,You still belong to no one. But you are holding something that somebody wanted gone.,Ngươi vẫn chưa thuộc về ai. Nhưng ngươi đang cầm một thứ mà có kẻ đã muốn nó biến mất.
 UI_HUD_WORLD_EVENT_ROSE_WHO,{who}: {subject} rose,{who}: {subject} tăng lên
 UI_HUD_WORLD_EVENT_FELL_WHO,{who}: {subject} fell,{who}: {subject} giảm xuống
-UI_CHRONICLE_KEYS_LAST,{key} Close · {page}/{pages},{key} Đóng · {page}/{pages}
 UI_STORY_REFUSED_UNSETTLED,That cannot be settled right now. Nothing has changed.,Chuyện ấy lúc này chưa định được. Chưa có gì thay đổi.
 UI_STORY_REFUSED_DECIDED,You have already given your answer to that.,Chuyện ấy ngươi đã trả lời rồi.
 UI_STORY_REFUSED_NOT_YET,It is not yet time to decide that.,Chưa tới lúc quyết chuyện ấy.

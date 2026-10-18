@@ -5,7 +5,7 @@ class_name CharacterCard
 ##
 ## The body the player chose, DRAWN and breathing, standing in a well between the two things
 ## it can wear — what is in the hand and what is on the back — with the three numbers combat
-## reads beside it. It is the head of the satchel and of the Chronicle's body page: one
+## reads beside it. It is the head of the satchel and of the Chronicle's body pages: one
 ## control, so both show the same person.
 ##
 ## IT OWNS NOTHING AND DECIDES NOTHING. Everything arrives as a view some owner built: the
@@ -190,9 +190,9 @@ func _build_stats() -> Control:
 		pair.add_theme_constant_override("separation", STAT_PAIR_GAP)
 		pair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		plate.add_child(pair)
-		var caption := _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
+		var caption := _label(_caption_size(), UIPalette.COLOR_TEXT_MUTED)
 		pair.add_child(caption)
-		var value := _label(UIPalette.FONT_SIZE_HINT, UIPalette.GOLD_PRIMARY)
+		var value := _label(_caption_size(), UIPalette.GOLD_PRIMARY)
 		pair.add_child(value)
 		_stat_values.append(value)
 		_stat_names.append(caption)
@@ -376,11 +376,11 @@ func _sync_figure() -> void:
 		_figure.set_process(is_visible_in_tree() and _profile != null)
 
 
-## A slot's name and a stat's name. In the satchel's column (the centred book, UI-02) they are
-## read beside the book's own rows, so they stand at the body size there; a band across a page
-## keeps the hint size it was laid out at.
+## A slot's name and a stat's name (and, in a band, a stat's number). Both the satchel's column
+## and the Chronicle's band are read in the centred book (UI-02, UI-03), so they stand at the
+## body size in either shape (`UI_UX_BIBLE.md` §8d).
 func _caption_size() -> int:
-	return UIPalette.FONT_SIZE_BODY if tall else UIPalette.FONT_SIZE_HINT
+	return UIPalette.FONT_SIZE_BODY
 
 
 func _label(size: int, colour: Color) -> Label:

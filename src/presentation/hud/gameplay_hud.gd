@@ -215,7 +215,7 @@ var _faction_panel: FactionPanel
 var _quest_panel: QuestJournalPanel
 var _quest_view: QuestJournalView = null
 ## The Chronicle (Phase 20): the one reading book for the story, the self, knowledge and
-## people. LEFT column (where the politics panel opens): one reading surface per side.
+## people. Since UI-03 the centred book's second page set, opened through `_open_book_surface`.
 var _chronicle_panel: ChroniclePanel
 var _chronicle_view: ChronicleView = null
 # The inventory panel (Phase 13): the first page of the centred book (UI-02).
@@ -223,9 +223,9 @@ var _inventory_panel: InventoryPanel
 ## THE open centred book (UI-02), or null: at most one at a time. Every rule a book needs from
 ## the HUD — the side panels closing, the layer order, the notice band, the UI_MODAL context and
 ## Esc — hangs on this one seam (`_open_book_surface` / `_close_book`), so a second book (the
-## learned-knowledge book, ui-03) is one more caller, not a copy of these branches.
+## Chronicle, UI-03) is one more caller, not a copy of these branches.
 var _open_book: UIBookPanel = null
-## The modal key that closes `_open_book` besides Esc (the satchel's own "I").
+## The modal key that closes `_open_book` besides Esc (the satchel's "I", the Chronicle's own).
 var _open_book_toggle: StringName = &""
 ## The shop (Phase 17): shown while a `ShopView` says a shop is open; holds a UI_MODAL context.
 var _shop_panel: ShopPanel
@@ -850,9 +850,10 @@ func _build_ui() -> void:
 	_quest_panel.visible = false
 	root.add_child(_quest_panel)
 
+	# The Chronicle is the centred book's second page set (UI-03): it opens through the same
+	# seam as the satchel (`_open_book_surface`), never as a side panel.
 	_chronicle_panel = ChroniclePanel.new()
 	_chronicle_panel.name = "ChroniclePanel"
-	_bound_side_panel(_chronicle_panel, true)
 	_chronicle_panel.visible = false
 	root.add_child(_chronicle_panel)
 	_feed_chronicle()
@@ -1561,6 +1562,11 @@ func _unhandled_input(_event: InputEvent) -> void:
 			and _input.call("is_gameplay_action_just_pressed", INVENTORY_ACTION):
 		open_inventory()
 		handled = true
+	# The Chronicle's key opens it on its first tab; the same key (or Esc) closes it.
+	elif _chronicle_panel != null \
+			and _input.call("is_gameplay_action_just_pressed", CHRONICLE_ACTION):
+		open_chronicle()
+		handled = true
 	if _sect_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", SECT_PANEL_ACTION):
 		_sect_panel.visible = not _sect_panel.visible
@@ -1582,29 +1588,14 @@ func _unhandled_input(_event: InputEvent) -> void:
 	if _faction_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", FACTION_PANEL_ACTION):
 		_faction_panel.visible = not _faction_panel.visible
-		if _faction_panel.visible and _chronicle_panel != null:
-			_chronicle_panel.visible = false  # one reading surface on the left
-		handled = true
-	# The Chronicle's key opens it, turns the page, and closes it after the last page.
-	if _chronicle_panel != null \
-			and _input.call("is_gameplay_action_just_pressed", CHRONICLE_ACTION):
-		if not _chronicle_panel.visible:
-			_chronicle_panel.reset_page()
-			_chronicle_panel.visible = true
-			if _faction_panel != null:
-				_faction_panel.visible = false
-		elif not _chronicle_panel.advance_page():
-			_chronicle_panel.visible = false
 		handled = true
 	# Esc steps BACK one level (PX-4). A reading panel that is open closes; only with nothing
 	# open does it ask about leaving — and asking is all one press can do.
 	if not handled and _input.call("is_system_action_just_pressed", OPEN_MENU_ACTION):
-		if is_sect_panel_open() or is_faction_panel_open() or is_quest_journal_open() \
-				or is_chronicle_open():
+		if is_sect_panel_open() or is_faction_panel_open() or is_quest_journal_open():
 			_sect_panel.visible = false
 			_faction_panel.visible = false
 			_quest_panel.visible = false
-			_chronicle_panel.visible = false
 		else:
 			_show_session_prompt(PROMPT_LEAVE)
 		handled = true
@@ -1622,8 +1613,6 @@ func _close_side_panels() -> void:
 		_faction_panel.visible = false
 	if _quest_panel != null:
 		_quest_panel.visible = false
-	if _chronicle_panel != null:
-		_chronicle_panel.visible = false
 	_close_book()
 	# A fight ends a conversation: ask the shop's owner to close it.
 	if _shop_modal:
@@ -1643,6 +1632,20 @@ func close_inventory() -> void:
 		_close_book()
 
 
+## Open the Chronicle in the centred book, on its first tab (`_open_book_surface`); its own key
+## closes it again.
+func open_chronicle() -> void:
+	if _chronicle_panel != null and not is_chronicle_open():
+		_chronicle_panel.reset_page()
+	_open_book_surface(_chronicle_panel, CHRONICLE_ACTION)
+
+
+## Close the Chronicle and give input back to the world. Safe when closed.
+func close_chronicle() -> void:
+	if _open_book != null and _open_book == _chronicle_panel:
+		_close_book()
+
+
 ## Open `book` as THE centred book: one reading surface at a time (every side panel closes — the
 ## book takes the middle of the screen, and a panel left open would show through at its edges;
 ## a book already open closes first), and the input context becomes UI_MODAL so the move keys
@@ -1652,7 +1655,7 @@ func _open_book_surface(book: UIBookPanel, toggle_action: StringName) -> void:
 		return
 	if _open_book != null:
 		_close_book()
-	for panel: Control in [_sect_panel, _faction_panel, _quest_panel, _chronicle_panel]:
+	for panel: Control in [_sect_panel, _faction_panel, _quest_panel]:
 		if panel != null:
 			panel.visible = false
 	# The book is drawn over EVERYTHING the HUD shows (the dock, the plaques) — every other
@@ -2111,6 +2114,8 @@ func _refresh() -> void:
 	_refresh_purpose()
 	if _quest_panel != null:
 		_quest_panel.refresh_language()
+	if _chronicle_panel != null:
+		_chronicle_panel.refresh_language()
 	_refresh_prompts()
 
 

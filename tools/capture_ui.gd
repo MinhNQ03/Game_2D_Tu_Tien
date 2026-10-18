@@ -298,7 +298,8 @@ func _capture_the_night(main: Node) -> void:
 		player.global_position = Vector2(612, 364)  # staging: at the weighted sheet
 	await _settle()
 	await _shot("25_morning_sheet_under_the_stele")
-	# The Chronicle, page by page, as the run stands this morning.
+	# The Chronicle in the centred book (UI-03), tab by tab and page by page, as the run stands
+	# this morning — opened the way its key opens it, so the scrim and the modal keys are real.
 	var router := root.get_node_or_null("SceneRouter")
 	var here: Node = router.call("get_current_scene") if router != null else null
 	var hud: Node = here.get_node_or_null("GameplayHUD") if here != null else null
@@ -307,16 +308,21 @@ func _capture_the_night(main: Node) -> void:
 		push_error("[capture] no Chronicle to capture")
 		_failed = true
 		return
-	book.reset_page()
-	book.visible = true
+	hud.call("open_chronicle")
 	await _settle()  # the book packs its pages for the room it is laid out in
+	if not bool(hud.call("is_chronicle_open")):
+		push_error("[capture] the Chronicle did not open")
+		_failed = true
+		return
 	book.reset_page()
 	for page in 30:
 		await _settle()
-		await _shot("26_chronicle_page_%02d_%s" % [page + 1, book.page_id()])
+		await _shot("26_chronicle_%02d_%s_%d_%s" % [page + 1, book.tab_id(),
+			book.tab_page_index() + 1, book.page_id()])
 		if not book.advance_page():
 			break
-	book.visible = false
+	hud.call("close_chronicle")
+	await _settle()
 	await _capture_the_bridge(main)
 
 

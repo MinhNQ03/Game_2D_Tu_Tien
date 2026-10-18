@@ -257,13 +257,16 @@ func test_the_open_satchel_is_modal_and_esc_closes_one_level() -> void:
 		"sect": hud.get("_sect_panel") as Control,
 		"faction": hud.get("_faction_panel") as Control,
 		"journal": hud.quest_journal_panel() as Control,
-		"chronicle": hud.chronicle_panel() as Control,
 	}
+	# The Chronicle is a book too since UI-03: the satchel takes its place through the one seam.
+	hud.open_chronicle()
+	assert_true(hud.is_chronicle_open(), "the Chronicle opened first")
 	for side: String in side_panels:
 		assert_not_null(side_panels[side], "the HUD built its %s panel" % side)
 		if side_panels[side] != null:
 			(side_panels[side] as Control).visible = true
 	hud.open_inventory()
+	assert_false(hud.is_chronicle_open(), "the satchel closed the Chronicle: one book at a time")
 	var book := hud.inventory_panel()
 	assert_true(hud.is_inventory_open(), "the satchel opened")
 	assert_false(bool(input.call("is_gameplay_active")), "gameplay input is suspended")
