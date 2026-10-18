@@ -1134,10 +1134,12 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   answers; the box, AS LAID OUT, fits under the clear zone for every shipped line in both
   languages; no shipped answer is truncated (UI-01: every word fits its column and every line
   it wraps to is shown); mood colours are palette roles.
-- `tests/unit/presentation/test_dialogue_whole_text.gd` (7, UI-01) — no label in the box clips
-  or trims; EVERY authored line (164 in vi + en), with its speaker's real name and title and its
-  largest answer set (`tests/framework/dialogue_offers.gd`, shared with the capture tool), laid
-  out with the real font and measured on every page: no word wider than its column, no wrapped
+- `tests/unit/presentation/test_dialogue_whole_text.gd` (8, UI-01) — no label in the box clips
+  or trims; EVERY authored line (164 in vi + en), with its speaker's real name and title and
+  EVERY set of its answers that can be offered together (`DialogueOffers.sets` in
+  `tests/framework/dialogue_offers.gd`: `DialogueService.condition_met` over a staged world,
+  shared with the capture tool; 218 views), laid out with the real font and measured on every
+  page — and the test fails unless every authored answer (160) was laid out: no word wider than its column, no wrapped
   label shorter than its lines, nothing drawn outside the box, the pages together show every
   wrapped line, the box under the clear zone (tallest 154 of 162 px, vi `ko_pills_offer`); a
   line too long for the box pages with the more-cue, the answers wait for its last page and
@@ -1146,8 +1148,10 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   under its marker; an answer set too tall for the band (staged: five answers, the first
   saying all five) is shown as a window of whole answers that follows the selection, the cues
   lit on the hidden side, the box at most 162 px at 1280x720 at every step and every answer
-  shown on the walk; the answer height the window is chosen by equals the laid-out row height
-  for every authored answer in both languages. RED on
+  shown on the walk; a speaker title that wraps (staged: four times the scout's) on a line that
+  pages takes its rows from the page and the box stays in the band at 1280x720 and 1280x800
+  (177 px of 162 without that); the answer height the window is chosen by equals the laid-out
+  row height for every authored answer in both languages (every set, counted). RED on
   `38fd03a` (the title and every answer clipped with an ellipsis).
 - `tests/unit/tools/test_capture_ui_pacing.gd` (2, UI-01) — `tools/capture_ui.gd` turns vsync
   off and caps the frame rate (`PACED_FPS`) in `_initialize`, before its run; a vsynced window

@@ -16,11 +16,12 @@ class_name DialoguePanel
 ## the keys row opens with the more-cue, `interact` turns the page, and the answers appear on
 ## the last page (until then the move keys choose nothing and confirm answers nothing).
 ##
-## THE BOX NEVER LEAVES ITS BAND. The answers' column is held to the height the band below the
-## playfield clear zone leaves (`max_height`, from the viewport at run time): answers that
-## would not fit together are shown as a WINDOW of whole answers that follows the selection, a
-## more-cue above or below saying answers are hidden that way. No answer is cut, and the move
-## keys reach every one exactly as before.
+## THE BOX NEVER LEAVES ITS BAND. Both of its columns are held to the height the band below the
+## playfield clear zone leaves (`max_height`, from the viewport at run time). The answers: a set
+## that would not fit together is shown as a WINDOW of whole answers that follows the selection,
+## a more-cue above or below saying answers are hidden that way. The speech: a name row that
+## wraps (a long title) takes its height out of the line's page, which then shows fewer wrapped
+## lines and pages sooner. No answer and no line is cut, and the keys behave exactly as before.
 ##
 ## It decides nothing. The answers listed are the ones `DialogueService` offered into the
 ## `DialogueView`; a press REQUESTS one, naming the line it answers, and what happens comes
@@ -44,6 +45,7 @@ var _input: Node = null
 var _portrait: TextureRect
 var _name: Label
 var _title: Label
+var _who: HBoxContainer
 var _mood: Label
 var _text: Label
 var _keys: Label
@@ -101,21 +103,23 @@ func _ready() -> void:
 	speech.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	speech.add_theme_constant_override("separation", UIPalette.ROW_GAP)
 	row.add_child(speech)
-	var who := HBoxContainer.new()
-	who.name = "Who"
-	who.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	speech.add_child(who)
+	_who = HBoxContainer.new()
+	_who.name = "Who"
+	_who.add_theme_constant_override("separation", UIPalette.SPACE_SM)
+	speech.add_child(_who)
 	_name = _label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TITLE)
 	_name.name = "SpeakerName"
-	who.add_child(_name)
+	_who.add_child(_name)
 	_title = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	_title.name = "SpeakerTitle"
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	who.add_child(_title)
+	# A title that wraps to another row takes that row out of the line's page (`_repage`).
+	_title.resized.connect(_repage, CONNECT_DEFERRED)
+	_who.add_child(_title)
 	_mood = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
 	_mood.name = "Mood"
-	who.add_child(_mood)
+	_who.add_child(_mood)
 	_text = _label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TEXT)
 	_text.name = "Line"
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -404,7 +408,14 @@ func _answer_height(text: String) -> float:
 func _repage() -> void:
 	if _view == null or not _view.open:
 		return
-	var per_page := UIPalette.DIALOGUE_LINE_MAX_LINES
+	# The speech column is held to the band: what the name row and the keys row leave of it is
+	# the line's page, at most `DIALOGUE_LINE_MAX_LINES` wrapped lines and never less than one.
+	var line_px := _text.get_line_height() + _text.get_theme_constant("line_spacing")
+	var room := max_height() - get_theme_stylebox("panel").get_minimum_size().y \
+		- _who.get_combined_minimum_size().y - _keys.get_combined_minimum_size().y \
+		- 2 * UIPalette.ROW_GAP
+	var per_page := clampi(floori(room / line_px), 1, UIPalette.DIALOGUE_LINE_MAX_LINES)
+	_text.max_lines_visible = per_page
 	# Before its first layout a wrapping label is one pixel wide, and "every letter on its own
 	# line" is not a page count: the line is one page until `resized` says otherwise.
 	_pages = 1 if _text.size.x <= 1.0 \
@@ -412,9 +423,8 @@ func _repage() -> void:
 	_page = clampi(_page, 0, _pages - 1)
 	_text.lines_skipped = _page * per_page
 	# A paged line keeps a full page's height on its shorter last page: the box must not jump.
-	var line_px := _text.get_line_height() + _text.get_theme_constant("line_spacing")
-	_text.custom_minimum_size.y = UIPalette.DIALOGUE_LINE_MIN_HEIGHT if _pages == 1 \
-		else maxf(UIPalette.DIALOGUE_LINE_MIN_HEIGHT, line_px * per_page)
+	var least := minf(UIPalette.DIALOGUE_LINE_MIN_HEIGHT, maxf(room, line_px))
+	_text.custom_minimum_size.y = least if _pages == 1 else maxf(least, line_px * per_page)
 	var last := _page == _pages - 1
 	_choice_list.visible = last
 	_choices_above.visible = last and _windowed

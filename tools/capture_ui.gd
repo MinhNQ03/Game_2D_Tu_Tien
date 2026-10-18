@@ -451,7 +451,7 @@ func _capture_satchel_and_equipment(main: Node, hud: Node) -> void:
 
 
 ## 12-13 (UI-01): an open dialogue at its fullest, in the language of the run — the line whose
-## answers take the most room (its largest set that can be offered together, `DialogueOffers`)
+## answers take the most room (of every set that can be offered together, `DialogueOffers`)
 ## and the longest line said. STAGED through the HUD's own `set_dialogue_view`, the view a talk
 ## pushes, so no conversation opens and nothing the later frames show is changed; the real-key
 ## path is the Dialogue E2E's. A box that did not open writes no file and fails the run.
@@ -462,28 +462,29 @@ func _capture_dialogue(hud: Node) -> void:
 		push_error("[capture] no dialogue catalog, Localization or HUD dialogue seam")
 		_failed = true
 		return
-	var widest: Array = []  # [dialogue, line]
+	var widest: Array = []  # [dialogue, line, the answers offered together]
 	var widest_rank := Vector2i(-1, -1)  # (answers offered together, their characters)
 	var longest: Array = []
 	var longest_chars := -1
 	for dialogue in catalog.entries:
 		for line in dialogue.nodes:
-			var offered := DialogueOffers.largest(line)
-			var chars := 0
-			for option in offered:
-				chars += String(loc.call("t", String(option.text_key))).length()
-			if Vector2i(offered.size(), chars) > widest_rank:
-				widest_rank = Vector2i(offered.size(), chars)
-				widest = [dialogue, line]
+			for offered: Array in DialogueOffers.sets(line):
+				var chars := 0
+				for option: DialogueChoiceData in offered:
+					chars += String(loc.call("t", String(option.text_key))).length()
+				if Vector2i(offered.size(), chars) > widest_rank:
+					widest_rank = Vector2i(offered.size(), chars)
+					widest = [dialogue, line, offered]
 			var said := String(loc.call("t", String(line.text_key))).length()
 			if said > longest_chars:
 				longest_chars = said
-				longest = [dialogue, line]
+				longest = [dialogue, line, []]
 	var shots := [["12_dialogue_longest_answers", widest], ["13_dialogue_longest_line", longest]]
 	for serial in shots.size():
 		var shot: Array = shots[serial]
 		var pick: Array = shot[1]
-		hud.call("set_dialogue_view", DialogueOffers.view_of(pick[0], pick[1], serial + 1))
+		hud.call("set_dialogue_view", DialogueOffers.view_of(pick[0], pick[1], serial + 1,
+			pick[2]))
 		await _settle()
 		if not bool(hud.call("is_dialogue_open")):
 			push_error("[capture] the dialogue box did not open for %s" % pick[1].id)

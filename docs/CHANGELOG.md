@@ -20,21 +20,26 @@ Dates are ISO (YYYY-MM-DD).
   1280x800, from the viewport): an answer set too tall for it is shown as a window of whole
   answers that follows the selection, a … cue lit above or below where answers are hidden. The
   first captures showed a staged five-answer set with a wrapped answer push the box to ~200 px
-  at 1280x720; no shipped set is windowed today.
+  at 1280x720; no shipped set is windowed today. The speech column is held too: a speaker title
+  that wraps takes its rows out of the line's page (fewer wrapped lines a page, the line pages
+  sooner) — a staged title four times the scout's made the box 177 px at 1280x720 before this.
 - **Measured, not trusted.** `tests/unit/presentation/test_dialogue_whole_text.gd` lays out all
-  164 authored lines (vi + en) with their speaker and largest answer set in the real panel and
-  fails on any clip, trim, overflowing word, short label, label outside the box, unshown wrapped
-  line or a box in the playfield clear zone (tallest 154 of 162 px). RED on `38fd03a`.
-- `tools/capture_ui.gd` captures an open dialogue (12: the line with the largest answer set,
+  164 authored lines (vi + en) with their speaker and EVERY set of answers they can offer
+  together (218 views) in the real panel and fails on any clip, trim, overflowing word, short
+  label, label outside the box, unshown wrapped line or a box in the playfield clear zone
+  (tallest 154 of 162 px), and unless every authored answer (160 in vi + en) was laid out.
+  RED on `38fd03a`. The sets come from `DialogueService.condition_met` asked over a staged
+  world (`DialogueOffers.sets`), not from a copy of the rule.
+- `tools/capture_ui.gd` captures an open dialogue (12: the line with the widest answer set,
   13: the longest line), staged through the HUD's own `set_dialogue_view`, and the states no
   shipped line reaches yet through a staged localisation (14: a line that pages, its first page
   with the … cue and the answers held back; 15: its last page with an answer that wraps, its set
   windowed; 16: the window moved to the last answer), and fails the run if any dialogue shot's
   box is taller than the band. A page
   turned while the box is still fading open (a doubled press) now restores the box's opacity
-  and the portrait's place instead of leaving them where the killed fade stopped. The "largest offer"
-  rule moved to `tests/framework/dialogue_offers.gd` (`DialogueOffers`), shared by the tests
-  and the tool.
+  and the portrait's place instead of leaving them where the killed fade stopped. Which answers
+  can be offered together lives in `tests/framework/dialogue_offers.gd` (`DialogueOffers`),
+  shared by the tests and the tool.
 - `tools/capture_ui.gd` now paces itself (vsync off, 60 fps). A vsynced window in a locked
   X session is shown at ~1 Hz (D-063), so a full run of about a thousand frames took ~15 min:
   the en run finished in 14 min, and the vi run went over its 900 s budget and was killed after

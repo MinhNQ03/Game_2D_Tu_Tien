@@ -213,28 +213,32 @@ func test_the_box_fits_under_the_clear_zone_in_both_languages() -> void:
 		_use_language(code)
 		for dialogue in catalog.entries:
 			for line in dialogue.nodes:
-				var view := _hub_view(1)
-				view.text_key = line.text_key
-				# The tallest box this line can ever show: the LARGEST set of its answers
+				# The tallest box this line can ever show is one of the sets of its answers
 				# that can be offered together (Phase 19: answers gated on different phases
-				# of one quest, or on knowing and not knowing one thing, never are).
-				var choices: Array[Dictionary] = []
-				for option in _largest_offer(line):
-					choices.append({"id": option.id, "text_key": option.text_key})
-				view.choices = choices
-				hud.set_dialogue_view(view)
-				# A wrapped line's height is only known once it has been laid out at its
-				# real width: measure the box AS SHOWN, not its minimum size.
-				await scene_tree.process_frame
-				await scene_tree.process_frame
-				var shown := panel.size
-				assert_true(shown.x <= viewport.x - 2.0 * UIPalette.HUD_MARGIN,
-					"[%s] %s: %.0f px wide fits the screen" % [code, line.id, shown.x])
-				# The middle half of the screen stays clear: the box, sitting one margin above
-				# the bottom edge, must end below 3/4 of the height.
-				assert_true(shown.y <= viewport.y * 0.25 - UIPalette.HUD_MARGIN,
-					"[%s] %s: %.0f px tall stays below the clear zone"
-						% [code, line.id, shown.y])
+				# of one quest, or on knowing and not knowing one thing, never are): each.
+				var offers := DialogueOffers.sets(line)
+				if offers.is_empty():
+					offers = [[]]
+				for offered: Array in offers:
+					var view := _hub_view(1)
+					view.text_key = line.text_key
+					var choices: Array[Dictionary] = []
+					for option: DialogueChoiceData in offered:
+						choices.append({"id": option.id, "text_key": option.text_key})
+					view.choices = choices
+					hud.set_dialogue_view(view)
+					# A wrapped line's height is only known once it has been laid out at its
+					# real width: measure the box AS SHOWN, not its minimum size.
+					await scene_tree.process_frame
+					await scene_tree.process_frame
+					var shown := panel.size
+					assert_true(shown.x <= viewport.x - 2.0 * UIPalette.HUD_MARGIN,
+						"[%s] %s: %.0f px wide fits the screen" % [code, line.id, shown.x])
+					# The middle half of the screen stays clear: the box, sitting one margin
+					# above the bottom edge, must end below 3/4 of the height.
+					assert_true(shown.y <= viewport.y * 0.25 - UIPalette.HUD_MARGIN,
+						"[%s] %s: %.0f px tall stays below the clear zone"
+							% [code, line.id, shown.y])
 	_use_language("vi")
 	free_node(hud)
 
@@ -265,6 +269,14 @@ func test_the_largest_offer_is_the_widest_set_that_can_be_shown_together() -> vo
 	# test above measures every hub at its largest.
 	assert_true(_largest_offer(elder).size() <= 5,
 		"the elder never offers more than five (got %d)" % _largest_offer(elder).size())
+	# The sets the layout tests measure, between them, offer every answer authored there.
+	for line: DialogueNodeData in [hub, carter, elder]:
+		var offered: Dictionary = {}
+		for one_set: Array in DialogueOffers.sets(line):
+			for option: DialogueChoiceData in one_set:
+				offered[option.id] = true
+		assert_eq(offered.size(), line.choices.size(),
+			"%s: every authored answer is in some set offered together" % line.id)
 
 
 ## An answer must say what it is about: none may be cut short by the column (the first English

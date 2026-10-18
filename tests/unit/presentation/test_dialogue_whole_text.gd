@@ -53,6 +53,8 @@ func test_every_authored_line_speaker_and_answer_is_shown_whole_in_both_language
 	var measured := 0
 	var tallest := 0.0
 	var tallest_at := ""
+	var authored := 0
+	var answers: Dictionary = {}  # "code dialogue/line/answer" -> true, for every answer laid out
 	for code: String in ["vi", "en"]:
 		_use_language(code)
 		for dialogue in catalog.entries:
@@ -60,19 +62,32 @@ func test_every_authored_line_speaker_and_answer_is_shown_whole_in_both_language
 				"%s's speaker %s has a template to take a name from" % [dialogue.id,
 					dialogue.speaker_id])
 			for line in dialogue.nodes:
-				hud.set_dialogue_view(DialogueOffers.view_of(dialogue, line, measured + 1))
-				await _settle()
-				var problems := await _cut_text(panel)
-				assert_true(problems.is_empty(), "[%s] %s/%s: %s"
-					% [code, dialogue.id, line.id, "; ".join(problems)])
-				if panel.size.y > tallest:
-					tallest = panel.size.y
-					tallest_at = "%s %s" % [code, line.id]
-				measured += 1
+				authored += line.choices.size()
+				# Every set of answers the line can show together, each laid out with the line:
+				# no answer is left unmeasured, and the tallest box any of them makes is seen.
+				var offers := DialogueOffers.sets(line)
+				if offers.is_empty():
+					offers = [[]]
+				for offered: Array in offers:
+					hud.set_dialogue_view(DialogueOffers.view_of(dialogue, line, measured + 1,
+						offered))
+					await _settle()
+					var problems := await _cut_text(panel)
+					assert_true(problems.is_empty(), "[%s] %s/%s %s: %s"
+						% [code, dialogue.id, line.id, _ids(offered), "; ".join(problems)])
+					if panel.size.y > tallest:
+						tallest = panel.size.y
+						tallest_at = "%s %s %s" % [code, line.id, _ids(offered)]
+					for option: DialogueChoiceData in offered:
+						answers["%s %s/%s/%s" % [code, dialogue.id, line.id, option.id]] = true
+					measured += 1
 	assert_true(measured >= 40, "every authored line was measured in both languages (%d)"
 		% measured)
-	print("[dialogue-whole-text] %d lines measured; tallest box %.0f px (%s) of %.0f allowed"
-		% [measured, tallest, tallest_at, VIEWPORT.y * 0.25 - UIPalette.HUD_MARGIN])
+	assert_eq(answers.size(), authored,
+		"every authored answer was laid out and measured, in both languages")
+	print("[dialogue-whole-text] %d views, %d answers measured; tallest box %.0f px (%s) of %.0f"
+		% [measured, answers.size(), tallest, tallest_at,
+			VIEWPORT.y * 0.25 - UIPalette.HUD_MARGIN])
 	_use_language("vi")
 	free_node(hud)
 
@@ -276,6 +291,52 @@ func test_an_answer_set_too_tall_for_the_band_is_windowed_and_the_box_stays_in_i
 	free_node(hud)
 
 
+## The speech column keeps to the band at run time too: a speaker title that wraps to more rows
+## (four times the shipped one, the way a translation that grew would say it) on a line that
+## already pages takes its rows out of the line's page — the page shows fewer wrapped lines, the
+## line pages on, nothing is cut and the box stays inside the band at 1280x720 and 1280x800.
+func test_a_title_that_wraps_takes_its_rows_from_the_page_and_the_box_stays_in_the_band() -> void:
+	_use_language("en")
+	var catalog := load(DIALOGUES) as DialogueCatalogData
+	var window := scene_tree.root
+	var was := window.size
+	var hud := _hud()
+	var panel := hud.dialogue_panel()
+	var dialogue := catalog.dialogue_of_speaker(&"actor_scout_ko")
+	var view := DialogueOffers.view_of(dialogue, dialogue.node(&"ko_hub"))
+	var title_key := String(view.speaker_title_key)
+	assert_true(title_key != "", "the scout has a title to stage")
+	var title := _t(title_key)
+	var said := " ".join([_t("DLG_LIN_RIVAL"), _t("DLG_LIN_NOTATION"), _t("DLG_LIN_SHEET_READ")])
+	var loc := LongText.new(scene_tree.root.get_node("Localization"),
+		{"DLG_KO_HUB": said, title_key: " ".join([title, title, title, title])})
+	panel.set("_loc", loc)
+	var title_label := panel.find_child("SpeakerTitle", true, false) as Label
+	for screen: Vector2i in [Vector2i(1280, 720), Vector2i(1280, 800)]:
+		window.size = screen
+		await _settle()
+		hud.set_dialogue_view(DialogueView.make_closed())
+		hud.set_dialogue_view(DialogueOffers.view_of(dialogue, dialogue.node(&"ko_hub"),
+			screen.y))
+		await _settle()
+		await _settle()
+		var allowed := screen.y * 0.25 - UIPalette.HUD_MARGIN
+		# staging only: the title really wraps, and the line really pages
+		assert_true(title_label.get_line_count() >= 2, "%s: the staged title wraps (%d rows)"
+			% [screen, title_label.get_line_count()])
+		assert_true(panel.page_count() >= 2, "%s: the line pages (%d)"
+			% [screen, panel.page_count()])
+		assert_true(panel.size.y <= allowed, "%s: the box is %.0f px of %.0f"
+			% [screen, panel.size.y, allowed])
+		var problems := await _cut_text(panel, allowed)
+		assert_true(problems.is_empty(), "%s: %s" % [screen, "; ".join(problems)])
+	window.size = was
+	panel.set("_loc", scene_tree.root.get_node("Localization"))
+	free_node(loc)
+	_use_language("vi")
+	free_node(hud)
+
+
 ## The window is chosen from each answer's height worked out from its text and the font, before
 ## any layout pass: that height must be the one the row is then laid out at, for every authored
 ## answer in both languages, or the window could let the box grow past its band.
@@ -284,24 +345,36 @@ func test_the_answer_height_the_window_is_chosen_by_is_the_laid_out_height() -> 
 	var hud := _hud()
 	var panel := hud.dialogue_panel()
 	var measured := 0
+	var authored := 0
+	var compared: Dictionary = {}
 	for code: String in ["vi", "en"]:
 		_use_language(code)
 		for dialogue in catalog.entries:
 			for line in dialogue.nodes:
-				if line.choices.is_empty():
-					continue
-				hud.set_dialogue_view(DialogueOffers.view_of(dialogue, line, measured + 1))
-				await _settle()
-				for row in panel.find_child("ChoiceRows", true, false).get_children():
-					if row.is_queued_for_deletion() or not (row as Control).visible:
-						continue
-					var label := row.find_child("Answer", true, false) as Label
-					var worked_out: float = panel.call("_answer_height", label.text)
-					assert_true(absf(worked_out - (row as Control).size.y) <= 0.5,
-						"[%s] '%s': worked out %.1f px, laid out %.1f" % [code, label.text,
-							worked_out, (row as Control).size.y])
+				authored += line.choices.size()
+				for offered: Array in DialogueOffers.sets(line):
+					hud.set_dialogue_view(DialogueOffers.view_of(dialogue, line, measured + 1,
+						offered))
+					await _settle()
 					measured += 1
-	assert_true(measured >= 40, "every authored answer was compared (%d)" % measured)
+					var rows: Array[Control] = []
+					for row in panel.find_child("ChoiceRows", true, false).get_children():
+						if not row.is_queued_for_deletion():
+							rows.append(row as Control)
+					assert_eq(rows.size(), offered.size(), "[%s] %s: a row per answer offered"
+						% [code, line.id])
+					for i in mini(rows.size(), offered.size()):
+						var row := rows[i]
+						if not row.visible:
+							continue
+						var label := row.find_child("Answer", true, false) as Label
+						var worked_out: float = panel.call("_answer_height", label.text)
+						assert_true(absf(worked_out - row.size.y) <= 0.5,
+							"[%s] '%s': worked out %.1f px, laid out %.1f" % [code, label.text,
+								worked_out, row.size.y])
+						compared["%s %s/%s/%s" % [code, dialogue.id, line.id,
+							(offered[i] as DialogueChoiceData).id]] = true
+	assert_eq(compared.size(), authored, "every authored answer was compared, in both languages")
 	_use_language("vi")
 	free_node(hud)
 
@@ -374,6 +447,14 @@ func _labels(node: Node) -> Array[Label]:
 			out.append(child as Label)
 		out += _labels(child)
 	return out
+
+
+## The ids of a set of answers, for a failure message.
+func _ids(offered: Array) -> String:
+	var ids: PackedStringArray = []
+	for option: DialogueChoiceData in offered:
+		ids.append(String(option.id))
+	return "[%s]" % ", ".join(ids)
 
 
 func _t(key: String) -> String:
