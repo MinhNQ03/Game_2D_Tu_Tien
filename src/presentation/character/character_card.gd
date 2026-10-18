@@ -156,7 +156,7 @@ func _build_slot_row(slot: int) -> Control:
 	var frame := UITheme.icon_slot(null)
 	_slots[slot] = frame
 	row.add_child(frame)
-	var name_label := _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
+	var name_label := _label(_caption_size(), UIPalette.COLOR_TEXT_MUTED)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	# A name WRAPS (two lines stand beside one slot); it is never cut. The first English
@@ -214,10 +214,10 @@ func _build_stat_ledger() -> Control:
 		pair.add_theme_constant_override("separation", STAT_PAIR_GAP)
 		pair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		rows.add_child(pair)
-		var caption := _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
+		var caption := _label(_caption_size(), UIPalette.COLOR_TEXT_MUTED)
 		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pair.add_child(caption)
-		var value := _label(UIPalette.FONT_SIZE_BODY, UIPalette.GOLD_PRIMARY)
+		var value := _label(UIPalette.BOOK_ROW_FONT_SIZE, UIPalette.GOLD_PRIMARY)
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		pair.add_child(value)
 		_stat_values.append(value)
@@ -374,6 +374,13 @@ func _notification(what: int) -> void:
 func _sync_figure() -> void:
 	if _figure != null:
 		_figure.set_process(is_visible_in_tree() and _profile != null)
+
+
+## A slot's name and a stat's name. In the satchel's column (the centred book, UI-02) they are
+## read beside the book's own rows, so they stand at the body size there; a band across a page
+## keeps the hint size it was laid out at.
+func _caption_size() -> int:
+	return UIPalette.FONT_SIZE_BODY if tall else UIPalette.FONT_SIZE_HINT
 
 
 func _label(size: int, colour: Color) -> Label:

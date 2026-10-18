@@ -244,7 +244,7 @@ measurements.
 | Cultivation | the realm ladder as a *ladder*; current layer, what the next one grants (not just a bar) |
 | Technique | known công pháp + the **compatibility graph** — the build screen |
 | Skill | loadout, costs, cooldowns, technique gates |
-| Equipment / Inventory | slots + stats; inventory grid with source/sink clarity |
+| Equipment / Inventory | **exists** as the satchel (P-13/14): since UI-02 the first page of the centred book (§8d) — the character sheet in a 240 px column (`SHEET_FIGURE_COLUMN`), the list of what is carried beside it at `BOOK_ROW_FONT_SIZE`, the selected item's description pinned under the list. Grows: slots + stats; inventory grid with source/sink clarity |
 | Quest Journal | **exists** (P-19, D-070): a non-modal side panel on `quest_journal`. Most urgent first (ready → under way → on offer → done); every quest shows its name, its state in words and its next step; ONE quest at a time is opened out (the why, objectives with counts, the reward) and the journal's own key steps to the next, then closes — so nothing is ever below a fold a keyboard cannot reach. Categories arrive when there are enough quests to need them |
 | Dialogue | **exists** (P-18); portrait + text + choices; choices show what they are about, never a morality icon. **Nothing said is cut (UI-01):** no label in the box clips or trims; the speaker's title and every answer WRAP in their column (the answer hangs under its own first word, the marker on its first line); a line longer than `DIALOGUE_LINE_MAX_LINES` (3) wrapped lines PAGES — the keys row opens with `DIALOGUE_MORE_CUE` … (a glyph of the built-in font itself, never a system fallback) and says *Continue*, `interact` turns the page, and the answers appear on the last page (until then the move keys choose nothing). The box stays out of `PLAYFIELD_CLEAR_ZONE`, **guaranteed at run time**: at most `DialoguePanel.max_height()` tall (the bottom quarter of the viewport less `HUD_MARGIN`: 162 px at 1280×720, 182 at 1280×800). The line is held by its page — at most 3 wrapped lines, fewer when the name row wraps (a long title takes its rows out of the page, so the speech column never passes the band; tallest shipped box 154 px; a fourth line measured 183); the answers' column is held by WINDOWING — a set too tall for the band shows the run of whole answers around the selection that fits, with a … cue lit above or below where answers are hidden, and the move keys still reach every answer (no shipped set is windowed today). Measured for every authored line with every set of answers it can offer together (so every authored answer) in both languages, and for a staged oversized answer set and a staged wrapping title, by `test_dialogue_whole_text.gd`; captured open (`capture_ui.gd` 12–13 shipped lines; 14–16 a staged line that pages, with the … cue, its last page with a wrapped answer and its set windowed, then the window at the last answer), each shot failing the run if the box passes the band |
 | Relationship | per-character the six dimensions, legibly — **not** one bar |
@@ -409,9 +409,41 @@ fed by views, in the satchel and on the Chronicle's body page. Rules it is held 
 - the figure is the world's sprite component — never a second drawing of the character;
 - a name wraps beside its slot and is never cut; a number nobody told is a dash, not a zero;
 - hidden, it costs nothing per frame;
-- a panel that carries it in a column of its own takes a NAMED width (`SHEET_PANEL_WIDTH`).
+- a panel that carries it in a column of its own gives that column a NAMED width
+  (`SHEET_FIGURE_COLUMN`; the satchel book's, §8d).
 
 It does not change §3c: no minimap, no MP bar, the centre clear, the HUD inside its budget.
+
+## 8d. The centred book (UI-02 — binding on every modal reading surface)
+
+A surface the player opens to READ — the satchel now, the learned-knowledge book next — is a
+centred book (`UIBookPanel`, `src/presentation/ui/components/`), not a side panel. Rules:
+
+- **Sized by the viewport, never by content.** The frame is `BOOK_WIDTH_FRACTION` (0.72) of the
+  width and the height between two equal `BOOK_SCREEN_INSET`s (`HUD_MARGIN +
+  PROMPT_STRIP_RESERVE`, 72 px): 921×576 at 1280×720, 921×656 at 1280×800, centred both ways. A
+  long page scrolls inside itself; its pinned text (a description, the keys) stays whole.
+- **One shape.** The title with ONE close key beside it (Esc — the key that steps back a level
+  everywhere, PX-4), a tab strip only when there is more than one page (move-left / move-right
+  turn it; the chosen tab is lit AND gold, never colour alone), the page, then the page's own
+  keys. A page never names a second close key.
+- **Readable at arm's length.** Title `BOOK_TITLE_FONT_SIZE` (22), tabs and rows 20, description
+  and keys at least `FONT_SIZE_BODY` — and EVERY label on the page, the character sheet beside
+  the list included (slot names and stat names at `FONT_SIZE_BODY`, the numbers at
+  `BOOK_ROW_FONT_SIZE`; a worn thing's name in the body colour, an empty slot's muted) —
+  measured by `test_book_panel.gd`, not judged. The Chronicle's band keeps the hint size.
+- **Modal.** Open, it holds a UI_MODAL context (the world does not move), every side panel
+  closes, the prompt strip stands down, and a scrim (`BOOK_SCRIM`) lays the world back. It may
+  cover the clear zone and the top plaques: the player chose to read instead of play. Every other
+  modal surface (shop, dialogue, story, session prompt) closes it before it opens.
+- **The notice stays readable.** While a book is open the HUD notice drops into the strip under
+  it, in front of the scrim, so the result of an action taken in the book is read at once.
+- **It decides nothing.** The owner (the HUD) opens it, closes it and hands it pages; the book
+  only shows them and turns between them.
+- **One seam in the HUD.** At most one book is open (`_open_book`); every rule above that the
+  HUD owns — side panels closing, layer order, the notice band, the UI_MODAL context, Esc and
+  the book's own toggle key — runs through `_open_book_surface(book, toggle)` / `_close_book()`.
+  A new book is one more caller of that seam, never a copy of its branches.
 
 ## 9. What this document does NOT do
 

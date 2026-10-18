@@ -218,10 +218,15 @@ var _quest_view: QuestJournalView = null
 ## people. LEFT column (where the politics panel opens): one reading surface per side.
 var _chronicle_panel: ChroniclePanel
 var _chronicle_view: ChronicleView = null
-# The inventory panel (Phase 13): a MODAL reading surface — while open the HUD holds a UI_MODAL
-# input context so the move keys choose a row instead of walking the player.
+# The inventory panel (Phase 13): the first page of the centred book (UI-02).
 var _inventory_panel: InventoryPanel
-var _inventory_modal: bool = false
+## THE open centred book (UI-02), or null: at most one at a time. Every rule a book needs from
+## the HUD — the side panels closing, the layer order, the notice band, the UI_MODAL context and
+## Esc — hangs on this one seam (`_open_book_surface` / `_close_book`), so a second book (the
+## learned-knowledge book, ui-03) is one more caller, not a copy of these branches.
+var _open_book: UIBookPanel = null
+## The modal key that closes `_open_book` besides Esc (the satchel's own "I").
+var _open_book_toggle: StringName = &""
 ## The shop (Phase 17): shown while a `ShopView` says a shop is open; holds a UI_MODAL context.
 var _shop_panel: ShopPanel
 var _shop_modal: bool = false
@@ -242,6 +247,8 @@ var _session_prompt: SessionPrompt
 var _prompt_kind: StringName = PROMPT_NONE
 var _notice_rest_top: float = 0.0
 var _notice_rest_bottom: float = 0.0
+## Where the notice sits among the HUD's layers; the open satchel lifts it in front of the book.
+var _notice_home_index: int = 0
 ## Arguments of the interact prompt's text (a person's prompt names them).
 var _interact_label_args: Dictionary = {}
 # The skill dock (Phase 15): bottom-centre (D-062), hidden until a technique is learned.
@@ -266,7 +273,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	_hide_session_prompt()
 	_hide_dialogue()
-	close_inventory()
+	_close_book()
 	_hide_shop()
 	# Stop the level-up celebration before the HUD leaves the tree. A map transition or a
 	# return to the menu can land mid-effect, and an effect still decaying toward a colour on
@@ -512,6 +519,7 @@ func _build_ui() -> void:
 	_notice_rest_top = _notice_label.offset_top
 	_notice_rest_bottom = _notice_label.offset_bottom
 	root.add_child(_notice_label)
+	_notice_home_index = _notice_label.get_index()
 	_notice_timer = Timer.new()
 	_notice_timer.name = "NoticeHold"
 	_notice_timer.one_shot = true
@@ -761,10 +769,10 @@ func _build_ui() -> void:
 	# not propagate to children, which is what pushed the Phase-06 sect panel off-screen
 	# (D-034). Both panels may be open at once by design — membership and politics are two
 	# halves of one question.
+	# The satchel is the centred BOOK (UI-02): a full-screen layer, a scrim, and one large page
+	# the book sizes from the viewport itself — not a side panel any more.
 	_inventory_panel = InventoryPanel.new()
 	_inventory_panel.name = "InventoryPanel"
-	_bound_side_panel(_inventory_panel, true)
-	_inventory_panel.offset_right = UIPalette.HUD_MARGIN + UIPalette.SHEET_PANEL_WIDTH
 	_inventory_panel.visible = false
 	_inventory_panel.use_requested.connect(func(item_id: StringName, equipped: bool) -> void:
 		inventory_use_requested.emit(item_id, equipped))
@@ -1544,9 +1552,10 @@ func _unhandled_input(_event: InputEvent) -> void:
 		return
 	# The bag toggles in BOTH contexts: opened from the world (gameplay), closed from itself
 	# (modal) — or with Esc, which must close the panel rather than leave the game.
-	if _inventory_modal and (_input.call("is_modal_action_just_pressed", INVENTORY_ACTION)
-			or _input.call("is_system_action_just_pressed", &"open_menu")):
-		close_inventory()
+	if _open_book != null and (_input.call("is_system_action_just_pressed", &"open_menu")
+			or (_open_book_toggle != &""
+				and _input.call("is_modal_action_just_pressed", _open_book_toggle))):
+		_close_book()
 		handled = true
 	elif _inventory_panel != null \
 			and _input.call("is_gameplay_action_just_pressed", INVENTORY_ACTION):
@@ -1615,7 +1624,7 @@ func _close_side_panels() -> void:
 		_quest_panel.visible = false
 	if _chronicle_panel != null:
 		_chronicle_panel.visible = false
-	close_inventory()
+	_close_book()
 	# A fight ends a conversation: ask the shop's owner to close it.
 	if _shop_modal:
 		shop_close_requested.emit()
@@ -1623,32 +1632,60 @@ func _close_side_panels() -> void:
 		dialogue_close_requested.emit()
 
 
-## Open the bag: one reading surface at a time (the other side panels close), and the input
-## context becomes UI_MODAL so the move keys navigate rows instead of walking.
+## Open the bag in the centred book (`_open_book_surface`); its own "I" closes it again.
 func open_inventory() -> void:
-	if _inventory_panel == null or _inventory_panel.visible:
-		return
-	if _sect_panel != null:
-		_sect_panel.visible = false
-	if _faction_panel != null:
-		_faction_panel.visible = false
-	_inventory_panel.visible = true
-	_inventory_panel.set_process(true)
-	if _input != null and not _inventory_modal:
-		_input.call("push_modal_context")
-		_inventory_modal = true
-		_refresh_focus()
+	_open_book_surface(_inventory_panel, INVENTORY_ACTION)
 
 
 ## Close the bag and give input back to the world. Safe when closed.
 func close_inventory() -> void:
-	if _inventory_panel != null:
-		_inventory_panel.visible = false
-		_inventory_panel.set_process(false)
-	if _input != null and _inventory_modal:
+	if _open_book != null and _open_book == _inventory_panel:
+		_close_book()
+
+
+## Open `book` as THE centred book: one reading surface at a time (every side panel closes — the
+## book takes the middle of the screen, and a panel left open would show through at its edges;
+## a book already open closes first), and the input context becomes UI_MODAL so the move keys
+## navigate the page instead of walking. `toggle_action` (a modal key) closes it, as Esc does.
+func _open_book_surface(book: UIBookPanel, toggle_action: StringName) -> void:
+	if book == null or (book == _open_book and book.visible):
+		return
+	if _open_book != null:
+		_close_book()
+	for panel: Control in [_sect_panel, _faction_panel, _quest_panel, _chronicle_panel]:
+		if panel != null:
+			panel.visible = false
+	# The book is drawn over EVERYTHING the HUD shows (the dock, the plaques) — every other
+	# modal surface closes it before it opens — except the notice line, which drops into the
+	# strip under the book (`_place_notice_band`) and must stay in front of its scrim, so the
+	# result of a use is read the moment it happens.
+	book.move_to_front()
+	if _notice_label != null:
+		_notice_label.move_to_front()
+	book.visible = true
+	book.set_process(true)
+	_open_book = book
+	_open_book_toggle = toggle_action
+	if _input != null:
+		_input.call("push_modal_context")
+	_refresh_focus()
+
+
+## Close the open book and give input back to the world. Safe when none is open.
+func _close_book() -> void:
+	if _open_book == null:
+		return
+	_open_book.visible = false
+	_open_book.set_process(false)
+	_open_book = null
+	_open_book_toggle = &""
+	# The notice goes back to its own layer, under the story and dialogue surfaces again.
+	if _notice_label != null and _notice_label.get_parent() != null \
+			and _notice_label.get_index() != _notice_home_index:
+		_notice_label.get_parent().move_child(_notice_label, _notice_home_index)
+	if _input != null:
 		_input.call("pop_context")
-		_inventory_modal = false
-		_refresh_focus()
+	_refresh_focus()
 
 
 func is_inventory_open() -> bool:
@@ -1801,7 +1838,7 @@ func _show_story_scene() -> void:
 	if _story_panel.visible:
 		return
 	_close_side_panels()
-	close_inventory()
+	_close_book()
 	_story_panel.visible = true
 	_story_panel.set_process(true)
 	if _input != null and not _story_modal:
@@ -1859,7 +1896,7 @@ func _refresh_focus() -> void:
 		# The strip is nothing but key prompts, so it stands down under EVERY surface that
 		# holds the keys (PX-4): with the shop or the satchel open none of them acts either,
 		# and its "Esc" would name something other than what Esc does there.
-		_prompt_strip.visible = not (focused or _shop_modal or _inventory_modal)
+		_prompt_strip.visible = not (focused or _shop_modal or _open_book != null)
 	# The dock decides its own `visible` (it hides with no techniques), so it is faded, not
 	# hidden: its own rule is untouched when the talk ends.
 	if _skill_dock != null:
@@ -1878,6 +1915,11 @@ func _place_notice_band() -> void:
 		var box_top := UIPalette.HUD_MARGIN + _dialogue_panel.size.y \
 			+ UIPalette.DIALOGUE_NOTICE_GAP
 		lift = maxf(0.0, box_top + _notice_rest_bottom)
+	elif _open_book != null:
+		# The centred book covers the band the notice rests in: the notice drops into the strip
+		# under the book (`BOOK_SCREEN_INSET`), one margin off the bottom edge, where the stood-
+		# down prompts were — so a use's result is read beside the book, never under it.
+		lift = float(UIPalette.HUD_MARGIN) - float(UIPalette.ANNOUNCE_BOTTOM_INSET)
 	_notice_label.offset_top = _notice_rest_top - lift
 	_notice_label.offset_bottom = _notice_rest_bottom - lift
 

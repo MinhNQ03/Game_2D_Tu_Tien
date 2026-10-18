@@ -1153,6 +1153,28 @@ every PropBody's data. Playtest 05g. Suite: 821 tests.
   (177 px of 162 without that); the answer height the window is chosen by equals the laid-out
   row height for every authored answer in both languages (every set, counted). RED on
   `38fd03a` (the title and every answer clipped with an ellipsis).
+- `tests/unit/presentation/test_book_panel.gd` (6, UI-02) — the satchel in the centred book at
+  1280x720 and 1280x800, in vi and en, holding the whole shipped catalog (the two wearables worn,
+  stats at 9999) with each item's description selected in turn: the frame is exactly the box
+  the viewport gives it (0.72 of the width, two `BOOK_SCREEN_INSET`s of the height — content
+  never grew it), centred within 1 px both ways, at least 60% of the width; every label outside
+  the scroll lies whole inside the frame, every row stays inside the list's width, no unwrapped
+  label is narrower than its text and every wrapped one shows all its lines; the title, rows,
+  description, keys and every label of the character sheet beside the list (slot names, stat
+  names and numbers — at least eight, counted) are at least `FONT_SIZE_BODY`. The tabs: one page shows no strip and
+  does not turn; two pages show two tabs, only the chosen page, turn and wrap, clamp a page
+  past the end, and announce every turn. The book's own keys — the close key in the header and
+  the turn key on the strip — show the `InputService` display glyphs of `open_menu` and
+  `move_left`/`move_right` and the localised words (the HUD's seven-prompt badge count leaves
+  the book's subtree out for that reason). The component's source names no gameplay, domain,
+  runtime, bus or save. In the HUD: opening closes every side panel (sect, faction, journal, Chronicle — each
+  opened first and checked by name), suspends gameplay input, stands
+  the prompt strip down, draws the book over the HUD and the notice over the book, the notice in
+  the strip under it; Esc closes it, asks nothing about leaving, gives the keys back, and puts
+  the notice back on its layer and band; the dropped notice clears the book at both aspect
+  ratios. `test_inventory_panel.gd` (2) holds the overflow cases on a 1280x720 screen against
+  the book's frame; the HUD side-panel tests count five side panels; the world E2E's satchel
+  proof closes the book with a real Esc and checks that nothing asked about leaving.
 - `tests/unit/tools/test_capture_ui_pacing.gd` (2, UI-01) — `tools/capture_ui.gd` turns vsync
   off and caps the frame rate (`PACED_FPS`) in `_initialize`, before its run; a vsynced window
   in a locked session presents at ~1 Hz and the vi capture went over its 900 s budget.

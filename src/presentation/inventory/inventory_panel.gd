@@ -1,70 +1,52 @@
-extends PanelContainer
+extends UIBookPanel
 class_name InventoryPanel
 ## InventoryPanel — Aetheria presentation (the bag, opened with the `inventory` key, Phase 13).
 ##
-## A bounded side panel like the sect panel (same frame, same hierarchy: title → rows → the
-## selected item's description → the keys); only the rows scroll, the rest is pinned.
+## The satchel is the first page of the centred book (`UIBookPanel`, UI-02): the character's
+## sheet in a column on the left — the figure, what it wears, the numbers combat reads — and on
+## the right the list of what is carried, the selected item's description under it, pinned. Only
+## the rows scroll. The book's frame, title, close key and keys line are the book's.
 ## KEYBOARD FIRST: the semantic move_up / move_down actions choose a row, `interact` uses it,
-## `inventory` closes — read through `InputService.is_modal_action_just_pressed` while the HUD
-## holds a UI_MODAL context, so the player does not walk while choosing a pill. It decides
+## `inventory` or Esc closes — read through `InputService.is_modal_action_just_pressed` while the
+## HUD holds a UI_MODAL context, so the player does not walk while choosing a pill. It decides
 ## nothing: a use is REQUESTED (`use_requested`) and the `InventoryRuntime` decides; the outcome
 ## comes back as a new view and a HUD notice.
 
 ## `equipped`: the row was something worn (WorldRuntime takes it off instead of using it).
 signal use_requested(item_id: StringName, equipped: bool)
 
-const PANEL_MIN_WIDTH := 300
-
-var _loc: Node = null
-var _input: Node = null
-var _title: Label
 var _list: VBoxContainer
 var _scroll: ScrollContainer
 var _empty: Label
 var _desc: Label
-var _keys: Label
 var _view: InventoryView = null
 var _selected: int = 0
 var _card: CharacterCard = null
 
 
 func _ready() -> void:
-	_loc = get_node_or_null("/root/Localization")
-	_input = get_node_or_null("/root/InputService")
-	add_theme_stylebox_override("panel", UITheme.panel_stylebox())
-	custom_minimum_size = Vector2(PANEL_MIN_WIDTH, 0)
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Only the ROWS scroll. The title above and the selected item's description + keys below
-	# are pinned: on a short screen a whole-panel scroll cut the description mid-line at the
-	# frame's edge — the one text the player opened the satchel to read.
-	var column := VBoxContainer.new()
-	column.name = "Column"
-	column.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(column)
-	_title = _label(UIPalette.FONT_SIZE_SUBTITLE, UIPalette.COLOR_TITLE)
-	column.add_child(_title)
-	column.add_child(UITheme.ornament_divider())
+	super()
 	# WHO is carrying it, beside WHAT is carried: the body as drawn, what it wears and the
 	# numbers combat reads stand in a column of their own, pinned; the list is to its right.
 	var sheet := HBoxContainer.new()
 	sheet.name = "Sheet"
-	sheet.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sheet.add_theme_constant_override("separation", UIPalette.SPACE_MD)
+	sheet.add_theme_constant_override("separation", UIPalette.BOOK_COLUMN_GAP)
 	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	column.add_child(sheet)
 	_card = CharacterCard.new()
 	_card.name = "CharacterCard"
 	_card.tall = true
 	_card.custom_minimum_size.x = UIPalette.SHEET_FIGURE_COLUMN
 	_card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	sheet.add_child(_card)
-	column = VBoxContainer.new()
+	var column := VBoxContainer.new()
 	column.name = "Carried"
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", UIPalette.SPACE_SM)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sheet.add_child(column)
+	# Only the ROWS scroll. The selected item's description below them is pinned: on a short
+	# screen a whole-panel scroll cut the description mid-line at the frame's edge — the one
+	# text the player opened the satchel to read.
 	var box := UITheme.scroll_body(column)
 	_scroll = box.get_parent().get_parent() as ScrollContainer
 	_list = VBoxContainer.new()
@@ -74,14 +56,12 @@ func _ready() -> void:
 	_empty = _label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TEXT_MUTED)
 	box.add_child(_empty)
 	column.add_child(UITheme.ornament_divider())
-	_desc = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_TEXT_MUTED)
+	_desc = _label(UIPalette.FONT_SIZE_BODY, UIPalette.COLOR_TEXT)
 	_desc.name = "Description"
 	_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_desc)
-	_keys = _label(UIPalette.FONT_SIZE_HINT, UIPalette.COLOR_ACCENT)
-	_keys.name = "Keys"
-	column.add_child(_keys)
-	set_process(false)
+	set_title_key("UI_INVENTORY_TITLE")
+	add_page("UI_INVENTORY_TITLE", sheet)
 	refresh()
 
 
@@ -137,7 +117,8 @@ func request_use() -> void:
 
 
 ## Read the modal keys while open (the HUD turns processing on and off with visibility).
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	super(delta)
 	if _input == null or not visible:
 		return
 	if _input.call("is_modal_action_just_pressed", &"move_up"):
@@ -149,9 +130,9 @@ func _process(_delta: float) -> void:
 
 
 func refresh() -> void:
-	if _title == null:
+	if _list == null:
 		return
-	_title.text = _t("UI_INVENTORY_TITLE")
+	refresh_book_text()
 	if _card != null:
 		_card.set_body(_view.body_profile if _view != null else null)
 		_card.set_worn(_view.rows if _view != null else ([] as Array[Dictionary]))
@@ -171,11 +152,10 @@ func refresh() -> void:
 		_desc.text = ""
 	else:
 		_desc.text = _t(String(rows[_selected]["desc_key"]))
-	var use_key: String = String(_input.call("get_action_display_label", &"interact")) \
-		if _input != null else "E"
-	var close_key: String = String(_input.call("get_action_display_label", &"inventory")) \
-		if _input != null else "I"
-	_keys.text = _t_args("UI_INVENTORY_KEYS", {"use": use_key, "close": close_key})
+	# The close key is the book's (in its header); this line says what the page's keys do.
+	set_keys_text(_t_args("UI_INVENTORY_KEYS", {
+		"move": "%s/%s" % [_key_label(&"move_up"), _key_label(&"move_down")],
+		"use": _key_label(&"interact")}))
 
 
 func _reveal_selected() -> void:
@@ -188,44 +168,23 @@ func _reveal_selected() -> void:
 
 
 func _row(row: Dictionary, selected: bool) -> Control:
-	var frame := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(UIPalette.COLOR_ACCENT, 0.22) if selected else Color(0, 0, 0, 0)
-	style.border_color = UIPalette.COLOR_ACCENT if selected else Color(0, 0, 0, 0)
-	style.set_border_width_all(1 if selected else 0)
-	style.set_content_margin_all(2)
-	frame.add_theme_stylebox_override("panel", style)
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var plate := PanelContainer.new()
+	plate.add_theme_stylebox_override("panel", UITheme.selection_stylebox(selected))
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", UIPalette.SPACE_SM)
-	frame.add_child(line)
+	line.add_theme_constant_override("separation", UIPalette.SPACE_MD)
+	plate.add_child(line)
 	# The item in the kit's slot — the same family as the technique dock (D-062).
 	line.add_child(UITheme.icon_slot(row["icon"]))
-	var name_label := _label(UIPalette.FONT_SIZE_BODY,
+	var name_label := _label(UIPalette.BOOK_ROW_FONT_SIZE,
 		UIPalette.COLOR_TEXT if row["usable"] else UIPalette.COLOR_TEXT_MUTED)
 	name_label.text = _t(String(row["name_key"]))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.add_child(name_label)
-	var count := _label(UIPalette.FONT_SIZE_BODY, UIPalette.GOLD_PRIMARY)
+	var count := _label(UIPalette.BOOK_ROW_FONT_SIZE, UIPalette.GOLD_PRIMARY)
 	count.text = _t("UI_INVENTORY_WORN") if bool(row.get("equipped", false)) \
 		else "×%d" % int(row["count"])
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.add_child(count)
-	return frame
-
-
-func _label(size: int, colour: Color) -> Label:
-	var label := Label.new()
-	label.add_theme_font_size_override("font_size", size)
-	label.add_theme_color_override("font_color", colour)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
-
-
-func _t(key: String) -> String:
-	return String(_loc.call("t", key)) if _loc != null else key
-
-
-func _t_args(key: String, args: Dictionary) -> String:
-	return String(_loc.call("t_args", key, args)) if _loc != null else key
+	return plate

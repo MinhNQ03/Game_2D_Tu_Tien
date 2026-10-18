@@ -528,6 +528,18 @@ static func inset_stylebox() -> StyleBox:
 	return _fallback_surface_flat(UIPalette.COLOR_SURFACE_PRESSED)
 
 
+## A row (or a book's tab) that the move keys choose: the chosen one is lit with a jade wash under
+## a jade hairline — interaction's colour — and the rest are clear. The padding is the same
+## either way, so choosing never moves the text.
+static func selection_stylebox(selected: bool, pad: int = UIPalette.BOOK_ROW_PAD) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(UIPalette.COLOR_ACCENT, 0.22) if selected else Color(0, 0, 0, 0)
+	style.border_color = UIPalette.COLOR_ACCENT if selected else Color(0, 0, 0, 0)
+	style.set_border_width_all(1 if selected else 0)
+	style.set_content_margin_all(pad)
+	return style
+
+
 ## StyleBox for the key badge (the "E"/"Esc" keycap): the kit's raised lacquer cap with a jade
 ## edge. Opaque under the glyph (a keycap needs a solid face); the lip is never stretched.
 ## `compact`: the keycap that sits ON something (a dock slot's corner) — the same cap, tighter

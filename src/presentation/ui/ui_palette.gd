@@ -152,11 +152,30 @@ const HUD_MARGIN := 18
 ## disagree and jump as content changes.
 const SIDE_PANEL_WIDTH := 330
 ## The satchel is a SHEET: the character's figure in a column beside the list of what is
-## carried. Wider than a reading panel, and it may be — it is modal (the player does not walk
-## while choosing), so the playfield it covers is not being played on.
-const SHEET_FIGURE_COLUMN := 136
-## 460 px: its right edge stays left of where a centred notice of ordinary length begins.
-const SHEET_PANEL_WIDTH := SIDE_PANEL_WIDTH + SHEET_FIGURE_COLUMN - 6
+## carried. 240 px since UI-02: the sheet lives in the centred book, and the figure's stage,
+## its two slots and the three numbers read as a column of their own, not squeezed beside it.
+const SHEET_FIGURE_COLUMN := 240
+
+## THE CENTRED BOOK (UI-02): a modal reading surface in the middle of the screen — the satchel
+## first, the learned-knowledge book next (`UIBookPanel`). It is sized by the VIEWPORT, never by
+## its content: `BOOK_WIDTH_FRACTION` of the width (921 px at 1280), and the height between two
+## equal insets, so it is centred both ways at 16:9 and 16:10 alike. The inset is the bottom
+## strip the control prompts own: the book stops above it and the HUD notice drops into it, so
+## the result of a use is read BESIDE the book, not under it. Modal, so it may cover the
+## playfield clear zone and the top plaques — the player chose to read instead of play.
+const BOOK_WIDTH_FRACTION := 0.72
+const BOOK_SCREEN_INSET := HUD_MARGIN + PROMPT_STRIP_RESERVE
+## The ink laid over the world behind the book: the deep ground, dimmed enough that the frame is
+## the only thing on screen, light enough that the place is still there.
+const BOOK_SCRIM := Color(COLOR_BACKGROUND_DEEP, 0.62)
+## The book's type is a step up from a side panel's: read for a while, at arm's length.
+const BOOK_TITLE_FONT_SIZE := FONT_SIZE_BUTTON
+const BOOK_TAB_FONT_SIZE := FONT_SIZE_SUBTITLE
+const BOOK_ROW_FONT_SIZE := FONT_SIZE_SUBTITLE
+## Padding inside a selectable row (and a tab), so a 20 px name and its 40 px slot breathe.
+const BOOK_ROW_PAD := SPACE_SM
+## The gap between the figure column and the list.
+const BOOK_COLUMN_GAP := SPACE_LG
 ## Under a figure drawn in a panel's well (the character card): ink, mostly transparent.
 const FIGURE_CONTACT_SHADOW := Color(0.02, 0.03, 0.05, 0.45)
 ## The dais a figure stands on in the satchel's stage: the plate's own blue-grey a tone up

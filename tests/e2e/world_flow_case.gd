@@ -1382,6 +1382,20 @@ func _prove_inventory(main: Node, player: Node2D, map: Node) -> void:
 		if not hud.is_inventory_open():
 			break
 	assert_false(hud.is_inventory_open(), "the key closed it")
+	# UI-02: the satchel is the centred book, and Esc steps back ONE level — it closes the book
+	# and asks nothing about leaving the game.
+	for _attempt in 6:
+		await _fire_action(&"inventory")
+		if hud.is_inventory_open():
+			break
+	assert_true(hud.is_inventory_open(), "the satchel opened again")
+	for _attempt in 6:
+		if not hud.is_inventory_open():
+			break
+		await _fire_action(&"open_menu")
+	assert_false(hud.is_inventory_open(), "a real Esc closed the book")
+	assert_eq(hud.session_prompt_kind(), GameplayHUD.PROMPT_NONE,
+		"and asked nothing about leaving — one press, one level")
 	var input := scene_tree.root.get_node_or_null("InputService")
 	assert_true(bool(input.call("is_gameplay_active")), "and input is back with the world")
 

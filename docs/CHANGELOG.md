@@ -8,6 +8,37 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-18 — UI-02: the satchel opens as a large centred book (`feat/ui-readability-autopilot`; not a phase)
+
+- **A reusable centred book.** `UIBookPanel` (`src/presentation/ui/components/ui_book_panel.gd`)
+  is a modal reading surface: a scrim over the world and one framed page sized by the viewport
+  (`BOOK_WIDTH_FRACTION` 0.72 of the width, 921 px at 1280; the height between two equal
+  `BOOK_SCREEN_INSET`s, 72 px), centred at 16:9 and 16:10. Title with the one close key (Esc)
+  beside it, a tab strip shown only when there is more than one page (move-left / move-right
+  turn it), the page, then the page's keys. It decides nothing; the HUD opens and closes it.
+  The learned-knowledge book (ui-03) is meant to reuse it.
+- **The satchel is its first page.** `InventoryPanel` extends the book: the character sheet in a
+  240 px column (`SHEET_FIGURE_COLUMN`, was 136) beside the list. Item rows and their counts
+  are 20 px (`BOOK_ROW_FONT_SIZE`, were 16), the description and the keys line 16 px (were 14),
+  and the title 22 px. In the book's column the sheet's slot names and stat names are 16 px
+  (were 14) and the stat numbers 20 px (were 16); the Chronicle's band keeps its hint size. The keys line names choose and use (`UI_INVENTORY_KEYS` now
+  `{move} Choose · {use} Use`); the close key is the book's. `SHEET_PANEL_WIDTH` is gone.
+- **Modal, one level at a time.** Opening the book closes every side panel (the journal and the
+  Chronicle too), draws it over the HUD, and hands the keys to it as before (UI_MODAL); Esc or
+  the satchel key closes it and asks nothing about leaving. The HUD notice drops into the strip
+  under the book while it is open (in front of the scrim), so the result of a use is read at
+  once, and goes back to its own band and layer on close. All of it runs through one HUD seam
+  (`_open_book` with `_open_book_surface` / `_close_book`), so the next book is one more caller.
+- `tests/unit/presentation/test_book_panel.gd` (new): the satchel book at 1280x720 and 1280x800 in
+  vi and en, with the whole catalog in it and each description selected in turn — its frame is
+  exactly the box the screen gives it (nothing pushed it), centred, at least 60% wide, every
+  label whole inside it and the body text at body size or above; the tabs turn and wrap; the
+  component names no gameplay; the open satchel is modal and Esc closes it; the notice clears
+  the book at both aspect ratios. `test_inventory_panel.gd` now uses a 1280x720 screen and the
+  book's frame; the HUD side-panel tests count five side panels; the world E2E closes the
+  satchel with a real Esc.
+- The capture run's 09 (satchel) and 11 (satchel worn) frames show the book.
+
 ### 2026-10-17 — UI-01: every dialogue line, name and answer shown whole (`feat/ui-readability-autopilot`; not a phase)
 
 - **Nothing said is cut.** The dialogue box no longer clips the speaker's title or any answer

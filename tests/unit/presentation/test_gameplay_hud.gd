@@ -88,11 +88,13 @@ func test_hud_prompts_use_graphic_badges_with_display_labels() -> void:
 	# proving a graphic treatment, not floating text. FIVE prompts are built (attack, interact,
 	# sect, politics, menu) and interact is visible here, so all five carry a badge — the old
 	# ">= 2 (interact + menu)" was written when the strip had two rows and had stopped
-	# describing the HUD three prompts ago.
-	assert_eq(_key_badge_count(hud), 7,
+	# describing the HUD three prompts ago. The closed satchel book (UI-02) is not counted: its
+	# close and turn keys and its tab are the book's own, asserted in `test_book_panel.gd`.
+	var badges := _key_badge_count(hud, hud.inventory_panel())
+	assert_eq(badges, 7,
 		("each of the seven prompts (attack, interact, cultivate, pet, sect, politics, menu) has a "
 			+ "graphic "
-			+ "key badge, got %d") % _key_badge_count(hud))
+			+ "key badge, got %d") % badges)
 	free_node(hud)
 
 
@@ -199,12 +201,15 @@ func _all_label_text(node: Node) -> Array:
 
 
 ## Count key-badge chips: PanelContainers whose only child is a Label (the UIKeyBadge shape).
-func _key_badge_count(node: Node) -> int:
+## `skip`: a subtree left out of the count.
+func _key_badge_count(node: Node, skip: Node = null) -> int:
+	if node == skip:
+		return 0
 	var n := 0
 	if node is PanelContainer and node.get_child_count() == 1 and node.get_child(0) is Label:
 		n += 1
 	for child in node.get_children():
-		n += _key_badge_count(child)
+		n += _key_badge_count(child, skip)
 	return n
 
 
@@ -416,14 +421,12 @@ func test_side_panels_are_bounded_boxes_not_content_sized() -> void:
 		assert_eq(int(panel.offset_bottom),
 			-(UIPalette.HUD_MARGIN + UIPalette.PROMPT_STRIP_RESERVE),
 			"and stops short of the bottom so the control prompts are never covered")
-		# Its width is fixed by the anchors, so content can never widen it either. The satchel
-		# is a SHEET (figure column + list) since the UI refresh: a different named token,
-		# the same rule — a width that is a constant, never the content's.
-		var named_width := UIPalette.SHEET_PANEL_WIDTH if panel is InventoryPanel \
-			else UIPalette.SIDE_PANEL_WIDTH
-		assert_eq(int(absf(panel.offset_right - panel.offset_left)), named_width,
+		# Its width is fixed by the anchors, so content can never widen it either.
+		assert_eq(int(absf(panel.offset_right - panel.offset_left)), UIPalette.SIDE_PANEL_WIDTH,
 			"'%s' takes its width from a named token, not from its content" % panel.name)
-	assert_eq(side_panels, 6, ("all six side panels (sect, politics, satchel, shop, journal, "
+	# The satchel left the edge for the centred book (UI-02); `test_book_panel.gd` holds it to
+	# the same rule — a box the screen defines — at both aspect ratios.
+	assert_eq(side_panels, 5, ("all five side panels (sect, politics, shop, journal, "
 		+ "chronicle) are bounded boxes (got %d)")
 			% side_panels)
 	free_node(hud)
@@ -623,7 +626,9 @@ func test_side_panels_scroll_their_content() -> void:
 		assert_eq(int(scroll.mouse_filter), int(Control.MOUSE_FILTER_STOP),
 			"and it accepts mouse input, or the wheel passes through and clipped content "
 				+ "becomes unreachable (every other node in the panel is IGNORE)")
-	assert_eq(scrollers, 6, "all six side panels scroll (got %d)" % scrollers)
+	# Five: the satchel is the centred book now (UI-02), and its rows scroll inside the book's
+	# page (`test_inventory_panel.gd`).
+	assert_eq(scrollers, 5, "all five side panels scroll (got %d)" % scrollers)
 	free_node(hud)
 
 

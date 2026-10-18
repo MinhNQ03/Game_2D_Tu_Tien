@@ -190,7 +190,9 @@ KNOW_LOI_CHI_NAME,Thunder Finger,Lôi Chỉ
 KNOW_LOI_CHI_DESC,How to gather qi to a fingertip and loose it as a bolt that numbs what it hits.,"Cách dồn khí về đầu ngón tay, phóng thành tia sét làm tê liệt thứ trúng phải."
 UI_INVENTORY_TITLE,Satchel,Túi đồ
 UI_INVENTORY_EMPTY,The satchel is empty.,Túi trống không.
-UI_INVENTORY_KEYS,{use} Use · {close} Close,{use} Dùng · {close} Đóng
+UI_INVENTORY_KEYS,{move} Choose · {use} Use,{move} Chọn · {use} Dùng
+UI_BOOK_CLOSE,Close,Đóng
+UI_BOOK_TURN,Turn the page,Lật trang
 UI_HUD_INVENTORY_ACTION,Satchel,Túi đồ
 UI_ITEM_GAINED,Gained: {name} ×{count}  ({key} satchel),Nhận được: {name} ×{count}  ({key} túi đồ)
 UI_ITEM_USED,Used: {name},Đã dùng: {name}
