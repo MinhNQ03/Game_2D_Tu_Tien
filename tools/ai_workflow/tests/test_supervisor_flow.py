@@ -690,6 +690,25 @@ class Budgets(RepoCase):
         for r in reviews:
             self.assertLessEqual(r, 1.0 + 1e-9)
 
+    def test_parallel_reviewers_share_the_task_cap_not_overrun_it(self):
+        # four reviewers in parallel under a binding per-task cap: their caps sum to what is left
+        self.cfg_raw["permissions"]["max_parallel_reviewers"] = 4
+        self.cfg_raw["reviewers"]["art"] = {"agent": "aetheria-art-reviewer", "triggers": ["pkg/**"]}
+        self.cfg_raw["reviewers"]["ui_ux"]["triggers"] = ["pkg/**"]
+        self.write_config()
+        sh(self.repo, "git", "add", "-A")
+        sh(self.repo, "git", "commit", "-q", "-m", "cfg")
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}, "usd": 4.0}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()],
+                           "review:ui_ux": [review_pass()], "review:art": [review_pass()]})
+        s = self.sup(push=False, max_usd_run=500.0)
+        s.init_campaign(self.campaign([item("t1")], budget={"max_usd_per_task": 8.0}), "test", False)
+        s.run()
+        reviews = [float(c["argv"][c["argv"].index("--max-budget-usd") + 1]) for c in self.calls()
+                   if c["kind"].startswith("review")]
+        self.assertEqual(len(reviews), 4)
+        self.assertLessEqual(sum(reviews), 4.0 + 1e-6)  # 8 cap - 4 spent by the implement call
+
     def test_wall_clock_budget(self):
         self._scen()
         _, rc = self.start([item("t1")], wall_clock_minutes=1.0, push=False)  # below the 25-min stage floor

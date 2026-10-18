@@ -78,6 +78,29 @@ def prior_work(state: dict, item: dict) -> str:
     return "\n".join(rows) or "- (none: this is the first item of the campaign)"
 
 
+def run_commands(cfg) -> str:
+    """The exact command lines the worker's Bash allowlist accepts (`{godot} --headless --path . *`,
+    `{godot} --path . *`, `{python} tools/*`): anything else — a `timeout` prefix, `~/…`, `godot4` —
+    is denied and the check silently never runs."""
+    g = cfg.godot_bin()
+    py = cfg.python()
+    lines = ["Exact commands (run them exactly like this: no `timeout`/`env` prefix, no `~`, no other",
+             "Godot name; pipe only into grep, tail or head; the permission allowlist denies anything else):",
+             f"- lint: `{py} tools/gdscript_lint.py`"]
+    if g:
+        lines += [f"- import (after adding a script/class): `{g} --headless --path . --import`",
+                  f"- parse: `{g} --headless --path . -s res://tools/parse_check.gd`",
+                  f"- one test file or several (path substrings): `{g} --headless --path . -s res://tests/run_tests.gd -- test_name_part`",
+                  f"- whole suite: `{g} --headless --path . -s res://tests/run_tests.gd`",
+                  f"- an E2E flow: `{g} --headless --path . -s res://tests/e2e/run_dialogue_flow.gd` (or run_<flow>_flow.gd)",
+                  f"- a real-window capture (out-dir under /tmp: captures are evidence, never shipped files; "
+                  f"no display means report it, do not work around it): "
+                  f"`{g} --path . --resolution 1280x720 -s res://tools/capture_ui.gd -- vi /tmp/<out-dir>`"]
+    else:
+        lines.append("- Godot was not found on this machine: say so; do not claim Godot checks PASS")
+    return "\n".join(lines)
+
+
 def render_task_prompt(cfg, state: dict, item: dict, base_sha: str, branch: str) -> str:
     og = gates.open_gates(cfg)
     gate_lines = [f"{g.id} — OPEN ({g.source}); blocks {', '.join(g.blocks_scopes) or 'n/a'}. "
@@ -120,8 +143,9 @@ presentation → gameplay → domain → data (`.kiro/steering/03-architecture.m
 
 ## Required checks
 The supervisor will run: {', '.join(checks) or 'the checks triggered by your changed paths'} plus the
-always-on gates. You may run them yourself (commands in `tools/ai_workflow/autopilot_config.json`,
-Godot at the path in `environment.godot_bin_candidates`). A check you did not run is not PASS.
+always-on gates. Run the relevant ones yourself BEFORE you report: a test you wrote but never ran
+costs a whole fix round. A check you did not run is not PASS.
+{run_commands(cfg)}
 
 ## Constraints
 {_bullets(item.get('constraints', []) + ['data-driven, localised (vi + en) player-facing text; no hard-coded UI strings', 'no new autoload (budget frozen, D-017)', 'visual work follows .claude/skills/aetheria-visual-craft and is judged from real captures', 'never weaken or delete a valid test to get green'])}

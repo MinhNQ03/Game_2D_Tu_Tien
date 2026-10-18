@@ -400,6 +400,56 @@ class ShippedLimits(unittest.TestCase):
         self.assertTrue(bud["require_explicit_budget_for_billable_runs"])
 
 
+class WorkerRunCommands(RepoCase):
+    godot = True
+
+    def test_worker_gets_the_validation_display(self):
+        os.environ["DISPLAY"] = ":77"
+        s = self.sup()
+        self.assertEqual(s.worker_env(new_item(item("t1")))["DISPLAY"], ":77")
+
+    def test_no_display_is_omitted_never_blanked(self):
+        os.environ.pop("DISPLAY", None)
+        self.cfg_raw["environment"]["display_fallback"] = ":99"  # no X socket for :99 here
+        self.write_config()
+        self.assertNotIn("DISPLAY", self.sup().worker_env(new_item(item("t1"))))
+
+    def test_every_command_the_prompt_names_is_one_the_worker_may_run(self):
+        """ui-01 lost a fix round because the worker could not run Godot: its guesses (`timeout …`,
+        `~/…`, `godot4`) fell outside the allowlist. The prompt now names exact commands; each must
+        match a worker Bash allow pattern after the supervisor's own expansion."""
+        import fnmatch
+        import re as _re
+        from autopilot.prompts import run_commands
+        s = self.sup()
+        cfg = self.cfg()
+        text = run_commands(cfg)
+        cmds = _re.findall(r"`([^`]+)`", text)
+        cmds = [c for c in cmds if " " in c]  # every command, not only the ones that look right
+        self.assertGreaterEqual(len(cmds), 7, text)
+        pats = [s._expand(b) for b in cfg.raw["permissions"]["worker_bash_allow"]]
+        globs = [p[:-2] + "*" if p.endswith(":*") else p for p in pats]
+        for c in cmds:
+            self.assertTrue(any(fnmatch.fnmatchcase(c, g) for g in globs), f"not allowlisted: {c}")
+        self.assertIn(str(self.tmp / "fakegodot"), text)
+        # (fnmatch is a prefix check here: the strings are fixed, so `*` matching `;` is moot)
+        # the commands reach the worker: in the task prompt, and in the fix prompt built from it
+        from autopilot import prompts
+        from autopilot.state import empty_state, new_item
+        st = empty_state({"id": "c", "branch": "feat/test", "base_sha": self.base, "mode": "test"})
+        it = new_item(item("t1"))
+        task = prompts.render_task_prompt(cfg, st, it, self.base, "feat/test")
+        self.assertIn(text, task)
+        self.assertIn(text, prompts.render_fix_prompt(it, task, [], {}, 1))
+        self.assertNotIn("timeout ", text.split("\n", 2)[2])
+
+    def test_no_godot_is_said_plainly(self):
+        from autopilot.prompts import run_commands
+        self.cfg_raw["environment"]["godot_bin_candidates"] = ["/nonexistent/godot"]
+        self.write_config()
+        self.assertIn("Godot was not found", run_commands(self.cfg()))
+
+
 class Lock(unittest.TestCase):
     def test_exclusive_and_crash_safe(self):
         d = Path(tempfile.mkdtemp())

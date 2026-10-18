@@ -71,6 +71,7 @@ class Supervisor:
         self.agent_snapshot: dict[str, str] = {}
         self.mu = threading.RLock()  # parallel reviewers share the state document
         self.reserved_usd = 0.0      # caps handed to invocations still running
+        self.reserved_by_item: dict[str, float] = {}  # the same, per item (parallel reviewers)
 
     # ===== campaign creation =====================================================================
     def init_campaign(self, campaign_file: Path, mode: str, activate: bool) -> dict:
@@ -181,7 +182,7 @@ class Supervisor:
             if len(it["invocations"]) >= lim["max_invocations_per_task"]:
                 raise Stop("invocation_budget_task", f"{iid}: {len(it['invocations'])} invocations", EXIT_LIMIT)
             if b.get("max_usd_per_task") is not None:
-                caps.append(b["max_usd_per_task"] - it["usd_estimated"])
+                caps.append(b["max_usd_per_task"] - it["usd_estimated"] - self.reserved_by_item.get(iid, 0.0))
         if b.get("max_usd_per_run") is not None:
             caps.append(b["max_usd_per_run"] - run["usd_estimated"] - self.reserved_usd)
         if b.get("max_usd_per_campaign") is not None:
@@ -216,12 +217,17 @@ class Supervisor:
                 self._remote_unverifiable(iid, f"before the {inv.role} invocation (nothing was launched)", e)
             marker = self._invocation_start(iid, inv, cap)
             self.reserved_usd += cap or 0.0
+            if iid is not None:
+                self.reserved_by_item[iid] = self.reserved_by_item.get(iid, 0.0) + (cap or 0.0)
         try:
             res = self.runner.run(inv)
-        finally:
+        except BaseException:
             with self.mu:
-                self.reserved_usd -= cap or 0.0
+                self._release(iid, cap)
+            raise
         with self.mu:
+            # released in the same locked block that records the spend: no thread can see neither
+            self._release(iid, cap)
             after_err: RemoteReadError | None = None
             try:
                 try:
@@ -264,6 +270,15 @@ class Supervisor:
             if pending is not None:
                 raise pending
             return out
+
+    def _release(self, iid: str | None, cap: float | None) -> None:
+        self.reserved_usd -= cap or 0.0
+        if iid is not None:
+            left = self.reserved_by_item.get(iid, 0.0) - (cap or 0.0)
+            if abs(left) < 1e-9:
+                self.reserved_by_item.pop(iid, None)
+            else:
+                self.reserved_by_item[iid] = left
 
     @staticmethod
     def _remote_kind(err: GitError) -> str:
@@ -383,6 +398,8 @@ class Supervisor:
             allowed = allowed + self.cfg.paths["policy"]
         return {"AETHERIA_AUTOPILOT_ALLOWED_PATHS": json.dumps(allowed),
                 "AETHERIA_AUTOPILOT_ITEM_KIND": item.get("kind", "task"),
+                # the capture command the prompt names needs the same X display validation uses
+                **({"DISPLAY": self.cfg.display()} if self.cfg.display() else {}),
                 # a worker has no git credentials: a push from any tool it runs fails to authenticate
                 "GIT_TERMINAL_PROMPT": "0", "GIT_ASKPASS": "/bin/false", "SSH_ASKPASS": "/bin/false",
                 "GIT_SSH_COMMAND": "false", "GH_TOKEN": None, "GITHUB_TOKEN": None, "GH_ENTERPRISE_TOKEN": None,

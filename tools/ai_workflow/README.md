@@ -51,7 +51,10 @@ Windows: the same commands with `py -3`; the lock uses `msvcrt`. Captures need a
   (`--max-usd-run`). The figure is the CLI's `total_cost_usd`: a **list-price estimate**; on a
   subscription it is not what is billed. Parallel reviewers split the remaining cap.
 - `permissions` — the worker's tool set, Bash allowlist and denylist (no commit/push/reset/
-  clean/checkout/stash/rm/curl/gh/claude). Writes are path-scoped: `Edit(./<allowed>)`.
+  clean/checkout/stash/rm/curl/gh/claude). Writes are path-scoped: `Edit(./<allowed>)`. The task
+  prompt names the exact allowlisted check commands (absolute Godot path, no `timeout`/`~`), so a
+  worker runs its tests before reporting instead of costing a fix round; up to 4 reviewers run
+  in parallel and split the remaining USD cap.
 - `checks` — the real project gates (lint, catalogs, docs, Godot import/parse/boot/suite, the
   eight E2E flows) with CI's `SCRIPT ERROR` and leak patterns; selected by changed paths.
 - `reviewers` — ten specialists, triggered by paths; architecture and QA always run.
@@ -128,7 +131,7 @@ recorded baseline; every checkpoint names its policy fingerprint; rollback is `g
 
 ## 8. Testing the orchestrator
 
-`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` (119 tests) — scripted CLI
+`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` (124 tests) — scripted CLI
 (`tests/fake_claude.py`, never presented as a real model), throwaway repos with a bare local
 remote. Covers: rejection→fix→re-review→checkpoint→push→next task; cycle limit; owner gates (and a
 worker trying to close one); SIGTERM mid-implementation + resume; concurrent supervisor refused;

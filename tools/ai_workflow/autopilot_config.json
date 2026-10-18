@@ -81,7 +81,7 @@
   },
 
   "permissions": {
-    "max_parallel_reviewers": 2,
+    "max_parallel_reviewers": 4,
     "worker_tools": ["Read", "Grep", "Glob", "Edit", "Write", "Bash", "Skill", "TodoWrite"],
     "worker_bash_allow": [
       "git status:*", "git diff:*", "git log:*", "git show:*", "git ls-files:*", "git blame:*",
