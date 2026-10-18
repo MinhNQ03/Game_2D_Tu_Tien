@@ -16,7 +16,8 @@ from tests.helpers import AI, FAKE, MODEL, REAL_REPO as REAL, RepoCase, item, sh
 
 from autopilot import gates, prompts, review
 from autopilot.claude_runner import ClaudeRunner, Invocation, check_schema
-from autopilot.gitops import Git, GitSafetyError
+from autopilot.gitops import (Git, GitError, GitSafetyError, RemoteReadError, RemoteUnavailable,
+                              remote_error_is_transient)
 from autopilot.lock import LockHeld, RepoLock
 from autopilot.state import (StateError, StateStore, TransitionError, empty_state, new_item, transition,
                              validate_state)
@@ -201,6 +202,202 @@ class GitAllowlist(RepoCase):
         self.w("pkg/n.py", "2\n")
         c = g.tree_fingerprint()
         self.assertEqual(len({a, b, c}), 3)
+
+
+NET_DOWN = "fatal: unable to access 'https://github.com/o/r.git/': Could not resolve host: github.com\n"
+AUTH_DENIED = "remote: Invalid username or password.\nfatal: Authentication failed for 'https://github.com/o/r.git/'\n"
+
+
+def scripted_runner(git, replies):
+    """Answer `git ls-remote` with the scripted (rc, stderr) replies in order; run everything else."""
+    real, calls = git._runner, []
+
+    def run(argv, env):
+        if argv[1:2] == ["ls-remote"]:
+            calls.append(argv)
+            if replies:
+                rc, err = replies.pop(0)
+                if rc:
+                    return rc, "", err
+        return real(argv, env)
+    git._runner = run
+    git._sleep = lambda s: None
+    return calls
+
+
+class RemoteReads(RepoCase):
+    def test_transient_failures_are_retried_then_answered(self):
+        g = Git(self.repo)
+        calls = scripted_runner(g, [(128, NET_DOWN), (128, NET_DOWN)])
+        self.assertEqual(g.remote_heads("origin"), sh(self.repo, "git", "ls-remote", "--heads", "origin") + "\n")
+        self.assertEqual(len(calls), 3)
+
+    def test_backoff_between_attempts(self):
+        g = Git(self.repo)
+        scripted_runner(g, [(128, NET_DOWN)] * 3)
+        slept = []
+        g._sleep = slept.append
+        with self.assertRaises(RemoteUnavailable):
+            g.remote_heads("origin")
+        self.assertEqual(slept, [3.0, 10.0])
+
+    def test_a_stalled_read_is_a_retried_network_failure(self):
+        g = Git(self.repo)
+        real, n = g._runner, []
+
+        def run(argv, env):
+            if argv[1:2] == ["ls-remote"]:
+                n.append(env.get("GIT_HTTP_LOW_SPEED_TIME"))
+                raise subprocess.TimeoutExpired(argv, 600)
+            return real(argv, env)
+        g._runner, g._sleep = run, (lambda s: None)
+        with self.assertRaises(RemoteUnavailable):
+            g.remote_heads("origin")
+        self.assertEqual(n, ["60"] * 3)
+
+    def test_persistent_network_failure_raises_never_an_empty_answer(self):
+        g = Git(self.repo)
+        calls = scripted_runner(g, [(128, NET_DOWN)] * 6)
+        with self.assertRaises(RemoteUnavailable):
+            g.snapshot("origin")
+        self.assertEqual(len(calls), 3)  # bounded: two retries, no more
+        with self.assertRaises(RemoteUnavailable):
+            g.remote_branch_sha("origin", "main")  # publish no longer reads a failure as "branch absent"
+
+    def test_a_refused_credential_is_not_retried_and_not_called_a_network_blip(self):
+        g = Git(self.repo)
+        calls = scripted_runner(g, [(128, AUTH_DENIED)] * 3)
+        with self.assertRaises(GitError) as cm:
+            g.remote_heads("origin")
+        self.assertNotIsInstance(cm.exception, RemoteUnavailable)
+        self.assertIsInstance(cm.exception, RemoteReadError)
+        self.assertEqual(len(calls), 1)
+        self.assertFalse(remote_error_is_transient("fatal: repository 'x' not found\n"))
+        self.assertFalse(remote_error_is_transient("Permission denied (publickey).\nfatal: Could not read from remote repository.\n"))
+        self.assertTrue(remote_error_is_transient("ssh: connect to host github.com port 22: Connection timed out\n"))
+        self.assertTrue(remote_error_is_transient("error: RPC failed; HTTP 502 curl 22 The requested URL returned error: 502\n"))
+
+
+class ConfigDigest(RepoCase):
+    """The worker git guard digests .git/config. VS Code's own merge-base bookkeeping is not a
+    worker writing git; every key git acts on still is."""
+
+    def _digest_after(self, *config_args):
+        g = Git(self.repo)
+        before = g._git_files_digest()
+        sh(self.repo, "git", "config", *config_args)
+        return before, g._git_files_digest()
+
+    def test_vscode_merge_base_is_not_a_git_write(self):
+        a, b = self._digest_after("branch.feat/test.vscode-merge-base", "origin/main")
+        self.assertEqual(a, b)
+        a, b = self._digest_after("branch.feat/test.vscode-merge-base", "origin/feat/other")  # changed value
+        self.assertEqual(a, b)
+
+    def test_the_campaign_branch_shape_seen_live(self):
+        # .git/config of feat/ui-readability-autopilot on 2026-10-17: VS Code added a whole section
+        cfgp = self.repo / ".git" / "config"
+        g = Git(self.repo)
+        before = g._git_files_digest()
+        cfgp.write_text(cfgp.read_text() + '[branch "feat/ui-readability-autopilot"]\n\tvscode-merge-base = origin/main\n')
+        self.assertEqual(before, g._git_files_digest())
+
+    def test_keys_git_acts_on_still_count(self):
+        for args in (("branch.feat/test.pushRemote", "evil"), ("branch.feat/test.remote", "evil"),
+                     ("core.hooksPath", "/tmp/evil"), ("core.vscode-merge-base", "x"),
+                     ("remote.vscode-merge-base.url", "/tmp/x")):
+            a, b = self._digest_after(*args)
+            self.assertNotEqual(a, b, args)
+
+    def _same_digest_with(self, extra: bytes) -> bool:
+        """Fresh baseline per case: is the digest unchanged once `extra` is appended?"""
+        cfgp = self.repo / ".git" / "config"
+        orig = cfgp.read_bytes()
+        g = Git(self.repo)
+        before = g._git_files_digest()
+        cfgp.write_bytes(orig + extra)
+        try:
+            return before == g._git_files_digest()
+        finally:
+            cfgp.write_bytes(orig)
+
+    def test_a_continued_vscode_value_is_kept(self):
+        # its only body line continues onto the next line: stripping it would empty the section
+        self.assertFalse(self._same_digest_with(b'[branch "feat/test"]\n\tvscode-merge-base = x\\\n'))
+        # (any backslash in the value keeps the line: VS Code never writes one)
+
+    def test_a_vscode_line_continuing_a_real_key_is_kept(self):
+        cfgp = self.repo / ".git" / "config"
+        orig = cfgp.read_bytes()
+        cfgp.write_bytes(orig + b'[branch "feat/test"]\n\tpushRemote = origin\\\n')
+        g = Git(self.repo)
+        before = g._git_files_digest()
+        cfgp.write_bytes(cfgp.read_bytes() + b"vscode-merge-base = evil\n")  # now part of pushRemote's value
+        self.assertNotEqual(before, g._git_files_digest())
+
+    def test_a_header_inside_a_continued_value_is_not_a_section(self):
+        cfgp = self.repo / ".git" / "config"
+        cfgp.write_bytes(cfgp.read_bytes() + b"[core]\n\tfoo = a\\\n")
+        self.assertFalse(self._same_digest_with(b'[branch "x"]\n\tvscode-merge-base = y\n'))
+
+    def test_headers_git_rejects_are_kept(self):
+        for extra in (b'[branch "x" ]\n', b'[ branch "x"]\n\tvscode-merge-base = y\n'):
+            try:
+                same = self._same_digest_with(extra)
+            except GitError:  # git refuses the file outright: loud, never a silent pass
+                same = False
+            self.assertFalse(same, extra)
+
+    def test_inline_key_on_a_header_is_kept(self):
+        self.assertFalse(self._same_digest_with(b'[branch "feat/test"] pushRemote = evil\n\tvscode-merge-base = y\n'))
+
+    def test_a_lone_cr_cannot_swallow_the_next_section(self):
+        # git reads `x\r[branch "main"]` as one value: the real section below would vanish
+        cfgp = self.repo / ".git" / "config"
+        orig = cfgp.read_bytes()
+        g = Git(self.repo)
+        sh(self.repo, "git", "config", "branch.main.merge", "refs/heads/main")
+        base = cfgp.read_bytes()
+        before = g._git_files_digest()
+        i = base.index(b'[branch "main"]')
+        cfgp.write_bytes(base[:i] + b'[branch "feat/test"]\n\tvscode-merge-base = x\r' + base[i:])
+        self.assertNotEqual(before, g._git_files_digest())
+        cfgp.write_bytes(orig)
+
+    def test_crlf_vscode_section_is_ignored(self):
+        self.assertTrue(self._same_digest_with(b'[branch "feat/test"]\r\n\tvscode-merge-base = origin/main\r\n'))
+
+    def test_vscode_writing_into_an_existing_empty_header(self):
+        cfgp = self.repo / ".git" / "config"
+        cfgp.write_bytes(cfgp.read_bytes() + b'[branch "feat/test"]\n')
+        a, b = self._digest_after("branch.feat/test.vscode-merge-base", "origin/main")
+        self.assertEqual(a, b)
+
+    def test_ancestry_checks_are_unchanged(self):
+        g = Git(self.repo)
+        self.w("pkg/x.py", "x\n")
+        sh(self.repo, "git", "add", "pkg/x.py")
+        sh(self.repo, "git", "commit", "-qm", "x")
+        self.assertTrue(g.is_ancestor(self.base, g.head()))
+        self.assertFalse(g.is_ancestor(g.head(), self.base))
+
+
+class ShippedLimits(unittest.TestCase):
+    def test_only_the_per_item_call_cap_was_raised(self):
+        cfg = json.loads((AI / "autopilot_config.json").read_text())
+        lim, bud = cfg["limits"], cfg["budget"]
+        self.assertEqual(lim, {
+            "max_review_fix_cycles": 3, "max_tasks_per_run": 10, "wall_clock_minutes_per_run": 240,
+            "stop_new_stage_when_minutes_left_below": 25, "max_invocations_per_task": 24,
+            "max_invocations_per_run": 90, "max_identical_failure_retries": 1,
+            "max_planner_generated_items_per_run": 3, "ci_poll_timeout_seconds": 1800, "ci_poll_interval_seconds": 60,
+            "invocation": {"implement": {"max_turns": 200, "timeout_seconds": 5400},
+                           "fix": {"max_turns": 150, "timeout_seconds": 3600},
+                           "review": {"max_turns": 80, "timeout_seconds": 1800},
+                           "plan": {"max_turns": 60, "timeout_seconds": 1500},
+                           "probe": {"max_turns": 1, "timeout_seconds": 180}}})
+        self.assertEqual((bud["max_usd_per_task"], bud["max_usd_per_run"], bud["max_usd_per_campaign"]), (None, None, None))
+        self.assertTrue(bud["require_explicit_budget_for_billable_runs"])
 
 
 class Lock(unittest.TestCase):

@@ -19,7 +19,7 @@ from pathlib import Path
 from . import gates, knowledge, prompts, review
 from .ci import CIUnavailable, GitHub, repo_slug
 from .claude_runner import ClaudeRunner, Invocation, InvocationResult
-from .gitops import Git, GitError, GitSafetyError
+from .gitops import Git, GitError, GitSafetyError, RemoteReadError, RemoteUnavailable
 from .lock import LockHeld, RepoLock
 from .state import (ACTIVE, BLOCKED_ENVIRONMENT, BLOCKED_OWNER, CHECKPOINTED, COMPLETE, FAILED,
                     FIX_REQUIRED, IN_PROGRESS, QUEUED, READY_FOR_CHECKPOINT, REVIEW_REQUIRED,
@@ -209,24 +209,48 @@ class Supervisor:
             if cap is not None and share < 1.0:
                 cap = cap * share if self.reserved_usd == 0 else min(cap, (cap + self.reserved_usd) * share)
             self.policy_guard()
+            worker = inv.role in ("implement", "fix")
+            try:  # taken before the call is recorded: an unreadable remote launches nothing
+                before = self._guard_snapshot(worker)
+            except RemoteReadError as e:
+                self._remote_unverifiable(iid, f"before the {inv.role} invocation (nothing was launched)", e)
             marker = self._invocation_start(iid, inv, cap)
             self.reserved_usd += cap or 0.0
-            worker = inv.role in ("implement", "fix")
-            before = self._guard_snapshot(worker)
         try:
             res = self.runner.run(inv)
         finally:
             with self.mu:
                 self.reserved_usd -= cap or 0.0
         with self.mu:
-            after = self._guard_snapshot(worker)
+            after_err: RemoteReadError | None = None
+            try:
+                try:
+                    after = self._guard_snapshot(worker)
+                except RemoteReadError as e:  # the local invariant is still judged below, without the remote
+                    after_err = e
+                    after = {**self._guard_snapshot(False), "remote": before.get("remote")}
+                    after.pop("tree", None)
+            except GitError as e:  # local git unreadable after the call: record the spend, adopt nothing
+                try:
+                    self._invocation_end(iid, inv, marker, res)
+                except Stop:
+                    pass
+                raise Stop("worker_wrote_git", f"git is unreadable after the {inv.role} invocation: {e}"[:1500],
+                           EXIT_BLOCKED)
             pending: Stop | None = None
             try:
-                out = self._invocation_end(iid, inv, marker, res)
+                out = self._invocation_end(iid, inv, marker, res)  # the spend is recorded either way
             except Stop as e:  # the git/state invariant is judged first, whatever the call's outcome
                 pending = e
             if worker and iid is not None and iid in self.state["items"]:
                 self.item(iid)["tree_known"] = self.git.tree_fingerprint()
+                self.save()
+            if after_err is not None:
+                # the worker may have pushed while the remote was unreadable: remember what the remote
+                # looked like before the call; the next run proves it unchanged before any work —
+                # recorded first, so a local alarm below cannot make the hidden push go unchecked
+                self.state["remote_unverified"] = {"heads": before["remote"], "item": iid, "role": inv.role,
+                                                   "at": now_iso()}
                 self.save()
             if after != before:
                 changed = [k for k in before if before[k] != after[k]]
@@ -234,9 +258,25 @@ class Supervisor:
                            f"{before['head'][:10]} on {before['branch']}, after {after['head'][:10]} on "
                            f"{after['branch']}); only the supervisor may commit, stage or move refs — nothing "
                            "was adopted; inspect and repair by hand", EXIT_BLOCKED)
+            if after_err is not None:
+                self._remote_unverifiable(iid, f"after the {inv.role} invocation (its result is not adopted)",
+                                          after_err)
             if pending is not None:
                 raise pending
             return out
+
+    @staticmethod
+    def _remote_kind(err: GitError) -> str:
+        return "remote_unavailable" if isinstance(err, RemoteUnavailable) else "remote_unverifiable"
+
+    def _remote_unverifiable(self, iid: str | None, when: str, err: GitError) -> None:
+        """The remote could not be read, so the worker git guard cannot be judged: block on the
+        environment, keep the item's work and state, and stop. Never a FAILED item."""
+        kind = self._remote_kind(err)
+        detail = f"cannot verify the remote {when}: {err}"[:1000]
+        if iid is not None and iid in self.state["items"] and self.item(iid)["status"] in ACTIVE:
+            self.block_env(iid, detail, resume_status=self.item(iid)["status"])
+        raise Stop(f"environment_{kind}", detail, EXIT_BLOCKED)
 
     def _guard_snapshot(self, worker: bool) -> dict:
         snap = self.git.snapshot(self.cfg.git["remote"] if worker else None)
@@ -366,6 +406,20 @@ class Supervisor:
             if branch != camp["branch"]:
                 raise Stop("branch_mismatch", f"checked out `{branch}`, campaign branch is `{camp['branch']}`. "
                            "Switch to it yourself (the supervisor never switches over local work)", EXIT_BLOCKED)
+        pend = self.state.get("remote_unverified")
+        if pend:  # a worker call ended while the remote was unreadable: prove nothing was pushed
+            try:
+                heads = self.git.remote_heads(self.cfg.git["remote"])
+            except RemoteReadError as e:
+                raise Stop(f"environment_{self._remote_kind(e)}", f"the remote still cannot be read to verify the "
+                           f"{pend['role']} invocation of {pend['item']} ({pend['at']}): {e}"[:1000], EXIT_BLOCKED)
+            if heads != pend["heads"]:
+                moved = sorted({ln.split("\t")[-1] for ln in set(pend["heads"].splitlines()) ^ set(heads.splitlines())})
+                raise Stop("worker_wrote_git", f"remote heads changed across the unverified {pend['role']} "
+                           f"invocation of {pend['item']} ({pend['at']}): {moved[:10]}; nothing was adopted — "
+                           "inspect the remote by hand (owner decision)", EXIT_BLOCKED)
+            self.state["remote_unverified"] = None
+            notes.append(f"remote heads unchanged since the unverified {pend['role']} invocation of {pend['item']}")
         head = self.git.head()
         if not self.git.is_ancestor(camp["base_sha"], head):
             raise Stop("base_not_ancestor", f"campaign base {camp['base_sha'][:10]} is not an ancestor of HEAD "
@@ -916,7 +970,11 @@ class Supervisor:
                 self.save()
                 self.block_env(iid, f"push failed (no automatic retry): {e}", CHECKPOINTED)
                 return
-            remote_sha = self.git.remote_branch_sha(remote, branch)
+            try:
+                remote_sha = self.git.remote_branch_sha(remote, branch)
+            except GitError as e:
+                self.block_env(iid, f"push ran but the remote cannot be read to verify it: {e}", CHECKPOINTED)
+                return
             if remote_sha != sha:
                 self.block_env(iid, f"push reported success but remote is at {remote_sha}", CHECKPOINTED)
                 return

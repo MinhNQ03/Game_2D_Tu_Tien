@@ -18,7 +18,7 @@
     "max_tasks_per_run": 10,
     "wall_clock_minutes_per_run": 240,
     "stop_new_stage_when_minutes_left_below": 25,
-    "max_invocations_per_task": 14,
+    "max_invocations_per_task": 24,
     "max_invocations_per_run": 90,
     "max_identical_failure_retries": 1,
     "max_planner_generated_items_per_run": 3,

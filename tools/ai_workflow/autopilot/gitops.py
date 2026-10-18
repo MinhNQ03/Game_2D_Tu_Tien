@@ -11,7 +11,9 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import os
+import re
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +29,73 @@ class GitError(Exception):
         self.out = out
         self.err = err
         super().__init__(f"git {' '.join(args)} failed rc={rc}: {err.strip()[:400]}")
+
+
+class RemoteReadError(GitError):
+    """Reading the remote heads failed (refused, missing, or unreachable): nothing about the
+    remote is known, so callers must block on the environment, never assume."""
+
+
+class RemoteUnavailable(RemoteReadError):
+    """The remote could not be read after the bounded retries, for a transient (network) reason."""
+
+
+# a refused credential or a missing repository is a real answer, not a network blip: never retried
+_REMOTE_DENIED = re.compile(r"(?i)authentication failed|permission denied|repository not found|"
+                            r"does not appear to be a git repository|returned error: 40[134]|"
+                            r"could not read username|terminal prompts disabled|invalid username or password")
+_REMOTE_TRANSIENT = re.compile(r"(?i)could not resolve host|temporary failure in name resolution|"
+                               r"name or service not known|connection (timed out|refused|reset)|"
+                               r"operation timed out|timed out after|network is unreachable|no route to host|"
+                               r"failed to connect|the remote end hung up|early eof|unexpected disconnect|"
+                               r"kex_exchange_identification|connection closed by|"
+                               r"gnutls|ssl_(read|connect|error)|tls connection|rpc failed|"
+                               r"returned error: (408|429|5\d\d)|http (408|429|5\d\d)")
+
+
+def remote_error_is_transient(stderr: str) -> bool:
+    return bool(_REMOTE_TRANSIENT.search(stderr)) and not _REMOTE_DENIED.search(stderr)
+
+
+# VS Code's git extension records `branch.<name>.vscode-merge-base` in .git/config whenever it sees
+# a branch; git itself never reads that key. Only that exact single-line key inside a plain
+# [branch "..."] section is left out of the config digest — any other key, a continued value, or
+# the same key elsewhere still counts.
+_BRANCH_SECTION = re.compile(rb'^[ \t]*\[branch[ \t]+"[^"\\\r\n]*"\][ \t]*\r?\n?\Z', re.I)  # git's own form
+_SECTION = re.compile(rb"^[ \t]*\[")
+# a CR is allowed only right before the final LF: git reads a lone CR as part of the value
+_VSCODE_MERGE_BASE = re.compile(rb'^[ \t]*vscode-merge-base[ \t]*=[^\\\r\n"]*\r?\n?\Z', re.I)
+
+
+def _continues(line: bytes) -> bool:
+    """True when `line` ends with an unescaped backslash: git joins the next line onto its value."""
+    body = line.rstrip(b"\r\n")
+    return (len(body) - len(body.rstrip(b"\\"))) % 2 == 1
+
+
+def config_bytes_for_digest(data: bytes) -> bytes:
+    """The config bytes minus those VS Code lines. A [branch "..."] section left with no other
+    line (VS Code creates one for an unpushed branch; git leaves empty ones behind) is dropped
+    whole — a section without keys is inert. A line that continues the previous line's value is
+    never dropped."""
+    sections: list[list[bytes]] = [[]]
+    for line in re.split(rb"(?<=\n)", data):  # LF only, as git does (never splitlines: it splits on CR)
+        if not line:
+            continue
+        if _SECTION.match(line) and not (sections[-1] and _continues(sections[-1][-1])):
+            sections.append([line])
+        else:
+            sections[-1].append(line)
+    out: list[bytes] = []
+    for sec in sections:
+        if sec and _BRANCH_SECTION.match(sec[0]):
+            body = [ln for i, ln in enumerate(sec[1:], start=1)
+                    if not (_VSCODE_MERGE_BASE.match(ln) and not _continues(sec[i - 1]))]
+            if not any(ln.strip() for ln in body):
+                continue
+            sec = sec[:1] + body
+        out.extend(sec)
+    return b"".join(out)
 
 
 READ_ONLY = {"status", "rev-parse", "log", "diff", "show", "ls-files", "ls-remote", "merge-base",
@@ -150,6 +219,8 @@ class Git:
         self.protected = list(protected_branches or ["main", "master"])
         self._runner = runner or self._default_runner
         self.log: list[dict] = []
+        self.remote_retry_delays: tuple[float, ...] = (3.0, 10.0)  # sleeps between the 3 attempts
+        self._sleep = time.sleep
 
     @staticmethod
     def _env() -> dict:
@@ -269,8 +340,30 @@ class Git:
                 "refs": self.run("for-each-ref", "--format=%(refname) %(objectname)"),
                 "staged": self.staged_paths(), "gitfiles": self._git_files_digest()}
         if remote:
-            snap["remote"] = self.run("ls-remote", "--heads", remote, check=False)
+            snap["remote"] = self.remote_heads(remote)
         return snap
+
+    def remote_heads(self, remote: str, *refs: str) -> str:
+        """`git ls-remote --heads`, retried only for a transient network failure. Raises
+        RemoteUnavailable when every attempt failed that way, GitError at once for anything else;
+        it never returns a partial or empty answer for a failed read."""
+        argv = ["ls-remote", "--heads", remote, *refs]
+        _safe_args(argv, self.protected)
+        attempts = len(self.remote_retry_delays) + 1
+        env = {**self._env(), "GIT_HTTP_LOW_SPEED_LIMIT": "1000", "GIT_HTTP_LOW_SPEED_TIME": "60"}
+        for n in range(attempts):
+            try:
+                rc, out, err = self._runner(["git", *argv], env)
+            except subprocess.TimeoutExpired as e:  # a stalled connection is a network failure
+                rc, out, err = 124, "", f"timed out after {e.timeout} s"
+            self.log.append({"cmd": ["git", *argv], "rc": rc, "attempt": n + 1})
+            if rc == 0:
+                return out
+            if not remote_error_is_transient(err):
+                raise RemoteReadError(argv, rc, out, err)
+            if n + 1 < attempts:
+                self._sleep(self.remote_retry_delays[n])
+        raise RemoteUnavailable(argv, rc, out, f"remote unreachable after {attempts} attempts: {err}")
 
     def _git_files_digest(self) -> str:
         h = hashlib.sha256()
@@ -280,7 +373,8 @@ class Git:
             for rel in ("config", "info/attributes", "info/exclude", "config.worktree"):
                 f = base / rel
                 h.update(f"{f}\0".encode())
-                h.update(f.read_bytes() if f.is_file() else b"<none>")
+                data = f.read_bytes() if f.is_file() else b"<none>"
+                h.update(config_bytes_for_digest(data) if rel == "config" else data)
             hooks = base / "hooks"
             if hooks.is_dir():
                 for f in sorted(hooks.iterdir()):
@@ -326,7 +420,7 @@ class Git:
         return hits
 
     def remote_branch_sha(self, remote: str, branch: str) -> str | None:
-        out = self.run("ls-remote", "--heads", remote, f"refs/heads/{branch}", check=False)
+        out = self.remote_heads(remote, f"refs/heads/{branch}")
         for line in out.splitlines():
             parts = line.split()
             if len(parts) == 2 and parts[1] == f"refs/heads/{branch}":

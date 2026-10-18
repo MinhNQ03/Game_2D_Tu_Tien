@@ -19,7 +19,7 @@ import sys
 import time
 from pathlib import Path
 
-from .gitops import Git
+from .gitops import Git, GitError
 from .util import atomic_write_json, now_iso, read_jsonl
 
 KILL_AFTER_SECONDS = 10  # a real implementation took ~41 s in the first canary; interrupt well inside it
@@ -153,8 +153,11 @@ def main(cfg, a) -> int:
         "only the configured model served": models == [cfg.model],
         "main untouched": git.resolve("refs/heads/main") == main_before,
         "caller branch untouched": git.branch() == branch_before,
-        "nothing pushed": wgit.remote_branch_sha(cfg.git["remote"], camp["branch"]) is None,
     }
+    try:
+        checks["nothing pushed"] = wgit.remote_branch_sha(cfg.git["remote"], camp["branch"]) is None
+    except GitError:  # unverifiable is not PASS
+        checks["nothing pushed"] = False
     report = {"at": now_iso(), "worktree": str(wt), "branch": camp["branch"], "base": head, "rc_start": rc1,
               "rc_resume": rc2, "killed_at": killed_at, "checks": checks, "models": models,
               "usd_estimated": st.get("totals", {}).get("usd_estimated"),

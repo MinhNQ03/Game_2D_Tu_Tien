@@ -450,7 +450,9 @@ class GitSafetyAndPreflight(RepoCase):
     def test_push_auth_failure_blocks_and_is_not_retried(self):
         self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
                            "review:qa": [review_pass()], "review:architecture": [review_pass()]})
-        sh(self.repo, "git", "remote", "set-url", "origin", str(self.tmp / "missing.git"))
+        # only the push URL is broken: the remote heads stay readable, so the worker guard can judge
+        # (an unreadable remote blocks before any work — RemoteOutage)
+        sh(self.repo, "git", "remote", "set-url", "--push", "origin", str(self.tmp / "missing.git"))
         _, rc = self.start([item("t1")])
         st = self.state()
         self.assertEqual(rc, EXIT_BLOCKED)
@@ -460,7 +462,7 @@ class GitSafetyAndPreflight(RepoCase):
         self.assertEqual(len(self.commits_for("t1")), 1)  # the valid local checkpoint is preserved
         self.assertIsNone(t1["pushed_sha"])
         # environment fixed by the owner -> resume pushes once, no new commit
-        sh(self.repo, "git", "remote", "set-url", "origin", str(self.remote))
+        sh(self.repo, "git", "remote", "set-url", "--push", "origin", str(self.remote))
         rc = self.sup().run()
         self.assertEqual(rc, EXIT_OK, self.state()["stop"])
         self.assertEqual(self.state()["items"]["t1"]["pushed_sha"], self.commits_for("t1")[0])
@@ -962,3 +964,258 @@ class PolicyIntegrity(RepoCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+NET_DOWN = "fatal: unable to access 'https://github.com/o/r.git/': Could not resolve host: github.com\n"
+
+
+class RemoteOutage(RepoCase):
+    """A network blip while reading the remote heads is an environment block that keeps the
+    item's work — never a `worker_wrote_git` alarm, never a FAILED item, never trusted blindly."""
+
+    def _sup_with_outage(self, fail_from: int, fail_count: int = 10**6, err: str = NET_DOWN, push: bool = False):
+        s = self.sup(push=push)
+        real, seen = s.git._runner, []
+
+        def run(argv, env):
+            if argv[1:2] == ["ls-remote"]:
+                seen.append(argv)
+                if fail_from <= len(seen) < fail_from + fail_count:
+                    return 128, "", err
+            return real(argv, env)
+        s.git._runner = run
+        s.git._sleep = lambda sec: None
+        return s, seen
+
+    def _scen(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}, "usd": 0.5}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+
+    def test_outage_before_the_call_blocks_without_launching_and_resume_finishes(self):
+        self._scen()
+        s, seen = self._sup_with_outage(fail_from=1)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        rc = s.run()
+        st = self.state()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(st["stop"]["reason"], "environment_remote_unavailable")
+        t1 = st["items"]["t1"]
+        self.assertEqual(t1["status"], "BLOCKED_ENVIRONMENT")
+        self.assertEqual(t1["resume_status"], "IN_PROGRESS")
+        self.assertEqual(t1["invocations"], [])  # nothing launched, nothing half-recorded
+        self.assertEqual(self.calls(), [])
+        self.assertEqual(len(seen), 3)  # bounded retries
+        rc = self.sup(push=False).run()
+        st = self.state()
+        self.assertEqual(rc, EXIT_OK, st["stop"])
+        self.assertEqual(st["items"]["t1"]["status"], "COMPLETE")
+        self.assertEqual(len(self.commits_for("t1")), 1)
+
+    def test_outage_after_the_call_records_spend_keeps_work_and_verifies_on_resume(self):
+        self._scen()
+        s, _ = self._sup_with_outage(fail_from=2)  # read 1 = before the implement call
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        rc = s.run()
+        st = self.state()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(st["stop"]["reason"], "environment_remote_unavailable")
+        t1 = st["items"]["t1"]
+        self.assertEqual(t1["status"], "BLOCKED_ENVIRONMENT")
+        self.assertNotEqual(t1["status"], "FAILED")
+        self.assertEqual([i["finished"] for i in t1["invocations"]], [True])
+        self.assertAlmostEqual(t1["usd_estimated"], 0.5)
+        self.assertAlmostEqual(st["totals"]["usd_estimated"], 0.5)  # the call's cost is not hidden
+        self.assertEqual(st["remote_unverified"]["item"], "t1")
+        self.assertEqual((self.repo / "pkg/core.py").read_text(), GOOD_ADD)  # work kept
+        rc = self.sup(push=False).run()
+        st = self.state()
+        self.assertEqual(rc, EXIT_OK, st["stop"])
+        self.assertIsNone(st["remote_unverified"])
+        self.assertEqual(st["items"]["t1"]["status"], "COMPLETE")
+        # both implement calls (0.5 each) and the two reviews (fake default 0.01) — each counted once
+        self.assertEqual(st["totals"]["invocations"], 4)
+        self.assertAlmostEqual(st["totals"]["usd_estimated"], 0.5 * 2 + 0.01 * 2)
+
+    def test_a_push_hidden_by_the_outage_is_caught_on_resume(self):
+        self._scen()
+        s, _ = self._sup_with_outage(fail_from=2)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        s.run()
+        sh(self.repo, "git", "push", "-q", "origin", "HEAD:refs/heads/feat/sneak")  # what a worker might have done
+        rc = self.sup(push=False).run()
+        st = self.state()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(st["stop"]["reason"], "worker_wrote_git")
+        self.assertIsNotNone(st["remote_unverified"])  # still unproven; nothing adopted
+        self.assertEqual(self.commits_for("t1"), [])
+
+    def test_resume_while_still_offline_keeps_everything(self):
+        self._scen()
+        s, _ = self._sup_with_outage(fail_from=2)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        s.run()
+        before = self.state()
+        s2, _ = self._sup_with_outage(fail_from=1)
+        self.assertEqual(s2.run(), EXIT_BLOCKED)
+        st = self.state()
+        self.assertEqual(st["stop"]["reason"], "environment_remote_unavailable")
+        self.assertEqual(st["remote_unverified"], before["remote_unverified"])
+        self.assertEqual(st["items"]["t1"]["status"], "BLOCKED_ENVIRONMENT")
+        self.assertEqual(len(st["items"]["t1"]["invocations"]), 1)
+        self.assertEqual((self.repo / "pkg/core.py").read_text(), GOOD_ADD)
+
+    AUTH = "fatal: Authentication failed for 'https://github.com/o/r.git/'\n"
+
+    def test_a_refused_credential_blocks_at_once_without_retries(self):
+        self._scen()
+        s, seen = self._sup_with_outage(fail_from=1, err=self.AUTH)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        self.assertEqual(s.run(), EXIT_BLOCKED)
+        st = self.state()
+        self.assertEqual(st["stop"]["reason"], "environment_remote_unverifiable")
+        self.assertEqual(st["items"]["t1"]["status"], "BLOCKED_ENVIRONMENT")
+        self.assertEqual(st["items"]["t1"]["invocations"], [])
+        self.assertEqual(self.calls(), [])
+        self.assertEqual(len(seen), 1)
+
+    def test_a_refused_credential_after_the_call_is_remembered(self):
+        self._scen()
+        s, seen = self._sup_with_outage(fail_from=2, err=self.AUTH)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        self.assertEqual(s.run(), EXIT_BLOCKED)
+        st = self.state()
+        self.assertEqual(st["stop"]["reason"], "environment_remote_unverifiable")
+        self.assertEqual(st["items"]["t1"]["status"], "BLOCKED_ENVIRONMENT")
+        self.assertIsNotNone(st["remote_unverified"])
+        self.assertEqual(len(seen), 2)
+        s2, _ = self._sup_with_outage(fail_from=1, err=self.AUTH)
+        self.assertEqual(s2.run(), EXIT_BLOCKED)
+        self.assertEqual(self.state()["stop"]["reason"], "environment_remote_unverifiable")
+
+    def test_local_git_writes_are_still_caught_during_an_outage(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD},
+                                          "shell": [["git", "add", "-A"], ["git", "commit", "-qm", "sneaky"]]}]})
+        s, _ = self._sup_with_outage(fail_from=2)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        self.assertEqual(s.run(), EXIT_BLOCKED)
+        st = self.state()
+        self.assertEqual(st["stop"]["reason"], "worker_wrote_git")
+        self.assertIn("'head'", st["stop"]["detail"])
+        self.assertIsNotNone(st["remote_unverified"])  # a push in the same call is still checked later
+        self.assertEqual(self.commits_for("t1"), [])
+
+    def _publish_outage(self, fail_from, expect):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        s, _ = self._sup_with_outage(fail_from=fail_from, push=True)
+        s.init_campaign(self.campaign([item("t1")]), "test", False)
+        self.assertEqual(s.run(), EXIT_BLOCKED)
+        t1 = self.state()["items"]["t1"]
+        self.assertEqual(t1["status"], "BLOCKED_ENVIRONMENT")
+        self.assertEqual(t1["resume_status"], "CHECKPOINTED")
+        self.assertIn(expect, t1["stop_detail"])
+        self.assertIsNone(t1["pushed_sha"])
+        self.assertEqual(len(self.commits_for("t1")), 1)
+        rc = self.sup().run()
+        st = self.state()
+        self.assertEqual(rc, EXIT_OK, st["stop"])
+        self.assertEqual(st["items"]["t1"]["pushed_sha"], self.commits_for("t1")[0])
+        self.assertEqual(len(self.commits_for("t1")), 1)
+        return sh(self.repo, "git", "ls-remote", "origin", "refs/heads/feat/test").split()[0]
+
+    def test_outage_before_the_push_pushes_nothing_then_resume_pushes_once(self):
+        # reads 1-2 = guard around the implement call; 3 = publish's pre-push read
+        self.assertEqual(self._publish_outage(3, "remote unreachable"), self.commits_for("t1")[0])
+
+    def test_outage_after_the_push_is_not_claimed_verified(self):
+        # 3 = pre-push read (ok), push happens, 4 = post-push verification read fails
+        s_remote = self._publish_outage(4, "push ran but the remote cannot be read")
+        self.assertEqual(s_remote, self.commits_for("t1")[0])
+
+
+class UnreadableLocalGit(RepoCase):
+    def test_spend_is_recorded_when_a_worker_breaks_git(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD}, "usd": 0.7,
+                                          "shell": [["sh", "-c", "printf '[core\\n' >> .git/config"]]}]})
+        _, rc = self.start([item("t1")], push=False)
+        st = self.state()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(st["stop"]["reason"], "worker_wrote_git")
+        inv = st["items"]["t1"]["invocations"]
+        self.assertEqual([i["finished"] for i in inv], [True])
+        self.assertAlmostEqual(st["items"]["t1"]["usd_estimated"], 0.7)
+        self.assertAlmostEqual(st["totals"]["usd_estimated"], 0.7)
+
+
+class VSCodeBookkeeping(RepoCase):
+    def test_vscode_writing_its_merge_base_mid_call_is_not_a_git_write(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD},
+                                          "shell": [["git", "config", "branch.feat/test.vscode-merge-base", "origin/main"],
+                                                    ["git", "config", "branch.feat/new.vscode-merge-base", "origin/main"]]}],
+                           "review:qa": [review_pass()], "review:architecture": [review_pass()]})
+        _, rc = self.start([item("t1")], push=False)
+        st = self.state()
+        self.assertEqual(rc, EXIT_OK, st["stop"])
+        self.assertEqual(st["items"]["t1"]["status"], "COMPLETE")
+
+    def test_a_real_branch_config_write_is_still_caught(self):
+        self.scenario_set({"implement": [{**ok(), "write": {"pkg/core.py": GOOD_ADD},
+                                          "shell": [["git", "config", "branch.feat/test.vscode-merge-base", "origin/main"],
+                                                    ["git", "config", "branch.feat/test.pushRemote", "evil"]]}]})
+        _, rc = self.start([item("t1")], push=False)
+        st = self.state()
+        self.assertEqual(rc, EXIT_BLOCKED)
+        self.assertEqual(st["stop"]["reason"], "worker_wrote_git")
+        self.assertIn("'gitfiles'", st["stop"]["detail"])
+
+
+class LongReviewFixLoop(RepoCase):
+    godot = True  # game/** triggers the (fake) Godot suite
+
+    def test_three_reviewers_and_three_fix_rounds_fit_the_shipped_per_item_cap(self):
+        """The live campaign stopped at 14 calls in its third fix round. With the shipped cap the full
+        loop (1 implement + 4 review cycles x 3 reviewers + 3 fixes = 16 calls) completes, and every
+        call's spend is accounted."""
+        rejects = [review_reject(title=f"defect {n}", file="pkg/core.py") for n in range(3)]
+        self.scenario_set({
+            "implement": [{**ok(), "write": {"pkg/core.py": "def add(a, b):\n    return a + b\n# v1\n",
+                                              "game/ui/panel.py": "x = 1\n"}, "usd": 0.25}],
+            "fix": [{**ok("fixed"), "write": {"pkg/core.py": GOOD_ADD + f"# r{n}\n"}, "usd": 0.25} for n in range(3)],
+            "review:qa": [{**r, "usd": 0.25} for r in rejects] + [{**review_pass(), "usd": 0.25}],
+            "review:architecture": [{**review_pass(), "usd": 0.25}],
+            "review:ui_ux": [{**review_pass(), "usd": 0.25}],
+        })
+        cap = self.cfg().limits["max_invocations_per_task"]
+        _, rc = self.start([item("t1", allowed_paths=["pkg/**", "game/**"])], push=False)
+        st = self.state()
+        t1 = st["items"]["t1"]
+        self.assertEqual(rc, EXIT_OK, st["stop"])
+        self.assertEqual(t1["status"], "COMPLETE")
+        self.assertEqual(t1["fix_rounds"], 3)
+        n = len(t1["invocations"])
+        self.assertEqual(n, 16)
+        self.assertGreater(n, 14)
+        self.assertLessEqual(n, cap)
+        self.assertAlmostEqual(t1["usd_estimated"], 0.25 * n)
+        self.assertAlmostEqual(st["totals"]["usd_estimated"], 0.25 * n)
+        self.assertEqual(st["totals"]["invocations"], n)
+
+    def test_the_cap_still_stops_a_loop_that_would_exceed_it(self):
+        self.cfg_raw["limits"]["max_invocations_per_task"] = 14
+        self.write_config()
+        sh(self.repo, "git", "add", "-A")
+        sh(self.repo, "git", "commit", "-q", "-m", "cfg")
+        rejects = [review_reject(title=f"defect {n}", file="pkg/core.py") for n in range(3)]
+        self.scenario_set({
+            "implement": [{**ok(), "write": {"pkg/core.py": "def add(a, b):\n    return a + b\n# v1\n",
+                                              "game/ui/panel.py": "x = 1\n"}}],
+            "fix": [{**ok("fixed"), "write": {"pkg/core.py": GOOD_ADD + f"# r{n}\n"}} for n in range(3)],
+            "review:qa": rejects + [review_pass()],
+            "review:architecture": [review_pass()], "review:ui_ux": [review_pass()],
+        })
+        _, rc = self.start([item("t1", allowed_paths=["pkg/**", "game/**"])], push=False)
+        st = self.state()
+        self.assertEqual(rc, EXIT_LIMIT)
+        self.assertEqual(st["stop"]["reason"], "invocation_budget_task")
+        self.assertEqual(len(st["items"]["t1"]["invocations"]), 14)
+        self.assertNotEqual(st["items"]["t1"]["status"], "FAILED")

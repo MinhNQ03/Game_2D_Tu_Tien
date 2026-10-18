@@ -43,7 +43,9 @@ Windows: the same commands with `py -3`; the lock uses `msvcrt`. Captures need a
 - `model` — the ONE model id. Every invocation passes `--model` with it and pins Claude Code's
   auxiliary model slots to it; a call served by any other model is a `model_mismatch` stop.
 - `limits` — 3 fix rounds per item (each verified by a fresh review, so ≤ 4 reviews), 10 tasks
-  per run, 240 min per run (no new stage under 25 min left), calls per task/run, 1 identical-
+  per run, 240 min per run (no new stage under 25 min left), 24 calls per item and 90 per run
+  (the full loop is 1 + 4 x reviewers + 3 calls: 20 with four triggered reviewers, 24 with five —
+  exactly the cap, so any retry stops it — 28 with six; such an item stops `invocation_budget_task`), 1 identical-
   failure retry, bounded CI polling, per-role `max_turns`/timeout (verified flags of CLI 2.1.291).
 - `budget` — USD caps per task/run/campaign. A billable run REQUIRES a run cap
   (`--max-usd-run`). The figure is the CLI's `total_cost_usd`: a **list-price estimate**; on a
@@ -96,6 +98,7 @@ accepted scopes; it is validated the same way and rejected (FAILED, never run) o
 | `no_eligible_work_blocked` | read `status`: owner actions are listed verbatim |
 | `item_failed` | read `reports/<id>.md`; fix the cause or `retry <id> --reason …` |
 | `environment_*` | fix the environment (`doctor`), then `resume` |
+| `environment_remote_unavailable`, `environment_remote_unverifiable` | the remote heads could not be read: a network failure or stall after 3 attempts (3 s, 10 s apart; HTTP aborts under 1 KB/s for 60 s), or at once for a refused credential / missing repository (`…_unverifiable`). The item is `BLOCKED_ENVIRONMENT` with its work kept; nothing is adopted from an unread remote. `resume` once it is readable. If it happened after a worker call, that call's spend is recorded, its result is not adopted, and the next run first proves the remote heads unchanged; if any head moved it stops `worker_wrote_git` naming the refs — an owner decision: check those refs (`git ls-remote origin`); only the owner may clear `remote_unverified` in the state, the supervisor never does |
 | `unowned_changes` | the worktree holds changes no active item owns — preserved; commit or move them |
 | `branch_mismatch`, `base_not_ancestor`, `checkpoint_missing` | git and state disagree; nothing was changed — reconcile by hand |
 | `policy_changed_mid_run` | validate the policy change (tests + `eval`), commit it, `resume` |
@@ -125,7 +128,7 @@ recorded baseline; every checkpoint names its policy fingerprint; rollback is `g
 
 ## 8. Testing the orchestrator
 
-`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` (86 tests) — scripted CLI
+`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` (119 tests) — scripted CLI
 (`tests/fake_claude.py`, never presented as a real model), throwaway repos with a bare local
 remote. Covers: rejection→fix→re-review→checkpoint→push→next task; cycle limit; owner gates (and a
 worker trying to close one); SIGTERM mid-implementation + resume; concurrent supervisor refused;
@@ -169,7 +172,10 @@ stays authoritative (`docs/GDSCRIPT_CODE_INTELLIGENCE.md`). Revisit only if GDSc
   the edit guard, a worker environment WITHOUT git credentials (tokens and SSH agent removed, no
   global git config, no credential helper), and a before/after snapshot of local refs, the index,
   `.git` config/hooks, user git config (with includes), the remote heads and the evidence files
-  that stops the run on any change. Detection is after the fact; for an OS boundary run the
+  that stops the run on any change. One key is left out of the `.git/config` digest: a single-line
+  `vscode-merge-base` inside a `[branch "…"]` section, which VS Code's git extension writes on
+  its own and git never reads (any other key, a continued value or that key elsewhere still
+  stops the run). Detection is after the fact; for an OS boundary run the
   supervisor as a separate user or in a container.
 - The edit guard is a second layer; the first is the CLI permission allowlist (`dontAsk` denies
   anything not pre-approved). Shell redirection to a path is checked heuristically.
