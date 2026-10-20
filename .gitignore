@@ -46,3 +46,6 @@ docs/visual_benchmarks/*.png
 # Autopilot supervisor runtime state (tools/ai_workflow): task state, audit log, invocation
 # envelopes, prompts, check logs and captures. Local evidence only — never committed.
 .aetheria-autopilot/
+
+# Packaged claude.ai skill ZIPs (`tools/ai_workflow/package_skills.py`) are build output.
+/dist/

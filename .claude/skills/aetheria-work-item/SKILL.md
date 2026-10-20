@@ -1,6 +1,6 @@
 ---
 name: aetheria-work-item
-description: Run one Aetheria work item natively in this session — criteria first, implement, deterministic checks, independent read-only reviewer agents, fix, fresh re-review, final validation, explicit-path checkpoint. Use for any non-trivial Aetheria code, data, UI, art or docs change when no autopilot run is active.
+description: Run one Aetheria work item natively - criteria first, implement, checks, independent reviewer agents, fix, re-review, validate, explicit-path commit. Use for any non-trivial change.
 ---
 
 # Aetheria work item — the native loop

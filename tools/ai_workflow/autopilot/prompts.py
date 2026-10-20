@@ -148,7 +148,7 @@ costs a whole fix round. A check you did not run is not PASS.
 {run_commands(cfg)}
 
 ## Constraints
-{_bullets(item.get('constraints', []) + ['data-driven, localised (vi + en) player-facing text; no hard-coded UI strings', 'no new autoload (budget frozen, D-017)', 'visual work follows .claude/skills/aetheria-visual-craft and is judged from real captures', 'never weaken or delete a valid test to get green'])}
+{_bullets(item.get('constraints', []) + ['data-driven, localised (vi + en) player-facing text; no hard-coded UI strings', 'no new autoload (budget frozen, D-017)', 'open the project skills for the areas you touch before editing (map: .claude/skills/README.md); visual work follows aetheria-visual-craft + aetheria-art-pipeline and is judged from real captures', 'never weaken or delete a valid test to get green'])}
 Writable paths for this item: {', '.join(allowed)}
 
 ## Checkpoint and reporting
@@ -222,7 +222,11 @@ Last checkpoint report:
 
 Rules: follow the roadmap order and dependency matrix; never duplicate a COMPLETE item; never
 invent canon or claim an owner approval; do not change roadmap statuses; prefer independent work
-inside the accepted scopes when the next roadmap phase is gated. Acceptance criteria must name
+inside the accepted scopes when the next roadmap phase is gated. Among the items the roadmap order
+and the dependency matrix allow, rank by the studio charter
+(`.claude/skills/aetheria-studio-charter`): player impact and critical path first, then confidence
+and cost; the item must advance a playable milestone, clear a blocker, ship a player-visible
+improvement or make delivery measurably more reliable. Acceptance criteria must name
 evidence as `check:<id>`, `review:<reviewer>`, `artifact:<glob>` or `owner:<gate>`. Check ids:
 {', '.join(sorted(cfg.check_specs()))}. Reviewers: {', '.join(sorted(cfg.raw.get('reviewers', {})))}.
 """

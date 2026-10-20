@@ -1,6 +1,6 @@
 ---
 name: aetheria-visual-craft
-description: How to make Aetheria's graphics, animation and VFX look designed — use before any art, sprite, map, story-picture, UI-picture or VFX work in this repo (Godot 4.7, Blender 5.2 pipeline). Method only; the rules live in the owner docs it names.
+description: Method that makes Aetheria art, animation and VFX look designed - measure, compose, build from the pipeline, verify in the real window. Use before any art, map, UI-picture or VFX work.
 ---
 
 # Aetheria visual craft — the working method

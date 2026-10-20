@@ -131,7 +131,7 @@ recorded baseline; every checkpoint names its policy fingerprint; rollback is `g
 
 ## 8. Testing the orchestrator
 
-`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` (124 tests) — scripted CLI
+`python3 -m unittest discover -s tools/ai_workflow/tests -t tools/ai_workflow` (138 tests) — scripted CLI
 (`tests/fake_claude.py`, never presented as a real model), throwaway repos with a bare local
 remote. Covers: rejection→fix→re-review→checkpoint→push→next task; cycle limit; owner gates (and a
 worker trying to close one); SIGTERM mid-implementation + resume; concurrent supervisor refused;
@@ -145,6 +145,12 @@ crash safety; hook guard decisions and idempotency; runner outcomes and timeout 
 invariant per snapshot key (HEAD, refs, index, remote, .git and global config, evidence files);
 reviewers that touch the tree; owner retry; a commit on top of a checkpoint is never pushed.
 Every regression test added after an independent review was mutation-checked (red without its fix).
+`test_skill_pack.py`: every project skill is uploadable to claude.ai (frontmatter agrees with
+PyYAML), the index names every skill, ZIPs are byte-reproducible, the prompts name the pack.
+
+**Skill pack.** `.claude/skills/` serves interactive sessions, workers and claude.ai; every file in
+it is policy (fingerprinted). `python3 tools/ai_workflow/package_skills.py` validates and writes
+the claude.ai upload ZIPs (`docs/AETHERIA_SKILL_PACK.md`).
 
 `canary --max-usd-run N` runs the REAL CLI and model in a separate worktree on a local
 `autopilot/canary-*` branch (nothing pushed) and verifies rejection → fix → re-review →
