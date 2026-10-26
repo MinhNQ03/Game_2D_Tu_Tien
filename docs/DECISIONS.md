@@ -6273,3 +6273,45 @@ itself; real canaries with the configured model in an isolated worktree (seeded 
 both reviewers → fixed → re-reviewed → checkpoint; SIGTERM inside an implementation and the plan's
 session limit both resumed with one commit per item); every project gate green on the final
 commit. CodeGraph was measured and rejected (0 of 231 GDScript files indexed).
+
+## D-077 — Art direction after the Cổ Tiên Lộ survey: keep 32×48, win on signature, contrast and mood — **Accepted (owner, 2026-10-26); closes ART-DIR-01 and ART-DIR-02**
+
+**Context.** Asked to choose a character art direction, the owner answered (2026-10-26, verbatim):
+"làm cách nào đẹp như game cổ tiên lọ làm là đc có thể kết hợp thêm công nghệ gì cho đẹp thì cứ
+làm" — the choice is delegated, judged against the released game they surveyed
+(`docs/design_refs/cotienlo_2026_10_21/`, gitignored). Measured
+(`.claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md`): its play area is DARKER
+and about half as saturated as ours, with light pulled to the centre; its figures read at 1× through
+one signature shape and dark clothes on a pale floor, at a chibi scale close to our 32×48.
+
+**Decision.**
+- **ART-DIR-01: keep the 32×48 cell / 16 px world** (D-046 unchanged). The quality goes into a
+  signature silhouette item per character, value contrast against the floor, and a hand-style
+  cleanup pass over the Blender output (Blender stays the pose and animation source). Portraits,
+  menus and story pictures use the painted tier, where the reference is bright and rich.
+- **ART-DIR-02: no brighter world.** The Visual DNA stays muted; mood comes from a presentation
+  layer (muted grade, a lit centre, mist, a warm practical light) driven by story state.
+- Any technique that serves this is allowed (shaders, painted backdrops, VFX), within the
+  existing laws: pipeline-built, deterministic, provenance recorded, nothing copied from the
+  reference.
+
+## D-078 — Story direction: Aetheria told "theo Ta là Tà Đế" — inspiration plus milestone structure, our own names and text — **Accepted (owner, 2026-10-26)**
+
+**Context.** The owner wants the game to follow the novel *Ta là Tà Đế* the way Cổ Tiên Lộ follows
+*Cổ Chân Nhân*, and answered (verbatim): "chọn lấy cảm hứng nhưng cũng pha sát bám theo cốt truyện
+để làm game làm nv và cũng mượn cảm hứng + vài mốc luôn tức là hài hòa hết càng hay càng tốt".
+The novel is copyrighted and this repository is public.
+
+**Decision.**
+- The game takes from the novel its **spirit and structure**: the Tà Đế protagonist archetype (a
+  cold, sharp, calculating voice), the rhythm of its arcs and a few of its major milestones,
+  harmonised with Aetheria's frozen canon (Hạo Nguyên Giới, Thiên Khế, the historical Tà Đế, Đêm
+  Vỡ Mạch, the five Origins; `CANON_LEDGER.md`).
+- **Never imported:** the novel's character names, place names, sentences or scene text. Every
+  milestone is re-staged with Aetheria's own people, places and words.
+- **How a milestone enters canon:** as a `PROPOSAL` naming the novel milestone it echoes (in our
+  own summary words), mapped onto the act structure and reveal ladder, accepted by the owner
+  before `tools/author_story_data.py` writes it. `NARRATIVE_MASTER_PLAN.md` §3 still holds: Tà Đế
+  is read from the persistent state, never a single meter.
+- Player pull rules from the same survey are now in `.claude/skills/aetheria-narrative-canon`
+  ("Player pull").

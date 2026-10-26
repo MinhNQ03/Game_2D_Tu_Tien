@@ -1,16 +1,28 @@
 {
   "id": "world-mood-2026-10",
-  "title": "Owner request 2026-10-25: the game looks 'chán' beside released tu-tiên games; give the world mood and frame the story moments, applying the skill pack's aesthetic bar",
+  "title": "Owner requests 2026-10-25/26: mood, framed story moments, a readable HUD and settings, characters with a signature, and an opening that hooks (Cổ Tiên Lộ survey; D-077, D-078)",
   "source": "owner message of 2026-10-25 (Vietnamese) with the Cổ Tiên Lộ survey; the measured gap is in .claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md (play area saturation 0.29 vs 0.15, centre/all 1.20 vs 1.35, warm 2.0 % below the DNA band)",
   "branch": "feat/world-mood-autopilot",
-  "scopes_allowed": ["world-mood", "story-moment-framing", "quality-debt-ui"],
+  "scopes_allowed": [
+    "world-mood",
+    "story-moment-framing",
+    "quality-debt-ui",
+    "ui-readability",
+    "art-character-readability",
+    "story-proposal"
+  ],
   "allow_planner_items": true,
-  "budget": {"max_usd_per_task": 60, "max_usd_per_campaign": 200},
+  "budget": {
+    "max_usd_per_task": 60,
+    "max_usd_per_campaign": 400
+  },
   "items": [
     {
       "id": "mood-01-world-mood-layer",
       "title": "World mood layer: muted ground, light pulled to the centre, mist, one warm practical",
-      "scopes": ["world-mood"],
+      "scopes": [
+        "world-mood"
+      ],
       "objective": "The hub (Thôn Lạc Hà) stops reading as one evenly lit mid-green field. Through the existing ambience seam (src/presentation/ambient/: MapAmbience, AmbienceProfileData, data/ambience/*.tres, chosen by WorldRuntime from the story beat) give the authored default ambience a grade that mutes the ground, a soft falloff toward the frame edges, slow drifting mist or motes, and at least one warm practical light, so the eye goes to the player and the actors pop. Measured on the real capture's play area (top 22 % and bottom 18 % cut): mean saturation from 0.29 down to <= 0.23, centre/whole luminance from 1.20 up to >= 1.28, warm-pixel share inside the DNA band 3-22 %, and the player sprite still clearly separated from the ground.",
       "in_scope": [
         "src/presentation/ambient/** and the hub's ambience profile data under data/ambience/**",
@@ -19,7 +31,12 @@
         "before/after captures vi 1280x720 and en 1280x800, metrics recorded in docs/VISUAL_CRAFT_WORKFLOW.md or the handoff",
         "a unit test for the profile/overlay invariants (tint never below MapAmbience.MIN_TINT_LEVEL, _process off when steady)"
       ],
-      "out_of_scope": ["tile or sprite palette changes (Visual DNA; owner gate ART-DIR-02 is about a BRIGHTER world and is not touched)", "sprite cell size (ART-DIR-01)", "gameplay rules", "Phase 21/22"],
+      "out_of_scope": [
+        "tile or sprite palette changes (Visual DNA; owner gate ART-DIR-02 is about a BRIGHTER world and is not touched)",
+        "sprite cell size (ART-DIR-01)",
+        "gameplay rules",
+        "Phase 21/22"
+      ],
       "tasks": [
         "load .claude/skills/aetheria-visual-craft (section 0 and references/AESTHETIC_VISION.md) and follow it",
         "measure the current hub capture with the new script and record the before numbers",
@@ -33,42 +50,737 @@
         "boss or danger telegraphs and the HUD are never darkened or hidden by the layer",
         "the final look is the owner's call: report before/after captures and numbers, not 'looks better'"
       ],
-      "source_docs": [".claude/skills/aetheria-visual-craft/SKILL.md", ".claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md", "docs/VISUAL_CRAFT_WORKFLOW.md", "docs/MOTION_DESIGN_CONTRACT.md", "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md", "tools/aetheria_art_pipeline/style/aetheria_style.yaml"],
-      "allowed_paths": ["src/presentation/ambient/**", "data/ambience/**", "src/gameplay/maps/*.tscn", "tools/aetheria_art_pipeline/validate/**", "tests/**", "docs/VISUAL_CRAFT_WORKFLOW.md", "docs/CHANGELOG.md", "docs/TEST_PLAN.md", "docs/handoff/**"],
-      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_world", "e2e_player", "e2e_story", "cap_mood01_vi720", "cap_mood01_en800"],
+      "source_docs": [
+        ".claude/skills/aetheria-visual-craft/SKILL.md",
+        ".claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md",
+        "docs/VISUAL_CRAFT_WORKFLOW.md",
+        "docs/MOTION_DESIGN_CONTRACT.md",
+        "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md",
+        "tools/aetheria_art_pipeline/style/aetheria_style.yaml"
+      ],
+      "allowed_paths": [
+        "src/presentation/ambient/**",
+        "data/ambience/**",
+        "src/gameplay/maps/*.tscn",
+        "tools/aetheria_art_pipeline/validate/**",
+        "tests/**",
+        "docs/VISUAL_CRAFT_WORKFLOW.md",
+        "docs/CHANGELOG.md",
+        "docs/TEST_PLAN.md",
+        "docs/handoff/**"
+      ],
+      "required_checks": [
+        "lint",
+        "godot_import",
+        "godot_parse",
+        "godot_boot",
+        "godot_suite",
+        "e2e_world",
+        "e2e_player",
+        "e2e_story",
+        "cap_mood01_vi720",
+        "cap_mood01_en800"
+      ],
       "required_captures": [
-        {"id": "cap_mood01_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/mood-01/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-01/vi-1280x720/*.png"},
-        {"id": "cap_mood01_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/mood-01/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-01/en-1280x800/*.png"}
+        {
+          "id": "cap_mood01_vi720",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x720",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "vi",
+            "{repo}/.aetheria-autopilot/captures/mood-01/vi-1280x720"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/mood-01/vi-1280x720/*.png"
+        },
+        {
+          "id": "cap_mood01_en800",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x800",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "en",
+            "{repo}/.aetheria-autopilot/captures/mood-01/en-1280x800"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/mood-01/en-1280x800/*.png"
+        }
       ],
       "acceptance_criteria": [
-        {"id": "C1", "text": "on the hub gameplay capture the play-area saturation is <= 0.23, centre/whole luminance >= 1.28 and the warm share inside 3-22 %, measured by the committed script with before and after numbers recorded", "evidence": ["check:cap_mood01_vi720", "review:art"]},
-        {"id": "C2", "text": "the layer is presentation only, rides the existing ambience seam, holds no truth and costs nothing when steady", "evidence": ["review:architecture", "review:performance"]},
-        {"id": "C3", "text": "HUD, dialogue and danger cues are never darkened or covered; both aspect ratios look right at real size", "evidence": ["check:cap_mood01_en800", "review:ui_ux", "review:art"]},
-        {"id": "C4", "text": "world, player and story flows pass with no SCRIPT ERROR or leak", "evidence": ["check:e2e_world", "check:e2e_player", "check:e2e_story", "check:godot_suite"]}
+        {
+          "id": "C1",
+          "text": "on the hub gameplay capture the play-area saturation is <= 0.23, centre/whole luminance >= 1.28 and the warm share inside 3-22 %, measured by the committed script with before and after numbers recorded",
+          "evidence": [
+            "check:cap_mood01_vi720",
+            "review:art"
+          ]
+        },
+        {
+          "id": "C2",
+          "text": "the layer is presentation only, rides the existing ambience seam, holds no truth and costs nothing when steady",
+          "evidence": [
+            "review:architecture",
+            "review:performance"
+          ]
+        },
+        {
+          "id": "C3",
+          "text": "HUD, dialogue and danger cues are never darkened or covered; both aspect ratios look right at real size",
+          "evidence": [
+            "check:cap_mood01_en800",
+            "review:ui_ux",
+            "review:art"
+          ]
+        },
+        {
+          "id": "C4",
+          "text": "world, player and story flows pass with no SCRIPT ERROR or leak",
+          "evidence": [
+            "check:e2e_world",
+            "check:e2e_player",
+            "check:e2e_story",
+            "check:godot_suite"
+          ]
+        }
       ]
     },
     {
       "id": "mood-02-story-moment-framing",
       "title": "Framed story moments: a dialogue frame in Aetheria's own motif, name plates, the HUD gives way",
-      "scopes": ["story-moment-framing"],
-      "depends_on": ["mood-01-world-mood-layer"],
+      "scopes": [
+        "story-moment-framing"
+      ],
+      "depends_on": [
+        "mood-01-world-mood-layer"
+      ],
       "objective": "Talking to someone feels like a story moment, not a slate text box. The dialogue panel (src/presentation/dialogue/) gets a material frame in Aetheria's OWN motif through UITheme roles (no parchment, scroll or jade look taken from the reference), the speaker shown clearly (name plate, and the portrait when one exists), and while a dialogue is open the non-essential HUD dims so the scene and the frame carry the moment. NPCs who can talk or give a quest show a small world-space name plate near them. Whole-text rules of ui-01 stay.",
-      "in_scope": ["src/presentation/dialogue/**", "src/presentation/ui/** theme roles", "src/presentation/hud/** (dim while dialogue is open)", "a world-space name plate for talk/quest NPCs under src/presentation/", "locale/** for any new string", "captures vi 1280x720 and en 1280x800", "docs/UI_UX_BIBLE.md"],
-      "out_of_scope": ["rewriting dialogue text or canon", "new portraits (use what the pipeline already ships)", "minimap or new HUD elements beyond the name plate", "Phase 21/22"],
-      "tasks": ["load .claude/skills/aetheria-visual-craft and .claude/skills/aetheria-ui-localization", "design the frame and plate as theme roles, measure against the HUD 15 % budget", "implement, keeping keyboard/Esc behaviour", "tests: nothing clipped (ui-01 layout test stays green), HUD dimmed only while open, plates only on talk/quest NPCs", "captures and docs"],
-      "constraints": ["HUD <= 15 % while exploring; the dialogue band stays where UI_UX_BIBLE puts it", "UI never drives gameplay truth", "no copied asset or kit; every new asset through the pipeline with an ASSET_LICENSES row"],
-      "source_docs": [".claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md", "docs/UI_UX_BIBLE.md", "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md", ".kiro/steering/07-localization.md"],
-      "allowed_paths": ["src/presentation/**", "tests/**", "tools/capture_ui.gd", "locale/**", "assets/ui/**", "tools/aetheria_art_pipeline/**", "docs/UI_UX_BIBLE.md", "docs/ASSET_LICENSES.md", "docs/CHANGELOG.md", "docs/TEST_PLAN.md", "docs/handoff/**"],
-      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_dialogue", "e2e_npc", "e2e_quest", "e2e_story", "cap_mood02_vi720", "cap_mood02_en800"],
+      "in_scope": [
+        "src/presentation/dialogue/**",
+        "src/presentation/ui/** theme roles",
+        "src/presentation/hud/** (dim while dialogue is open)",
+        "a world-space name plate for talk/quest NPCs under src/presentation/",
+        "locale/** for any new string",
+        "captures vi 1280x720 and en 1280x800",
+        "docs/UI_UX_BIBLE.md"
+      ],
+      "out_of_scope": [
+        "rewriting dialogue text or canon",
+        "new portraits (use what the pipeline already ships)",
+        "minimap or new HUD elements beyond the name plate",
+        "Phase 21/22"
+      ],
+      "tasks": [
+        "load .claude/skills/aetheria-visual-craft and .claude/skills/aetheria-ui-localization",
+        "design the frame and plate as theme roles, measure against the HUD 15 % budget",
+        "implement, keeping keyboard/Esc behaviour",
+        "tests: nothing clipped (ui-01 layout test stays green), HUD dimmed only while open, plates only on talk/quest NPCs",
+        "captures and docs"
+      ],
+      "constraints": [
+        "HUD <= 15 % while exploring; the dialogue band stays where UI_UX_BIBLE puts it",
+        "UI never drives gameplay truth",
+        "no copied asset or kit; every new asset through the pipeline with an ASSET_LICENSES row"
+      ],
+      "source_docs": [
+        ".claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md",
+        "docs/UI_UX_BIBLE.md",
+        "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md",
+        ".kiro/steering/07-localization.md"
+      ],
+      "allowed_paths": [
+        "src/presentation/**",
+        "tests/**",
+        "tools/capture_ui.gd",
+        "locale/**",
+        "assets/ui/**",
+        "tools/aetheria_art_pipeline/**",
+        "docs/UI_UX_BIBLE.md",
+        "docs/ASSET_LICENSES.md",
+        "docs/CHANGELOG.md",
+        "docs/TEST_PLAN.md",
+        "docs/handoff/**"
+      ],
+      "required_checks": [
+        "lint",
+        "godot_import",
+        "godot_parse",
+        "godot_boot",
+        "godot_suite",
+        "e2e_dialogue",
+        "e2e_npc",
+        "e2e_quest",
+        "e2e_story",
+        "cap_mood02_vi720",
+        "cap_mood02_en800"
+      ],
       "required_captures": [
-        {"id": "cap_mood02_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/mood-02/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-02/vi-1280x720/*.png"},
-        {"id": "cap_mood02_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/mood-02/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-02/en-1280x800/*.png"}
+        {
+          "id": "cap_mood02_vi720",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x720",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "vi",
+            "{repo}/.aetheria-autopilot/captures/mood-02/vi-1280x720"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/mood-02/vi-1280x720/*.png"
+        },
+        {
+          "id": "cap_mood02_en800",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x800",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "en",
+            "{repo}/.aetheria-autopilot/captures/mood-02/en-1280x800"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/mood-02/en-1280x800/*.png"
+        }
       ],
       "acceptance_criteria": [
-        {"id": "C1", "text": "the dialogue frame and name plates use UITheme roles in Aetheria's own motif, with no reference asset or kit copied", "evidence": ["review:ui_ux", "review:art"]},
-        {"id": "C2", "text": "while a dialogue is open the non-essential HUD is dimmed and restored on close; nothing in the dialogue is clipped in vi or en", "evidence": ["check:godot_suite", "check:e2e_dialogue", "review:qa"]},
-        {"id": "C3", "text": "name plates show only on NPCs who can talk or give a quest and stay within the HUD budget", "evidence": ["check:e2e_npc", "check:e2e_quest", "review:ui_ux", "review:gameplay"]},
-        {"id": "C4", "text": "captures at vi 1280x720 and en 1280x800 show an open dialogue and a plated NPC, readable at real size", "evidence": ["check:cap_mood02_vi720", "check:cap_mood02_en800", "review:ui_ux"]}
+        {
+          "id": "C1",
+          "text": "the dialogue frame and name plates use UITheme roles in Aetheria's own motif, with no reference asset or kit copied",
+          "evidence": [
+            "review:ui_ux",
+            "review:art"
+          ]
+        },
+        {
+          "id": "C2",
+          "text": "while a dialogue is open the non-essential HUD is dimmed and restored on close; nothing in the dialogue is clipped in vi or en",
+          "evidence": [
+            "check:godot_suite",
+            "check:e2e_dialogue",
+            "review:qa"
+          ]
+        },
+        {
+          "id": "C3",
+          "text": "name plates show only on NPCs who can talk or give a quest and stay within the HUD budget",
+          "evidence": [
+            "check:e2e_npc",
+            "check:e2e_quest",
+            "review:ui_ux",
+            "review:gameplay"
+          ]
+        },
+        {
+          "id": "C4",
+          "text": "captures at vi 1280x720 and en 1280x800 show an open dialogue and a plated NPC, readable at real size",
+          "evidence": [
+            "check:cap_mood02_vi720",
+            "check:cap_mood02_en800",
+            "review:ui_ux"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui-05-identity-plaque-and-banner",
+      "title": "An identity plaque nothing covers, and a story banner when a task begins",
+      "scopes": [
+        "ui-readability"
+      ],
+      "depends_on": [
+        "mood-02-story-moment-framing"
+      ],
+      "objective": "The HUD reads like a finished game: the identity plaque (portrait, name, realm, HP and other OWNED gauges) is one framed block in Aetheria's motif that no panel, quest line or dialogue ever overlaps, at both aspect ratios; and when the quest system starts a new task the screen shows a short hanging banner (task name plus one line in the protagonist's voice, both locale keys) that fades in about 2 s and never blocks input. Read .claude/skills/aetheria-ui-localization ('Lessons from a released tu-tiên game').",
+      "in_scope": [
+        "src/presentation/hud/**",
+        "src/presentation/ui/** theme roles",
+        "a banner component under src/presentation/",
+        "locale keys vi+en for banner lines of the existing quests (one line each, in the protagonist's voice, no canon change)",
+        "overlap tests at 1280x720 and 1280x800",
+        "captures",
+        "docs/UI_UX_BIBLE.md"
+      ],
+      "out_of_scope": [
+        "quest rules or data beyond the banner line key",
+        "new gauges for state no system owns",
+        "Phase 21/22"
+      ],
+      "tasks": [
+        "measure current HUD overlaps with every panel open",
+        "frame the plaque, enforce a reserved band",
+        "banner on the existing quest-started signal",
+        "tests + captures + docs"
+      ],
+      "constraints": [
+        "HUD <= 15 % while exploring",
+        "presentation listens to existing signals; it decides nothing",
+        "UITheme roles and layout tokens only"
+      ],
+      "source_docs": [
+        "docs/UI_UX_BIBLE.md",
+        ".claude/skills/aetheria-ui-localization/SKILL.md",
+        "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md"
+      ],
+      "allowed_paths": [
+        "src/presentation/**",
+        "tests/**",
+        "tools/capture_ui.gd",
+        "locale/**",
+        "assets/ui/**",
+        "tools/aetheria_art_pipeline/**",
+        "docs/UI_UX_BIBLE.md",
+        "docs/ASSET_LICENSES.md",
+        "docs/CHANGELOG.md",
+        "docs/TEST_PLAN.md",
+        "docs/handoff/**"
+      ],
+      "required_checks": [
+        "lint",
+        "godot_import",
+        "godot_parse",
+        "godot_boot",
+        "godot_suite",
+        "e2e_quest",
+        "e2e_dialogue",
+        "e2e_story",
+        "cap_ui05_vi720",
+        "cap_ui05_en800"
+      ],
+      "required_captures": [
+        {
+          "id": "cap_ui05_vi720",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x720",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "vi",
+            "{repo}/.aetheria-autopilot/captures/ui-05/vi-1280x720"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/ui-05/vi-1280x720/*.png"
+        },
+        {
+          "id": "cap_ui05_en800",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x800",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "en",
+            "{repo}/.aetheria-autopilot/captures/ui-05/en-1280x800"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/ui-05/en-1280x800/*.png"
+        }
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "C1",
+          "text": "no panel, quest line or dialogue overlaps the identity plaque at 1280x720 or 1280x800, asserted by a test that opens every panel",
+          "evidence": [
+            "check:godot_suite",
+            "review:ui_ux",
+            "review:qa"
+          ]
+        },
+        {
+          "id": "C2",
+          "text": "a banner with the task name and a protagonist line appears on quest start, fades in about 2 s, never takes input, vi and en keys exist",
+          "evidence": [
+            "check:e2e_quest",
+            "review:ui_ux",
+            "review:narrative"
+          ]
+        },
+        {
+          "id": "C3",
+          "text": "captures in both languages show the framed plaque and a banner, readable at real size",
+          "evidence": [
+            "check:cap_ui05_vi720",
+            "check:cap_ui05_en800",
+            "review:ui_ux",
+            "review:art"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui-06-settings-tabs-reading-mode",
+      "title": "Settings in tabs with presets, a story-reading mode, text size and key rebinding",
+      "scopes": [
+        "ui-readability"
+      ],
+      "depends_on": [
+        "ui-05-identity-plaque-and-banner"
+      ],
+      "objective": "src/presentation/menus/settings_menu.gd becomes a centred-book screen (reuse UIBookPanel) with tabs Visual / Controls / Readability / Audio; one-click presets (Low-end, Story reading); a Story reading mode (dialogue auto-advances at a readable pace, larger dialogue text, non-essential HUD hidden); a text-size setting applied through UITheme; and key rebinding for gameplay actions through InputService (WASD stays movement-only by default, conflicts refused with a message). Settings persist through the existing settings owner.",
+      "in_scope": [
+        "src/presentation/menus/settings_menu.gd and its tests",
+        "src/infrastructure/input_service.gd rebinding API (one owner of bindings)",
+        "settings persistence through the existing owner",
+        "locale keys vi+en",
+        "captures",
+        "docs/UI_UX_BIBLE.md"
+      ],
+      "out_of_scope": [
+        "audio mixing beyond existing buses",
+        "colour-blind shaders (a later item)",
+        "Phase 21/22"
+      ],
+      "tasks": [
+        "read the current settings owner and InputService",
+        "build tabs in the centred book",
+        "presets + story mode + text size",
+        "rebinding with conflict refusal and persistence",
+        "tests, captures, docs"
+      ],
+      "constraints": [
+        "one owner per state (settings, bindings)",
+        "no literal strings",
+        "Esc closes one level",
+        "existing E2E flows stay green"
+      ],
+      "source_docs": [
+        "docs/UI_UX_BIBLE.md",
+        ".claude/skills/aetheria-ui-localization/SKILL.md",
+        ".claude/skills/aetheria-architecture/SKILL.md"
+      ],
+      "allowed_paths": [
+        "src/presentation/**",
+        "tests/**",
+        "tools/capture_ui.gd",
+        "locale/**",
+        "assets/ui/**",
+        "tools/aetheria_art_pipeline/**",
+        "docs/UI_UX_BIBLE.md",
+        "docs/ASSET_LICENSES.md",
+        "docs/CHANGELOG.md",
+        "docs/TEST_PLAN.md",
+        "docs/handoff/**",
+        "src/infrastructure/input_service.gd",
+        "src/infrastructure/**"
+      ],
+      "required_checks": [
+        "lint",
+        "godot_import",
+        "godot_parse",
+        "godot_boot",
+        "godot_suite",
+        "e2e_app",
+        "e2e_dialogue",
+        "e2e_player",
+        "cap_ui06_vi720",
+        "cap_ui06_en800"
+      ],
+      "required_captures": [
+        {
+          "id": "cap_ui06_vi720",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x720",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "vi",
+            "{repo}/.aetheria-autopilot/captures/ui-06/vi-1280x720"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/ui-06/vi-1280x720/*.png"
+        },
+        {
+          "id": "cap_ui06_en800",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x800",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "en",
+            "{repo}/.aetheria-autopilot/captures/ui-06/en-1280x800"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/ui-06/en-1280x800/*.png"
+        }
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "C1",
+          "text": "settings open as a centred book with four named tabs, presets apply in one press, nothing clipped in vi or en",
+          "evidence": [
+            "check:godot_suite",
+            "review:ui_ux"
+          ]
+        },
+        {
+          "id": "C2",
+          "text": "story-reading mode auto-advances dialogue, enlarges its text and hides non-essential HUD; turning it off restores everything",
+          "evidence": [
+            "check:e2e_dialogue",
+            "review:qa"
+          ]
+        },
+        {
+          "id": "C3",
+          "text": "a gameplay action can be rebound, a conflict is refused with a message, the binding persists across restart and prompts show the new key",
+          "evidence": [
+            "check:godot_suite",
+            "review:architecture",
+            "review:qa"
+          ]
+        },
+        {
+          "id": "C4",
+          "text": "captures in both languages show each tab readable at real size",
+          "evidence": [
+            "check:cap_ui06_vi720",
+            "check:cap_ui06_en800",
+            "review:ui_ux"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "art-02-character-signature",
+      "title": "Characters with a signature: one defining shape each and value contrast against the floor (D-077)",
+      "scopes": [
+        "art-character-readability"
+      ],
+      "depends_on": [
+        "ui-06-settings-tabs-reading-mode"
+      ],
+      "objective": "Per D-077, every player look and every named NPC in the hub reads at 1x like the survey's figures: each has ONE signature silhouette item or shape that no other character shares (hat, blade on the back, long dark hair, staff, veil…), clothing whose mean value separates from the hub floor by a measured margin, and cleaner pixels (a deterministic cleanup rule in pixelize, never hand-edited PNGs). Built only through the pipeline at 32x48; iterate with `blender/cli.py --only` (skill aetheria-art-pipeline) and finish with one full render per actor. Rebuild lin_yue, te_moc, ko_than and shen_buqi so the min_tone contour debt closes.",
+      "in_scope": [
+        "tools/aetheria_art_pipeline/** design data, props3d/geometry for signature items, pixelize rules",
+        "regenerated sheets and anchors the game loads",
+        "a readability test extension: a distinct signature per character and floor contrast",
+        "before/after real-hub captures (tools/capture_player_looks.gd and capture_ui.gd)",
+        "docs/CHARACTER_ART_BIBLE.md, ASSET_LICENSES, CHANGELOG"
+      ],
+      "out_of_scope": [
+        "cell size change (D-077 keeps 32x48)",
+        "new animations",
+        "enemies"
+      ],
+      "tasks": [
+        "load aetheria-visual-craft (§0 incl. 'Characters with a signature') and aetheria-art-pipeline",
+        "measure every hub character's floor contrast and silhouette overlap",
+        "design one signature per character, build via pipeline with the --only loop",
+        "rebuild the four NPCs with contour debt",
+        "tests, captures, docs"
+      ],
+      "constraints": [
+        "lossless indexed PNGs via pngout",
+        "deterministic: two builds give the same md5",
+        "run --import after pixel before any Godot test (stale-import trap)"
+      ],
+      "source_docs": [
+        ".claude/skills/aetheria-visual-craft/SKILL.md",
+        ".claude/skills/aetheria-art-pipeline/SKILL.md",
+        "docs/CHARACTER_ART_BIBLE.md",
+        "docs/DECISIONS.md"
+      ],
+      "allowed_paths": [
+        "tools/aetheria_art_pipeline/**",
+        "assets/sprites/**",
+        "data/characters/**",
+        "src/presentation/characters/**",
+        "tests/**",
+        "tools/capture_player_looks.gd",
+        "docs/CHARACTER_ART_BIBLE.md",
+        "docs/ASSET_LICENSES.md",
+        "docs/CHANGELOG.md",
+        "docs/handoff/**",
+        "assets/ui/**"
+      ],
+      "required_checks": [
+        "lint",
+        "godot_import",
+        "godot_parse",
+        "godot_boot",
+        "godot_suite",
+        "e2e_player",
+        "e2e_npc",
+        "e2e_story",
+        "cap_art02_vi720",
+        "cap_art02_en800"
+      ],
+      "required_captures": [
+        {
+          "id": "cap_art02_vi720",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x720",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "vi",
+            "{repo}/.aetheria-autopilot/captures/art-02/vi-1280x720"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/art-02/vi-1280x720/*.png"
+        },
+        {
+          "id": "cap_art02_en800",
+          "cmd": [
+            "{godot}",
+            "--path",
+            ".",
+            "--resolution",
+            "1280x800",
+            "-s",
+            "res://tools/capture_ui.gd",
+            "--",
+            "en",
+            "{repo}/.aetheria-autopilot/captures/art-02/en-1280x800"
+          ],
+          "timeout": 900,
+          "artifacts": ".aetheria-autopilot/captures/art-02/en-1280x800/*.png"
+        }
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "C1",
+          "text": "each player look and named hub NPC has a signature shape no other character shares, asserted by a test on the sheets",
+          "evidence": [
+            "check:godot_suite",
+            "review:art",
+            "review:qa"
+          ]
+        },
+        {
+          "id": "C2",
+          "text": "every character's clothing separates from the hub floor by the measured margin recorded in the test",
+          "evidence": [
+            "check:godot_suite",
+            "review:art"
+          ]
+        },
+        {
+          "id": "C3",
+          "text": "before/after real-hub captures at 1x show the characters reading clearly; built by the pipeline, deterministic, pngout",
+          "evidence": [
+            "check:cap_art02_vi720",
+            "check:cap_art02_en800",
+            "review:art"
+          ]
+        },
+        {
+          "id": "C4",
+          "text": "player, NPC and story flows pass with no SCRIPT ERROR or leak",
+          "evidence": [
+            "check:e2e_player",
+            "check:e2e_npc",
+            "check:e2e_story",
+            "check:godot_suite"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "story-01-opening-hook-proposal",
+      "title": "PROPOSAL: the first ten minutes re-staged per D-078 (hook, protagonist voice, a first choice whose consequence is seen)",
+      "scopes": [
+        "story-proposal"
+      ],
+      "depends_on": [
+        "art-02-character-signature"
+      ],
+      "objective": "Write docs/proposals/STORY_OPENING_TADE_PROPOSAL.md: a PROPOSAL (not canon) that re-stages the existing opening (Origins, Lạc Hà arrival) so that, within five minutes, the player meets a hook scene, hears the protagonist's own cold, calculating voice (sample lines vi + en), and makes a first real choice whose consequence is visible later (who remembers, what opens or closes, how standing moves), all read from persistent state per NARRATIVE_MASTER_PLAN §3 (no meter). Include a milestone map: Aetheria act/reveal-ladder slots against the novel's archetypal arc beats (betrayal, fall, rebirth, rising through schemes) described only in our own summary words, with a column the owner fills with the novel milestone each one echoes. Every quest in the opening is written as a scheme (goal, two or more approaches, the price of each). No novel names, places or sentences.",
+      "in_scope": [
+        "docs/proposals/STORY_OPENING_TADE_PROPOSAL.md",
+        "docs/CONTRADICTION_REGISTER.md and NARRATIVE_MASTER_PLAN clue references if the proposal finds a conflict (as notes, not edits to canon)"
+      ],
+      "out_of_scope": [
+        "editing story data, locale or canon docs (owner acceptance first)",
+        "code"
+      ],
+      "tasks": [
+        "load aetheria-narrative-canon ('Player pull' and the canon guard) and read D-078",
+        "map the current opening beat by beat with timings",
+        "write the re-staged opening, voice samples, schemes and the milestone map",
+        "list every canon fact it touches with CL ids"
+      ],
+      "constraints": [
+        "status PROPOSAL until the owner accepts",
+        "frozen canon respected or the conflict named",
+        "no copyrighted text"
+      ],
+      "source_docs": [
+        "docs/DECISIONS.md",
+        "docs/NARRATIVE_MASTER_PLAN.md",
+        "docs/CANON_LEDGER.md",
+        "docs/WORLD_BIBLE.md",
+        ".claude/skills/aetheria-narrative-canon/SKILL.md"
+      ],
+      "allowed_paths": [
+        "docs/proposals/**",
+        "docs/CONTRADICTION_REGISTER.md",
+        "docs/CHANGELOG.md"
+      ],
+      "required_checks": [
+        "lint",
+        "docs"
+      ],
+      "required_captures": [],
+      "acceptance_criteria": [
+        {
+          "id": "C1",
+          "text": "the proposal stages a hook, protagonist voice samples (vi+en) and a first choice with a later visible consequence inside five minutes",
+          "evidence": [
+            "review:narrative",
+            "review:gameplay"
+          ]
+        },
+        {
+          "id": "C2",
+          "text": "every touched canon fact is cited by CL id and no frozen fact is contradicted, or the conflict is named for the owner",
+          "evidence": [
+            "review:narrative"
+          ]
+        },
+        {
+          "id": "C3",
+          "text": "no novel names, places or sentences appear; the milestone map leaves the novel column for the owner",
+          "evidence": [
+            "review:narrative"
+          ]
+        }
       ]
     }
   ]

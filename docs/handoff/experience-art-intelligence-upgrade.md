@@ -90,7 +90,7 @@ A/B. The en 1280×800 matrix and the five vignettes: §7.
 | ID | What | Owner | Closes when |
 |---|---|---|---|
 | H21-14 | nobody has played it | the owner | §17.6 / §19.8 of the pre-21 handoff, plus: did each Origin's lead make sense, and did the first hour feel like your own errand? |
-| ART-DIR-01 / 02 | §3 | the owner | a decision |
+| ART-DIR-01 / 02 | §3 | the owner | DECIDED 2026-10-26 — D-077 (keep 32×48; no brighter world) |
 | H-ART-01 | the Origin pictures are stylised dioramas, not painted illustration; interiors are low key | art | a painter's pass, or a richer prop set in `props3d` |
 | H-ART-02 | the strike's forks read white-lilac (thin lines band high); the rupture column is simple | art | a second VFX pass |
 | H-NAR-01 | §6's "hook into the Night" per Origin (escorting the attacked cart, treating the first casualties …) is still only in the observations | narrative | a Night-time line per Origin |
