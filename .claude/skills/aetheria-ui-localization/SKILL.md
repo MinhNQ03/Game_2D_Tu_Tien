@@ -40,6 +40,28 @@ nothing — its owner hands it pages.
 - A player-expected action must be discoverable from the screen, not only from the test (L-039).
 - Measure a fully populated screen through public setters (L-035); assert offsets (L-028).
 
+## Lessons from a released tu-tiên game (owner survey 2026-10-21, principles only)
+Source: `docs/design_refs/cotienlo_2026_10_21/` (gitignored). What they do well, and the gaps
+we must beat:
+- **Material frames:** every panel is an OBJECT (wood, brass, cloth, a seal), with a title plaque
+  and one ornate close button. A flat slate rectangle reads as a prototype. Build our own motif
+  through UITheme roles (dark ink, deep crimson, old metal, seals), never their parchment or jade.
+- **Identity plaque:** a framed portrait, name, realm and HP/MP bars in one corner block that
+  NOTHING may cover (their quest panel covers it: our bug list). The portrait and frame are
+  unlocked by story achievements.
+- **Chapter banner:** a hanging banner ("New task: …") when a quest starts, gone in about 2 s.
+  Ours adds one line in the protagonist's voice.
+- **Dialogue yields the screen:** while someone talks, the skill wheel hides and the quest panel
+  folds to one line. Dialogue + HUD stay under half the screen at every ratio.
+- **Auto-path always answers:** clicking a quest either walks there or shows WHY not ("in a
+  dialogue"). Silence is a bug.
+- **Keys:** WASD only moves, skills sit on number keys, rebinding exists from the first build.
+- **Settings in tabs** (Visual / Controls / Readability / Audio / Privacy), each with a live
+  preview, plus one-click presets ("Low-end", "Story reading"). Readability: font size, three
+  colour-blind modes, 10 % marks on HP, bold text outline, reduced flashing. Danger telegraphs
+  show at every graphics level.
+- **Story reading mode:** dialogue auto-advances, large text, HUD hidden.
+
 ## Evidence
 Real window, BOTH languages, 1280×720 AND 1280×800:
 `<godot> --path . --resolution 1280x720 -s res://tools/capture_ui.gd -- vi <dir>` (then en, 1280x800).

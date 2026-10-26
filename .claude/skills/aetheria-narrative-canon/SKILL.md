@@ -41,6 +41,28 @@ state + key item.
 - A complete system is not an engaging one (L-053): judge from the player's seat.
 - A second character must differ in silhouette and palette at 1×, not only in details.
 
+## Player pull: what a released tu-tiên game does that we must beat (owner survey 2026-10-21)
+Source: `docs/design_refs/cotienlo_2026_10_21/GHI_CHU_CAI_TIEN.md` (gitignored; principles only,
+never their text, data or pictures). Cổ Tiên Lộ hooks players by staying close to its source novel
+and putting story on screen in the first second. Our answer:
+- **Hook in the first 5 minutes:** a scene, not a menu. The first real choice comes early and its
+  consequence is SEEN later: an NPC remembers, a door opens or shuts, standing moves.
+- **The protagonist has a voice:** cold, sharp and calculating lines that are theirs, not only a
+  narrator's. Literary narration, shown whole (ui-01).
+- **Quests read as schemes:** a goal, two or more ways to reach it (kill, deceive, manipulate,
+  trade) and the price of each. The reward is story or standing, never a free pickup.
+- **Teach through people:** a tutorial hint is a line spoken by a master, a rival or a heart
+  demon, not plain instruction text.
+- **Story beats change the world:** every major beat has a visible reaction (light, sound, a
+  mark on the floor, a closed exit) and a chapter banner carrying one line in the protagonist's
+  voice.
+- **Our own loop, not theirs:** never the "raise gu" loop. Ours grows out of our canon: seize
+  and refine (power at a cost), sect and faction standing, secrets gathered as clues (§9a).
+- **Canon guard:** the reference proposes a "Tà niệm" meter. Our frozen canon says Tà Đế is NOT
+  a meter (`NARRATIVE_MASTER_PLAN.md` §3): read consequences from the persistent state. Use that
+  state for mood and ambience, never a single score. Following an outside novel's plot is an
+  owner decision (canon freeze and copyright): never import its characters, events or text.
+
 ## Before calling narrative work done
 Cause → effect is visible to the player; every claim in a doc is grounded in data or code; the
 clue ledger and contradiction register are updated when you add or resolve a thread.

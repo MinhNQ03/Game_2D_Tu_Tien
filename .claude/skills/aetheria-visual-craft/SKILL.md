@@ -28,6 +28,13 @@ less saturated (0.15 against 0.29), with a lit centre (centre/whole luminance 1.
   name, and a visible world reaction (a light, a sound or a mark on the floor) on the cue.
 - **Its own signature:** a recognisable Aetheria visual language for FX and UI, never another
   game's parchment or jade kit.
+- **Characters with a signature:** the owner (2026-10-26) says our Blender-to-pixel figures look
+  bad. The reference's figures read at 1x because each has ONE signature shape (a conical hat, a
+  sword on the back, long black hair), dark clothes against a pale floor, and clean hand-placed
+  pixels. Ours are pale robes on pale ground with machine-voted pixels. Rank the fix: a
+  signature silhouette item per character, then value contrast against the floor, then a hand
+  cleanup pass over the Blender output. Changing the cell size or dropping Blender is the owner's
+  ART-DIR decision.
 Report it as numbers before and after (§1), never as "looks better".
 
 ## 1. Measure before you touch
