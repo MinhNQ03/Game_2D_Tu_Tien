@@ -1,6 +1,6 @@
 ---
 name: aetheria-visual-craft
-description: How to make Aetheria's graphics, animation and VFX look designed — use before any art, sprite, map, story-picture, UI-picture or VFX work in this repo (Godot 4.7, Blender 5.2 pipeline). Method only; the rules live in the owner docs it names.
+description: Method that makes Aetheria art, animation and VFX look designed - measure, compose, build from the pipeline, verify in the real window. Use before any art, map, UI-picture or VFX work.
 ---
 
 # Aetheria visual craft — the working method
@@ -12,6 +12,23 @@ Owners to open first: `docs/VISUAL_CRAFT_WORKFLOW.md` (the brief), `docs/AETHERI
 (Blender → pixel; §10a story art, §10b VFX), `tools/aetheria_art_pipeline/style/aetheria_style.yaml`
 (Visual DNA), `.kiro/steering/06-art-assets.md`, `docs/MOTION_DESIGN_CONTRACT.md`,
 `docs/PRESENTATION_ARCHITECTURE_CONTRACT.md`, `docs/UI_UX_BIBLE.md`, `docs/ASSET_LICENSES.md`.
+
+## 0. The bar: a scene with mood, not an evenly lit tile field
+The owner calls the game "chán" beside released tu-tiên games. Measured (2026-10-25, play area
+without HUD; full table and gap list in `references/AESTHETIC_VISION.md`): the reference
+gameplay shots are NOT brighter. They are darker (value mean 0.27–0.33 against our 0.49) and far
+less saturated (0.15 against 0.29), with a lit centre (centre/whole luminance 1.35 against our
+1.20). Our hub is one even mid-green. Before calling any screen done, check it has:
+- **Mood layer:** a grade that mutes the ground, a falloff toward the edges and drifting mist or
+  motes, so the eye goes to the centre. The DNA already says "muted; colour is earned", so this
+  is NOT the ART-DIR-02 brightness question.
+- **Actors that pop:** the darkest darks and the cleanest accents on characters, never on
+  grass. Name plates over speaking or quest NPCs; the player is never the same value as the floor.
+- **Framed story moments:** dialogue and events have a material frame, a speaker portrait or
+  name, and a visible world reaction (a light, a sound or a mark on the floor) on the cue.
+- **Its own signature:** a recognisable Aetheria visual language for FX and UI, never another
+  game's parchment or jade kit.
+Report it as numbers before and after (§1), never as "looks better".
 
 ## 1. Measure before you touch
 - Capture the REAL window first (`tools/capture_ui.gd`, `tools/capture_motion.gd`; real display,

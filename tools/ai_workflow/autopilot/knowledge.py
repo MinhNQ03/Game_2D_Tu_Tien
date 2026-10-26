@@ -19,6 +19,8 @@ POLICY_GLOBS = [
     "tools/ai_workflow/aetheria_autopilot.py",
     ".claude/agents/*.md",
     ".claude/skills/*/SKILL.md",
+    ".claude/skills/README.md",
+    ".claude/skills/*/references/*.md",
     ".claude/settings.json",
 ]
 

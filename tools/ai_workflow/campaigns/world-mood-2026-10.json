@@ -1,0 +1,75 @@
+{
+  "id": "world-mood-2026-10",
+  "title": "Owner request 2026-10-25: the game looks 'chán' beside released tu-tiên games; give the world mood and frame the story moments, applying the skill pack's aesthetic bar",
+  "source": "owner message of 2026-10-25 (Vietnamese) with the Cổ Tiên Lộ survey; the measured gap is in .claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md (play area saturation 0.29 vs 0.15, centre/all 1.20 vs 1.35, warm 2.0 % below the DNA band)",
+  "branch": "feat/world-mood-autopilot",
+  "scopes_allowed": ["world-mood", "story-moment-framing", "quality-debt-ui"],
+  "allow_planner_items": true,
+  "budget": {"max_usd_per_task": 60, "max_usd_per_campaign": 200},
+  "items": [
+    {
+      "id": "mood-01-world-mood-layer",
+      "title": "World mood layer: muted ground, light pulled to the centre, mist, one warm practical",
+      "scopes": ["world-mood"],
+      "objective": "The hub (Thôn Lạc Hà) stops reading as one evenly lit mid-green field. Through the existing ambience seam (src/presentation/ambient/: MapAmbience, AmbienceProfileData, data/ambience/*.tres, chosen by WorldRuntime from the story beat) give the authored default ambience a grade that mutes the ground, a soft falloff toward the frame edges, slow drifting mist or motes, and at least one warm practical light, so the eye goes to the player and the actors pop. Measured on the real capture's play area (top 22 % and bottom 18 % cut): mean saturation from 0.29 down to <= 0.23, centre/whole luminance from 1.20 up to >= 1.28, warm-pixel share inside the DNA band 3-22 %, and the player sprite still clearly separated from the ground.",
+      "in_scope": [
+        "src/presentation/ambient/** and the hub's ambience profile data under data/ambience/**",
+        "a presentation-only overlay (edge falloff, mist/motes) that never draws over HUD and never blocks input",
+        "a measuring script tools/aetheria_art_pipeline/validate/mood_metrics.py (stdlib + PIL, /usr/bin/python3) that prints the metrics of .claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md for a capture",
+        "before/after captures vi 1280x720 and en 1280x800, metrics recorded in docs/VISUAL_CRAFT_WORKFLOW.md or the handoff",
+        "a unit test for the profile/overlay invariants (tint never below MapAmbience.MIN_TINT_LEVEL, _process off when steady)"
+      ],
+      "out_of_scope": ["tile or sprite palette changes (Visual DNA; owner gate ART-DIR-02 is about a BRIGHTER world and is not touched)", "sprite cell size (ART-DIR-01)", "gameplay rules", "Phase 21/22"],
+      "tasks": [
+        "load .claude/skills/aetheria-visual-craft (section 0 and references/AESTHETIC_VISION.md) and follow it",
+        "measure the current hub capture with the new script and record the before numbers",
+        "extend the default hub ambience: grade, edge falloff, mist/motes, one warm practical; story ambiences keep working",
+        "re-capture, re-measure, iterate until the targets hold; look at 1x and magnified",
+        "tests, docs, before/after numbers"
+      ],
+      "constraints": [
+        "presentation holds no truth: nothing saved, no clock read, no rule asks the layer anything",
+        "idle cost near zero: no per-frame allocation; _process only while something moves (mist may run, but bounded and measured)",
+        "boss or danger telegraphs and the HUD are never darkened or hidden by the layer",
+        "the final look is the owner's call: report before/after captures and numbers, not 'looks better'"
+      ],
+      "source_docs": [".claude/skills/aetheria-visual-craft/SKILL.md", ".claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md", "docs/VISUAL_CRAFT_WORKFLOW.md", "docs/MOTION_DESIGN_CONTRACT.md", "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md", "tools/aetheria_art_pipeline/style/aetheria_style.yaml"],
+      "allowed_paths": ["src/presentation/ambient/**", "data/ambience/**", "src/gameplay/maps/*.tscn", "tools/aetheria_art_pipeline/validate/**", "tests/**", "docs/VISUAL_CRAFT_WORKFLOW.md", "docs/CHANGELOG.md", "docs/TEST_PLAN.md", "docs/handoff/**"],
+      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_world", "e2e_player", "e2e_story", "cap_mood01_vi720", "cap_mood01_en800"],
+      "required_captures": [
+        {"id": "cap_mood01_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/mood-01/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-01/vi-1280x720/*.png"},
+        {"id": "cap_mood01_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/mood-01/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-01/en-1280x800/*.png"}
+      ],
+      "acceptance_criteria": [
+        {"id": "C1", "text": "on the hub gameplay capture the play-area saturation is <= 0.23, centre/whole luminance >= 1.28 and the warm share inside 3-22 %, measured by the committed script with before and after numbers recorded", "evidence": ["check:cap_mood01_vi720", "review:art"]},
+        {"id": "C2", "text": "the layer is presentation only, rides the existing ambience seam, holds no truth and costs nothing when steady", "evidence": ["review:architecture", "review:performance"]},
+        {"id": "C3", "text": "HUD, dialogue and danger cues are never darkened or covered; both aspect ratios look right at real size", "evidence": ["check:cap_mood01_en800", "review:ui_ux", "review:art"]},
+        {"id": "C4", "text": "world, player and story flows pass with no SCRIPT ERROR or leak", "evidence": ["check:e2e_world", "check:e2e_player", "check:e2e_story", "check:godot_suite"]}
+      ]
+    },
+    {
+      "id": "mood-02-story-moment-framing",
+      "title": "Framed story moments: a dialogue frame in Aetheria's own motif, name plates, the HUD gives way",
+      "scopes": ["story-moment-framing"],
+      "depends_on": ["mood-01-world-mood-layer"],
+      "objective": "Talking to someone feels like a story moment, not a slate text box. The dialogue panel (src/presentation/dialogue/) gets a material frame in Aetheria's OWN motif through UITheme roles (no parchment, scroll or jade look taken from the reference), the speaker shown clearly (name plate, and the portrait when one exists), and while a dialogue is open the non-essential HUD dims so the scene and the frame carry the moment. NPCs who can talk or give a quest show a small world-space name plate near them. Whole-text rules of ui-01 stay.",
+      "in_scope": ["src/presentation/dialogue/**", "src/presentation/ui/** theme roles", "src/presentation/hud/** (dim while dialogue is open)", "a world-space name plate for talk/quest NPCs under src/presentation/", "locale/** for any new string", "captures vi 1280x720 and en 1280x800", "docs/UI_UX_BIBLE.md"],
+      "out_of_scope": ["rewriting dialogue text or canon", "new portraits (use what the pipeline already ships)", "minimap or new HUD elements beyond the name plate", "Phase 21/22"],
+      "tasks": ["load .claude/skills/aetheria-visual-craft and .claude/skills/aetheria-ui-localization", "design the frame and plate as theme roles, measure against the HUD 15 % budget", "implement, keeping keyboard/Esc behaviour", "tests: nothing clipped (ui-01 layout test stays green), HUD dimmed only while open, plates only on talk/quest NPCs", "captures and docs"],
+      "constraints": ["HUD <= 15 % while exploring; the dialogue band stays where UI_UX_BIBLE puts it", "UI never drives gameplay truth", "no copied asset or kit; every new asset through the pipeline with an ASSET_LICENSES row"],
+      "source_docs": [".claude/skills/aetheria-visual-craft/references/AESTHETIC_VISION.md", "docs/UI_UX_BIBLE.md", "docs/PRESENTATION_ARCHITECTURE_CONTRACT.md", ".kiro/steering/07-localization.md"],
+      "allowed_paths": ["src/presentation/**", "tests/**", "tools/capture_ui.gd", "locale/**", "assets/ui/**", "tools/aetheria_art_pipeline/**", "docs/UI_UX_BIBLE.md", "docs/ASSET_LICENSES.md", "docs/CHANGELOG.md", "docs/TEST_PLAN.md", "docs/handoff/**"],
+      "required_checks": ["lint", "godot_import", "godot_parse", "godot_boot", "godot_suite", "e2e_dialogue", "e2e_npc", "e2e_quest", "e2e_story", "cap_mood02_vi720", "cap_mood02_en800"],
+      "required_captures": [
+        {"id": "cap_mood02_vi720", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x720", "-s", "res://tools/capture_ui.gd", "--", "vi", "{repo}/.aetheria-autopilot/captures/mood-02/vi-1280x720"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-02/vi-1280x720/*.png"},
+        {"id": "cap_mood02_en800", "cmd": ["{godot}", "--path", ".", "--resolution", "1280x800", "-s", "res://tools/capture_ui.gd", "--", "en", "{repo}/.aetheria-autopilot/captures/mood-02/en-1280x800"], "timeout": 900, "artifacts": ".aetheria-autopilot/captures/mood-02/en-1280x800/*.png"}
+      ],
+      "acceptance_criteria": [
+        {"id": "C1", "text": "the dialogue frame and name plates use UITheme roles in Aetheria's own motif, with no reference asset or kit copied", "evidence": ["review:ui_ux", "review:art"]},
+        {"id": "C2", "text": "while a dialogue is open the non-essential HUD is dimmed and restored on close; nothing in the dialogue is clipped in vi or en", "evidence": ["check:godot_suite", "check:e2e_dialogue", "review:qa"]},
+        {"id": "C3", "text": "name plates show only on NPCs who can talk or give a quest and stay within the HUD budget", "evidence": ["check:e2e_npc", "check:e2e_quest", "review:ui_ux", "review:gameplay"]},
+        {"id": "C4", "text": "captures at vi 1280x720 and en 1280x800 show an open dialogue and a plated NPC, readable at real size", "evidence": ["check:cap_mood02_vi720", "check:cap_mood02_en800", "review:ui_ux"]}
+      ]
+    }
+  ]
+}

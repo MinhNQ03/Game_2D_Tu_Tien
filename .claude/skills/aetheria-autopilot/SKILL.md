@@ -1,6 +1,6 @@
 ---
 name: aetheria-autopilot
-description: Operate the Aetheria local autopilot supervisor (doctor, dry-run, start, status, resume, stop, retry, eval, canary) — use when the owner asks to run, inspect, resume or stop autonomous work, or asks what the autopilot is doing.
+description: Operate the Aetheria autopilot supervisor - doctor, dry-run, start, status, resume, stop, retry, eval, canary. Use when asked to run, inspect, resume or stop autonomous work.
 ---
 
 # Operating the Aetheria autopilot
