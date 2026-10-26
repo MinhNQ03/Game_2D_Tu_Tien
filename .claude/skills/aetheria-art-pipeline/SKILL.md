@@ -24,7 +24,16 @@ Owners: `docs/AETHERIA_ART_PIPELINE.md`, `docs/CHARACTER_ART_BIBLE.md`,
 |---|---|
 | actor spec | `build.py resolve <actor>` → `work/<actor>/spec.json` |
 | Blender passes | `<blender> -b -P tools/aetheria_art_pipeline/blender/cli.py -- <actor>` |
+| fast pose loop | `<blender> -b -P …/blender/cli.py -- --only <anim>[:<dir>] <actor>` |
 | sheets | `build.py pixel <actor>` / `build.py all-pixel`; review board `build.py review <actor>` |
+
+Speed (measured 2026-10-26, player_f_proto): a whole actor in Blender takes about 190 s, one
+animation via `--only idle` about 8 s, and `pixel` about 3 s. Iterate with `--only` plus `pixel`
+plus the one test, then do ONE full render before shipping. Fix the RULE (design data or
+generator) that every frame comes from, never one frame by hand.
+Trap: Godot tests read the IMPORTED texture. After `pixel`, run `<godot> --headless --path .
+--import` before the test, or it judges the old sheet. A fix that "did nothing" may simply not
+have been imported yet.
 | design sheet | `build.py design-sheet <actor>` |
 | icons / props | `build.py icons-spec` → Blender → `build.py icons`; same for `props-spec` / `props` |
 | ambience | `build.py ambience`, `build.py ambience-check` |
