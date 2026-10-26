@@ -671,17 +671,24 @@ def _hands(spec):
         hand_len = spec["body"]["hand"]
         palm_len = hand_len * 0.5
         finger_len = hs.get("finger", 0.44) * hand_len
+        # `palm` scales the palm's breadth, `palm_squash` its thickness and `finger_radius` the
+        # fingers. Seen from the front a resting palm faces the body, so the camera meets it
+        # EDGE-ON: at 0.45 squash it is ~0.7 units thick and loses every 4x4 pixel vote to the
+        # sleeve and skirt behind it (the player's front idle showed no hand at all). A design
+        # that must read its hands at 32x48 thickens them; the bones, and so the anchors, stay.
+        ps = hs.get("palm", 1.0)
+        fr = hs.get("finger_radius", 1.0)
         p0 = _add(wr, _mul(d, -0.2))                   # the wrist, just inside the cuff
         p1 = _add(wr, _mul(d, palm_len))
-        palm = tube([p0, _lerp_v(p0, p1, 0.45), p1], [0.5, 0.78, 0.72], 10, up=palm_n,
-                    squash=0.45)
+        palm = tube([p0, _lerp_v(p0, p1, 0.45), p1], [0.5 * ps, 0.78 * ps, 0.72 * ps], 10,
+                    up=palm_n, squash=hs.get("palm_squash", 0.45))
         parts.append(_part("palm." + sfx, "skin", palm, _rigid(palm, "hand." + sfx)))
         for i, (off, ln) in enumerate(((0.48, 0.92), (0.16, 1.0), (-0.16, 0.96), (-0.46, 0.78))):
-            base = _add(_add(p1, _mul(across, off)), _mul(d, -0.15))
+            base = _add(_add(p1, _mul(across, off * ps)), _mul(d, -0.15))
             L = finger_len * ln
             mid = _add(_add(base, _mul(d, L * 0.55)), _mul(palm_n, 0.15))
             end = _add(_add(base, _mul(d, L * 0.95)), _mul(palm_n, 0.45))
-            f = tube([base, mid, end], [0.2, 0.18, 0.13], 6, up=palm_n)
+            f = tube([base, mid, end], [0.2 * fr, 0.18 * fr, 0.13 * fr], 6, up=palm_n)
             parts.append(_part("finger%d.%s" % (i, sfx), "skin", f, _rigid(f, "hand." + sfx)))
         tb = _add(_add(wr, _mul(d, palm_len * 0.3)), _mul(across, 0.55))
         tm = _add(_add(tb, _mul(across, 0.45)), _mul(d, 0.65))
@@ -723,43 +730,53 @@ def _hair(spec):
     # Scalp cap: the head sphere, slightly larger, cut along a line that is high at the front
     # (forehead and parted fringe), lower at the sides (over the ears) and low at the back.
     fr = h["fringe"]
-    cap = sphere((hx, hy + 0.15, hz + 0.2), (rx * fr["scale"], ry * fr["scale"],
-                                              rz * fr["scale"]), 22, 16)
-    keep = []
-    for (a, b2, c, *rest) in cap.faces:
-        idx = (a, b2, c) + tuple(rest)
-        ok = True
-        for vi in idx:
-            x, y, z = cap.verts[vi]
-            # angle from the FRONT: 0 = forehead, 90 = over the ear, 180 = nape
-            theta = math.degrees(math.atan2(abs(x - hx), -(y - hy)))
-            # the parted fringe: higher at the centre part, two bangs lower at |x| ~ 2.6
-            bangs = 0.9 * math.exp(-((abs(x) - 2.6) ** 2) / 2.2) - 0.7 * math.exp(-(x * x) / 0.8)
-            # The hairline is HIGH over the whole face and the cheek, and only falls BEHIND the
-            # ear: in profile the face must stay readable, and the first pass (hair to the jaw
-            # from 70°) left a profile that was a white hood with a sliver of cheek at 32x48.
-            if theta < 82:              # forehead, temples, cheek: the hairline stays high
-                cut = fr["cut_z"] - bangs * max(0.0, 1 - theta / 60.0)
-            elif theta < 108:           # over and behind the ear the hair falls to the jaw line
-                t = (theta - 82) / 26.0
-                cut = _lerp(fr["cut_z"], hz - 2.6, t)
-            else:                       # behind the ear down to the nape
-                t = min(1.0, (theta - 108) / 45.0)
-                cut = _lerp(hz - 2.6, hz - 6.5, t)
-            if z < cut:
-                ok = False
-                break
-        if ok:
-            keep.append(idx)
-    cap.faces = keep
-    # Strands: a shallow ridge every ~25° of longitude, so the key light breaks the cap into
-    # combed bands instead of one smooth shell (moodboard hair is strands, never a helmet).
-    grooves = fr.get("grooves", 0.035)
-    cap.verts = [_groove(v, (hx, hy + 0.15, hz + 0.2), grooves) for v in cap.verts]
-    # the hair follows the sculpted skull: on a ball it would stand off the narrowed jaw like
-    # a helmet
-    cap.verts = [shape_head(spec, v) for v in cap.verts]
-    parts.append(_part("hair_cap", "hair", cap, _rigid(cap, "head")))
+    # `sprite_dip` (optional) scales the fringe's two bang dips in the 32x48 sprite only: at
+    # |x| ~ 2.6 a dip lands on the cheek column beside the sprite eye, and on a breath beat it
+    # can take that column (one eye left at 1x). The portrait keeps the full dip.
+    caps = [(1.0, "all")] if "sprite_dip" not in fr else \
+        [(1.0, "portrait"), (fr["sprite_dip"], "sprite")]
+    for dip, lod in caps:
+        cap = sphere((hx, hy + 0.15, hz + 0.2), (rx * fr["scale"], ry * fr["scale"],
+                                                  rz * fr["scale"]), 22, 16)
+        keep = []
+        for (a, b2, c, *rest) in cap.faces:
+            idx = (a, b2, c) + tuple(rest)
+            ok = True
+            for vi in idx:
+                x, y, z = cap.verts[vi]
+                # angle from the FRONT: 0 = forehead, 90 = over the ear, 180 = nape
+                theta = math.degrees(math.atan2(abs(x - hx), -(y - hy)))
+                # the parted fringe: higher at the centre part, two bangs lower at |x| ~ 2.6
+                bangs = dip * 0.9 * math.exp(-((abs(x) - 2.6) ** 2) / 2.2) \
+                    - 0.7 * math.exp(-(x * x) / 0.8)
+                # The hairline is HIGH over the whole face and the cheek, and only falls BEHIND
+                # the ear: in profile the face must stay readable, and the first pass (hair to
+                # the jaw from 70°) left a profile that was a white hood with a sliver of cheek
+                # at 32x48.
+                if theta < 82:              # forehead, temples, cheek: the hairline stays high
+                    cut = fr["cut_z"] - bangs * max(0.0, 1 - theta / 60.0)
+                elif theta < 108:           # over and behind the ear the hair falls to the jaw
+                    t = (theta - 82) / 26.0
+                    cut = _lerp(fr["cut_z"], hz - 2.6, t)
+                else:                       # behind the ear down to the nape
+                    t = min(1.0, (theta - 108) / 45.0)
+                    cut = _lerp(hz - 2.6, hz - 6.5, t)
+                if z < cut:
+                    ok = False
+                    break
+            if ok:
+                keep.append(idx)
+        cap.faces = keep
+        # Strands: a shallow ridge every ~25° of longitude, so the key light breaks the cap
+        # into combed bands instead of one smooth shell (moodboard hair is strands, never a
+        # helmet).
+        grooves = fr.get("grooves", 0.035)
+        cap.verts = [_groove(v, (hx, hy + 0.15, hz + 0.2), grooves) for v in cap.verts]
+        # the hair follows the sculpted skull: on a ball it would stand off the narrowed jaw
+        # like a helmet
+        cap.verts = [shape_head(spec, v) for v in cap.verts]
+        name = "hair_cap" if lod != "sprite" else "hair_cap_sprite"
+        parts.append(_part(name, "hair", cap, _rigid(cap, "head"), lod=lod))
     parts += _bangs(spec)
     # The back mass: waist-length, lying on the back, widening slightly then tapering.
     hb = h["back"]
@@ -854,19 +871,28 @@ def _bangs(spec):
     hx, hy, hz = b["head_centre"]
     rx, ry, rz = b["head_radii"]
     e = spec["face"]["eyes"]
+    # `portrait_only`: indices of `locks` drawn at portrait LOD only; `sprite_locks` are drawn at
+    # sprite LOD only. At 32x48 a curtain bang that frames the portrait's face covers the cheek
+    # beside the eye, so the face is a 4px slot with each eye on the hair's edge; a design can
+    # give its sprite narrower bangs set further out without touching its portrait.
+    portrait_only = set(bg.get("portrait_only", ()))
+    locks = [(lock, "portrait" if k in portrait_only else "all")
+             for k, lock in enumerate(bg["locks"])]
+    locks += [(lock, "sprite") for lock in bg.get("sprite_locks", ())]
     parts = []
     for side, sfx in ((1, "L"), (-1, "R")):
         # Every lock clears the eye: by the eye line it is OUTSIDE the outer corner
         # (eye x + almond half-width + a margin), so the face is framed, never covered.
         clear = e["x"] + e.get("almond", [1.05, 0.55])[0] * 0.62 + 0.5
-        for k, (spread, width, drop, out) in enumerate(bg["locks"]):
+        for k, ((spread, width, drop, out), lod) in enumerate(locks):
             xs = [0.35, 0.55 * clear + spread, clear + spread, clear + 0.35 + spread]
             zs = [hz + rz * 0.92, hz + rz * 0.5, e["z"] + 0.3, e["z"] - drop]
             path = [_face_point(spec, side * min(x, rx * 0.97), z, out + 0.12 * i)
                     for i, (x, z) in enumerate(zip(xs, zs))]
             lock = tube(path, [width * 0.7, width, width * 0.8, width * 0.35], 8,
                         up=(0, -1, 0), squash=0.35)
-            parts.append(_part("bang%d.%s" % (k, sfx), "hair", lock, _rigid(lock, "head")))
+            parts.append(_part("bang%d.%s" % (k, sfx), "hair", lock, _rigid(lock, "head"),
+                               lod=lod))
     return parts
 
 

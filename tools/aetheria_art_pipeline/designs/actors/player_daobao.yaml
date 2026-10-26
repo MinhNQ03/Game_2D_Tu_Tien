@@ -9,8 +9,17 @@ extends: cultivator
 role: "protagonist in the Thanh Vân outer-disciple robe"
 pieces: [pendant]
 
+# art-01: the same hands, face tones and open face as player_proto (see there).
+body:
+  hand_shape: {palm: 1.3, palm_squash: 0.95, finger_radius: 1.45}
+hair:
+  bangs: {portrait_only: [0, 1], sprite_locks: [[0.6, 0.55, 1.9, 0.18]]}
+face:
+  eyes: {size: [0.6, 0.4, 0.9]}
+
 materials:
-  skin:       {ramp: ["#a5705e", "#d09c82", "#eec9ae", "#f9e2ce"], min_tone: 2}
+  skin:       {ramp: ["#a5705e", "#d09c82", "#eec9ae", "#f9e2ce"], min_tone: 2,
+               highlight_at: 0.6}
   hair:       {ramp: ["#7b7f98", "#b2b7cb", "#dde1ed", "#f6f7fb"], highlight: true}
   robe:       {ramp: ["#18324a", "#28536f", "#3c7591", "#6fa9bf"], highlight: true}
   robe_inner: {ramp: ["#8f969f", "#c8ccd2", "#e9ebee", "#ffffff"]}

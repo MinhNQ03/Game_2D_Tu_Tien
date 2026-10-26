@@ -8,9 +8,33 @@ extends: cultivator
 role: "protagonist, PHÀM wanderer"
 pieces: [pendant]
 
+# READABILITY AT 1x (art-01): the protagonist is the one figure the player watches all game, so
+# three things the cultivator leaves to the portrait must survive the 32x48 vote. The rig — and
+# so every anchor — is untouched; only meshes and tone rules change.
+#   * hands that leave the sleeve: the resting palm faces the body, so the front camera meets it
+#     edge-on; thickened, it wins its 1-2 pixels below the cuff instead of losing them to the
+#     sleeve and skirt (front idle had NO hand pixel);
+#   * a face, not a ball: the skin takes its light tone where the key light lands (forehead and
+#     the lit cheek) — still never darker than its base (min_tone, no beard) — so the face is
+#     modelled in two tones instead of one flat peach disc;
+#     (`highlight_at`: under the top-left key a face never reaches the style's top light band.
+#     A SPRITE rule, like min_tone: the portrait's skin keeps its old tones)
+#   * an open face: the portrait's two curtain bangs covered the cheek beside each eye at 32x48,
+#     so the face was a 4px slot with an eye on each hair edge. The sprite draws one narrower
+#     bang per side set further out (`sprite_locks`); the portrait keeps its own (`portrait_only`),
+#     so the HUD medallion is unchanged. The sprite-LOD eye is a little larger, so BOTH eyes win
+#     their pixel.
+body:
+  hand_shape: {palm: 1.3, palm_squash: 0.95, finger_radius: 1.45}
+hair:
+  bangs: {portrait_only: [0, 1], sprite_locks: [[0.6, 0.55, 1.9, 0.18]]}
+face:
+  eyes: {size: [0.6, 0.4, 0.9]}
+
 # Ramps are [deep, shadow, base, light]: the only tones a material may take in a sprite.
 materials:
-  skin:       {ramp: ["#a5705e", "#d09c82", "#eec9ae", "#f9e2ce"], min_tone: 2}
+  skin:       {ramp: ["#a5705e", "#d09c82", "#eec9ae", "#f9e2ce"], min_tone: 2,
+               highlight_at: 0.6}
   hair:       {ramp: ["#7b7f98", "#b2b7cb", "#dde1ed", "#f6f7fb"], highlight: true}
   robe:       {ramp: ["#3f4a66", "#6e7c9c", "#9eabc6", "#c6cfe1"], highlight: true}
   robe_inner: {ramp: ["#9298a8", "#c9ced8", "#eceef3", "#ffffff"]}
@@ -37,5 +61,8 @@ outputs:
 # body or behind it as the rig actually holds it.
 animations:
   slash: {frames: 8, loops: false}
+# `animations`: this look's shipped anchor data carries the blade for the slash only — the one
+# action that reads it (equipment_feedback.gd) — so a full rebuild reproduces that file
+# byte-for-byte. (The other three looks' files carry it for every action; harmless, unread.)
 anchors:
-  blade: {bone: hand.R, along: 20.0, depth: true}
+  blade: {bone: hand.R, along: 20.0, depth: true, animations: [slash]}

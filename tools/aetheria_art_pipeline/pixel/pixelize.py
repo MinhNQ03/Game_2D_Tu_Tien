@@ -112,7 +112,14 @@ def rasterize(spec, passes, k, portrait=False):
                 name = LINING[name]
                 m = spec["materials"][name]
             light = light_sum[best] / counts[best]
-            tone = _tone(light, bands, m["highlight"])
+            # `highlight_at` is a SPRITE rule, as min_tone is: a material whose lit side never
+            # reaches the style's top band (a face under the top-left key sits below it) takes
+            # its light tone from this level in the 32x48 sheet; the portrait keeps the
+            # material's own highlight rule, so the HUD medallion does not move with it
+            mb, hl = bands, m["highlight"]
+            if not portrait and m.get("highlight_at") is not None:
+                mb, hl = (bands[0], bands[1], m["highlight_at"]), True
+            tone = _tone(light, mb, hl)
             if m.get("flat"):
                 # A flat accent is ONE tone, dropping to its shadow only where the form turns
                 # fully away from the light: a two-tone 2px sash alternates into noise.
@@ -170,9 +177,11 @@ def clean(spec, grid):
     return out
 
 
-def inner_contours(spec, grid):
+def inner_contours(spec, grid, sprite=False):
     """Where a surface passes BEHIND another (a depth break), its pixel on the far side darkens
-    to its own deepest tone: the arm over the robe, the lock over the chest read as layers."""
+    to its own deepest tone: the arm over the robe, the lock over the chest read as layers.
+    `sprite`: the contour still respects the material's `min_tone` (a cheek behind a bang
+    darkened to skin shadow reads as a beard at 32x48, the very thing min_tone forbids)."""
     mats = spec["materials"]
     H, W = len(grid), len(grid[0])
     out = [[None if c is None else list(c) for c in row] for row in grid]
@@ -185,6 +194,8 @@ def inner_contours(spec, grid):
             for n in _neigh(grid, x, y):
                 if n is not None and n[0] != c[0] and n[2] - c[2] > DEPTH_BREAK:
                     out[y][x][1] = min(out[y][x][1], 0 if c[1] <= 1 else 1)
+                    if sprite:
+                        out[y][x][1] = max(out[y][x][1], mats[c[0]].get("min_tone", 0))
                     break
     return out
 
@@ -243,7 +254,7 @@ def drop_islands(grid, min_px=4):
     return out
 
 
-def to_image(spec, grid, shadow_centre=None, shadow_radii=None):
+def to_image(spec, grid, shadow_centre=None, shadow_radii=None, portrait=False):
     mats = spec["materials"]
     ink = tuple(spec["style"]["ink"]) + (255,)
     H, W = len(grid), len(grid[0])
@@ -253,7 +264,9 @@ def to_image(spec, grid, shadow_centre=None, shadow_radii=None):
         for x in range(W):
             c = grid[y][x]
             if c is not None:
-                px[x, y] = tuple(mats[c[0]]["ramp"][c[1]]) + (255,)
+                m = mats[c[0]]
+                ramp = (m.get("portrait_ramp") or m["ramp"]) if portrait else m["ramp"]
+                px[x, y] = tuple(ramp[c[1]]) + (255,)
     # ink outline: transparent pixels touching an opaque one (never diagonals, never glow)
     edge = []
     for y in range(H):
@@ -290,7 +303,7 @@ def cell(spec, frames_dir, stem, root_x=0.0, seated=False):
     passes = Passes(frames_dir, stem)
     grid = rasterize(spec, passes, k)
     grid = clean(spec, grid)
-    grid = despeckle(spec, inner_contours(spec, grid))
+    grid = despeckle(spec, inner_contours(spec, grid, sprite=True))
     cw, ch = spec["camera"]["gameplay"]["cell"]
     feet = spec["camera"]["gameplay"]["feet_row"]
     radii = (8.5, 2.2) if seated else (6.5, 1.8)
@@ -300,13 +313,14 @@ def cell(spec, frames_dir, stem, root_x=0.0, seated=False):
 def portrait(spec, frames_dir):
     """The HUD portrait: the SAME model, materials and ramps as the sprite, framed head and
     shoulders by the portrait camera (designs/cultivator.yaml camera.portrait) and adapted by
-    the same vote / palette / cleanup / outline. A portrait can never disagree with the figure
-    walking the map (the painted portrait it replaces had dark hair over a white-haired
-    sprite)."""
+    the same vote / palette / cleanup / outline. A portrait agrees with the figure walking the
+    map (the painted portrait it replaces had dark hair over a white-haired sprite) unless a
+    material sets a temporary `portrait_ramp`, which only keeps a shipped medallion stable
+    until a UI item rebuilds it."""
     k = spec["camera"]["portrait"]["render_scale"]
     grid = rasterize(spec, Passes(frames_dir, "portrait"), k, portrait=True)
     grid = despeckle(spec, inner_contours(spec, clean(spec, grid)))
-    return to_image(spec, grid)
+    return to_image(spec, grid, portrait=True)
 
 
 def _rows(im):
@@ -366,6 +380,8 @@ def build_actor(spec, work_dir, root):
         written.append(rel)
         anchors[anim] = {}
         for point, per_dir in projected[anim].items():
+            if anim not in _point_animations(spec, point, anim):
+                continue
             anchors[anim][point] = [[(int(math.floor(x)), int(math.floor(y))) for x, y in frames]
                                     for frames in per_dir]
     if out.get("portrait"):
@@ -381,8 +397,10 @@ def build_actor(spec, work_dir, root):
     path = os.path.join(root, "data/characters/visual/anchors/%s.tres" % out["anchors"])
     # depths only for the animations this build wrote sheets for (a stale depth track for a
     # dropped animation would name a sheet the profile does not have)
-    depths = {anim: tracks for anim, tracks in projected_depths.items()
-              if anim in spec["animations"]}
+    depths = {anim: {point: track for point, track in tracks.items()
+                     if anim in _point_animations(spec, point, anim)}
+              for anim, tracks in projected_depths.items() if anim in spec["animations"]}
+    depths = {anim: tracks for anim, tracks in depths.items() if tracks}
     sheet_io.write_anchor_resource(path, "anchors_" + spec["id"], (cw, ch), anchors,
                                        feet_row=spec["camera"]["gameplay"]["feet_row"],
                                        depths=depths)
@@ -391,6 +409,16 @@ def build_actor(spec, work_dir, root):
     for w in written:
         print("wrote", w)
     return written
+
+
+def _point_animations(spec, point, anim):
+    """The animations an anchor point is exported for: its `animations` list when the design
+    names one (a point only one action reads, e.g. the blade tip of the slash), else every
+    animation (`anim` itself)."""
+    decl = spec.get("anchors", {}).get(point)
+    if isinstance(decl, dict) and decl.get("animations"):
+        return decl["animations"]
+    return (anim,)
 
 
 def _check_profile(spec, root):

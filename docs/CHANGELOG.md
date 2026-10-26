@@ -8,6 +8,42 @@ Dates are ISO (YYYY-MM-DD).
 
 ## [Unreleased]
 
+### 2026-10-18 — ART-01: the player reads at 1× (`feat/ui-readability-autopilot`; not a phase)
+
+- **Hands, face, second look — through the pipeline, inside 32×48 and the DNA.** The four player
+  looks were re-rendered (Blender 5.2 headless → `pixelize` → `pngout`) from changed design data
+  only; the rig, the anchors (palm, rear palm, core, blade) and the cell are untouched.
+  CHARACTER_ART_BIBLE §4c.
+- Pipeline: `humanoid._hands` takes `body.hand_shape.palm / palm_squash / finger_radius`;
+  `hair.bangs.portrait_only` / `sprite_locks` give the sprite its own bangs; a material's `highlight_at`
+  sets where it takes its light tone in the SPRITE (`build.py` → `pixelize.rasterize`; like
+  `min_tone` it never reaches the portrait, so `medallion_player_proto.png` rebuilds
+  byte-identical). A material's new `portrait_ramp` key (`build.py` → `pixelize.to_image`) is
+  the matching portrait split: her deeper jacket is a material, so the robe keeps the old jacket
+  in the portrait and `medallion_player_f_proto.png` also rebuilds byte-identical — both K5/K9
+  medallions are unchanged (open follow-up: a UI item drops `portrait_ramp` from
+  `player_f_proto.yaml` and rebuilds her medallion, so the HUD matches the figure on the map).
+  An anchor's `animations:` list (`pixelize._point_animations`) limits a point to the
+  animations named there, so the blade anchor is written only where a blade exists.
+  Every default is the old constant, so the other actors' geometry and tones are unchanged
+  (they were not rebuilt).
+  One rule fix: in a SPRITE the inner-contour pass now respects `min_tone` (a cheek behind a bang
+  took the skin shadow, the beard `min_tone` forbids); the portrait keeps its full ramp. NPCs that
+  set `min_tone` pick this up when they are next rebuilt: until then the shipped sheets of
+  `lin_yue`, `te_moc`, `ko_than` and `shen_buqi` drift from what the pipeline would build (known
+  debt, contour skin pixels only).
+- `blender/cli.py --only <anim>[:<dir>] <actor>`: re-renders one animation (and direction) over
+  the existing frames, about 8 s against about 190 s for a whole actor; a typo exits 2. Use it
+  to iterate on one pose; finish with a full render before shipping.
+- New `validate/readability.py`: face tones, eye pixels, hands at the rig's palm anchors per
+  facing, hem width, garment values and the silhouette difference between looks, plus a 1×/8×
+  board (`--before <rev>` for a before/after board).
+- New `tools/capture_player_looks.gd`: a look started through the identity screen,
+  shot in the real hub at 1× (+ a ×4 crop), in the wanderer's clothes and the Thanh Vân robe;
+  given older sheets it shoots the same frame "before" (swapped in memory only).
+- Tests: `tests/unit/presentation/test_player_readability.gd` — hands tied to the rig's palm
+  anchors, her hem ≥ 2 px wider than his in both garments (both red on the previous sheets).
+
 ### 2026-10-18 — UI-03: the Chronicle in the centred book, four tabs (`feat/ui-readability-autopilot`; not a phase)
 
 - **The book's second page set.** `ChroniclePanel` now extends `UIBookPanel` (the ui-02 seam,

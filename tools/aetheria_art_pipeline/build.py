@@ -79,6 +79,14 @@ def resolve(actor_id):
                       # the darkest tone this material may take in a sprite: skin is never
                       # shaded below its base (a shadowed face read as a beard or a mask)
                       "min_tone": int(m.get("min_tone", 0)),
+                      # SPRITE-only: the light level (linear) from which this material takes
+                      # its light tone in the 32x48 sheet (the portrait keeps `highlight`);
+                      # None keeps the style's top light band
+                      "highlight_at": m.get("highlight_at"),
+                      # PORTRAIT-only ramp (None = `ramp`): a sprite ramp change that must not
+                      # move a medallion already shipped, until that medallion is rebuilt
+                      "portrait_ramp": ([style.resolve_colour(c, st) for c in m["portrait_ramp"]]
+                                        if m.get("portrait_ramp") else None),
                       # samples (of render_scale^2) a PRECIOUS material needs to own a pixel:
                       # an eye grazing two samples of a block is a smear, not an eye
                       "min_coverage": int(m.get("min_coverage", 2))}

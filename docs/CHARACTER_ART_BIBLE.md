@@ -77,6 +77,53 @@
   top. Keep ramps short (2–3 steps) at this size; more steps read as noise.
 - **Highlight:** sparing, 1px, only where it clarifies form (shoulder, hair edge).
 
+### 4c. The player reads at 1× (art-01)
+
+The protagonist is the one figure watched all game, so its four looks (`player_proto`,
+`player_daobao`, `player_f_proto`, `player_f_daobao`) carry three readability rules on top of
+§4, all as design data in `designs/actors/player_*.yaml` — same cell, same rig, same anchors,
+same DNA:
+
+- **Hands leave the sleeve.** A resting palm faces the body, so the front camera meets it
+  edge-on; at the cultivator's thickness it lost every pixel vote to the sleeve and skirt behind
+  it and the front idle showed no hand at all. The player's hands are thicker
+  (`body.hand_shape: palm / palm_squash / finger_radius`); the bones do not move, so the palm
+  and blade anchors are byte-identical.
+- **A face, not a ball.** The face takes its skin's base AND light tone — the light where the
+  top-left key lands (`highlight_at`, because a face never reaches the style's top light band) —
+  and still never a tone darker than its base (`min_tone`: a shadowed chin reads as a beard) —
+  not even where a bang passes in front of the cheek: in a sprite the inner-contour pass now
+  stops at `min_tone` too. Her face sits under a larger bun, so her light starts a little lower
+  (`highlight_at` 0.56 against his 0.6) and every breath frame keeps both tones.
+  The portrait's two curtain bangs covered the cheek beside each eye at 32×48 — the face was a
+  4 px slot with an eye on each hair edge — so the sprite draws one narrower bang per side set
+  further out (`hair.bangs.sprite_locks`) and the portrait keeps its own
+  (`hair.bangs.portrait_only`): the face opens to 6–8 px with skin on both sides of each eye.
+  The sprite-LOD eye is a little larger so both eyes win their pixel. None of this reaches the
+  portrait LOD: `highlight_at` is a sprite rule like `min_tone` (`pixelize.rasterize` applies it
+  only outside the portrait), so the portrait's skin keeps its own tones and
+  `medallion_player_proto.png` rebuilds byte-identical.
+- **The second look is not a recolour.** The woman's jacket is one tone deeper than his robe
+  (lilac over jade under white hair: three values to his two) and her hem flares wider (an
+  A-line against his column). The jacket is a material, so its deeper ramp would also reach her
+  portrait's shoulders; the HUD medallion is a UI asset outside this pass, so the material
+  carries a `portrait_ramp` (the old jacket, applied by `pixelize.to_image` only to the portrait)
+  and `medallion_player_f_proto.png` rebuilds byte-identical. Open follow-up: a UI item drops
+  `portrait_ramp` and rebuilds that medallion, so the HUD matches the figure on the map.
+
+`tools/aetheria_art_pipeline/validate/readability.py <actor>...` measures this on the shipped
+sheets (face tones, eye pixels, hands at the rig's own palm anchors per facing, hem width,
+garment values, silhouette difference between looks) and draws a 1×/8× board — with
+`--before <rev>` a before/after board; `tests/unit/presentation/test_player_readability.gd`
+keeps it (hands at the anchors; facing the camera two eyes, skin outside each, a face ≥ 6 px
+wide on the eye row; her hem ≥ 2 px wider than his in both garments). Profile (LEFT/RIGHT)
+eyes are not asserted yet: that rule needs a pixel enclosed by the face on both sides, which a
+profile does not promise; whether profiles keep an eye pixel is an open measurement.
+`tools/capture_player_looks.gd` shoots each look in the real hub at 1× with a ×4 crop
+of the player, and with a folder of older sheets the same frame "before"
+(`readability.py <looks> --before <rev> --export-before <dir>` writes that folder). From behind (UP) the body hides the hands, as it should. Whether the result is
+"good enough" is the owner's call from real captures.
+
 ## 5. Palette rules
 
 - **Shared ink + skin ramps**, per-archetype accent. All characters draw their outline from

@@ -12,6 +12,13 @@
 #
 # What it deliberately does NOT take from lin_yue: the 披帛 stole, her black hair and her rose
 # robe. White hair over lilac-and-jade against black hair over rose: never mistaken.
+#
+# Readability at 1x (art-01), on top of player_proto's hands / face / open-face rules:
+#   * the jacket steps one tone DEEPER (its old base is now its light): lilac #a59ec6 against
+#     his grey-blue #9eabc6 was one value — the two upper bodies, the part of the figure with the
+#     face, read the same at 1x. Now pale hair over a mid lilac over deep jade: three values to
+#     his two;
+#   * the skirt flares wider at the hem, so her outline is an A-line against his column.
 id: player_f_proto
 extends: cultivator
 role: "protagonist, PHÀM wanderer (woman's look)"
@@ -21,6 +28,7 @@ body:
   scale: 0.94
   shoulder_x: 5.2
   hip_x: 2.1
+  hand_shape: {palm: 1.3, palm_squash: 0.95, finger_radius: 1.45}
 garment:
   bodice:
     - [25.0, 4.1, 3.1]
@@ -31,14 +39,22 @@ garment:
   skirt:
     - [25.4, 4.3, 3.3]
     - [19.0, 5.4, 4.1]
-    - [10.0, 6.9, 5.1]
-    - [3.0, 8.0, 5.9]
-    - [1.1, 8.3, 6.1]
+    - [10.0, 7.1, 5.1]
+    - [3.0, 8.6, 5.9]
+    - [1.1, 9.0, 6.1]
   skirt_material: accent      # the id pass holds 12 cloths; she wears no cap or stole
   sleeve:
     profile: [[0.0, 1.9], [0.35, 2.0], [0.62, 2.2], [0.85, 2.5], [1.0, 2.6]]
     droop: 2.2
+face:
+  eyes: {size: [0.6, 0.4, 0.9]}
 hair:
+  bangs: {portrait_only: [0, 1], sprite_locks: [[1.2, 0.55, 1.9, 0.18]]}
+  # sprite_dip: the fringe's dip at |x| ~ 2.6 took the cheek column beside her left eye on idle
+  # DOWN beat 2 (one eye at 1x). The sprite's fringe dips less; the portrait keeps the full dip.
+  # Her sprite locks sit further out than his (spread 1.2, not 0.6): her face is a pixel narrower
+  # on the breath beat and the 0.6 lock still took that cheek column (test_player_readability).
+  fringe: {sprite_dip: 0.4}
   back: {top_z: 46.4, bottom_z: 31.0, width: [7.6, 6.2, 2.6], thickness: 2.0, flare: 0.4}
   locks: {from: [4.2, 0.8, 41.6], to_z: 29.0, width: 1.2}
   bun: {centre: [0.0, 2.2, 48.6], radius: 3.1}
@@ -46,9 +62,13 @@ hair:
 
 # Ramps are [deep, shadow, base, light]. Hair, skin and jade are the wanderer's own.
 materials:
-  skin:       {ramp: ["#a8705f", "#d4a088", "#f0cdb6", "#fbe6d6"], min_tone: 2}
+  skin:       {ramp: ["#a8705f", "#d4a088", "#f0cdb6", "#fbe6d6"], min_tone: 2,
+               highlight_at: 0.56}   # her bun shades the brow: a little below his 0.6
   hair:       {ramp: ["#7b7f98", "#b2b7cb", "#dde1ed", "#f6f7fb"], highlight: true}
-  robe:       {ramp: ["#4a4468", "#77709c", "#a59ec6", "#cdc8e2"], highlight: true}
+  # portrait_ramp: the HUD medallion (assets/ui/, outside art-01's paths) keeps the old jacket
+  # until a UI item rebuilds it; drop the key then and the medallion takes the deeper jacket
+  robe:       {ramp: ["#332e4d", "#4a4468", "#77709c", "#a59ec6"], highlight: true,
+               portrait_ramp: ["#4a4468", "#77709c", "#a59ec6", "#cdc8e2"]}
   accent:     {ramp: ["#11362f", "#1b5146", "#28705f", "#44957d"], highlight: true}
   robe_inner: {ramp: ["#9298a8", "#c9ced8", "#eceef3", "#ffffff"]}
   trim:       {ramp: ["#242b3d", "#323b53", "#45516c", "#5c6987"], priority: 1.6, flat: true}

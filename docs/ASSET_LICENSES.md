@@ -249,6 +249,16 @@ silently produce a motionless "animation". Project-owned, no external license. C
 > | P62b | `data/characters/visual/anchors/{player_proto,player_daobao,lin_yue,elder,merchant}_anchors.tres` (replace `cultivator_anchors.tres`) | DATA (per-frame palm / rear palm / core, projected from the rig's bones) | self-made — `pixel/pixelize.py` | project-owned | each actor's `CharacterVisualProfileData.anchors` | No |
 > | P62c | ~~`assets/sprites/characters/portraits/*.png`~~ → `tools/aetheria_art_pipeline/work/<actor>/portrait.png` (80×80, gitignored) | portraits (pixel art) from the SAME model, portrait LOD (brows, almond eyes, nose, mouth, ears) | self-made — `pixel/pixelize.py portrait` | project-owned | a BUILD product: framed into the K5 medallions; no longer shipped on its own | No |
 
+> **art-01 rebuild (same files, same dimensions, no new asset).** The player's four looks
+> (`player_proto_*`, `player_daobao_*`, `player_f_proto_*`, `player_f_daobao_*` and the fallback
+> `player_proto.png`) were re-rendered by the same pipeline from changed design data only
+> (`designs/actors/player_*.yaml`: hand shape, face tones, sprite-LOD bangs and eyes; the woman's
+> jacket ramp one tone deeper and her hem wider) — CHARACTER_ART_BIBLE §4c. Self-made,
+> project-owned, packed by `pixel/pngout.py`; the anchor data is unchanged. The K5/K9 medallions
+> are unchanged (byte-identical rebuild); her portrait keeps the old jacket via the robe's
+> portrait-only `portrait_ramp` until a UI item drops it and rebuilds
+> `assets/ui/aetheria_ink/medallion_player_f_proto.png`.
+
 > **D-057B redraw (same files, NEW dimensions).** The generator became the `tools/aetheria_art/`
 > package (still stdlib-only): a POSE-driven 32×48 humanoid (6-beat breath, 8-frame two-step
 > stride whose hem the legs drive, 8-frame palm strike with an upright palm) and a pose-driven
